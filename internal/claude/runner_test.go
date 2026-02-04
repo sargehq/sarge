@@ -181,3 +181,113 @@ func TestBuildLogAnalysisPromptBdCreateCommand(t *testing.T) {
 	// Check that it includes priority option
 	require.Contains(t, result, "--priority", "BuildLogAnalysisPrompt() missing --priority flag")
 }
+
+func TestLogAnalysisParamsExistingBeadsField(t *testing.T) {
+	// Test that ExistingBeads field is properly included in the struct
+	params := LogAnalysisParams{
+		TaskID:       "task-1",
+		WorkID:       "work-1",
+		BranchName:   "main",
+		RootIssueID:  "issue-1",
+		WorkflowName: "workflow-1",
+		JobName:      "job-1",
+		LogContent:   "content",
+		ExistingBeads: []BeadSummary{
+			{ID: "bead-1", Title: "Fix test failure", Description: "Test failed at file.go:42"},
+			{ID: "bead-2", Title: "Lint error", Description: "Missing comment on exported function"},
+		},
+	}
+
+	require.Len(t, params.ExistingBeads, 2)
+	require.Equal(t, "bead-1", params.ExistingBeads[0].ID)
+	require.Equal(t, "Fix test failure", params.ExistingBeads[0].Title)
+	require.Equal(t, "Test failed at file.go:42", params.ExistingBeads[0].Description)
+}
+
+func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
+	t.Run("renders existing beads section", func(t *testing.T) {
+		params := LogAnalysisParams{
+			TaskID:       "w-test.1",
+			WorkID:       "w-test",
+			BranchName:   "main",
+			WorkflowName: "CI",
+			JobName:      "Test",
+			LogContent:   "--- FAIL: TestSomething (0.02s)",
+			ExistingBeads: []BeadSummary{
+				{ID: "beads-123", Title: "Fix TestUserAuth failure", Description: "Test failed at auth_test.go:42"},
+				{ID: "beads-456", Title: "Fix lint error in utils", Description: "Missing comment"},
+			},
+		}
+
+		result := BuildLogAnalysisPrompt(params)
+
+		// Should contain the existing beads section header
+		require.Contains(t, result, "Existing Open Issues")
+
+		// Should contain bead IDs and titles
+		require.Contains(t, result, "beads-123")
+		require.Contains(t, result, "Fix TestUserAuth failure")
+		require.Contains(t, result, "beads-456")
+		require.Contains(t, result, "Fix lint error in utils")
+
+		// Should contain descriptions
+		require.Contains(t, result, "Test failed at auth_test.go:42")
+		require.Contains(t, result, "Missing comment")
+
+		// Should contain instructions to check existing beads
+		require.Contains(t, result, "matches an existing issue")
+		require.Contains(t, result, "skip it")
+	})
+
+	t.Run("no existing beads section when empty", func(t *testing.T) {
+		params := LogAnalysisParams{
+			TaskID:        "w-test.1",
+			WorkID:        "w-test",
+			BranchName:    "main",
+			WorkflowName:  "CI",
+			JobName:       "Test",
+			LogContent:    "--- FAIL: TestSomething (0.02s)",
+			ExistingBeads: nil,
+		}
+
+		result := BuildLogAnalysisPrompt(params)
+
+		// Should not contain the existing beads section header when no beads
+		require.NotContains(t, result, "Existing Open Issues")
+	})
+
+	t.Run("handles beads without description", func(t *testing.T) {
+		params := LogAnalysisParams{
+			TaskID:       "w-test.1",
+			WorkID:       "w-test",
+			BranchName:   "main",
+			WorkflowName: "CI",
+			JobName:      "Test",
+			LogContent:   "--- FAIL: TestSomething (0.02s)",
+			ExistingBeads: []BeadSummary{
+				{ID: "beads-789", Title: "Fix test", Description: ""},
+			},
+		}
+
+		result := BuildLogAnalysisPrompt(params)
+
+		// Should contain the bead ID and title
+		require.Contains(t, result, "beads-789")
+		require.Contains(t, result, "Fix test")
+
+		// Should not have extra whitespace issues
+		require.Contains(t, result, "Existing Open Issues")
+	})
+}
+
+func TestBeadSummaryStruct(t *testing.T) {
+	summary := BeadSummary{
+		ID:          "bead-test",
+		Title:       "Test Title",
+		Description: "Test Description",
+	}
+
+	require.Equal(t, "bead-test", summary.ID)
+	require.Equal(t, "Test Title", summary.Title)
+	require.Equal(t, "Test Description", summary.Description)
+}
