@@ -116,7 +116,7 @@ install_from_release() {
     log_info "Latest version: $version"
 
     # Download URL
-    local archive_name="co_${version#v}_${platform}.tar.gz"
+    local archive_name="sarge_${version#v}_${platform}.tar.gz"
     local download_url="https://github.com/sargehq/sarge/releases/download/${version}/${archive_name}"
 
     log_info "Downloading $archive_name..."
@@ -159,15 +159,15 @@ install_from_release() {
     # Install binary
     log_info "Installing to $install_dir..."
     if [[ -w "$install_dir" ]]; then
-        mv co "$install_dir/"
+        mv sarge "$install_dir/"
     else
-        sudo mv co "$install_dir/"
+        sudo mv sarge "$install_dir/"
     fi
 
     # Re-sign for macOS to avoid Gatekeeper delays
-    resign_for_macos "$install_dir/co"
+    resign_for_macos "$install_dir/sarge"
 
-    log_success "co installed to $install_dir/co"
+    log_success "sarge installed to $install_dir/sarge"
 
     # Check if install_dir is in PATH
     if [[ ":$PATH:" != *":$install_dir:"* ]]; then
@@ -221,7 +221,7 @@ install_with_go() {
         fi
 
         # Re-sign for macOS to avoid Gatekeeper delays
-        resign_for_macos "$bin_dir/co"
+        resign_for_macos "$bin_dir/sarge"
 
         # Check if GOPATH/bin is in PATH
         if [[ ":$PATH:" != *":$bin_dir:"* ]]; then
@@ -241,17 +241,17 @@ install_with_go() {
 
 # Verify installation
 verify_installation() {
-    if command -v co &> /dev/null; then
-        log_success "co is installed and ready!"
+    if command -v sarge &> /dev/null; then
+        log_success "sarge is installed and ready!"
         echo ""
-        co --version 2>/dev/null || echo "co (development build)"
+        sarge --version 2>/dev/null || echo "sarge (development build)"
         echo ""
         echo "Get started:"
-        echo "  co proj create <dir> <github-repo>"
+        echo "  sarge proj create <dir> <github-repo>"
         echo ""
         return 0
     else
-        log_error "co was installed but is not in PATH"
+        log_error "sarge was installed but is not in PATH"
         return 1
     fi
 }
@@ -288,7 +288,7 @@ main() {
     echo ""
     echo "Manual installation:"
     echo "  1. Download from https://github.com/sargehq/sarge/releases/latest"
-    echo "  2. Extract and move 'co' to your PATH"
+    echo "  2. Extract and move 'sarge' to your PATH"
     echo ""
     echo "Or install from source:"
     echo "  1. Install Go 1.25+ from https://go.dev/dl/"
