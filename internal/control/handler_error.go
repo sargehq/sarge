@@ -3,9 +3,9 @@ package control
 import (
 	"context"
 
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/logging"
-	"github.com/newhook/co/internal/project"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/logging"
+	"github.com/sargehq/sarge/internal/project"
 )
 
 // HandleTaskError handles an error for a task, rescheduling with backoff if appropriate.

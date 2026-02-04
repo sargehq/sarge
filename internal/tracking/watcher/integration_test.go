@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/newhook/co/internal/tracking/watcher"
+	"github.com/sargehq/sarge/internal/tracking/watcher"
 )
 
 // TestIntegration_ImmediateUpdates verifies that database changes trigger

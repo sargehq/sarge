@@ -48,7 +48,7 @@ Project configuration is stored in `.co/config.toml`.
 
 ### `[project]`
 
-Basic project metadata. Set automatically during `co proj create`.
+Basic project metadata. Set automatically during `sarge proj create`.
 
 | Key | Description |
 |-----|-------------|
@@ -85,7 +85,7 @@ Linear integration settings.
 
 | Key | Description |
 |-----|-------------|
-| `api_key` | Linear API key for `co linear import` |
+| `api_key` | Linear API key for `sarge linear import` |
 
 ### `[claude]`
 
@@ -163,5 +163,5 @@ setup = "yarn install"
 ```
 
 The setup task runs automatically during:
-- Project creation (`co proj create`)
-- Work creation (`co work create`)
+- Project creation (`sarge proj create`)
+- Work creation (`sarge work create`)

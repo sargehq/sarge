@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/newhook/co/internal/db/sqlc"
+	"github.com/sargehq/sarge/internal/db/sqlc"
 )
 
 // WorkBead represents a bead assigned to a work.

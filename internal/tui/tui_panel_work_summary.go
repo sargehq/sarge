@@ -8,8 +8,8 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/progress"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/progress"
 )
 
 // WorkSummaryPanel renders the right side of the work details view when the root issue is selected.

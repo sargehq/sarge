@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/newhook/co/internal/beads"
+	"github.com/sargehq/sarge/internal/beads"
 )
 
 // DefaultPlanner implements the Planner interface using bin-packing.

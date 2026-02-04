@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/newhook/co/internal/logging"
+	"github.com/sargehq/sarge/internal/logging"
 )
 
 // ClientInterface defines the interface for GitHub API operations.

@@ -3,7 +3,7 @@ package beads
 import (
 	"time"
 
-	"github.com/newhook/co/internal/beads/queries"
+	"github.com/sargehq/sarge/internal/beads/queries"
 )
 
 // Bead is a clean wrapper around queries.Issue without SQL null types.

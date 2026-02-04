@@ -10,8 +10,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/newhook/co/internal/beads/pubsub"
-	"github.com/newhook/co/internal/beads/watcher"
+	"github.com/sargehq/sarge/internal/beads/pubsub"
+	"github.com/sargehq/sarge/internal/beads/watcher"
 )
 
 func TestWatcher_DebounceMultipleWrites(t *testing.T) {

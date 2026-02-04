@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/newhook/co/internal/beads"
-	"github.com/newhook/co/internal/control"
-	"github.com/newhook/co/internal/feedback"
-	"github.com/newhook/co/internal/github"
-	"github.com/newhook/co/internal/project"
+	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/control"
+	"github.com/sargehq/sarge/internal/feedback"
+	"github.com/sargehq/sarge/internal/github"
+	"github.com/sargehq/sarge/internal/project"
 	"github.com/spf13/cobra"
 )
 
@@ -203,7 +203,7 @@ func runComplete(cmd *cobra.Command, args []string) error {
 	// Standalone bead (not part of a task) - must exist in beads table
 	if err := proj.DB.CompleteBead(ctx, beadID, flagCompletePRURL); err != nil {
 		// Check if this might be a bead ID that doesn't exist in our tracking
-		return fmt.Errorf("failed to complete bead %s: %w (hint: if the bead was closed via 'bd close', it may not be tracked here; use 'co complete <task-id>' instead)", beadID, err)
+		return fmt.Errorf("failed to complete bead %s: %w (hint: if the bead was closed via 'bd close', it may not be tracked here; use 'sarge complete <task-id>' instead)", beadID, err)
 	}
 
 	fmt.Printf("Marked bead %s as completed", beadID)

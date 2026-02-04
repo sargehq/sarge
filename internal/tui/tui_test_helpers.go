@@ -1,6 +1,6 @@
 package tui
 
-import "github.com/newhook/co/internal/beads"
+import "github.com/sargehq/sarge/internal/beads"
 
 // testBeadItem creates a beadItem for testing with the given properties.
 // deps are the IDs of issues this item depends on (for tree building tests).

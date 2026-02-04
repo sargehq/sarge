@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/newhook/co/internal/db/sqlc"
+	"github.com/sargehq/sarge/internal/db/sqlc"
 )
 
 // ScheduledTask represents a scheduled task in the database.

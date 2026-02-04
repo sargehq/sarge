@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/newhook/co/internal/git"
-	"github.com/newhook/co/internal/project"
-	"github.com/newhook/co/internal/worktree"
+	"github.com/sargehq/sarge/internal/git"
+	"github.com/sargehq/sarge/internal/project"
+	"github.com/sargehq/sarge/internal/worktree"
 	"github.com/spf13/cobra"
 )
 
@@ -48,7 +48,7 @@ func runSync(cmd *cobra.Command, args []string) error {
 
 	// Pull in each worktree
 	for _, wt := range worktrees {
-		// Skip beads internal worktrees (managed by beads system, not co)
+		// Skip beads internal worktrees (managed by beads system, not sarge)
 		if strings.Contains(wt.Path, ".git/beads-worktrees") {
 			continue
 		}

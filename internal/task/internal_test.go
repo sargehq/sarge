@@ -3,7 +3,7 @@ package task
 import (
 	"testing"
 
-	"github.com/newhook/co/internal/beads"
+	"github.com/sargehq/sarge/internal/beads"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -13,14 +13,14 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/newhook/co/internal/beads"
-	beadswatcher "github.com/newhook/co/internal/beads/watcher"
-	"github.com/newhook/co/internal/git"
-	"github.com/newhook/co/internal/progress"
-	"github.com/newhook/co/internal/project"
-	trackingwatcher "github.com/newhook/co/internal/tracking/watcher"
-	"github.com/newhook/co/internal/work"
-	"github.com/newhook/co/internal/zellij"
+	"github.com/sargehq/sarge/internal/beads"
+	beadswatcher "github.com/sargehq/sarge/internal/beads/watcher"
+	"github.com/sargehq/sarge/internal/git"
+	"github.com/sargehq/sarge/internal/progress"
+	"github.com/sargehq/sarge/internal/project"
+	trackingwatcher "github.com/sargehq/sarge/internal/tracking/watcher"
+	"github.com/sargehq/sarge/internal/work"
+	"github.com/sargehq/sarge/internal/zellij"
 )
 
 // watcherEventMsg wraps beads watcher events for tea.Msg

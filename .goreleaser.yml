@@ -1,18 +1,18 @@
-# GoReleaser configuration for Claude Orchestrator (co)
+# GoReleaser configuration for Sarge
 # See: https://goreleaser.com/customization/
 
 version: 2
 
-project_name: co
+project_name: sarge
 
 before:
   hooks:
     - go mod tidy
 
 builds:
-  - id: co
+  - id: sarge
     main: .
-    binary: co
+    binary: sarge
     env:
       - CGO_ENABLED=0
     goos:
@@ -28,9 +28,9 @@ builds:
       - -X main.date={{.Date}}
 
 archives:
-  - id: co
+  - id: sarge
     builds:
-      - co
+      - sarge
     format: tar.gz
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
@@ -52,7 +52,7 @@ changelog:
 
 release:
   github:
-    owner: newhook
-    name: co
+    owner: sargehq
+    name: sarge
   draft: false
   prerelease: auto

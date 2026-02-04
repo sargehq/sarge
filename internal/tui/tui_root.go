@@ -8,7 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	zone "github.com/lrstanley/bubblezone"
-	"github.com/newhook/co/internal/project"
+	"github.com/sargehq/sarge/internal/project"
 )
 
 // Bubblezone setup: NewGlobal() initializes the global zone manager.

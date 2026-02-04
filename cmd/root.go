@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/newhook/co/internal/project"
-	cosignal "github.com/newhook/co/internal/signal"
-	"github.com/newhook/co/internal/tui"
+	"github.com/sargehq/sarge/internal/project"
+	cosignal "github.com/sargehq/sarge/internal/signal"
+	"github.com/sargehq/sarge/internal/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -34,9 +34,9 @@ func SetVersionInfo(v, c, d string) {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "co",
-	Short: "Claude Orchestrator - orchestrates Claude Code to process issues",
-	Long:  `Claude Orchestrator (co) is a CLI tool that orchestrates Claude Code to process issues, creating PRs for each.`,
+	Use:   "sarge",
+	Short: "Sarge - orchestrates Claude Code to process issues",
+	Long:  `Sarge is a CLI tool that orchestrates Claude Code to process issues, creating PRs for each.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// Create a cancellable context with signal handling
 		rootCtx, rootCancel = cosignal.WithSignalCancel(context.Background())

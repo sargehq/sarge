@@ -6,8 +6,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/newhook/co/internal/beads"
-	"github.com/newhook/co/internal/git"
+	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/git"
 )
 
 // GenerateBranchNameFromIssue creates a git-friendly branch name from an issue's title.

@@ -8,17 +8,17 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/newhook/co/internal/control"
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/logging"
-	"github.com/newhook/co/internal/process"
-	"github.com/newhook/co/internal/progress"
-	workpkg "github.com/newhook/co/internal/work"
+	"github.com/sargehq/sarge/internal/control"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/logging"
+	"github.com/sargehq/sarge/internal/process"
+	"github.com/sargehq/sarge/internal/progress"
+	workpkg "github.com/sargehq/sarge/internal/work"
 )
 
 // sessionName returns the zellij session name for this project
 func (m *planModel) sessionName() string {
-	return fmt.Sprintf("co-%s", m.proj.Config.Project.Name)
+	return fmt.Sprintf("sarge-%s", m.proj.Config.Project.Name)
 }
 
 // spawnPlanSession spawns or resumes a planning session for a specific bead
@@ -359,7 +359,7 @@ func (m *planModel) restartOrchestrator() tea.Cmd {
 		// Kill any existing orchestrator process using pattern-based kill
 		// (we use pattern-based kill since we need to actually terminate the process,
 		// database check only tells us if it's alive)
-		pattern := fmt.Sprintf("co orchestrate --work %s", workID)
+		pattern := fmt.Sprintf("sarge orchestrate --work %s", workID)
 		if alive := checkOrchestratorHealth(m.ctx, m.proj.DB, workID); alive {
 			_ = process.KillProcess(m.ctx, pattern)
 			time.Sleep(500 * time.Millisecond)

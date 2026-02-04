@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/newhook/co/internal/beads/pubsub"
+	"github.com/sargehq/sarge/internal/beads/pubsub"
 
 	"github.com/fsnotify/fsnotify"
 )

@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/newhook/co/internal/beads"
-	"github.com/newhook/co/internal/claude"
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/project"
-	"github.com/newhook/co/internal/worktree"
+	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/claude"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/project"
+	"github.com/sargehq/sarge/internal/worktree"
 )
 
 // buildPromptForTask builds the appropriate prompt for a task based on its type.
@@ -179,7 +179,7 @@ func processTask(proj *project.Project, taskID string, runner claude.Runner) err
 		}
 	case db.StatusFailed:
 		// Work is failed - user needs to explicitly restart
-		return fmt.Errorf("work %s is in failed state - use 'co work restart %s' to resume", work.ID, work.ID)
+		return fmt.Errorf("work %s is in failed state - use 'sarge work restart %s' to resume", work.ID, work.ID)
 	}
 
 	fmt.Printf("\n=== Processing task %s ===\n", taskID)

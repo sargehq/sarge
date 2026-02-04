@@ -3,15 +3,15 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/project"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/project"
 	"github.com/spf13/cobra"
 )
 
 var migrateCmd = &cobra.Command{
 	Use:   "migrate",
 	Short: "Manage database migrations",
-	Long:  `Manage database migrations for the co tracking database.`,
+	Long:  `Manage database migrations for the sarge tracking database.`,
 }
 
 var migrateStatusCmd = &cobra.Command{

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/newhook/co/internal/db/sqlc"
+	"github.com/sargehq/sarge/internal/db/sqlc"
 )
 
 // AddTaskDependency adds a dependency between two tasks.

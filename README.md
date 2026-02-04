@@ -1,10 +1,10 @@
-# Claude Orchestrator (co)
+# Sarge
 
 Orchestrate Claude Code to process issues and create PRs. Includes a TUI for interactive management and CLI for scripting.
 
 ## Philosophy
 
-CO is designed to manage an army of Claude agents, turning your issue tracker into a PR factory.
+Sarge is designed to manage an army of Claude agents, turning your issue tracker into a PR factory.
 
 ### The Workflow
 
@@ -27,7 +27,7 @@ CO is designed to manage an army of Claude agents, turning your issue tracker in
 
 ### Agent Support
 
-CO currently supports Claude Code as its agent backend. The architecture is designed to be agent-agnostic, and other agentic coding tools could be supported in the future.
+Sarge currently supports Claude Code as its agent backend. The architecture is designed to be agent-agnostic, and other agentic coding tools could be supported in the future.
 
 ## Prerequisites
 
@@ -90,15 +90,17 @@ pacman -S ttf-hack-nerd
 ## Installation
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/newhook/co/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sargehq/sarge/main/scripts/install.sh | bash
 ```
 
 This downloads the latest release for your platform. Alternatively:
 
 ```bash
 # With Go 1.25+
-go install github.com/newhook/co@latest
+go install github.com/sargehq/sarge@latest
 ```
+
+For more information, visit [sargehq.dev](https://sargehq.dev).
 
 ## Quick Start
 
@@ -106,24 +108,24 @@ go install github.com/newhook/co@latest
 
 ```bash
 # From a GitHub repository
-co proj create ~/myproject https://github.com/user/repo
+sarge proj create ~/myproject https://github.com/user/repo
 
 # From a local repository
-co proj create ~/myproject ~/path/to/repo
+sarge proj create ~/myproject ~/path/to/repo
 
 cd ~/myproject
 ```
 
 ### 2. Choose Your Interface
 
-CO provides two ways to interact with your project:
+Sarge provides two ways to interact with your project:
 
 #### Option A: TUI (Recommended)
 
 The interactive terminal UI provides a lazygit-style interface:
 
 ```bash
-co tui
+sarge tui
 ```
 
 Features:
@@ -138,16 +140,16 @@ Use individual commands for scripting or when you prefer the command line:
 
 ```bash
 # Create a work unit from a bead
-co work create bead-1
+sarge work create bead-1
 
 # Navigate to the work directory
 cd w-abc
 
 # Execute tasks
-co run
+sarge run
 
 # Or use full automation
-co work create bead-1 --auto
+sarge work create bead-1 --auto
 ```
 
 ## Project Commands
@@ -156,9 +158,9 @@ These commands must be used via CLI (not available in TUI):
 
 | Command | Description |
 |---------|-------------|
-| `co proj create <dir> <repo>` | Create a new project (local path or GitHub URL) |
-| `co proj destroy [--force]` | Remove project and all worktrees |
-| `co proj status` | Show project info, worktrees, and task status |
+| `sarge proj create <dir> <repo>` | Create a new project (local path or GitHub URL) |
+| `sarge proj destroy [--force]` | Remove project and all worktrees |
+| `sarge proj status` | Show project info, worktrees, and task status |
 
 ### Project Structure
 
@@ -178,14 +180,14 @@ These commands must be used via CLI (not available in TUI):
 
 ### Why Beads?
 
-CO uses [Beads](https://github.com/steveyegge/beads), a distributed git-backed issue tracker designed specifically for AI coding agents. Traditional markdown plans lack the sophistication needed for complex, multi-step workflows. Beads provides:
+Sarge uses [Beads](https://github.com/steveyegge/beads), a distributed git-backed issue tracker designed specifically for AI coding agents. Traditional markdown plans lack the sophistication needed for complex, multi-step workflows. Beads provides:
 
 - **Dependency tracking** - Agents understand task relationships and what's ready to work on
 - **Git-native persistence** - Tasks stored as JSONL in `.beads/`, versioned alongside code
 - **Collision-free IDs** - Hash-based IDs eliminate merge conflicts in multi-branch scenarios
 - **Semantic compaction** - Completed tasks are summarized to conserve AI context windows
 
-**You rarely need to use beads directly.** Claude Code (with the beads skill) and the TUI handle all issue management. The `bd` CLI is available if you need it, but most users interact with beads through `co tui` or let Claude manage issues automatically.
+**You rarely need to use beads directly.** Claude Code (with the beads skill) and the TUI handle all issue management. The `bd` CLI is available if you need it, but most users interact with beads through `sarge tui` or let Claude manage issues automatically.
 
 ### Three-Tier Hierarchy
 
@@ -198,7 +200,7 @@ CO uses [Beads](https://github.com/steveyegge/beads), a distributed git-backed i
 Use `--auto` for a fully automated workflow:
 
 ```bash
-co work create bead-1 bead-2 --auto
+sarge work create bead-1 bead-2 --auto
 ```
 
 This mode:
@@ -230,7 +232,7 @@ go test ./...
 ### Build
 
 ```bash
-go build -o co .
+go build -o sarge .
 ```
 
 ## Troubleshooting
@@ -239,7 +241,7 @@ go build -o co .
 
 All commands must be run from within a project:
 ```bash
-co proj create ~/myproject ~/path/to/repo
+sarge proj create ~/myproject ~/path/to/repo
 cd ~/myproject
 ```
 

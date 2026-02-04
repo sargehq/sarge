@@ -9,7 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	zone "github.com/lrstanley/bubblezone"
-	"github.com/newhook/co/internal/beads"
+	"github.com/sargehq/sarge/internal/beads"
 )
 
 // BeadFormMode indicates which mode the form is in

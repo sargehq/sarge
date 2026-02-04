@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Claude Orchestrator (co) installation script
-# Usage: curl -fsSL https://raw.githubusercontent.com/newhook/co/main/scripts/install.sh | bash
+# Sarge installation script
+# Usage: curl -fsSL https://raw.githubusercontent.com/sargehq/sarge/main/scripts/install.sh | bash
 #
 
 set -e
@@ -85,7 +85,7 @@ resign_for_macos() {
 
 # Download and install from GitHub releases
 install_from_release() {
-    log_info "Installing co from GitHub releases..."
+    log_info "Installing sarge from GitHub releases..."
 
     local platform=$1
     local tmp_dir
@@ -93,7 +93,7 @@ install_from_release() {
 
     # Get latest release version
     log_info "Fetching latest release..."
-    local latest_url="https://api.github.com/repos/newhook/co/releases/latest"
+    local latest_url="https://api.github.com/repos/sargehq/sarge/releases/latest"
     local version
     local release_json
 
@@ -116,8 +116,8 @@ install_from_release() {
     log_info "Latest version: $version"
 
     # Download URL
-    local archive_name="co_${version#v}_${platform}.tar.gz"
-    local download_url="https://github.com/newhook/co/releases/download/${version}/${archive_name}"
+    local archive_name="sarge_${version#v}_${platform}.tar.gz"
+    local download_url="https://github.com/sargehq/sarge/releases/download/${version}/${archive_name}"
 
     log_info "Downloading $archive_name..."
 
@@ -159,15 +159,15 @@ install_from_release() {
     # Install binary
     log_info "Installing to $install_dir..."
     if [[ -w "$install_dir" ]]; then
-        mv co "$install_dir/"
+        mv sarge "$install_dir/"
     else
-        sudo mv co "$install_dir/"
+        sudo mv sarge "$install_dir/"
     fi
 
     # Re-sign for macOS to avoid Gatekeeper delays
-    resign_for_macos "$install_dir/co"
+    resign_for_macos "$install_dir/sarge"
 
-    log_success "co installed to $install_dir/co"
+    log_success "sarge installed to $install_dir/sarge"
 
     # Check if install_dir is in PATH
     if [[ ":$PATH:" != *":$install_dir:"* ]]; then
@@ -209,10 +209,10 @@ check_go() {
 
 # Install using go install (fallback)
 install_with_go() {
-    log_info "Installing co using 'go install'..."
+    log_info "Installing sarge using 'go install'..."
 
-    if go install github.com/newhook/co@latest; then
-        log_success "co installed successfully via go install"
+    if go install github.com/sargehq/sarge@latest; then
+        log_success "sarge installed successfully via go install"
 
         local bin_dir
         bin_dir=$(go env GOBIN 2>/dev/null || true)
@@ -221,7 +221,7 @@ install_with_go() {
         fi
 
         # Re-sign for macOS to avoid Gatekeeper delays
-        resign_for_macos "$bin_dir/co"
+        resign_for_macos "$bin_dir/sarge"
 
         # Check if GOPATH/bin is in PATH
         if [[ ":$PATH:" != *":$bin_dir:"* ]]; then
@@ -241,17 +241,17 @@ install_with_go() {
 
 # Verify installation
 verify_installation() {
-    if command -v co &> /dev/null; then
-        log_success "co is installed and ready!"
+    if command -v sarge &> /dev/null; then
+        log_success "sarge is installed and ready!"
         echo ""
-        co --version 2>/dev/null || echo "co (development build)"
+        sarge --version 2>/dev/null || echo "sarge (development build)"
         echo ""
         echo "Get started:"
-        echo "  co proj create <dir> <github-repo>"
+        echo "  sarge proj create <dir> <github-repo>"
         echo ""
         return 0
     else
-        log_error "co was installed but is not in PATH"
+        log_error "sarge was installed but is not in PATH"
         return 1
     fi
 }
@@ -259,7 +259,7 @@ verify_installation() {
 # Main installation flow
 main() {
     echo ""
-    echo "Claude Orchestrator (co) Installer"
+    echo "Sarge Installer"
     echo ""
 
     log_info "Detecting platform..."
@@ -287,12 +287,12 @@ main() {
     log_error "Installation failed"
     echo ""
     echo "Manual installation:"
-    echo "  1. Download from https://github.com/newhook/co/releases/latest"
-    echo "  2. Extract and move 'co' to your PATH"
+    echo "  1. Download from https://github.com/sargehq/sarge/releases/latest"
+    echo "  2. Extract and move 'sarge' to your PATH"
     echo ""
     echo "Or install from source:"
     echo "  1. Install Go 1.25+ from https://go.dev/dl/"
-    echo "  2. Run: go install github.com/newhook/co@latest"
+    echo "  2. Run: go install github.com/sargehq/sarge@latest"
     echo ""
     exit 1
 }

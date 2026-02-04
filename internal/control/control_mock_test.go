@@ -5,7 +5,7 @@ package control_test
 
 import (
 	"context"
-	"github.com/newhook/co/internal/control"
+	"github.com/sargehq/sarge/internal/control"
 	"io"
 	"sync"
 )

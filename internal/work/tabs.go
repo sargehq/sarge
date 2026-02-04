@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/newhook/co/internal/project"
+	"github.com/sargehq/sarge/internal/project"
 )
 
 // PlanTabName returns the zellij tab name for a bead's planning session.
@@ -183,7 +183,7 @@ func (m *DefaultOrchestratorManager) SpawnPlanSession(ctx context.Context, beadI
 
 	// Create a new tab with the plan command using a layout
 	fmt.Fprintf(w, "Creating tab: %s in session %s\n", tabName, sessionName)
-	if err := session.CreateTabWithCommand(ctx, tabName, mainRepoPath, "co", []string{"plan", beadID}, "planning"); err != nil {
+	if err := session.CreateTabWithCommand(ctx, tabName, mainRepoPath, "sarge", []string{"plan", beadID}, "planning"); err != nil {
 		return fmt.Errorf("failed to create tab: %w", err)
 	}
 

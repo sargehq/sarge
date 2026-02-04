@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/github"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/github"
 )
 
 // PRStatusInfo represents the extracted PR status information.

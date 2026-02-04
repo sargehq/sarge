@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/logging"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/logging"
 )
 
 // Manager handles process registration, heartbeat updates, and cleanup.

@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/newhook/co/internal/control"
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/github"
+	"github.com/sargehq/sarge/internal/control"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

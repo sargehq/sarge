@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/logging"
-	"github.com/newhook/co/internal/mise"
-	"github.com/newhook/co/internal/project"
-	"github.com/newhook/co/internal/work"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/logging"
+	"github.com/sargehq/sarge/internal/mise"
+	"github.com/sargehq/sarge/internal/project"
+	"github.com/sargehq/sarge/internal/work"
 )
 
 // HandleImportPRTask handles a scheduled PR import task.

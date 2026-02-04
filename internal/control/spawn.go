@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/logging"
-	"github.com/newhook/co/internal/project"
-	"github.com/newhook/co/internal/zellij"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/logging"
+	"github.com/sargehq/sarge/internal/project"
+	"github.com/sargehq/sarge/internal/zellij"
 )
 
 // ControlPlaneTabName is the name of the control plane tab in zellij
@@ -34,7 +34,7 @@ func EnsureControlPlane(ctx context.Context, proj *project.Project) (*InitResult
 	}
 
 	// Ensure session exists with control plane as the initial tab
-	sessionCreated, err := zc.EnsureSessionWithCommand(ctx, sessionName, ControlPlaneTabName, proj.Root, "co", []string{"control", "--root", proj.Root})
+	sessionCreated, err := zc.EnsureSessionWithCommand(ctx, sessionName, ControlPlaneTabName, proj.Root, "sarge", []string{"control", "--root", proj.Root})
 	if err != nil {
 		return nil, fmt.Errorf("failed to ensure zellij session: %w", err)
 	}
@@ -103,7 +103,7 @@ func spawnControlPlane(ctx context.Context, proj *project.Project) error {
 	// Create control plane tab with command using layout
 	// This avoids race conditions from creating a tab then executing a command
 	logging.Debug("spawnControlPlane creating tab with command", "tabName", ControlPlaneTabName)
-	if err := session.CreateTabWithCommand(ctx, ControlPlaneTabName, projectRoot, "co", []string{"control", "--root", projectRoot}, "control"); err != nil {
+	if err := session.CreateTabWithCommand(ctx, ControlPlaneTabName, projectRoot, "sarge", []string{"control", "--root", projectRoot}, "control"); err != nil {
 		logging.Error("spawnControlPlane CreateTabWithCommand failed", "error", err)
 		return fmt.Errorf("failed to create control plane tab: %w", err)
 	}

@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/project"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/project"
 )
 
 // FetchTaskPollData fetches progress data for a single task

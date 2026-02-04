@@ -4,7 +4,7 @@ Branch: {{.BranchName}}
 Base: {{.BaseBranch}}
 
 Instructions:
-1. First, check the work details: co work show {{.WorkID}}
+1. First, check the work details: sarge work show {{.WorkID}}
    - This will show all tasks and their completion status
 2. Use 'git diff {{.BaseBranch}}...{{.BranchName}}' to see all changes in this work
 3. Review the code for:
@@ -43,7 +43,7 @@ Instructions:
      --description "Email field accepts invalid formats in cmd/register.go:78"
    ```
 
-6. After completing the review, mark the task complete: co complete {{.TaskID}}
+6. After completing the review, mark the task complete: sarge complete {{.TaskID}}
 
 If you find critical issues that should block merging, clearly indicate them.
 If no issues are found, skip step 5 (no issues to create).

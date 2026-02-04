@@ -3,7 +3,7 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/newhook/co/internal/progress"
+	"github.com/sargehq/sarge/internal/progress"
 )
 
 // WorkDetailAction represents an action result from the work details panel

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/newhook/co/internal/beads"
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/github"
-	"github.com/newhook/co/internal/project"
+	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/github"
+	"github.com/sargehq/sarge/internal/project"
 )
 
 // processPRFeedbackQuiet processes PR feedback without outputting to stdout.
@@ -283,7 +283,7 @@ func processPRFeedbackInternal(ctx context.Context, proj *project.Project, datab
 
 		if len(createdBeads) > 0 {
 			fmt.Println("\nTo add these beads to the work, run:")
-			fmt.Printf("  co work add %s\n", strings.Join(createdBeads, " "))
+			fmt.Printf("  sarge work add %s\n", strings.Join(createdBeads, " "))
 		}
 	}
 

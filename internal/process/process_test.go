@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/newhook/co/internal/process"
+	"github.com/sargehq/sarge/internal/process"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

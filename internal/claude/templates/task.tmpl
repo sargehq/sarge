@@ -4,10 +4,10 @@ Branch: {{.BranchName}}
 Base Branch: {{.BaseBranch}}
 
 Instructions:
-1. First, check the task status: co task show {{.TaskID}}
+1. First, check the task status: sarge task show {{.TaskID}}
    - This will show which beads are in the task and their completion status
 2. Check git status to see if there are uncommitted changes:
-   - If changes exist, check co task show {{.TaskID}} for any bead marked as "processing"
+   - If changes exist, check sarge task show {{.TaskID}} for any bead marked as "processing"
    - If there's a "processing" bead:
      * Review the changes with git diff
      * Complete that bead's implementation if needed
@@ -15,7 +15,7 @@ Instructions:
      * Commit: git add -A && git commit -m "Complete <bead-id>: <description>"
      * Push: git push
    - If no beads are "processing":
-     * Mark task as failed: co complete {{.TaskID}} --error "Uncommitted changes found. Please commit or stash them before running this task."
+     * Mark task as failed: sarge complete {{.TaskID}} --error "Uncommitted changes found. Please commit or stash them before running this task."
      * Exit with: /exit
 3. For each bead that is NOT already completed:
    - Use 'bd show <bead-id>' to examine the bead's details
@@ -24,9 +24,9 @@ Instructions:
    - Commit the work: git add -A && git commit -m "Implement <bead-id>: <brief description>"
    - Push the changes: git push
 4. When ALL beads are complete:
-   - Mark the task complete: co complete {{.TaskID}}
+   - Mark the task complete: sarge complete {{.TaskID}}
 
-Note: co complete auto-detects your task. When all beads in the task are marked complete, the task itself is marked complete.
+Note: sarge complete auto-detects your task. When all beads in the task are marked complete, the task itself is marked complete.
 
 DO NOT create a PR or merge - that will be handled separately after all tasks in the work are complete.
 

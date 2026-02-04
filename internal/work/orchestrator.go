@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/logging"
-	"github.com/newhook/co/internal/project"
-	"github.com/newhook/co/internal/zellij"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/logging"
+	"github.com/sargehq/sarge/internal/project"
+	"github.com/sargehq/sarge/internal/zellij"
 )
 
 // OrchestratorManager provides operations for managing work orchestrators and related tabs.
@@ -208,7 +208,7 @@ func (m *DefaultOrchestratorManager) SpawnWorkOrchestrator(ctx context.Context, 
 
 	// Create a new tab with the orchestrate command using a layout
 	fmt.Fprintf(w, "Creating tab: %s in session %s\n", tabName, sessionName)
-	if err := session.CreateTabWithCommand(ctx, tabName, workDir, "co", []string{"orchestrate", "--work", workID}, "orchestrator"); err != nil {
+	if err := session.CreateTabWithCommand(ctx, tabName, workDir, "sarge", []string{"orchestrate", "--work", workID}, "orchestrator"); err != nil {
 		return fmt.Errorf("failed to create tab: %w", err)
 	}
 

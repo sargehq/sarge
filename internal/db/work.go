@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/newhook/co/internal/db/sqlc"
+	"github.com/sargehq/sarge/internal/db/sqlc"
 )
 
 // workToLocal converts an sqlc.Work to local Work

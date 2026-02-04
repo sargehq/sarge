@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/newhook/co/internal/linear"
+	"github.com/sargehq/sarge/internal/linear"
 	"github.com/stretchr/testify/require"
 )
 

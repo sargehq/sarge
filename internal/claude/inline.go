@@ -12,10 +12,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/newhook/co/internal/beads/pubsub"
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/project"
-	trackingwatcher "github.com/newhook/co/internal/tracking/watcher"
+	"github.com/sargehq/sarge/internal/beads/pubsub"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/project"
+	trackingwatcher "github.com/sargehq/sarge/internal/tracking/watcher"
 )
 
 // Runner defines the interface for running Claude.

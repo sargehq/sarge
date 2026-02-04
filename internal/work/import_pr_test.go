@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/newhook/co/internal/git"
-	"github.com/newhook/co/internal/github"
-	"github.com/newhook/co/internal/worktree"
+	"github.com/sargehq/sarge/internal/git"
+	"github.com/sargehq/sarge/internal/github"
+	"github.com/sargehq/sarge/internal/worktree"
 	"github.com/stretchr/testify/require"
 )
 

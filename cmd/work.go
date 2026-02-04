@@ -7,13 +7,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/newhook/co/internal/beads"
-	"github.com/newhook/co/internal/claude"
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/git"
-	"github.com/newhook/co/internal/project"
-	"github.com/newhook/co/internal/control"
-	workpkg "github.com/newhook/co/internal/work"
+	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/claude"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/git"
+	"github.com/sargehq/sarge/internal/project"
+	"github.com/sargehq/sarge/internal/control"
+	workpkg "github.com/sargehq/sarge/internal/work"
 	"github.com/spf13/cobra"
 )
 

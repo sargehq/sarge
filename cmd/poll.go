@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/progress"
-	"github.com/newhook/co/internal/project"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/progress"
+	"github.com/sargehq/sarge/internal/project"
 	"github.com/spf13/cobra"
 )
 
@@ -36,7 +36,7 @@ Output shows:
 - Status indicators (○ pending, ● processing, ✓ completed, ✗ failed)
 
 For interactive management (create, destroy, plan, run works),
-use 'co tui' instead.`,
+use 'sarge tui' instead.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runPoll,
 }

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/logging"
-	"github.com/newhook/co/internal/project"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/logging"
+	"github.com/sargehq/sarge/internal/project"
 )
 
 // HandleSpawnOrchestratorTask handles a scheduled orchestrator spawn task

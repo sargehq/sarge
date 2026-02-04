@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/newhook/co/internal/beads"
-	"github.com/newhook/co/internal/github"
-	"github.com/newhook/co/internal/logging"
+	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/github"
+	"github.com/sargehq/sarge/internal/logging"
 )
 
 // SetupWorktreeFromPR fetches a PR's branch and creates a worktree for it.

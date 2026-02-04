@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/newhook/co/internal/beads"
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/git"
-	"github.com/newhook/co/internal/logging"
-	"github.com/newhook/co/internal/mise"
+	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/git"
+	"github.com/sargehq/sarge/internal/logging"
+	"github.com/sargehq/sarge/internal/mise"
 )
 
 const (
@@ -35,7 +35,7 @@ const (
 // SessionNameForProject returns the zellij session name for a specific project.
 // This is used consistently across the codebase for session management.
 func SessionNameForProject(projectName string) string {
-	return fmt.Sprintf("co-%s", projectName)
+	return fmt.Sprintf("sarge-%s", projectName)
 }
 
 // FormatTabName formats a tab name with an optional friendly name.
@@ -294,7 +294,7 @@ func setupBeads(ctx context.Context, source, projectRoot, mainPath string) (bead
 
 // setupMise generates mise config and runs mise install.
 func setupMise(projectRoot, mainPath string) {
-	// Generate mise config in project root with co's required tools
+	// Generate mise config in project root with sarge's required tools
 	if err := mise.GenerateConfig(projectRoot); err != nil {
 		fmt.Printf("Warning: failed to generate mise config: %v\n", err)
 	} else {

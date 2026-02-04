@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/newhook/co/internal/beads"
-	"github.com/newhook/co/internal/db"
+	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/db"
 )
 
 // LLMEstimator uses Claude Code via estimate tasks to estimate bead complexity.
@@ -113,6 +113,6 @@ func (e *LLMEstimator) EstimateBatch(ctx context.Context, beadList []beads.Bead,
 	}
 
 	// Cannot estimate here - estimation must happen through tasks run by orchestrator
-	return nil, fmt.Errorf("missing complexity estimates for %d bead(s): %s. Use 'co run --auto' to run estimation through the orchestrator",
+	return nil, fmt.Errorf("missing complexity estimates for %d bead(s): %s. Use 'sarge run --auto' to run estimation through the orchestrator",
 		len(result.UncachedIDs), strings.Join(result.UncachedIDs, ", "))
 }

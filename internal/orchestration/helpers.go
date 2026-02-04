@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/newhook/co/internal/db"
+	"github.com/sargehq/sarge/internal/db"
 )
 
 // SpinnerFrames for animated waiting display

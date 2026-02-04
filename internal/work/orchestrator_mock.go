@@ -5,7 +5,7 @@ package work
 
 import (
 	"context"
-	"github.com/newhook/co/internal/project"
+	"github.com/sargehq/sarge/internal/project"
 	"io"
 	"sync"
 )
