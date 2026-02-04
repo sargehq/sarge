@@ -11,7 +11,7 @@ import (
 var migrateCmd = &cobra.Command{
 	Use:   "migrate",
 	Short: "Manage database migrations",
-	Long:  `Manage database migrations for the co tracking database.`,
+	Long:  `Manage database migrations for the sarge tracking database.`,
 }
 
 var migrateStatusCmd = &cobra.Command{

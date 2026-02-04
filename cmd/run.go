@@ -112,7 +112,7 @@ func runTasks(cmd *cobra.Command, args []string) error {
 
 	// Validate that work has a root issue
 	if workRecord.RootIssueID == "" {
-		return fmt.Errorf("work %s has no root issue associated. Create work with a bead ID using 'co work create <bead-id>'", workRecord.ID)
+		return fmt.Errorf("work %s has no root issue associated. Create work with a bead ID using 'sarge work create <bead-id>'", workRecord.ID)
 	}
 
 	// Check if worktree exists

@@ -179,7 +179,7 @@ func processTask(proj *project.Project, taskID string, runner claude.Runner) err
 		}
 	case db.StatusFailed:
 		// Work is failed - user needs to explicitly restart
-		return fmt.Errorf("work %s is in failed state - use 'co work restart %s' to resume", work.ID, work.ID)
+		return fmt.Errorf("work %s is in failed state - use 'sarge work restart %s' to resume", work.ID, work.ID)
 	}
 
 	fmt.Printf("\n=== Processing task %s ===\n", taskID)
