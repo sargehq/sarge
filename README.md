@@ -1,10 +1,10 @@
-# Claude Orchestrator (co)
+# Sarge
 
 Orchestrate Claude Code to process issues and create PRs. Includes a TUI for interactive management and CLI for scripting.
 
 ## Philosophy
 
-CO is designed to manage an army of Claude agents, turning your issue tracker into a PR factory.
+Sarge is designed to manage an army of Claude agents, turning your issue tracker into a PR factory.
 
 ### The Workflow
 
@@ -27,7 +27,7 @@ CO is designed to manage an army of Claude agents, turning your issue tracker in
 
 ### Agent Support
 
-CO currently supports Claude Code as its agent backend. The architecture is designed to be agent-agnostic, and other agentic coding tools could be supported in the future.
+Sarge currently supports Claude Code as its agent backend. The architecture is designed to be agent-agnostic, and other agentic coding tools could be supported in the future.
 
 ## Prerequisites
 
@@ -116,7 +116,7 @@ cd ~/myproject
 
 ### 2. Choose Your Interface
 
-CO provides two ways to interact with your project:
+Sarge provides two ways to interact with your project:
 
 #### Option A: TUI (Recommended)
 
@@ -178,7 +178,7 @@ These commands must be used via CLI (not available in TUI):
 
 ### Why Beads?
 
-CO uses [Beads](https://github.com/steveyegge/beads), a distributed git-backed issue tracker designed specifically for AI coding agents. Traditional markdown plans lack the sophistication needed for complex, multi-step workflows. Beads provides:
+Sarge uses [Beads](https://github.com/steveyegge/beads), a distributed git-backed issue tracker designed specifically for AI coding agents. Traditional markdown plans lack the sophistication needed for complex, multi-step workflows. Beads provides:
 
 - **Dependency tracking** - Agents understand task relationships and what's ready to work on
 - **Git-native persistence** - Tasks stored as JSONL in `.beads/`, versioned alongside code
@@ -230,7 +230,7 @@ go test ./...
 ### Build
 
 ```bash
-go build -o co .
+go build -o sarge .
 ```
 
 ## Troubleshooting

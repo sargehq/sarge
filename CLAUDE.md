@@ -1,11 +1,11 @@
-# Claude Orchestrator (co)
+# Sarge
 
 Go CLI tool that orchestrates Claude Code to process issues, creating PRs for each.
 
 ## Build & Test
 
 ```bash
-go build -o co .
+go build -o sarge .
 go test ./...
 ```
 

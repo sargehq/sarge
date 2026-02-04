@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Claude Orchestrator (co) installation script
-# Usage: curl -fsSL https://raw.githubusercontent.com/newhook/co/main/scripts/install.sh | bash
+# Sarge installation script
+# Usage: curl -fsSL https://raw.githubusercontent.com/sargehq/sarge/main/scripts/install.sh | bash
 #
 
 set -e
@@ -85,7 +85,7 @@ resign_for_macos() {
 
 # Download and install from GitHub releases
 install_from_release() {
-    log_info "Installing co from GitHub releases..."
+    log_info "Installing sarge from GitHub releases..."
 
     local platform=$1
     local tmp_dir
@@ -209,10 +209,10 @@ check_go() {
 
 # Install using go install (fallback)
 install_with_go() {
-    log_info "Installing co using 'go install'..."
+    log_info "Installing sarge using 'go install'..."
 
     if go install github.com/newhook/co@latest; then
-        log_success "co installed successfully via go install"
+        log_success "sarge installed successfully via go install"
 
         local bin_dir
         bin_dir=$(go env GOBIN 2>/dev/null || true)
@@ -259,7 +259,7 @@ verify_installation() {
 # Main installation flow
 main() {
     echo ""
-    echo "Claude Orchestrator (co) Installer"
+    echo "Sarge Installer"
     echo ""
 
     log_info "Detecting platform..."

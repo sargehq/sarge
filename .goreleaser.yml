@@ -1,4 +1,4 @@
-# GoReleaser configuration for Claude Orchestrator (co)
+# GoReleaser configuration for Sarge
 # See: https://goreleaser.com/customization/
 
 version: 2
