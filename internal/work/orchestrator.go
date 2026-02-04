@@ -208,7 +208,7 @@ func (m *DefaultOrchestratorManager) SpawnWorkOrchestrator(ctx context.Context, 
 
 	// Create a new tab with the orchestrate command using a layout
 	fmt.Fprintf(w, "Creating tab: %s in session %s\n", tabName, sessionName)
-	if err := session.CreateTabWithCommand(ctx, tabName, workDir, "co", []string{"orchestrate", "--work", workID}, "orchestrator"); err != nil {
+	if err := session.CreateTabWithCommand(ctx, tabName, workDir, "sarge", []string{"orchestrate", "--work", workID}, "orchestrator"); err != nil {
 		return fmt.Errorf("failed to create tab: %w", err)
 	}
 

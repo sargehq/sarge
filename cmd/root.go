@@ -34,7 +34,7 @@ func SetVersionInfo(v, c, d string) {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "co",
+	Use:   "sarge",
 	Short: "Claude Orchestrator - orchestrates Claude Code to process issues",
 	Long:  `Claude Orchestrator (co) is a CLI tool that orchestrates Claude Code to process issues, creating PRs for each.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
