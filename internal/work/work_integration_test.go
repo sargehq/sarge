@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/testutil"
-	"github.com/newhook/co/internal/work"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/testutil"
+	"github.com/sargehq/sarge/internal/work"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

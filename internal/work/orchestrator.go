@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/logging"
-	"github.com/newhook/co/internal/project"
-	"github.com/newhook/co/internal/zellij"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/logging"
+	"github.com/sargehq/sarge/internal/project"
+	"github.com/sargehq/sarge/internal/zellij"
 )
 
 // OrchestratorManager provides operations for managing work orchestrators and related tabs.

@@ -8,7 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	zone "github.com/lrstanley/bubblezone"
-	"github.com/newhook/co/internal/github"
+	"github.com/sargehq/sarge/internal/github"
 )
 
 // PRImportAction represents an action result from the panel

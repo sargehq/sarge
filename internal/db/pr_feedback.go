@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/newhook/co/internal/db/sqlc"
-	"github.com/newhook/co/internal/github"
+	"github.com/sargehq/sarge/internal/db/sqlc"
+	"github.com/sargehq/sarge/internal/github"
 )
 
 // convertPrFeedback converts a sqlc.PrFeedback to our PRFeedback struct.

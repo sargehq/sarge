@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/newhook/co/internal/db/sqlc"
+	"github.com/sargehq/sarge/internal/db/sqlc"
 )
 
 // taskRowToLocal converts a GetTaskRow to local Task

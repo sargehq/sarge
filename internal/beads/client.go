@@ -14,10 +14,10 @@ import (
 
 	_ "github.com/ncruces/go-sqlite3/driver"
 	_ "github.com/ncruces/go-sqlite3/embed"
-	"github.com/newhook/co/internal/beads/cachemanager"
-	"github.com/newhook/co/internal/beads/queries"
-	"github.com/newhook/co/internal/logging"
-	"github.com/newhook/co/internal/mise"
+	"github.com/sargehq/sarge/internal/beads/cachemanager"
+	"github.com/sargehq/sarge/internal/beads/queries"
+	"github.com/sargehq/sarge/internal/logging"
+	"github.com/sargehq/sarge/internal/mise"
 )
 
 // bdCommand creates an exec.Cmd for running bd with BEADS_DIR set.

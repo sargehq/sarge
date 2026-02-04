@@ -10,9 +10,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/newhook/co/internal/db/sqlc"
-	"github.com/newhook/co/internal/logging"
-	cosignal "github.com/newhook/co/internal/signal"
+	"github.com/sargehq/sarge/internal/db/sqlc"
+	"github.com/sargehq/sarge/internal/logging"
+	cosignal "github.com/sargehq/sarge/internal/signal"
 )
 
 //go:embed migrations/*.sql

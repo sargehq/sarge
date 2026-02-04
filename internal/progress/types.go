@@ -1,7 +1,7 @@
 package progress
 
 import (
-	"github.com/newhook/co/internal/db"
+	"github.com/sargehq/sarge/internal/db"
 )
 
 // WorkProgress holds progress info for a work unit.

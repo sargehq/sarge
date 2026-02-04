@@ -3,9 +3,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/newhook/co/internal/control"
-	"github.com/newhook/co/internal/project"
-	"github.com/newhook/co/internal/work"
+	"github.com/sargehq/sarge/internal/control"
+	"github.com/sargehq/sarge/internal/project"
+	"github.com/sargehq/sarge/internal/work"
 	"github.com/spf13/cobra"
 )
 

@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/newhook/co/internal/project"
-	cosignal "github.com/newhook/co/internal/signal"
-	"github.com/newhook/co/internal/tui"
+	"github.com/sargehq/sarge/internal/project"
+	cosignal "github.com/sargehq/sarge/internal/signal"
+	"github.com/sargehq/sarge/internal/tui"
 	"github.com/spf13/cobra"
 )
 

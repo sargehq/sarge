@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/newhook/co/internal/db"
+	"github.com/sargehq/sarge/internal/db"
 )
 
 // AddBeadsToWorkResult contains the result of adding beads to a work.

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/newhook/co/internal/project"
+	"github.com/sargehq/sarge/internal/project"
 )
 
 // PlanTabName returns the zellij tab name for a bead's planning session.

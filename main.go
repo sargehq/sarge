@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/newhook/co/cmd"
+	"github.com/sargehq/sarge/cmd"
 )
 
 // These variables are set at build time via ldflags by GoReleaser.

@@ -3,7 +3,7 @@ package git_test
 import (
 	"testing"
 
-	"github.com/newhook/co/internal/git"
+	"github.com/sargehq/sarge/internal/git"
 	"github.com/stretchr/testify/require"
 )
 

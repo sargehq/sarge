@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/newhook/co/internal/linear"
-	"github.com/newhook/co/internal/project"
+	"github.com/sargehq/sarge/internal/linear"
+	"github.com/sargehq/sarge/internal/project"
 	"github.com/spf13/cobra"
 )
 

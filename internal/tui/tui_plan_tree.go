@@ -4,7 +4,7 @@ import (
 	"context"
 	"sort"
 
-	"github.com/newhook/co/internal/beads"
+	"github.com/sargehq/sarge/internal/beads"
 )
 
 // buildBeadTree takes a flat list of beads and organizes them into a tree

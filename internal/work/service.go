@@ -3,14 +3,14 @@ package work
 import (
 	"path/filepath"
 
-	"github.com/newhook/co/internal/beads"
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/git"
-	"github.com/newhook/co/internal/github"
-	"github.com/newhook/co/internal/names"
-	"github.com/newhook/co/internal/project"
-	"github.com/newhook/co/internal/task"
-	"github.com/newhook/co/internal/worktree"
+	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/git"
+	"github.com/sargehq/sarge/internal/github"
+	"github.com/sargehq/sarge/internal/names"
+	"github.com/sargehq/sarge/internal/project"
+	"github.com/sargehq/sarge/internal/task"
+	"github.com/sargehq/sarge/internal/worktree"
 )
 
 // WorkService provides work operations with injectable dependencies.

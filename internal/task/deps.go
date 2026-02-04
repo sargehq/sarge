@@ -3,7 +3,7 @@ package task
 import (
 	"fmt"
 
-	"github.com/newhook/co/internal/beads"
+	"github.com/sargehq/sarge/internal/beads"
 )
 
 // DependencyGraph represents bead dependencies.

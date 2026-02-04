@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/newhook/co/internal/beads"
-	"github.com/newhook/co/internal/task"
+	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/task"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/newhook/co/internal/beads"
+	"github.com/sargehq/sarge/internal/beads"
 )
 
 // CollectIssueIDsForAutomatedWorkflow collects all issue IDs to include in the workflow.

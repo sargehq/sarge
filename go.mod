@@ -1,4 +1,4 @@
-module github.com/newhook/co
+module github.com/sargehq/sarge
 
 go 1.25.5
 
@@ -10,6 +10,7 @@ require (
 	github.com/charmbracelet/x/ansi v0.11.3
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/google/uuid v1.6.0
+	github.com/lrstanley/bubblezone v1.0.0
 	github.com/muesli/reflow v0.3.0
 	github.com/ncruces/go-sqlite3 v0.30.4
 	github.com/patrickmn/go-cache v2.1.0+incompatible
@@ -30,7 +31,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/lrstanley/bubblezone v1.0.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.3.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
@@ -42,7 +42,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
-	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/tetratelabs/wazero v1.11.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	golang.org/x/sys v0.39.0 // indirect

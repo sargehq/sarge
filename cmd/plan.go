@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/newhook/co/internal/claude"
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/project"
+	"github.com/sargehq/sarge/internal/claude"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/project"
 	"github.com/spf13/cobra"
 )
 

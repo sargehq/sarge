@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/newhook/co/internal/db/sqlc"
+	"github.com/sargehq/sarge/internal/db/sqlc"
 )
 
 // Metadata key constants

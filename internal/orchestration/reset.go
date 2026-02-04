@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/newhook/co/internal/beads"
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/logging"
-	"github.com/newhook/co/internal/project"
+	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/logging"
+	"github.com/sargehq/sarge/internal/project"
 )
 
 // ResetStuckProcessingTasks resets any processing tasks back to pending.

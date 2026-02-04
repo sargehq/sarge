@@ -8,12 +8,12 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/newhook/co/internal/control"
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/logging"
-	"github.com/newhook/co/internal/process"
-	"github.com/newhook/co/internal/progress"
-	workpkg "github.com/newhook/co/internal/work"
+	"github.com/sargehq/sarge/internal/control"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/logging"
+	"github.com/sargehq/sarge/internal/process"
+	"github.com/sargehq/sarge/internal/progress"
+	workpkg "github.com/sargehq/sarge/internal/work"
 )
 
 // sessionName returns the zellij session name for this project

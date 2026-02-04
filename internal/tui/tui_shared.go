@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/newhook/co/internal/beads"
-	"github.com/newhook/co/internal/db"
+	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/db"
 )
 
 // TUI-specific styles - shared across all TUI modes

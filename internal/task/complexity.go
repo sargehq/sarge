@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/newhook/co/internal/beads"
-	"github.com/newhook/co/internal/db"
+	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/db"
 )
 
 // LLMEstimator uses Claude Code via estimate tasks to estimate bead complexity.

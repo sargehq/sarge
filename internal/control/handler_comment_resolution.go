@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/feedback"
-	"github.com/newhook/co/internal/logging"
-	"github.com/newhook/co/internal/project"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/feedback"
+	"github.com/sargehq/sarge/internal/logging"
+	"github.com/sargehq/sarge/internal/project"
 )
 
 // HandleCommentResolutionTask handles a scheduled comment resolution check.

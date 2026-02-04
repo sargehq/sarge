@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/newhook/co/internal/beads"
-	"github.com/newhook/co/internal/task"
+	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/task"
 )
 
 // RunWorkResult contains the result of running work.

@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/logging"
-	"github.com/newhook/co/internal/procmon"
-	"github.com/newhook/co/internal/project"
-	trackingwatcher "github.com/newhook/co/internal/tracking/watcher"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/logging"
+	"github.com/sargehq/sarge/internal/procmon"
+	"github.com/sargehq/sarge/internal/project"
+	trackingwatcher "github.com/sargehq/sarge/internal/tracking/watcher"
 )
 
 // RunControlPlaneLoop runs the main control plane event loop with default dependencies.

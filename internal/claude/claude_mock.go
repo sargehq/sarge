@@ -5,8 +5,8 @@ package claude
 
 import (
 	"context"
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/project"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/project"
 	"sync"
 )
 

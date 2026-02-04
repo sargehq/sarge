@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/newhook/co/internal/git"
-	"github.com/newhook/co/internal/project"
-	"github.com/newhook/co/internal/worktree"
+	"github.com/sargehq/sarge/internal/git"
+	"github.com/sargehq/sarge/internal/project"
+	"github.com/sargehq/sarge/internal/worktree"
 	"github.com/spf13/cobra"
 )
 

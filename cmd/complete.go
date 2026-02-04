@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/newhook/co/internal/beads"
-	"github.com/newhook/co/internal/control"
-	"github.com/newhook/co/internal/feedback"
-	"github.com/newhook/co/internal/github"
-	"github.com/newhook/co/internal/project"
+	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/control"
+	"github.com/sargehq/sarge/internal/feedback"
+	"github.com/sargehq/sarge/internal/github"
+	"github.com/sargehq/sarge/internal/project"
 	"github.com/spf13/cobra"
 )
 

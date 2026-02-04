@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/newhook/co/internal/beads"
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/git"
-	"github.com/newhook/co/internal/logging"
-	"github.com/newhook/co/internal/mise"
+	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/git"
+	"github.com/sargehq/sarge/internal/logging"
+	"github.com/sargehq/sarge/internal/mise"
 )
 
 const (

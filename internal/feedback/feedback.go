@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/newhook/co/internal/beads"
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/github"
-	"github.com/newhook/co/internal/project"
+	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/github"
+	"github.com/sargehq/sarge/internal/project"
 )
 
 // processPRFeedbackQuiet processes PR feedback without outputting to stdout.

@@ -9,8 +9,8 @@ import (
 	"os/exec"
 	"text/template"
 
-	"github.com/newhook/co/internal/beads"
-	"github.com/newhook/co/internal/project"
+	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/project"
 )
 
 //go:embed templates/estimate.tmpl

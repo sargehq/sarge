@@ -6,15 +6,15 @@ import (
 	"context"
 	"io"
 
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/feedback"
-	"github.com/newhook/co/internal/git"
-	"github.com/newhook/co/internal/github"
-	"github.com/newhook/co/internal/mise"
-	"github.com/newhook/co/internal/project"
-	"github.com/newhook/co/internal/work"
-	"github.com/newhook/co/internal/worktree"
-	"github.com/newhook/co/internal/zellij"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/feedback"
+	"github.com/sargehq/sarge/internal/git"
+	"github.com/sargehq/sarge/internal/github"
+	"github.com/sargehq/sarge/internal/mise"
+	"github.com/sargehq/sarge/internal/project"
+	"github.com/sargehq/sarge/internal/work"
+	"github.com/sargehq/sarge/internal/worktree"
+	"github.com/sargehq/sarge/internal/zellij"
 )
 
 // OrchestratorSpawner defines the interface for spawning work orchestrators.

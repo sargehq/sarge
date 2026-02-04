@@ -7,7 +7,7 @@ import (
 	"io"
 	"testing"
 
-	"github.com/newhook/co/internal/testutil"
+	"github.com/sargehq/sarge/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

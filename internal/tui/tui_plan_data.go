@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/newhook/co/internal/beads"
-	"github.com/newhook/co/internal/db"
-	"github.com/newhook/co/internal/github"
-	"github.com/newhook/co/internal/linear"
-	"github.com/newhook/co/internal/control"
-	"github.com/newhook/co/internal/work"
+	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/github"
+	"github.com/sargehq/sarge/internal/linear"
+	"github.com/sargehq/sarge/internal/control"
+	"github.com/sargehq/sarge/internal/work"
 )
 
 // refreshData creates a tea.Cmd that refreshes bead data

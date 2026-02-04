@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/newhook/co/internal/db/sqlc"
+	"github.com/sargehq/sarge/internal/db/sqlc"
 )
 
 // Process types

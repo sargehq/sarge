@@ -5,7 +5,7 @@ package task
 
 import (
 	"context"
-	"github.com/newhook/co/internal/beads"
+	"github.com/sargehq/sarge/internal/beads"
 	"sync"
 )
 
