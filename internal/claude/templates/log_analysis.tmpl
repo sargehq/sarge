@@ -3,11 +3,22 @@ You are analyzing CI logs for Work {{.WorkID}}.
 Branch: {{.BranchName}}
 Job: {{.JobName}}
 Workflow: {{.WorkflowName}}
+{{if .ExistingBeads}}
+## Existing Open Issues
 
+The following issues already exist. Before creating a new bead, check if any failure matches one of these existing issues:
+{{range .ExistingBeads}}
+- **{{.ID}}**: {{.Title}}{{if .Description}}
+  {{.Description}}{{end}}
+{{end}}
+{{end}}
 Instructions:
 1. Analyze the CI log output below to identify all failures, errors, and issues.
 
-2. For each distinct failure found, create a bead{{if .RootIssueID}} under the root issue{{end}}:
+2. For each distinct failure found:
+   a. **First check** if it matches an existing issue above (same test name, same error type, same root cause)
+   b. If it matches an existing issue: **skip it** (already tracked, no action needed)
+   c. If it's a new failure: create a bead{{if .RootIssueID}} under the root issue{{end}}:
    ```
    bd create "<issue title>"{{if .RootIssueID}} --parent {{.RootIssueID}}{{end}} --type <bug|task> \
      --priority <priority> \
@@ -43,7 +54,7 @@ Instructions:
      --description "Lint error at internal/utils/helper.go:23 - exported function should have comment"
    ```
 
-6. After creating all beads, mark the task complete: sarge complete {{.TaskID}}
+6. After creating all beads (or if all failures matched existing issues), mark the task complete: sarge complete {{.TaskID}}
 
 If the logs show all checks passed with no failures, simply mark the task complete without creating any beads.
 

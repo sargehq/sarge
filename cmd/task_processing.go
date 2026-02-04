@@ -93,17 +93,41 @@ func buildLogAnalysisPromptFromMetadata(ctx context.Context, proj *project.Proje
 		return "", fmt.Errorf("log_content metadata is missing for task %s", task.ID)
 	}
 
+	// Fetch existing open beads to help Claude match against them
+	existingBeads := fetchExistingBeadSummaries(ctx, proj)
+
 	params := claude.LogAnalysisParams{
-		TaskID:       task.ID,
-		WorkID:       work.ID,
-		BranchName:   branchName,
-		RootIssueID:  rootIssueID,
-		WorkflowName: workflowName,
-		JobName:      jobName,
-		LogContent:   logContent,
+		TaskID:        task.ID,
+		WorkID:        work.ID,
+		BranchName:    branchName,
+		RootIssueID:   rootIssueID,
+		WorkflowName:  workflowName,
+		JobName:       jobName,
+		LogContent:    logContent,
+		ExistingBeads: existingBeads,
 	}
 
 	return claude.BuildLogAnalysisPrompt(params), nil
+}
+
+// fetchExistingBeadSummaries fetches open beads and converts them to summaries for matching.
+func fetchExistingBeadSummaries(ctx context.Context, proj *project.Project) []claude.BeadSummary {
+	openBeads, err := proj.Beads.ListBeads(ctx, beads.StatusOpen)
+	if err != nil {
+		// Log error but continue - deduplication is best-effort
+		fmt.Printf("Warning: failed to fetch existing beads for deduplication: %v\n", err)
+		return nil
+	}
+
+	summaries := make([]claude.BeadSummary, 0, len(openBeads))
+	for _, b := range openBeads {
+		summaries = append(summaries, claude.BeadSummary{
+			ID:          b.ID,
+			Title:       b.Title,
+			Description: b.Description,
+		})
+	}
+	return summaries
 }
 
 // getBeadsForTask retrieves the beads associated with a task.
