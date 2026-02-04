@@ -90,15 +90,17 @@ pacman -S ttf-hack-nerd
 ## Installation
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/newhook/co/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sargehq/sarge/main/scripts/install.sh | bash
 ```
 
 This downloads the latest release for your platform. Alternatively:
 
 ```bash
 # With Go 1.25+
-go install github.com/newhook/co@latest
+go install github.com/sargehq/sarge@latest
 ```
+
+For more information, visit [sargehq.dev](https://sargehq.dev).
 
 ## Quick Start
 

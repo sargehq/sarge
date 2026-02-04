@@ -99,7 +99,7 @@ The project uses Go's `slog` for structured debug logging via `internal/logging`
 ### Usage
 
 ```go
-import "github.com/newhook/co/internal/logging"
+import "github.com/sargehq/sarge/internal/logging"
 
 // Simple logging
 logging.Debug("operation started", "key", value)

@@ -52,7 +52,7 @@ changelog:
 
 release:
   github:
-    owner: newhook
-    name: co
+    owner: sargehq
+    name: sarge
   draft: false
   prerelease: auto

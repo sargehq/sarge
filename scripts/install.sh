@@ -93,7 +93,7 @@ install_from_release() {
 
     # Get latest release version
     log_info "Fetching latest release..."
-    local latest_url="https://api.github.com/repos/newhook/co/releases/latest"
+    local latest_url="https://api.github.com/repos/sargehq/sarge/releases/latest"
     local version
     local release_json
 
@@ -117,7 +117,7 @@ install_from_release() {
 
     # Download URL
     local archive_name="co_${version#v}_${platform}.tar.gz"
-    local download_url="https://github.com/newhook/co/releases/download/${version}/${archive_name}"
+    local download_url="https://github.com/sargehq/sarge/releases/download/${version}/${archive_name}"
 
     log_info "Downloading $archive_name..."
 
@@ -211,7 +211,7 @@ check_go() {
 install_with_go() {
     log_info "Installing sarge using 'go install'..."
 
-    if go install github.com/newhook/co@latest; then
+    if go install github.com/sargehq/sarge@latest; then
         log_success "sarge installed successfully via go install"
 
         local bin_dir
@@ -287,12 +287,12 @@ main() {
     log_error "Installation failed"
     echo ""
     echo "Manual installation:"
-    echo "  1. Download from https://github.com/newhook/co/releases/latest"
+    echo "  1. Download from https://github.com/sargehq/sarge/releases/latest"
     echo "  2. Extract and move 'co' to your PATH"
     echo ""
     echo "Or install from source:"
     echo "  1. Install Go 1.25+ from https://go.dev/dl/"
-    echo "  2. Run: go install github.com/newhook/co@latest"
+    echo "  2. Run: go install github.com/sargehq/sarge@latest"
     echo ""
     exit 1
 }
