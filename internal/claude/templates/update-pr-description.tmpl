@@ -5,10 +5,10 @@ Branch: {{.BranchName}}
 Target: {{.BaseBranch}}
 
 Instructions:
-1. First, check the work details: co work show {{.WorkID}}
+1. First, check the work details: sarge work show {{.WorkID}}
    - This will show all tasks and their completion status
 2. For each completed task, check what was implemented:
-   - co task show <task-id> to see the beads that were completed
+   - sarge task show <task-id> to see the beads that were completed
 3. Review the git log to understand all changes made in this work
 4. Use 'git diff {{.BaseBranch}}...{{.BranchName}}' to see all changes
 5. Create a comprehensive PR description that includes:
@@ -18,7 +18,7 @@ Instructions:
    - Any breaking changes or important notes
    - Testing performed or recommended
 6. Use 'gh pr edit {{.PRURL}} --title "<title>" --body "<body>"' to update the PR
-7. After updating the PR, mark the task complete: co complete {{.TaskID}}
+7. After updating the PR, mark the task complete: sarge complete {{.TaskID}}
 
 The PR description should be professional, comprehensive, and provide context for reviewers.
 Begin by checking the work and task details to understand what was implemented.

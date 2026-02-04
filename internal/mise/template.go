@@ -10,7 +10,7 @@ import (
 //go:embed template/mise.tmpl
 var miseTemplate string
 
-// GenerateConfig creates a .mise.toml file in the given directory with co's required tools.
+// GenerateConfig creates a .mise.toml file in the given directory with sarge's required tools.
 // Returns nil if a mise config already exists (doesn't overwrite).
 func GenerateConfig(dir string) error {
 	// Check if any mise config already exists

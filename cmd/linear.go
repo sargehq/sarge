@@ -22,22 +22,22 @@ var linearImportCmd = &cobra.Command{
 
 Examples:
   # Import single issue by ID
-  co linear import ENG-123
+  sarge linear import ENG-123
 
   # Import by URL
-  co linear import https://linear.app/company/issue/ENG-123/title
+  sarge linear import https://linear.app/company/issue/ENG-123/title
 
   # Import multiple issues
-  co linear import ENG-123 ENG-124 ENG-125
+  sarge linear import ENG-123 ENG-124 ENG-125
 
   # Import with dependencies
-  co linear import ENG-123 --create-deps
+  sarge linear import ENG-123 --create-deps
 
   # Update existing bead from Linear
-  co linear import ENG-123 --update
+  sarge linear import ENG-123 --update
 
   # Dry run (preview without creating)
-  co linear import ENG-123 --dry-run
+  sarge linear import ENG-123 --dry-run
 
 Authentication:
   The Linear API key can be provided via (in order of precedence):

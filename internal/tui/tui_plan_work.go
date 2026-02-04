@@ -359,7 +359,7 @@ func (m *planModel) restartOrchestrator() tea.Cmd {
 		// Kill any existing orchestrator process using pattern-based kill
 		// (we use pattern-based kill since we need to actually terminate the process,
 		// database check only tells us if it's alive)
-		pattern := fmt.Sprintf("co orchestrate --work %s", workID)
+		pattern := fmt.Sprintf("sarge orchestrate --work %s", workID)
 		if alive := checkOrchestratorHealth(m.ctx, m.proj.DB, workID); alive {
 			_ = process.KillProcess(m.ctx, pattern)
 			time.Sleep(500 * time.Millisecond)

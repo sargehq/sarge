@@ -32,8 +32,8 @@ The repo argument can be:
 - A GitHub URL (will be cloned into main/)
 
 Example:
-  co proj create ~/myproject ~/my-repo
-  co proj create ~/myproject https://github.com/user/repo`,
+  sarge proj create ~/myproject ~/my-repo
+  sarge proj create ~/myproject https://github.com/user/repo`,
 	Args: cobra.ExactArgs(2),
 	RunE: runProjCreate,
 }

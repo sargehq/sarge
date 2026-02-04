@@ -36,7 +36,7 @@ Output shows:
 - Status indicators (○ pending, ● processing, ✓ completed, ✗ failed)
 
 For interactive management (create, destroy, plan, run works),
-use 'co tui' instead.`,
+use 'sarge tui' instead.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runPoll,
 }

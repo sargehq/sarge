@@ -35,7 +35,7 @@ type RunWorkOptions struct {
 }
 
 // RunWork creates tasks from unassigned beads and ensures an orchestrator is running.
-// This is the core logic used by both the CLI `co run` command and the TUI.
+// This is the core logic used by both the CLI `sarge run` command and the TUI.
 // Progress messages are written to the provided writer. Pass io.Discard to suppress output.
 func (s *WorkService) RunWork(ctx context.Context, workID string, usePlan bool, w io.Writer) (*RunWorkResult, error) {
 	return s.RunWorkWithOptions(ctx, workID, RunWorkOptions{UsePlan: usePlan}, w)
@@ -82,7 +82,7 @@ func (s *WorkService) RunWorkWithOptions(ctx context.Context, workID string, opt
 }
 
 // RunWorkAuto creates an estimate task and spawns the orchestrator for automated workflow.
-// This mirrors the 'co run --auto' behavior: create estimate task, let orchestrator handle
+// This mirrors the 'sarge run --auto' behavior: create estimate task, let orchestrator handle
 // estimation and create implement tasks afterward.
 // Progress messages are written to the provided writer. Pass io.Discard to suppress output.
 func (s *WorkService) RunWorkAuto(ctx context.Context, workID string, w io.Writer) (*RunWorkAutoResult, error) {

@@ -17,7 +17,7 @@ var (
 var taskCmd = &cobra.Command{
 	Use:   "task",
 	Short: "Manage tasks",
-	Long:  `Commands for managing and inspecting tasks in the co orchestrator.`,
+	Long:  `Commands for managing and inspecting tasks in the sarge orchestrator.`,
 }
 
 var taskListCmd = &cobra.Command{
@@ -26,10 +26,10 @@ var taskListCmd = &cobra.Command{
 	Long: `List all tasks in the tracking proj.DB.
 
 Examples:
-  co task list                    # List all tasks
-  co task list --status pending   # List pending tasks
-  co task list --status completed # List completed tasks
-  co task list --type estimate    # List estimate tasks`,
+  sarge task list                    # List all tasks
+  sarge task list --status pending   # List pending tasks
+  sarge task list --status completed # List completed tasks
+  sarge task list --type estimate    # List estimate tasks`,
 	RunE: runTaskList,
 }
 

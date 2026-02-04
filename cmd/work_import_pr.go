@@ -20,8 +20,8 @@ for further development or review. The PR's branch becomes the work's feature br
 A bead is automatically created from the PR metadata to track the work in the beads system.
 
 Examples:
-  co work import-pr https://github.com/owner/repo/pull/123
-  co work import-pr https://github.com/owner/repo/pull/123 --branch custom-branch-name`,
+  sarge work import-pr https://github.com/owner/repo/pull/123
+  sarge work import-pr https://github.com/owner/repo/pull/123 --branch custom-branch-name`,
 	Args: cobra.ExactArgs(1),
 	RunE: runWorkImportPR,
 }
@@ -116,7 +116,7 @@ func runWorkImportPR(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("\nNext steps:\n")
 	fmt.Printf("  cd %s\n", result.WorkID)
-	fmt.Printf("  co run               # Execute tasks (after worktree is ready)\n")
+	fmt.Printf("  sarge run               # Execute tasks (after worktree is ready)\n")
 
 	return nil
 }

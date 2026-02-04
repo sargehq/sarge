@@ -31,7 +31,7 @@ func TestBuildLogAnalysisPrompt(t *testing.T) {
 				"Job: Unit Tests",
 				"Workflow: CI Pipeline",
 				"--- FAIL: TestSomething (0.02s)",
-				"co complete w-abc.5",
+				"sarge complete w-abc.5",
 				"--parent beads-123",
 			},
 		},
@@ -52,7 +52,7 @@ func TestBuildLogAnalysisPrompt(t *testing.T) {
 				"Job: Compile",
 				"Workflow: Build",
 				"compilation error: undefined reference",
-				"co complete w-xyz.1",
+				"sarge complete w-xyz.1",
 			},
 			wantNotContain: []string{
 				"--parent",

@@ -108,10 +108,10 @@ For more information, visit [sargehq.dev](https://sargehq.dev).
 
 ```bash
 # From a GitHub repository
-co proj create ~/myproject https://github.com/user/repo
+sarge proj create ~/myproject https://github.com/user/repo
 
 # From a local repository
-co proj create ~/myproject ~/path/to/repo
+sarge proj create ~/myproject ~/path/to/repo
 
 cd ~/myproject
 ```
@@ -125,7 +125,7 @@ Sarge provides two ways to interact with your project:
 The interactive terminal UI provides a lazygit-style interface:
 
 ```bash
-co tui
+sarge tui
 ```
 
 Features:
@@ -140,16 +140,16 @@ Use individual commands for scripting or when you prefer the command line:
 
 ```bash
 # Create a work unit from a bead
-co work create bead-1
+sarge work create bead-1
 
 # Navigate to the work directory
 cd w-abc
 
 # Execute tasks
-co run
+sarge run
 
 # Or use full automation
-co work create bead-1 --auto
+sarge work create bead-1 --auto
 ```
 
 ## Project Commands
@@ -158,9 +158,9 @@ These commands must be used via CLI (not available in TUI):
 
 | Command | Description |
 |---------|-------------|
-| `co proj create <dir> <repo>` | Create a new project (local path or GitHub URL) |
-| `co proj destroy [--force]` | Remove project and all worktrees |
-| `co proj status` | Show project info, worktrees, and task status |
+| `sarge proj create <dir> <repo>` | Create a new project (local path or GitHub URL) |
+| `sarge proj destroy [--force]` | Remove project and all worktrees |
+| `sarge proj status` | Show project info, worktrees, and task status |
 
 ### Project Structure
 
@@ -187,7 +187,7 @@ Sarge uses [Beads](https://github.com/steveyegge/beads), a distributed git-backe
 - **Collision-free IDs** - Hash-based IDs eliminate merge conflicts in multi-branch scenarios
 - **Semantic compaction** - Completed tasks are summarized to conserve AI context windows
 
-**You rarely need to use beads directly.** Claude Code (with the beads skill) and the TUI handle all issue management. The `bd` CLI is available if you need it, but most users interact with beads through `co tui` or let Claude manage issues automatically.
+**You rarely need to use beads directly.** Claude Code (with the beads skill) and the TUI handle all issue management. The `bd` CLI is available if you need it, but most users interact with beads through `sarge tui` or let Claude manage issues automatically.
 
 ### Three-Tier Hierarchy
 
@@ -200,7 +200,7 @@ Sarge uses [Beads](https://github.com/steveyegge/beads), a distributed git-backe
 Use `--auto` for a fully automated workflow:
 
 ```bash
-co work create bead-1 bead-2 --auto
+sarge work create bead-1 bead-2 --auto
 ```
 
 This mode:
@@ -241,7 +241,7 @@ go build -o sarge .
 
 All commands must be run from within a project:
 ```bash
-co proj create ~/myproject ~/path/to/repo
+sarge proj create ~/myproject ~/path/to/repo
 cd ~/myproject
 ```
 

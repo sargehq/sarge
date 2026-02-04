@@ -283,7 +283,7 @@ func processPRFeedbackInternal(ctx context.Context, proj *project.Project, datab
 
 		if len(createdBeads) > 0 {
 			fmt.Println("\nTo add these beads to the work, run:")
-			fmt.Printf("  co work add %s\n", strings.Join(createdBeads, " "))
+			fmt.Printf("  sarge work add %s\n", strings.Join(createdBeads, " "))
 		}
 	}
 

@@ -1,4 +1,4 @@
-// Package testutil provides testing utilities for the co orchestrator.
+// Package testutil provides testing utilities for the sarge orchestrator.
 package testutil
 
 import (

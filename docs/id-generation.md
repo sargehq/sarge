@@ -1,10 +1,10 @@
-# ID Generation in CO
+# ID Generation in Sarge
 
-This document describes how IDs are generated for different entities in the CO orchestrator system.
+This document describes how IDs are generated for different entities in the Sarge orchestrator system.
 
 ## Overview
 
-CO uses a hierarchical ID system that reflects the 3-tier architecture:
+Sarge uses a hierarchical ID system that reflects the 3-tier architecture:
 - **Work** → Content-based hash IDs (e.g., `w-8xa`)
 - **Tasks** → Hierarchical numbering under works (e.g., `w-8xa.1`, `w-8xa.2`)
 - **Beads** → Content-based hash IDs managed by the beads system (e.g., `ac-pjw`)
@@ -78,10 +78,10 @@ The algorithm handles collisions through:
 
 ```bash
 # Creating a work with auto-generated ID
-$ co work create feature/user-auth
+$ sarge work create feature/user-auth
 Generated work ID: w-8xa (from branch: feature/user-auth)
 
-$ co work create feature/payments
+$ sarge work create feature/payments
 Generated work ID: w-3kp (from branch: feature/payments)
 ```
 
@@ -211,19 +211,19 @@ CREATE TABLE task_beads (
 
 ```bash
 # Work creation - always generates unique ID
-$ co work create feature/auth
+$ sarge work create feature/auth
 Generated work ID: w-8xa (from branch: feature/auth)
 
-$ co work create feature/payments
+$ sarge work create feature/payments
 Generated work ID: w-3kp (from branch: feature/payments)
 
 # Planning tasks (auto-generates task IDs)
-$ co plan --work w-8xa
+$ sarge plan --work w-8xa
 Created task w-8xa.1 with 2 bead(s): ac-pjw, ac-1gt
 Created task w-8xa.2 with 1 bead(s): ac-dzl
 
 # Task execution references hierarchical ID
-$ co run w-8xa.1
+$ sarge run w-8xa.1
 Processing task w-8xa.1...
 ```
 

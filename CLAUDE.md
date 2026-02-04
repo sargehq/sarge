@@ -53,7 +53,7 @@ go test ./...
 
 Uses CLI tools: `bd`, `claude`, `gh`, `git`, `mise` (optional), `zellij`
 
-**Important**: The beads (`bd`) version in `mise.toml` must stay aligned with the version in `internal/mise/template/mise.tmpl`. Co queries the beads database directly via sqlc and expects specific schema columns. Version mismatches cause errors like "no such column: owner".
+**Important**: The beads (`bd`) version in `mise.toml` must stay aligned with the version in `internal/mise/template/mise.tmpl`. Sarge queries the beads database directly via sqlc and expects specific schema columns. Version mismatches cause errors like "no such column: owner".
 
 ## Context Usage
 
@@ -319,15 +319,15 @@ The control plane manages all scheduled background tasks via a database-driven e
 - **PR Feedback Task**: Polls GitHub for new PR comments, CI failures, and reviews
 - **Comment Resolution Task**: Posts resolution comments when beads are closed
 
-Feedback polling is scheduled when a PR is first created (via `co complete --pr <url>`),
+Feedback polling is scheduled when a PR is first created (via `sarge complete --pr <url>`),
 not when work goes idle. This ensures feedback is monitored immediately, even while
 other tasks are still running.
 
 #### Feedback Processing Flow
 
-1. PR task completes → `co complete --pr <url>` sets PR URL and schedules feedback polling
+1. PR task completes → `sarge complete --pr <url>` sets PR URL and schedules feedback polling
 2. Control plane executes scheduled feedback tasks
-3. `co work feedback` command fetches and processes feedback:
+3. `sarge work feedback` command fetches and processes feedback:
    - Queries GitHub API for PR data
    - Filters actionable items based on rules
    - Stores in pr_feedback table
@@ -338,7 +338,7 @@ other tasks are still running.
 
 ### Commands
 
-#### `co work feedback [<work-id>]`
+#### `sarge work feedback [<work-id>]`
 
 Processes PR feedback for a work unit:
 
@@ -356,7 +356,7 @@ The command:
 
 ### TUI Integration
 
-The TUI (`co tui`) provides:
+The TUI (`sarge tui`) provides:
 - F5 key binding for manual feedback polling
 - Visual feedback indicator showing polling status
 - Automatic refresh when new beads are created from feedback
@@ -436,7 +436,7 @@ All PRs must be squash merged.
 
 ## Project Model
 
-All commands require a project context. Projects are created with `co proj create` and have this structure:
+All commands require a project context. Projects are created with `sarge proj create` and have this structure:
 
 ```
 <project-dir>/
@@ -501,28 +501,28 @@ Works have the following status states:
 - When a task fails → work transitions to `failed` and orchestrator halts
 - When new tasks are added to an idle work → work resumes to `processing`
 - When PR is merged on GitHub → work automatically transitions to `merged`
-- User must explicitly run `co work complete` to mark work as truly done
-- User must run `co work restart` to resume a failed work after fixing issues
+- User must explicitly run `sarge work complete` to mark work as truly done
+- User must run `sarge work restart` to resume a failed work after fixing issues
 
 ## Workflow
 
 Two-phase workflow: **work** → **run**.
 
-1. Create project: `co proj create <dir> <repo>`
+1. Create project: `sarge proj create <dir> <repo>`
    - Initializes beads: `bd init` and `bd hooks install`
    - If mise enabled (`.mise.toml` or `.tool-versions`): runs `mise trust`, `mise install`
    - If mise `setup` task defined: runs `mise run setup` (use for npm/pnpm install)
 
-2. Create work unit from a bead: `co work create <bead-id>`
+2. Create work unit from a bead: `sarge work create <bead-id>`
    - Auto-generates work ID (w-abc, w-xyz, etc.)
    - Generates branch name from bead titles, prompts for confirmation
    - Expands epics to include all child beads with transitive dependencies
    - Creates subdirectory with git worktree: `<project>/<work-id>/tree/`
    - Use `--auto` for full automated workflow (implement, review/fix loop, PR)
 
-3. Execute work: `co run`
-   - From work directory: `cd <work-id> && co run`
-   - Or explicitly: `co run --work <work-id>`
+3. Execute work: `sarge run`
+   - From work directory: `cd <work-id> && sarge run`
+   - Or explicitly: `sarge run --work <work-id>`
    - Automatically creates tasks from unassigned work beads
    - Use `--plan` for LLM complexity estimation to auto-group beads
    - Use `--auto` for full automated workflow (implement, review/fix loop, PR)
@@ -534,11 +534,11 @@ Two-phase workflow: **work** → **run**.
      - Closes beads with `bd close <id> --reason "..."`
    - Worktree persists (managed at work level, not task level)
 
-Zellij sessions are named `co-<project-name>` for isolation between projects.
+Zellij sessions are named `sarge-<project-name>` for isolation between projects.
 
 ## Work Commands
 
-### `co work create <bead-id>`
+### `sarge work create <bead-id>`
 Creates a new work unit from a bead:
 - Generates branch name from bead titles, prompts for confirmation
 - Expands epics to include all child beads with transitive dependencies
@@ -551,45 +551,45 @@ Creates a new work unit from a bead:
 - Base branch comes from project config (`[repo] base_branch`, default: main)
 - Use `--auto` for full automated workflow (implement, review/fix loop, PR)
 
-### `co work add <bead-ids...>`
+### `sarge work add <bead-ids...>`
 Adds beads to an existing work:
-- Syntax: `co work add bead-4 bead-5 [--work=<id>]`
+- Syntax: `sarge work add bead-4 bead-5 [--work=<id>]`
 - Detects work from current directory or uses `--work` flag
 - Expands epics to include all child beads
 - Cannot add beads already assigned to a task
 
-### `co work remove <bead-ids...>`
+### `sarge work remove <bead-ids...>`
 Removes beads from an existing work:
-- Syntax: `co work remove bead-4 bead-5 [--work=<id>]`
+- Syntax: `sarge work remove bead-4 bead-5 [--work=<id>]`
 - Detects work from current directory or uses `--work` flag
 - Cannot remove beads already assigned to a pending/processing task
 
-### `co work list`
+### `sarge work list`
 Lists all work units with their status:
 - Shows ID, status, branch, and PR URL
 - Displays summary counts by status
 
-### `co work show [<id>]`
+### `sarge work show [<id>]`
 Shows detailed information about a work:
 - If no ID provided, detects from current directory
 - Displays status, branch, worktree path, PR URL
 - Lists associated beads and tasks with their status
 
-### `co work destroy <id>`
+### `sarge work destroy <id>`
 Destroys a work unit and its resources:
 - Removes git worktree
 - Deletes work subdirectory
 - Updates database records
 - Use with caution - destructive operation
 
-### `co work restart [<id>]`
+### `sarge work restart [<id>]`
 Restarts a failed work:
 - Only works if work is in `failed` status
 - Transitions work back to `processing`
 - Orchestrator will resume processing pending tasks
 - Use after fixing the issue that caused the failure (e.g., reset/delete failed task)
 
-### `co work complete [<id>]`
+### `sarge work complete [<id>]`
 Explicitly marks an idle work as completed:
 - Only works if work is in `idle` status
 - Transitions work to `completed` (terminal state)
@@ -597,30 +597,30 @@ Explicitly marks an idle work as completed:
 
 ## Task Commands
 
-### `co task list`
+### `sarge task list`
 Lists all tasks with their status:
 - Shows ID, status, type, budget, creation time, and associated beads
 - Filter by status: `--status pending|processing|completed|failed`
 - Filter by type: `--type estimate|implement`
 
-### `co task show <id>`
+### `sarge task show <id>`
 Shows detailed information about a task:
 - Displays status, type, budget, timestamps
 - Lists associated beads and their completion status
 - Shows worktree path, zellij session/pane if applicable
 
-### `co task delete <id>...`
+### `sarge task delete <id>...`
 Deletes one or more tasks from the database:
 - Removes task and all associated records
 - Accepts multiple task IDs
 
-### `co task reset <id>`
+### `sarge task reset <id>`
 Resets a failed or stuck task to pending:
 - Changes task status from processing/failed back to pending
 - Resets all bead statuses for the task
 - Use when a task gets stuck or needs to be rerun
 
-### `co task set-review-epic <epic-id>`
+### `sarge task set-review-epic <epic-id>`
 Associates a review epic with a review task:
 - Sets the review_epic_id metadata on a review task
 - Task is auto-detected from CO_TASK_ID env var or current processing review task
@@ -628,35 +628,35 @@ Associates a review epic with a review task:
 
 ## Additional User Commands
 
-### `co list`
+### `sarge list`
 Lists tracked beads in the database:
 - Filter by status with `--status` (pending, processing, completed, failed)
 - Shows ID, status, title, and PR URL
 
-### `co status [bead-id]`
+### `sarge status [bead-id]`
 Shows bead tracking status:
 - With a bead ID: shows detailed status including zellij session/pane info
 - Without ID: shows all beads currently processing with their session/pane
 
-### `co poll [work-id|task-id]`
+### `sarge poll [work-id|task-id]`
 Monitors work/task progress with simple text output:
 - Without arguments: monitors all active works or detected work from directory
 - With work ID: monitors that work's tasks
 - With task ID: monitors that specific task
 - Use `--interval` to set polling interval (default: 2s)
-- For interactive TUI with management features, use `co tui` instead
+- For interactive TUI with management features, use `sarge tui` instead
 
-### `co sync`
+### `sarge sync`
 Pulls from upstream in all repositories:
 - Runs git pull in each worktree (main and all work worktrees)
 - Skips internal beads worktrees
 
-### `co work pr [<id>]`
+### `sarge work pr [<id>]`
 Creates a PR task for Claude to generate a pull request:
 - Work must be completed before creating PR
 - If no ID provided, uses work from current directory
 
-### `co work review [<id>]`
+### `sarge work review [<id>]`
 Creates a review task to examine code changes:
 - Claude examines the work's branch for quality and security issues
 - Creates review task with sequential numeric ID (w-xxx.5, w-xxx.6, etc.)
@@ -666,14 +666,14 @@ Creates a review task to examine code changes:
 
 These commands are called by Claude Code or the orchestration system during task execution. They are not intended for direct user invocation. In help output, they are prefixed with `[Agent]`.
 
-### `co complete <bead-id|task-id>`
+### `sarge complete <bead-id|task-id>`
 Marks a bead or task as completed (or failed with --error):
 - Called by Claude Code when work is done
 - Supports both bead IDs and task IDs (task IDs contain dots like "w-xxx.1")
 - Use `--error "message"` to mark a task as failed
 - Use `--pr "url"` to associate a PR URL with completion
 
-### `co estimate <bead-id>`
+### `sarge estimate <bead-id>`
 Reports complexity estimate for a bead:
 - Called by Claude Code during estimation tasks
 - Required flags: `--score` (1-10) and `--tokens` (5000-50000)
@@ -683,13 +683,13 @@ Reports complexity estimate for a bead:
 
 These commands are hidden from help output and spawned automatically by the orchestration system. Users should never need to run these directly.
 
-### `co orchestrate`
+### `sarge orchestrate`
 Executes tasks for a work unit:
 - Polls for ready tasks and executes them sequentially
 - Runs in a zellij tab, spawned automatically when work is created
 - Monitors task completion and handles post-execution workflows
 
-### `co control`
+### `sarge control`
 Runs the control plane for background task execution:
 - Long-lived process that watches for scheduled tasks across all works
 - Executes tasks asynchronously with retry support

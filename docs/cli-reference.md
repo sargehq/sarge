@@ -1,18 +1,18 @@
 # CLI Reference
 
-This document provides detailed documentation for all `co` CLI commands.
+This document provides detailed documentation for all `sarge` CLI commands.
 
 ## Work Commands
 
-### `co work create <bead-args...>`
+### `sarge work create <bead-args...>`
 
 Creates a new work unit from one or more beads.
 
 ```bash
-co work create bead-1           # Single bead
-co work create bead-1 bead-2    # Multiple beads
-co work create epic-1           # Epic (includes all children)
-co work create bead-1 --auto    # Automated workflow
+sarge work create bead-1           # Single bead
+sarge work create bead-1 bead-2    # Multiple beads
+sarge work create epic-1           # Epic (includes all children)
+sarge work create bead-1 --auto    # Automated workflow
 ```
 
 This creates:
@@ -31,58 +31,58 @@ The branch name is generated from bead titles and you're prompted for confirmati
 
 Base branch is configured in `config.toml` under `[repo] base_branch` (default: main).
 
-### `co work add <bead-args...>`
+### `sarge work add <bead-args...>`
 
 Adds beads to an existing work.
 
 ```bash
-co work add bead-4 bead-5           # In work directory
-co work add bead-4 --work w-abc     # Explicit work ID
+sarge work add bead-4 bead-5           # In work directory
+sarge work add bead-4 --work w-abc     # Explicit work ID
 ```
 
 - Detects work from current directory or uses `--work` flag
 - Expands epics to include all child beads
 - Cannot add beads already assigned to a task
 
-### `co work remove <bead-ids...>`
+### `sarge work remove <bead-ids...>`
 
 Removes beads from an existing work.
 
 ```bash
-co work remove bead-4 bead-5        # In work directory
-co work remove bead-4 --work w-abc  # Explicit work ID
+sarge work remove bead-4 bead-5        # In work directory
+sarge work remove bead-4 --work w-abc  # Explicit work ID
 ```
 
 - Detects work from current directory or uses `--work` flag
 - Cannot remove beads already assigned to a pending/processing task
 
-### `co work list`
+### `sarge work list`
 
 Lists all work units with their status.
 
 ```bash
-co work list
+sarge work list
 ```
 
 Shows ID, status, branch, and PR URL. Displays summary counts by status.
 
-### `co work show [<id>]`
+### `sarge work show [<id>]`
 
 Shows detailed information about a work.
 
 ```bash
-co work show          # Current directory
-co work show w-abc    # Explicit ID
+sarge work show          # Current directory
+sarge work show w-abc    # Explicit ID
 ```
 
 Displays status, branch, worktree path, PR URL. Lists associated beads and tasks with their status.
 
-### `co work destroy <id>`
+### `sarge work destroy <id>`
 
 Destroys a work unit and its resources.
 
 ```bash
-co work destroy w-abc
+sarge work destroy w-abc
 ```
 
 - Removes git worktree
@@ -90,51 +90,51 @@ co work destroy w-abc
 - Updates database records
 - Use with caution - destructive operation
 
-### `co work restart [<id>]`
+### `sarge work restart [<id>]`
 
 Restarts a failed work.
 
 ```bash
-co work restart         # Current directory
-co work restart w-abc   # Explicit ID
+sarge work restart         # Current directory
+sarge work restart w-abc   # Explicit ID
 ```
 
 - Only works if work is in `failed` status
 - Transitions work back to `processing`
 - Orchestrator will resume processing pending tasks
 
-### `co work complete [<id>]`
+### `sarge work complete [<id>]`
 
 Explicitly marks an idle work as completed.
 
 ```bash
-co work complete        # Current directory
-co work complete w-abc  # Explicit ID
+sarge work complete        # Current directory
+sarge work complete w-abc  # Explicit ID
 ```
 
 - Only works if work is in `idle` status
 - Transitions work to `completed` (terminal state)
 - Use when PR is merged or work is truly finished
 
-### `co work pr [<id>]`
+### `sarge work pr [<id>]`
 
 Creates a PR task for Claude to generate a pull request.
 
 ```bash
-co work pr          # Current directory
-co work pr w-abc    # Explicit ID
+sarge work pr          # Current directory
+sarge work pr w-abc    # Explicit ID
 ```
 
-Work must be completed before creating PR. After creating the PR task, run `co run` to execute it.
+Work must be completed before creating PR. After creating the PR task, run `sarge run` to execute it.
 
-### `co work review [<id>]`
+### `sarge work review [<id>]`
 
 Creates a review task to examine code changes.
 
 ```bash
-co work review              # Current directory
-co work review w-abc        # Explicit ID
-co work review --auto       # Review-fix loop
+sarge work review              # Current directory
+sarge work review w-abc        # Explicit ID
+sarge work review --auto       # Review-fix loop
 ```
 
 | Flag | Description |
@@ -143,16 +143,16 @@ co work review --auto       # Review-fix loop
 
 Claude examines the work's branch for quality and security issues and creates beads for issues found.
 
-### `co work feedback [<id>]`
+### `sarge work feedback [<id>]`
 
 Processes PR feedback and creates beads from actionable items.
 
 ```bash
-co work feedback                    # Current directory
-co work feedback w-abc              # Explicit ID
-co work feedback --dry-run          # Preview only
-co work feedback --auto-add         # Add beads to work
-co work feedback --min-priority 2   # Filter by priority
+sarge work feedback                    # Current directory
+sarge work feedback w-abc              # Explicit ID
+sarge work feedback --dry-run          # Preview only
+sarge work feedback --auto-add         # Add beads to work
+sarge work feedback --min-priority 2   # Filter by priority
 ```
 
 | Flag | Description |
@@ -170,16 +170,16 @@ The feedback system processes:
 
 ## Run Command
 
-### `co run`
+### `sarge run`
 
 Executes pending tasks for a work unit.
 
 ```bash
-co run                      # Current work directory
-co run --work w-abc         # Explicit work ID
-co run --plan               # LLM complexity grouping
-co run --auto               # Full automated workflow
-co run --dry-run            # Preview execution plan
+sarge run                      # Current work directory
+sarge run --work w-abc         # Explicit work ID
+sarge run --plan               # LLM complexity grouping
+sarge run --auto               # Full automated workflow
+sarge run --dry-run            # Preview execution plan
 ```
 
 | Flag | Short | Description |
@@ -193,14 +193,14 @@ co run --dry-run            # Preview execution plan
 
 ## Task Commands
 
-### `co task list`
+### `sarge task list`
 
 Lists all tasks with their status.
 
 ```bash
-co task list                    # All tasks
-co task list --status pending   # Filter by status
-co task list --type estimate    # Filter by type
+sarge task list                    # All tasks
+sarge task list --status pending   # Filter by status
+sarge task list --type estimate    # Filter by type
 ```
 
 | Flag | Description |
@@ -208,54 +208,54 @@ co task list --type estimate    # Filter by type
 | `--status` | Filter: pending, processing, completed, failed |
 | `--type` | Filter: estimate, implement |
 
-### `co task show <id>`
+### `sarge task show <id>`
 
 Shows detailed information about a task.
 
 ```bash
-co task show w-abc.1
+sarge task show w-abc.1
 ```
 
 Displays status, type, budget, timestamps. Lists associated beads and their completion status.
 
-### `co task delete <id>...`
+### `sarge task delete <id>...`
 
 Deletes one or more tasks from the database.
 
 ```bash
-co task delete w-abc.1
-co task delete w-abc.1 w-abc.2  # Multiple tasks
+sarge task delete w-abc.1
+sarge task delete w-abc.1 w-abc.2  # Multiple tasks
 ```
 
-### `co task reset <id>`
+### `sarge task reset <id>`
 
 Resets a failed or stuck task to pending.
 
 ```bash
-co task reset w-abc.1
+sarge task reset w-abc.1
 ```
 
 Changes task status from processing/failed back to pending. Resets all bead statuses for the task.
 
-### `co task set-review-epic <epic-id>`
+### `sarge task set-review-epic <epic-id>`
 
 Associates a review epic with a review task.
 
 ```bash
-co task set-review-epic epic-1
-co task set-review-epic epic-1 --task w-abc.2
+sarge task set-review-epic epic-1
+sarge task set-review-epic epic-1 --task w-abc.2
 ```
 
 Task is auto-detected from CO_TASK_ID env var or current processing review task.
 
 ## Monitoring Commands
 
-### `co tui`
+### `sarge tui`
 
 Interactive TUI for managing works and beads (lazygit-style).
 
 ```bash
-co tui
+sarge tui
 ```
 
 Features:
@@ -265,15 +265,15 @@ Features:
 - Keyboard shortcuts for all operations (press `?` for help)
 - F5 to poll PR feedback on-demand
 
-### `co poll [work-id|task-id]`
+### `sarge poll [work-id|task-id]`
 
 Monitor work/task progress with text output.
 
 ```bash
-co poll             # All active works
-co poll w-abc       # Specific work
-co poll w-abc.1     # Specific task
-co poll --interval 5s
+sarge poll             # All active works
+sarge poll w-abc       # Specific work
+sarge poll w-abc.1     # Specific task
+sarge poll --interval 5s
 ```
 
 | Flag | Description |
@@ -282,61 +282,61 @@ co poll --interval 5s
 
 ## Other Commands
 
-### `co status [bead-id]`
+### `sarge status [bead-id]`
 
 Shows bead tracking status.
 
 ```bash
-co status           # All processing beads
-co status bead-1    # Specific bead
+sarge status           # All processing beads
+sarge status bead-1    # Specific bead
 ```
 
-### `co list`
+### `sarge list`
 
 Lists tracked beads in the database.
 
 ```bash
-co list
-co list --status pending
-co list --status completed
+sarge list
+sarge list --status pending
+sarge list --status completed
 ```
 
 | Flag | Description |
 |------|-------------|
 | `--status` | Filter: pending, processing, completed, failed |
 
-### `co sync`
+### `sarge sync`
 
 Pulls from upstream in all repositories.
 
 ```bash
-co sync
+sarge sync
 ```
 
 Runs git pull in each worktree (main and all work worktrees).
 
 ## Linear Integration
 
-### `co linear import <issues...>`
+### `sarge linear import <issues...>`
 
 Import issues from Linear into the beads issue tracker.
 
 ```bash
 # Import single issue
-co linear import ENG-123
-co linear import https://linear.app/company/issue/ENG-123/title
+sarge linear import ENG-123
+sarge linear import https://linear.app/company/issue/ENG-123/title
 
 # Import multiple issues
-co linear import ENG-123 ENG-124 ENG-125
+sarge linear import ENG-123 ENG-124 ENG-125
 
 # Import with dependencies
-co linear import ENG-123 --create-deps --max-dep-depth=2
+sarge linear import ENG-123 --create-deps --max-dep-depth=2
 
 # Update existing bead
-co linear import ENG-123 --update
+sarge linear import ENG-123 --update
 
 # Preview
-co linear import ENG-123 --dry-run
+sarge linear import ENG-123 --dry-run
 ```
 
 | Flag | Description |
@@ -356,15 +356,15 @@ Linear metadata (ID, URL, assignee, labels) is preserved in the imported bead.
 
 These commands are called by Claude Code during task execution. Not intended for direct user invocation.
 
-### `co complete <bead-id|task-id>`
+### `sarge complete <bead-id|task-id>`
 
 Marks a bead or task as completed (or failed with --error).
 
 ```bash
-co complete bead-1
-co complete w-abc.1
-co complete w-abc.1 --error "Build failed"
-co complete w-abc.1 --pr "https://github.com/user/repo/pull/123"
+sarge complete bead-1
+sarge complete w-abc.1
+sarge complete w-abc.1 --error "Build failed"
+sarge complete w-abc.1 --pr "https://github.com/user/repo/pull/123"
 ```
 
 | Flag | Description |
@@ -372,13 +372,13 @@ co complete w-abc.1 --pr "https://github.com/user/repo/pull/123"
 | `--error` | Mark as failed with error message |
 | `--pr` | Associate a PR URL with completion |
 
-### `co estimate <bead-id>`
+### `sarge estimate <bead-id>`
 
 Reports complexity estimate for a bead.
 
 ```bash
-co estimate bead-1 --score 5 --tokens 15000
-co estimate bead-1 --score 5 --tokens 15000 --task w-abc.1
+sarge estimate bead-1 --score 5 --tokens 15000
+sarge estimate bead-1 --score 5 --tokens 15000 --task w-abc.1
 ```
 
 | Flag | Description |
@@ -405,8 +405,8 @@ Works have the following status states:
 - When a task fails → work transitions to `failed` and orchestrator halts
 - When new tasks are added to an idle work → work resumes to `processing`
 - When PR is merged on GitHub → work automatically transitions to `merged`
-- User must explicitly run `co work complete` to mark work as truly done
-- User must run `co work restart` to resume a failed work after fixing issues
+- User must explicitly run `sarge work complete` to mark work as truly done
+- User must run `sarge work restart` to resume a failed work after fixing issues
 
 ## ID Generation
 
@@ -429,17 +429,17 @@ CO uses a hierarchical ID system:
 
 Task dependencies are derived automatically from bead dependencies:
 - If bead A depends on bead B, and they're in different tasks, task(A) depends on task(B)
-- `co run` executes tasks in the correct dependency order
+- `sarge run` executes tasks in the correct dependency order
 - Cycles are detected and reported as errors
 
 ## Error Handling and Retries
 
 When a task fails:
 - The task is automatically marked as failed in the database
-- Claude can signal failure using `co complete <task-id> --error "message"`
+- Claude can signal failure using `sarge complete <task-id> --error "message"`
 - To retry a failed task:
   ```bash
-  co task reset <task-id>    # Reset task status to pending
-  co run                     # Retry the task
+  sarge task reset <task-id>    # Reset task status to pending
+  sarge run                     # Retry the task
   ```
 - On retry, Claude only processes incomplete beads (already completed beads are skipped)
