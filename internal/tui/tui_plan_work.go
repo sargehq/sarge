@@ -18,7 +18,7 @@ import (
 
 // sessionName returns the zellij session name for this project
 func (m *planModel) sessionName() string {
-	return fmt.Sprintf("co-%s", m.proj.Config.Project.Name)
+	return fmt.Sprintf("sarge-%s", m.proj.Config.Project.Name)
 }
 
 // spawnPlanSession spawns or resumes a planning session for a specific bead

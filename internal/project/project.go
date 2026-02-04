@@ -35,7 +35,7 @@ const (
 // SessionNameForProject returns the zellij session name for a specific project.
 // This is used consistently across the codebase for session management.
 func SessionNameForProject(projectName string) string {
-	return fmt.Sprintf("co-%s", projectName)
+	return fmt.Sprintf("sarge-%s", projectName)
 }
 
 // FormatTabName formats a tab name with an optional friendly name.
