@@ -1,3 +1,5 @@
+**MANDATORY**: When you are finished, your FINAL action MUST be running: `sarge complete {{.TaskID}}`
+
 You are analyzing CI logs for Work {{.WorkID}}.
 
 Branch: {{.BranchName}}
@@ -12,10 +14,13 @@ The following issues already exist. Before creating a new bead, check if any fai
   {{.Description}}{{end}}
 {{end}}
 {{end}}
-Instructions:
-1. Analyze the CI log output below to identify all failures, errors, and issues.
+## Instructions
 
-2. For each distinct failure found:
+1. Read the CI log file: {{.LogFilePath}}
+
+2. Analyze the log to identify all failures, errors, and issues.
+
+3. For each distinct failure found:
    a. **First check** if it matches an existing issue above (same test name, same error type, same root cause)
    b. If it matches an existing issue: **skip it** (already tracked, no action needed)
    c. If it's a new failure: create a bead{{if .RootIssueID}} under the root issue{{end}}:
@@ -25,18 +30,18 @@ Instructions:
      --description "<detailed description>"
    ```
 
-3. Priority Guidelines:
+4. Priority Guidelines:
    - P0 (--priority 0): Security vulnerabilities, critical runtime errors
    - P1 (--priority 1): Build failures, compilation errors
    - P2 (--priority 2): Test failures, lint errors
    - P3 (--priority 3): Warnings, minor style issues
 
-4. Description should include:
+5. Description should include:
    - File path and line number (if available)
    - The error message
    - Relevant context from the log
 
-5. Examples:
+6. Examples:
    ```
    # Test failure
    bd create "Fix TestUserAuthentication failure"{{if .RootIssueID}} --parent {{.RootIssueID}}{{end}} --type bug \
@@ -54,9 +59,11 @@ Instructions:
      --description "Lint error at internal/utils/helper.go:23 - exported function should have comment"
    ```
 
-6. **Always** mark the task complete when done: `sarge complete {{.TaskID}}`
-   Run this whether you created beads, matched existing issues, or found no failures at all.
+## REQUIRED: Mark Task Complete
 
-The CI log output is in: {{.LogFilePath}}
-
-Read this file to analyze the failures.
+YOUR FINAL ACTION MUST be running this command:
+```
+sarge complete {{.TaskID}}
+```
+Run this whether you created beads, matched existing issues, or found no failures at all.
+Do NOT exit without running this command.
