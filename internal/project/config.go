@@ -27,6 +27,27 @@ type Config struct {
 	Scheduler SchedulerConfig `toml:"scheduler"`
 	Zellij    ZellijConfig    `toml:"zellij"`
 	LogParser LogParserConfig `toml:"log_parser"`
+	IDE       IDEConfig       `toml:"ide"`
+}
+
+// IDEConfig contains IDE configuration for opening worktrees.
+type IDEConfig struct {
+	// Command is the IDE command to run (e.g., "code", "cursor", "zed").
+	// If empty, falls back to EDITOR environment variable.
+	Command string `toml:"command"`
+
+	// Args is a list of additional arguments to pass to the IDE command.
+	// The worktree path is always appended as the final argument.
+	Args []string `toml:"args"`
+}
+
+// GetIDECommand returns the configured IDE command or falls back to EDITOR env var.
+// Returns empty string if neither is configured.
+func (i *IDEConfig) GetIDECommand() string {
+	if i.Command != "" {
+		return i.Command
+	}
+	return os.Getenv("EDITOR")
 }
 
 // LogParserConfig contains log parser configuration.
