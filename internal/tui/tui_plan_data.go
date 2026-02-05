@@ -107,6 +107,7 @@ func (m *planModel) loadBeadsWithFilters(filters beadFilters) ([]beadItem, error
 
 // loadBeadsForTask loads beads assigned to a specific task.
 // This fetches all beads for the task regardless of status filter.
+// If filters.rootIssue is set, the root issue is prepended to the results.
 func (m *planModel) loadBeadsForTask(filters beadFilters) ([]beadItem, error) {
 	// Get bead IDs assigned to this task from the database
 	beadIDs, err := m.proj.DB.GetTaskBeads(m.ctx, filters.task)
@@ -114,12 +115,24 @@ func (m *planModel) loadBeadsForTask(filters beadFilters) ([]beadItem, error) {
 		return nil, fmt.Errorf("failed to get task beads: %w", err)
 	}
 
-	if len(beadIDs) == 0 {
-		return nil, nil
+	// Track which IDs we have to avoid duplicates
+	beadIDSet := make(map[string]bool)
+	for _, id := range beadIDs {
+		beadIDSet[id] = true
+	}
+
+	// Start with root issue if specified and not already in the task
+	var items []beadItem
+	if filters.rootIssue != "" && !beadIDSet[filters.rootIssue] {
+		rootBead, err := m.proj.Beads.GetBead(m.ctx, filters.rootIssue)
+		if err == nil && rootBead != nil {
+			items = append(items, beadItem{
+				BeadWithDeps: rootBead,
+			})
+		}
 	}
 
 	// Fetch the beads from the beads client (uses cache)
-	var items []beadItem
 	for _, beadID := range beadIDs {
 		bead, err := m.proj.Beads.GetBead(m.ctx, beadID)
 		if err != nil || bead == nil {
@@ -128,6 +141,10 @@ func (m *planModel) loadBeadsForTask(filters beadFilters) ([]beadItem, error) {
 		items = append(items, beadItem{
 			BeadWithDeps: bead,
 		})
+	}
+
+	if len(items) == 0 {
+		return nil, nil
 	}
 
 	// Apply search text filter if set

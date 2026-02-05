@@ -1779,10 +1779,12 @@ func (m *planModel) updateWorkSelectionFilter() tea.Cmd {
 	// Save old filter values to detect actual changes
 	oldTask := m.filters.task
 	oldChildren := m.filters.children
+	oldRootIssue := m.filters.rootIssue
 
 	// Clear existing entity filters
 	m.filters.task = ""
 	m.filters.children = ""
+	m.filters.rootIssue = ""
 
 	if m.focusedWorkID == "" {
 		return nil
@@ -1791,6 +1793,11 @@ func (m *planModel) updateWorkSelectionFilter() tea.Cmd {
 	focusedWork := m.workDetails.GetFocusedWork()
 	if focusedWork == nil {
 		return nil
+	}
+
+	// Always set root issue when work panel is present so it's always visible
+	if focusedWork.Work.RootIssueID != "" {
+		m.filters.rootIssue = focusedWork.Work.RootIssueID
 	}
 
 	if m.workDetails.IsTaskSelected() {
@@ -1807,7 +1814,7 @@ func (m *planModel) updateWorkSelectionFilter() tea.Cmd {
 	}
 
 	// Only reset cursor when filter actually changes (not on every refresh)
-	if m.filters.task != oldTask || m.filters.children != oldChildren {
+	if m.filters.task != oldTask || m.filters.children != oldChildren || m.filters.rootIssue != oldRootIssue {
 		m.beadsCursor = 0
 	}
 

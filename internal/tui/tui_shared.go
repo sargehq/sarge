@@ -169,6 +169,9 @@ type beadFilters struct {
 	// Entity-based filters (override status filter when set)
 	task     string // task ID - show beads assigned to this task
 	children string // bead ID - show children (dependents) of this bead
+
+	// Context filters (always applied when work panel is present)
+	rootIssue string // root issue ID - always include in results when set
 }
 
 // beadTypes is the list of valid bead types
