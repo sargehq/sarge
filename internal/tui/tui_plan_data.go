@@ -201,7 +201,7 @@ func (m *planModel) createBead(title, beadType string, priority int, isEpic bool
 		ctx := m.ctx
 		beadsPath := m.proj.BeadsPath()
 
-		beadID, err := beads.Create(ctx, beadsPath, beads.CreateOptions{
+		beadID, err := beads.NewCLI(beadsPath).Create(ctx, beads.CreateOptions{
 			Title:       title,
 			Type:        beadType,
 			Priority:    priority,
@@ -237,7 +237,7 @@ func (m *planModel) closeBead(beadID string) tea.Cmd {
 		}
 
 		// Close the bead
-		if err := beads.Close(m.ctx, beadID, beadsPath); err != nil {
+		if err := beads.NewCLI(beadsPath).Close(m.ctx, beadID); err != nil {
 			return planDataMsg{err: fmt.Errorf("failed to close issue: %w", err)}
 		}
 
@@ -266,8 +266,9 @@ func (m *planModel) closeBeads(beadIDs []string) tea.Cmd {
 		}
 
 		// Close all beads using the beads package
+		cli := beads.NewCLI(beadsPath)
 		for _, beadID := range beadIDs {
-			if err := beads.Close(m.ctx, beadID, beadsPath); err != nil {
+			if err := cli.Close(m.ctx, beadID); err != nil {
 				return planDataMsg{err: fmt.Errorf("failed to close issue %s: %w", beadID, err)}
 			}
 		}
@@ -294,7 +295,7 @@ func (m *planModel) deleteBead(beadID string) tea.Cmd {
 		}
 
 		// Delete the bead permanently with --force to skip confirmation
-		if err := beads.Delete(m.ctx, beadID, beadsPath, true); err != nil {
+		if err := beads.NewCLI(beadsPath).Delete(m.ctx, beadID, true); err != nil {
 			return planDataMsg{err: fmt.Errorf("failed to delete issue: %w", err)}
 		}
 
@@ -323,8 +324,9 @@ func (m *planModel) deleteBeads(beadIDs []string) tea.Cmd {
 		}
 
 		// Delete all beads permanently with --force
+		cli := beads.NewCLI(beadsPath)
 		for _, beadID := range beadIDs {
-			if err := beads.Delete(m.ctx, beadID, beadsPath, true); err != nil {
+			if err := cli.Delete(m.ctx, beadID, true); err != nil {
 				return planDataMsg{err: fmt.Errorf("failed to delete issue %s: %w", beadID, err)}
 			}
 		}
@@ -341,7 +343,7 @@ func (m *planModel) saveBeadEdit(beadID, title, description, beadType, status st
 		beadsPath := m.proj.BeadsPath()
 
 		// Update the bead using beads package
-		err := beads.Update(m.ctx, beadID, beadsPath, beads.UpdateOptions{
+		err := beads.NewCLI(beadsPath).Update(m.ctx, beadID, beads.UpdateOptions{
 			Title:       title,
 			Type:        beadType,
 			Description: description,

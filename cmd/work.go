@@ -764,7 +764,7 @@ func runWorkPR(cmd *cobra.Command, args []string) error {
 	work, err := proj.DB.GetWork(ctx, workID)
 	if err == nil && work != nil && work.RootIssueID != "" {
 		fmt.Printf("Closing root issue %s...\n", work.RootIssueID)
-		if err := beads.Close(ctx, work.RootIssueID, proj.BeadsPath()); err != nil {
+		if err := beads.NewCLI(proj.BeadsPath()).Close(ctx, work.RootIssueID); err != nil {
 			fmt.Printf("Warning: failed to close root issue %s: %v\n", work.RootIssueID, err)
 		}
 	}

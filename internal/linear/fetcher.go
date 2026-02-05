@@ -231,7 +231,8 @@ func (f *Fetcher) createBead(ctx context.Context, opts *BeadCreateOptions) (stri
 		Priority:    priority,
 	}
 
-	beadID, err := beads.Create(ctx, f.beadsDir, createOpts)
+	cli := beads.NewCLI(f.beadsDir)
+	beadID, err := cli.Create(ctx, createOpts)
 	if err != nil {
 		return "", err
 	}
@@ -241,21 +242,21 @@ func (f *Fetcher) createBead(ctx context.Context, opts *BeadCreateOptions) (stri
 		updateOpts := beads.UpdateOptions{
 			Assignee: opts.Assignee,
 		}
-		if err := beads.Update(ctx, beadID, f.beadsDir, updateOpts); err != nil {
+		if err := cli.Update(ctx, beadID, updateOpts); err != nil {
 			return beadID, fmt.Errorf("created bead but failed to set assignee: %w", err)
 		}
 	}
 
 	// Add labels if specified
 	if len(opts.Labels) > 0 {
-		if err := beads.AddLabels(ctx, beadID, f.beadsDir, opts.Labels); err != nil {
+		if err := cli.AddLabels(ctx, beadID, opts.Labels); err != nil {
 			return beadID, fmt.Errorf("created bead but failed to add labels: %w", err)
 		}
 	}
 
 	// Set Linear ID as external reference
 	if linearID, ok := opts.Metadata["linear_id"]; ok && linearID != "" {
-		if err := beads.SetExternalRef(ctx, beadID, linearID, f.beadsDir); err != nil {
+		if err := cli.SetExternalRef(ctx, beadID, linearID); err != nil {
 			return beadID, fmt.Errorf("created bead but failed to set external ref: %w", err)
 		}
 	}
@@ -265,7 +266,7 @@ func (f *Fetcher) createBead(ctx context.Context, opts *BeadCreateOptions) (stri
 		updateOpts := beads.UpdateOptions{
 			Status: opts.Status,
 		}
-		if err := beads.Update(ctx, beadID, f.beadsDir, updateOpts); err != nil {
+		if err := cli.Update(ctx, beadID, updateOpts); err != nil {
 			return beadID, fmt.Errorf("created bead but failed to set status: %w", err)
 		}
 	}
@@ -308,6 +309,7 @@ func (f *Fetcher) updateExistingBead(ctx context.Context, beadID string, issue *
 	}
 
 	// Update the bead with all fields
+	cli := beads.NewCLI(f.beadsDir)
 	updateOpts := beads.UpdateOptions{
 		Title:       beadOpts.Title,
 		Type:        beadOpts.Type,
@@ -316,13 +318,13 @@ func (f *Fetcher) updateExistingBead(ctx context.Context, beadID string, issue *
 		Priority:    priority,
 		Status:      beadOpts.Status,
 	}
-	if err := beads.Update(ctx, beadID, f.beadsDir, updateOpts); err != nil {
+	if err := cli.Update(ctx, beadID, updateOpts); err != nil {
 		return fmt.Errorf("failed to update bead fields: %w", err)
 	}
 
 	// Update labels (replace all existing labels)
 	if len(beadOpts.Labels) > 0 {
-		if err := beads.AddLabels(ctx, beadID, f.beadsDir, beadOpts.Labels); err != nil {
+		if err := cli.AddLabels(ctx, beadID, beadOpts.Labels); err != nil {
 			return fmt.Errorf("failed to update labels: %w", err)
 		}
 	}
@@ -337,6 +339,7 @@ func (f *Fetcher) createDependencies(ctx context.Context, beadID string, blocked
 		return nil
 	}
 
+	cli := beads.NewCLI(f.beadsDir)
 	for _, blockedByID := range blockedByIDs {
 		// Fetch and import the blocking issue if not already imported
 		result, err := f.FetchAndImport(ctx, blockedByID, &ImportOptions{
@@ -354,7 +357,7 @@ func (f *Fetcher) createDependencies(ctx context.Context, beadID string, blocked
 
 		// Create the dependency relationship
 		// beadID depends on result.BeadID
-		if err := beads.AddDependency(ctx, beadID, result.BeadID, f.beadsDir); err != nil {
+		if err := cli.AddDependency(ctx, beadID, result.BeadID); err != nil {
 			return fmt.Errorf("failed to add dependency %s -> %s: %w", beadID, result.BeadID, err)
 		}
 	}

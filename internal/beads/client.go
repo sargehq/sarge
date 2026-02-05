@@ -3,7 +3,6 @@ package beads
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -129,8 +128,9 @@ func (c *Client) CloseEligibleParents(ctx context.Context, beadsDir string) erro
 		}
 
 		// Close eligible parents
+		cli := NewCLI(beadsDir)
 		for _, id := range toClose {
-			if err := Close(ctx, id, beadsDir); err != nil {
+			if err := cli.Close(ctx, id); err != nil {
 				logging.Warn("failed to close parent bead", "id", id, "error", err)
 				continue
 			}
@@ -154,119 +154,6 @@ type CreateOptions struct {
 	ExternalRef  string   // Optional external reference (e.g., GitHub comment ID)
 }
 
-// Create creates a new bead and returns its ID.
-func Create(ctx context.Context, beadsDir string, opts CreateOptions) (string, error) {
-	// Determine the type - if IsEpic is set, override type to "epic"
-	beadType := opts.Type
-	if opts.IsEpic {
-		beadType = "epic"
-	}
-	args := []string{"create", "--title=" + opts.Title, "--type=" + beadType, fmt.Sprintf("--priority=%d", opts.Priority)}
-	if opts.Description != "" {
-		args = append(args, "--description="+opts.Description)
-	}
-	if opts.Parent != "" {
-		args = append(args, "--parent="+opts.Parent)
-	}
-	if opts.ExternalRef != "" {
-		args = append(args, "--external-ref="+opts.ExternalRef)
-	}
-	for _, label := range opts.Labels {
-		if label != "" {
-			args = append(args, "--label="+label)
-		}
-	}
-
-	logging.Debug("creating bead", "args", args, "beadsDir", beadsDir, "opts", opts)
-
-	cmd := bdCommand(ctx, beadsDir, args...)
-	output, err := cmd.Output()
-	if err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
-			logging.Error("bd create failed", "error", err, "stderr", string(exitErr.Stderr), "args", args)
-			return "", fmt.Errorf("failed to create bead: %w\n%s", err, exitErr.Stderr)
-		}
-		logging.Error("bd create failed", "error", err, "args", args)
-		return "", fmt.Errorf("failed to create bead: %w", err)
-	}
-
-	logging.Debug("bd create output", "output", string(output))
-
-	// Parse the bead ID from output
-	// bd create outputs multi-line text like "✓ Created issue: s-0o9\n   Title: ..."
-	// We need to extract just the bead ID (format: prefix-xxx)
-	beadID := ""
-	outputStr := string(output)
-	// Split by whitespace (including newlines) and find the bead ID
-	parts := strings.Fields(outputStr)
-	for _, p := range parts {
-		// Bead IDs are typically short alphanumeric with a dash (e.g., s-0o9, ac-123, bd-456)
-		if len(p) >= 3 && len(p) <= 20 && strings.Contains(p, "-") && !strings.HasPrefix(p, "-") {
-			// Check it looks like a bead ID (letters/numbers and dashes only)
-			isBeadID := true
-			for _, c := range p {
-				if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') && (c < '0' || c > '9') && c != '-' && c != '.' {
-					isBeadID = false
-					break
-				}
-			}
-			if isBeadID {
-				beadID = p
-				break
-			}
-		}
-	}
-
-	if beadID == "" {
-		logging.Error("failed to parse bead ID from output", "output", string(output), "args", args)
-		return "", fmt.Errorf("failed to get created bead ID from output: %s", output)
-	}
-
-	logging.Debug("created bead", "beadID", beadID)
-	return beadID, nil
-}
-
-// Close closes a bead.
-func Close(ctx context.Context, beadID, beadsDir string) error {
-	cmd := bdCommand(ctx, beadsDir, "close", beadID)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to close bead %s: %w\n%s", beadID, err, output)
-	}
-	return nil
-}
-
-// Delete permanently removes a bead.
-func Delete(ctx context.Context, beadID, beadsDir string, force bool) error {
-	args := []string{"delete", beadID}
-	if force {
-		args = append(args, "--force")
-	}
-	cmd := bdCommand(ctx, beadsDir, args...)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to delete bead %s: %w\n%s", beadID, err, output)
-	}
-	return nil
-}
-
-// AddComment adds a comment to a bead.
-func AddComment(ctx context.Context, beadID, comment, beadsDir string) error {
-	cmd := bdCommand(ctx, beadsDir, "comments", "add", beadID, comment)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to add comment to bead %s: %w\n%s", beadID, err, output)
-	}
-	return nil
-}
-
-// Reopen reopens a closed bead.
-func Reopen(ctx context.Context, beadID, beadsDir string) error {
-	cmd := bdCommand(ctx, beadsDir, "reopen", beadID)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to reopen bead %s: %w\n%s", beadID, err, output)
-	}
-	return nil
-}
-
 // UpdateOptions specifies options for updating a bead.
 type UpdateOptions struct {
 	Title       string
@@ -275,78 +162,6 @@ type UpdateOptions struct {
 	Assignee    string
 	Priority    *int // nil means don't update
 	Status      string
-}
-
-// Update updates a bead's fields.
-func Update(ctx context.Context, beadID, beadsDir string, opts UpdateOptions) error {
-	args := []string{"update", beadID}
-	if opts.Title != "" {
-		args = append(args, "--title="+opts.Title)
-	}
-	if opts.Type != "" {
-		args = append(args, "--type="+opts.Type)
-	}
-	if opts.Description != "" {
-		args = append(args, "--description="+opts.Description)
-	}
-	if opts.Assignee != "" {
-		args = append(args, "--assignee="+opts.Assignee)
-	}
-	if opts.Priority != nil {
-		args = append(args, fmt.Sprintf("--priority=%d", *opts.Priority))
-	}
-	if opts.Status != "" {
-		args = append(args, "--status="+opts.Status)
-	}
-
-	cmd := bdCommand(ctx, beadsDir, args...)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to update bead %s: %w\n%s", beadID, err, output)
-	}
-	return nil
-}
-
-// AddLabels adds labels to a bead.
-func AddLabels(ctx context.Context, beadID, beadsDir string, labels []string) error {
-	if len(labels) == 0 {
-		return nil
-	}
-
-	args := []string{"update", beadID}
-	for _, label := range labels {
-		args = append(args, "--add-label="+label)
-	}
-
-	cmd := bdCommand(ctx, beadsDir, args...)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to add labels to bead %s: %w\n%s", beadID, err, output)
-	}
-	return nil
-}
-
-// SetExternalRef sets the external reference for a bead.
-func SetExternalRef(ctx context.Context, beadID, externalRef, beadsDir string) error {
-	if externalRef == "" {
-		return nil
-	}
-
-	args := []string{"update", beadID, "--external-ref=" + externalRef}
-
-	cmd := bdCommand(ctx, beadsDir, args...)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to set external ref for bead %s: %w\n%s", beadID, err, output)
-	}
-	return nil
-}
-
-// AddDependency adds a dependency between two beads.
-// The bead identified by beadID will depend on the bead identified by dependsOnID.
-func AddDependency(ctx context.Context, beadID, dependsOnID, beadsDir string) error {
-	cmd := bdCommand(ctx, beadsDir, "dep", "add", beadID, dependsOnID)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to add dependency %s -> %s: %w\n%s", beadID, dependsOnID, err, output)
-	}
-	return nil
 }
 
 // EditCommand returns an exec.Cmd for opening a bead in an editor.

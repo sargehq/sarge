@@ -142,20 +142,21 @@ func (s *WorkService) CreateBeadFromPR(ctx context.Context, metadata *github.PRM
 		Priority:    priority,
 	}
 
-	beadID, err := beads.Create(ctx, opts.BeadsDir, createOpts)
+	cli := beads.NewCLI(opts.BeadsDir)
+	beadID, err := cli.Create(ctx, createOpts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create bead: %w", err)
 	}
 
 	// Set external reference to PR URL for deduplication
-	if err := beads.SetExternalRef(ctx, beadID, metadata.URL, opts.BeadsDir); err != nil {
+	if err := cli.SetExternalRef(ctx, beadID, metadata.URL); err != nil {
 		logging.Warn("failed to set external ref on bead", "error", err, "beadID", beadID)
 		// Continue - bead was created successfully
 	}
 
 	// Add labels if present
 	if len(beadOpts.labels) > 0 {
-		if err := beads.AddLabels(ctx, beadID, opts.BeadsDir, beadOpts.labels); err != nil {
+		if err := cli.AddLabels(ctx, beadID, beadOpts.labels); err != nil {
 			logging.Warn("failed to add labels to bead", "error", err, "beadID", beadID)
 			// Continue - bead was created successfully
 		}
