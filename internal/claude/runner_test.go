@@ -72,7 +72,7 @@ func TestBuildLogAnalysisPrompt(t *testing.T) {
 			wantContains: []string{
 				"Work w-test",
 				"Job: Integration",
-				"The CI log output is in:",
+				"REQUIRED: Mark Task Complete",
 			},
 		},
 		{
@@ -88,7 +88,7 @@ func TestBuildLogAnalysisPrompt(t *testing.T) {
 			},
 			wantContains: []string{
 				"/tmp/ci-log-12345.txt",
-				"Read this file to analyze the failures",
+				"sarge complete w-multi.3",
 			},
 		},
 	}

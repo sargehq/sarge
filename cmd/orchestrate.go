@@ -11,6 +11,7 @@ import (
 	"github.com/sargehq/sarge/internal/claude"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/feedback"
+	"github.com/sargehq/sarge/internal/logging"
 	"github.com/sargehq/sarge/internal/orchestration"
 	"github.com/sargehq/sarge/internal/procmon"
 	"github.com/sargehq/sarge/internal/project"
@@ -282,6 +283,23 @@ func executeTask(proj *project.Project, t *db.Task, work *db.Work, runner claude
 			return fmt.Errorf("task %s timed out after %v", t.ID, timeout)
 		}
 		return err
+	}
+
+	// Defensive: auto-complete log_analysis tasks if Claude exited without calling sarge complete.
+	// Log analysis tasks are observational (they create beads but don't modify code), so it's
+	// safe to auto-complete them. This prevents the orchestrator from spinning forever.
+	if t.TaskType == "log_analysis" {
+		updatedTask, err := proj.DB.GetTask(ctx, t.ID)
+		if err != nil {
+			fmt.Printf("Warning: failed to re-read task %s status: %v\n", t.ID, err)
+		} else if updatedTask != nil && updatedTask.Status == db.StatusProcessing {
+			logging.Warn("auto-completing log_analysis task that Claude did not mark complete",
+				"task_id", t.ID)
+			fmt.Printf("Warning: Claude exited without completing log_analysis task %s, auto-completing\n", t.ID)
+			if err := proj.DB.CompleteTask(ctx, t.ID, ""); err != nil {
+				fmt.Printf("Warning: failed to auto-complete task %s: %v\n", t.ID, err)
+			}
+		}
 	}
 
 	// Post-execution handling based on task type
