@@ -48,7 +48,7 @@ func TestBuildBeadTree_BlocksDependencies(t *testing.T) {
 // TestBuildBeadTree_ClosedParentVisibility tests filtering of closed parents
 func TestBuildBeadTree_ClosedParentVisibility(t *testing.T) {
 	items := []beadItem{
-		testBeadItemWithOptions("parent", "Parent", "closed", 1, "epic", true),
+		testBeadItemWithOptions("parent", "Parent", 1, "epic", true),
 		testBeadItem("child", "Child", "open", 2, "task", "parent"),
 	}
 
@@ -61,7 +61,7 @@ func TestBuildBeadTree_ClosedParentVisibility(t *testing.T) {
 // TestBuildBeadTree_ClosedParentNoVisibleChildren tests filtering out closed parents without visible children
 func TestBuildBeadTree_ClosedParentNoVisibleChildren(t *testing.T) {
 	items := []beadItem{
-		testBeadItemWithOptions("parent", "Parent", "closed", 1, "epic", true),
+		testBeadItemWithOptions("parent", "Parent", 1, "epic", true),
 	}
 
 	result := buildBeadTree(context.Background(), items, nil)
@@ -176,7 +176,7 @@ func TestBuildBeadTree_WithNilClient(t *testing.T) {
 // TestBuildBeadTree_ParentChildRelationship tests that parent-child relationships are preserved
 func TestBuildBeadTree_ParentChildRelationship(t *testing.T) {
 	items := []beadItem{
-		testBeadItemWithOptions("parent", "Parent", "closed", 1, "epic", true),
+		testBeadItemWithOptions("parent", "Parent", 1, "epic", true),
 		testBeadItem("child", "Child", "open", 2, "task", "parent"),
 	}
 
@@ -190,9 +190,9 @@ func TestBuildBeadTree_ParentChildRelationship(t *testing.T) {
 // TestBuildBeadTree_ClosedParentWithClosedChildren tests that closed parents with only closed children are filtered out
 func TestBuildBeadTree_ClosedParentWithClosedChildren(t *testing.T) {
 	items := []beadItem{
-		testBeadItemWithOptions("parent", "Parent", "closed", 1, "epic", true),
-		testBeadItemWithOptions("child-1", "Child 1", "closed", 2, "task", false, "parent"),
-		testBeadItemWithOptions("child-2", "Child 2", "closed", 2, "task", false, "parent"),
+		testBeadItemWithOptions("parent", "Parent", 1, "epic", true),
+		testBeadItemWithOptions("child-1", "Child 1", 2, "task", false, "parent"),
+		testBeadItemWithOptions("child-2", "Child 2", 2, "task", false, "parent"),
 	}
 
 	result := buildBeadTree(context.Background(), items, nil)
@@ -204,8 +204,8 @@ func TestBuildBeadTree_ClosedParentWithClosedChildren(t *testing.T) {
 // TestBuildBeadTree_ClosedParentWithMixedChildren tests closed parent with both closed and open children
 func TestBuildBeadTree_ClosedParentWithMixedChildren(t *testing.T) {
 	items := []beadItem{
-		testBeadItemWithOptions("parent", "Parent", "closed", 1, "epic", true),
-		testBeadItemWithOptions("child-1", "Child 1", "closed", 2, "task", false, "parent"),
+		testBeadItemWithOptions("parent", "Parent", 1, "epic", true),
+		testBeadItemWithOptions("child-1", "Child 1", 2, "task", false, "parent"),
 		testBeadItem("child-2", "Child 2", "open", 2, "task", "parent"),
 	}
 
@@ -225,8 +225,8 @@ func TestBuildBeadTree_ClosedParentWithMixedChildren(t *testing.T) {
 // TestBuildBeadTree_DeepClosedHierarchyWithOpenLeaf tests visibility propagates up through multiple closed levels
 func TestBuildBeadTree_DeepClosedHierarchyWithOpenLeaf(t *testing.T) {
 	items := []beadItem{
-		testBeadItemWithOptions("grandparent", "Grandparent", "closed", 1, "epic", true),
-		testBeadItemWithOptions("parent", "Parent", "closed", 2, "task", true, "grandparent"),
+		testBeadItemWithOptions("grandparent", "Grandparent", 1, "epic", true),
+		testBeadItemWithOptions("parent", "Parent", 2, "task", true, "grandparent"),
 		testBeadItem("child", "Child", "open", 3, "task", "parent"),
 	}
 

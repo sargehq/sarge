@@ -30,8 +30,9 @@ func testBeadItem(id, title, status string, priority int, beadType string, deps 
 }
 
 // testBeadItemWithOptions creates a beadItem for testing with additional options.
-func testBeadItemWithOptions(id, title, status string, priority int, beadType string, isClosedParent bool, deps ...string) beadItem {
-	item := testBeadItem(id, title, status, priority, beadType, deps...)
+// This is used specifically for creating closed items with the isClosedParent flag.
+func testBeadItemWithOptions(id, title string, priority int, beadType string, isClosedParent bool, deps ...string) beadItem {
+	item := testBeadItem(id, title, "closed", priority, beadType, deps...)
 	item.isClosedParent = isClosedParent
 	return item
 }
