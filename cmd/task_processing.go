@@ -93,8 +93,8 @@ func buildLogAnalysisPromptFromMetadata(ctx context.Context, proj *project.Proje
 		return "", fmt.Errorf("log_content metadata is missing for task %s", task.ID)
 	}
 
-	// Fetch existing open beads to help Claude match against them
-	existingBeads := fetchExistingBeadSummaries(ctx, proj)
+	// Fetch existing open beads for this work to help Claude match against them
+	existingBeads := fetchExistingBeadSummaries(ctx, proj, work.ID)
 
 	params := claude.LogAnalysisParams{
 		TaskID:        task.ID,
@@ -110,22 +110,42 @@ func buildLogAnalysisPromptFromMetadata(ctx context.Context, proj *project.Proje
 	return claude.BuildLogAnalysisPrompt(params), nil
 }
 
-// fetchExistingBeadSummaries fetches open beads and converts them to summaries for matching.
-func fetchExistingBeadSummaries(ctx context.Context, proj *project.Project) []claude.BeadSummary {
-	openBeads, err := proj.Beads.ListBeads(ctx, beads.StatusOpen)
+// fetchExistingBeadSummaries fetches open beads for the given work and converts them to summaries for matching.
+func fetchExistingBeadSummaries(ctx context.Context, proj *project.Project, workID string) []claude.BeadSummary {
+	// Get bead IDs assigned to this work
+	workBeads, err := proj.DB.GetWorkBeads(ctx, workID)
 	if err != nil {
-		// Log error but continue - deduplication is best-effort
-		fmt.Printf("Warning: failed to fetch existing beads for deduplication: %v\n", err)
+		fmt.Printf("Warning: failed to fetch work beads for deduplication: %v\n", err)
 		return nil
 	}
 
-	summaries := make([]claude.BeadSummary, 0, len(openBeads))
-	for _, b := range openBeads {
-		summaries = append(summaries, claude.BeadSummary{
-			ID:          b.ID,
-			Title:       b.Title,
-			Description: b.Description,
-		})
+	if len(workBeads) == 0 {
+		return nil
+	}
+
+	// Extract bead IDs
+	beadIDs := make([]string, len(workBeads))
+	for i, wb := range workBeads {
+		beadIDs[i] = wb.BeadID
+	}
+
+	// Fetch bead details from beads database
+	result, err := proj.Beads.GetBeadsWithDeps(ctx, beadIDs)
+	if err != nil {
+		fmt.Printf("Warning: failed to fetch bead details for deduplication: %v\n", err)
+		return nil
+	}
+
+	// Filter to only open beads and convert to summaries
+	summaries := make([]claude.BeadSummary, 0, len(beadIDs))
+	for _, beadID := range beadIDs {
+		if bwd := result.GetBead(beadID); bwd != nil && bwd.Bead.Status == beads.StatusOpen {
+			summaries = append(summaries, claude.BeadSummary{
+				ID:          bwd.Bead.ID,
+				Title:       bwd.Bead.Title,
+				Description: bwd.Bead.Description,
+			})
+		}
 	}
 	return summaries
 }
