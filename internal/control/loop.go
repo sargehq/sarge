@@ -45,7 +45,16 @@ func RunControlPlaneLoopWithControlPlane(ctx context.Context, proj *project.Proj
 	}
 	defer watcher.Stop()
 
-	logging.Info("Control plane started with database events")
+	// Create async task executor for long-running tasks
+	asyncExecutor := NewAsyncTaskExecutor(proj, cp.GetTaskHandlers(), DefaultMaxConcurrentAsyncTasks)
+	defer func() {
+		logging.Debug("Waiting for async tasks to complete...")
+		asyncExecutor.Wait()
+		logging.Debug("All async tasks completed")
+	}()
+
+	logging.Info("Control plane started with database events",
+		"max_concurrent_async", DefaultMaxConcurrentAsyncTasks)
 
 	// Subscribe to watcher events
 	sub := watcher.Broker().Subscribe(ctx)
@@ -64,6 +73,9 @@ func RunControlPlaneLoopWithControlPlane(ctx context.Context, proj *project.Proj
 		select {
 		case <-ctx.Done():
 			logging.Debug("Control plane stopping due to context cancellation")
+			if runningCount := asyncExecutor.RunningCount(); runningCount > 0 {
+				fmt.Printf("\nWaiting for %d async task(s) to complete...\n", runningCount)
+			}
 			fmt.Println("\nControl plane stopped.")
 			return nil
 
@@ -76,13 +88,13 @@ func RunControlPlaneLoopWithControlPlane(ctx context.Context, proj *project.Proj
 			// Handle database change event
 			if event.Payload.Type == trackingwatcher.DBChanged {
 				logging.Debug("Database changed, checking scheduled tasks")
-				ProcessAllDueTasksWithControlPlane(ctx, proj, cp)
+				processAllDueTasksWithExecutor(ctx, proj, cp, asyncExecutor)
 			}
 
 		case <-checkTimer.C:
 			// Periodic check as a safety net
 			logging.Debug("Control plane periodic check")
-			ProcessAllDueTasksWithControlPlane(ctx, proj, cp)
+			processAllDueTasksWithExecutor(ctx, proj, cp, asyncExecutor)
 			checkTimer.Reset(checkInterval)
 
 		case <-cleanupTimer.C:
@@ -107,6 +119,8 @@ func ProcessAllDueTasks(ctx context.Context, proj *project.Project) {
 }
 
 // ProcessAllDueTasksWithControlPlane checks for and executes any scheduled tasks with provided dependencies.
+// This function runs all tasks synchronously and is used for testing and simple scenarios.
+// For production use with async support, use processAllDueTasksWithExecutor.
 func ProcessAllDueTasksWithControlPlane(ctx context.Context, proj *project.Project, cp *ControlPlane) {
 	taskHandlers := cp.GetTaskHandlers()
 
@@ -153,6 +167,75 @@ func ProcessAllDueTasksWithControlPlane(ctx context.Context, proj *project.Proje
 			fmt.Printf("[%s] Task completed: %s\n", time.Now().Format("15:04:05"), task.TaskType)
 			if err := proj.DB.MarkTaskCompleted(ctx, task.ID); err != nil {
 				logging.Warn("failed to mark task as completed", "error", err, "task_id", task.ID)
+			}
+		}
+	}
+}
+
+// processAllDueTasksWithExecutor checks for and executes scheduled tasks, using the async executor
+// for long-running tasks. Sync tasks run directly, while async tasks are submitted to the executor
+// to run in goroutines without blocking the main loop.
+func processAllDueTasksWithExecutor(ctx context.Context, proj *project.Project, cp *ControlPlane, executor *AsyncTaskExecutor) {
+	taskHandlers := cp.GetTaskHandlers()
+
+	// Get the next due task globally (not work-specific)
+	for {
+		task, err := proj.DB.GetNextScheduledTask(ctx)
+		if err != nil {
+			logging.Warn("failed to get next scheduled task", "error", err)
+			return
+		}
+
+		if task == nil {
+			// No more due tasks
+			return
+		}
+
+		logging.Info("Processing scheduled task",
+			"task_id", task.ID,
+			"task_type", task.TaskType,
+			"work_id", task.WorkID,
+			"is_async", IsAsyncTask(task.TaskType),
+			"scheduled_at", task.ScheduledAt.Format(time.RFC3339))
+
+		// Mark as executing before dispatching
+		if err := proj.DB.MarkTaskExecuting(ctx, task.ID); err != nil {
+			logging.Warn("failed to mark task as executing", "error", err)
+			continue
+		}
+
+		// Check if this is an async task
+		if IsAsyncTask(task.TaskType) {
+			// Submit to async executor (non-blocking)
+			if !executor.Submit(ctx, task) {
+				// Task already running, it was marked executing but we couldn't submit
+				// This shouldn't happen normally, but handle it gracefully
+				logging.Warn("failed to submit async task (already running?)",
+					"task_id", task.ID,
+					"task_type", task.TaskType)
+			}
+			// Continue processing other tasks immediately
+			continue
+		}
+
+		// Sync task: execute directly
+		fmt.Printf("[%s] Executing %s for %s\n", time.Now().Format("15:04:05"), task.TaskType, task.WorkID)
+
+		var execErr error
+		if handler, ok := taskHandlers[task.TaskType]; ok {
+			execErr = handler(ctx, proj, task)
+		} else {
+			execErr = fmt.Errorf("unknown task type: %s", task.TaskType)
+		}
+
+		// Handle task result
+		if execErr != nil {
+			fmt.Printf("[%s] Task failed: %s\n", time.Now().Format("15:04:05"), execErr)
+			HandleTaskError(ctx, proj, task, execErr.Error())
+		} else {
+			fmt.Printf("[%s] Task completed: %s\n", time.Now().Format("15:04:05"), task.TaskType)
+			if markErr := proj.DB.MarkTaskCompleted(ctx, task.ID); markErr != nil {
+				logging.Warn("failed to mark task as completed", "error", markErr, "task_id", task.ID)
 			}
 		}
 	}
