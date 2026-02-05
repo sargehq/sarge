@@ -102,7 +102,7 @@ func buildLogAnalysisPromptFromMetadata(ctx context.Context, proj *project.Proje
 	}
 	if _, err := logFile.WriteString(logContent); err != nil {
 		logFile.Close()
-		os.Remove(logFile.Name())
+		_ = os.Remove(logFile.Name())
 		return "", fmt.Errorf("failed to write log content to temp file: %w", err)
 	}
 	logFile.Close()
