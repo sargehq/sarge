@@ -125,7 +125,7 @@ Sarge provides two ways to interact with your project:
 The interactive terminal UI provides a lazygit-style interface:
 
 ```bash
-sarge tui
+sarge
 ```
 
 Features:
@@ -187,7 +187,7 @@ Sarge uses [Beads](https://github.com/steveyegge/beads), a distributed git-backe
 - **Collision-free IDs** - Hash-based IDs eliminate merge conflicts in multi-branch scenarios
 - **Semantic compaction** - Completed tasks are summarized to conserve AI context windows
 
-**You rarely need to use beads directly.** Claude Code (with the beads skill) and the TUI handle all issue management. The `bd` CLI is available if you need it, but most users interact with beads through `sarge tui` or let Claude manage issues automatically.
+**You rarely need to use beads directly.** Claude Code (with the beads skill) and the TUI handle all issue management. The `bd` CLI is available if you need it, but most users interact with beads through `sarge` or let Claude manage issues automatically.
 
 ### Three-Tier Hierarchy
 

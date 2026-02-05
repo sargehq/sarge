@@ -356,7 +356,7 @@ The command:
 
 ### TUI Integration
 
-The TUI (`sarge tui`) provides:
+The TUI (`sarge`) provides:
 - F5 key binding for manual feedback polling
 - Visual feedback indicator showing polling status
 - Automatic refresh when new beads are created from feedback
@@ -644,7 +644,7 @@ Monitors work/task progress with simple text output:
 - With work ID: monitors that work's tasks
 - With task ID: monitors that specific task
 - Use `--interval` to set polling interval (default: 2s)
-- For interactive TUI with management features, use `sarge tui` instead
+- For interactive TUI with management features, use `sarge` instead
 
 ### `sarge sync`
 Pulls from upstream in all repositories:

@@ -250,12 +250,12 @@ Task is auto-detected from CO_TASK_ID env var or current processing review task.
 
 ## Monitoring Commands
 
-### `sarge tui`
+### `sarge`
 
-Interactive TUI for managing works and beads (lazygit-style).
+When run without a subcommand, sarge launches the interactive TUI for managing works and beads (lazygit-style).
 
 ```bash
-sarge tui
+sarge
 ```
 
 Features:
