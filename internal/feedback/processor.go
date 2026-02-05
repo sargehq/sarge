@@ -448,7 +448,7 @@ func (p *FeedbackProcessor) processReviews(status *github.PRStatus) []github.Fee
 			item := github.FeedbackItem{
 				Type:        github.FeedbackTypeReview,
 				Title:       fmt.Sprintf("Address review feedback from %s", review.Author),
-				Description: p.truncateText(review.Body, 500),
+				Description: review.Body,
 				Source: github.SourceInfo{
 					Type: github.SourceTypeReviewComment,
 					ID:   fmt.Sprintf("%d", review.ID),
@@ -485,7 +485,7 @@ func (p *FeedbackProcessor) processReviews(status *github.PRStatus) []github.Fee
 			item := github.FeedbackItem{
 				Type:        github.FeedbackTypeReview,
 				Title:       fmt.Sprintf("Fix issue in %s (line %d)", comment.Path, lineNum),
-				Description: p.truncateText(comment.Body, 300),
+				Description: comment.Body,
 				Source: github.SourceInfo{
 					Type: github.SourceTypeReviewComment,
 					ID:   fmt.Sprintf("%d", comment.ID),
@@ -523,7 +523,7 @@ func (p *FeedbackProcessor) processComments(status *github.PRStatus) []github.Fe
 			item := github.FeedbackItem{
 				Type:        feedbackType,
 				Title:       p.extractTitleFromComment(comment.Body),
-				Description: p.truncateText(comment.Body, 500),
+				Description: comment.Body,
 				Source: github.SourceInfo{
 					Type: github.SourceTypeIssueComment,
 					ID:   fmt.Sprintf("%d", comment.ID),
@@ -719,13 +719,6 @@ func (p *FeedbackProcessor) getPriorityForType(feedbackType github.FeedbackType)
 	default:
 		return 3 // Low
 	}
-}
-
-func (p *FeedbackProcessor) truncateText(text string, maxLen int) string {
-	if len(text) <= maxLen {
-		return text
-	}
-	return text[:maxLen] + "..."
 }
 
 // truncateLogContent truncates log content to the specified maximum size.

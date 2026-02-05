@@ -125,29 +125,6 @@ func TestIsActionableComment(t *testing.T) {
 	}
 }
 
-func TestTruncateText(t *testing.T) {
-	processor := &FeedbackProcessor{}
-
-	tests := []struct {
-		name     string
-		text     string
-		maxLen   int
-		expected string
-	}{
-		{"Short text", "Hello", 10, "Hello"},
-		{"Exact length", "Hello", 5, "Hello"},
-		{"Long text", "Hello, World!", 5, "Hello..."},
-		{"Empty text", "", 10, ""},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := processor.truncateText(tt.text, tt.maxLen)
-			require.Equal(t, tt.expected, result)
-		})
-	}
-}
-
 func TestProcessStatusChecks(t *testing.T) {
 	processor := &FeedbackProcessor{}
 
