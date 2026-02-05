@@ -178,3 +178,45 @@ func TestKillProcessWith_ListerError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to get process list")
 	assert.Empty(t, killer.KillByPatternCalls())
 }
+
+func TestStartDetached(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		name    string
+		command string
+		args    []string
+		wantErr bool
+	}{
+		{
+			name:    "valid command starts successfully",
+			command: "true",
+			args:    nil,
+			wantErr: false,
+		},
+		{
+			name:    "command with arguments",
+			command: "echo",
+			args:    []string{"hello", "world"},
+			wantErr: false,
+		},
+		{
+			name:    "nonexistent command returns error",
+			command: "/nonexistent/command/that/does/not/exist",
+			args:    nil,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := process.StartDetached(ctx, tt.command, tt.args...)
+
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
