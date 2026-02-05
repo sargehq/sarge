@@ -252,6 +252,7 @@ func (s *StatusBar) renderWorkDetailCommands() (string, string) {
 	// Work detail specific commands - wrap each with zone.Mark
 	tButton := zone.Mark(s.zonePrefix+"t", styleButtonWithHover("[t]erminal", s.hoveredButton == "t"))
 	cButton := zone.Mark(s.zonePrefix+"c", styleButtonWithHover("[c]laude", s.hoveredButton == "c"))
+	iButton := zone.Mark(s.zonePrefix+"i", styleButtonWithHover("[i]DE", s.hoveredButton == "i"))
 	rButton := zone.Mark(s.zonePrefix+"r", styleButtonWithHover("[r]un", s.hoveredButton == "r"))
 	oButton := zone.Mark(s.zonePrefix+"o", styleButtonWithHover("[o]rch", s.hoveredButton == "o"))
 	vButton := zone.Mark(s.zonePrefix+"v", styleButtonWithHover("[v]review", s.hoveredButton == "v"))
@@ -267,11 +268,11 @@ func (s *StatusBar) renderWorkDetailCommands() (string, string) {
 	var commands, commandsPlain string
 	if showReset {
 		xButton := zone.Mark(s.zonePrefix+"x", styleButtonWithHover("[x]Reset", s.hoveredButton == "x"))
-		commands = tButton + " " + cButton + " " + rButton + " " + oButton + " " + vButton + " " + pButton + " " + fButton + " " + xButton + " " + dButton + " " + escButton + " " + helpButton
-		commandsPlain = "[t]erminal [c]laude [r]un [o]rch [v]review [p]r [f]eedback [x]Reset [d]estroy [Esc]Deselect [?]Help"
+		commands = tButton + " " + cButton + " " + iButton + " " + rButton + " " + oButton + " " + vButton + " " + pButton + " " + fButton + " " + xButton + " " + dButton + " " + escButton + " " + helpButton
+		commandsPlain = "[t]erminal [c]laude [i]DE [r]un [o]rch [v]review [p]r [f]eedback [x]Reset [d]estroy [Esc]Deselect [?]Help"
 	} else {
-		commands = tButton + " " + cButton + " " + rButton + " " + oButton + " " + vButton + " " + pButton + " " + fButton + " " + dButton + " " + escButton + " " + helpButton
-		commandsPlain = "[t]erminal [c]laude [r]un [o]rch [v]review [p]r [f]eedback [d]estroy [Esc]Deselect [?]Help"
+		commands = tButton + " " + cButton + " " + iButton + " " + rButton + " " + oButton + " " + vButton + " " + pButton + " " + fButton + " " + dButton + " " + escButton + " " + helpButton
+		commandsPlain = "[t]erminal [c]laude [i]DE [r]un [o]rch [v]review [p]r [f]eedback [d]estroy [Esc]Deselect [?]Help"
 	}
 
 	return commands, commandsPlain
@@ -300,7 +301,7 @@ func (s *StatusBar) detectIssuesButton(msg tea.MouseMsg) string {
 
 // detectWorkDetailButton detects button clicks for the work detail panel using bubblezone
 func (s *StatusBar) detectWorkDetailButton(msg tea.MouseMsg) string {
-	buttons := []string{"t", "c", "r", "o", "v", "p", "f", "x", "d", "esc", "?"}
+	buttons := []string{"t", "c", "i", "r", "o", "v", "p", "f", "x", "d", "esc", "?"}
 	for _, btn := range buttons {
 		if zone.Get(s.zonePrefix + btn).InBounds(msg) {
 			return btn
