@@ -115,6 +115,9 @@ func TestIsActionableComment(t *testing.T) {
 		{"Non-actionable", "Looks good to me!", false},
 		{"Simple comment", "Thanks for the PR", false},
 		{"Empty comment", "", false},
+		{"Sarge resolution comment", "<!-- sarge-bot -->✅ Resolved in work w-abc (issue ac-123)", false},
+		{"Sarge ack comment", "<!-- sarge-bot -->✅ Created tracking issue **ac-456** for this feedback.\n\nTitle: Fix bug\nPriority: P2", false},
+		{"Sarge marker with actionable text", "<!-- sarge-bot -->Please fix this issue", false},
 	}
 
 	for _, tt := range tests {

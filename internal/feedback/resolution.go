@@ -108,10 +108,11 @@ func ResolveFeedbackForBeads(ctx context.Context, database *db.DB, beadClient *b
 // resolveFeedbackItem handles the resolution of a single feedback item.
 // It schedules GitHub comment/thread resolution tasks and attempts optimistic execution.
 func resolveFeedbackItem(ctx context.Context, database *db.DB, workID string, fb db.PRFeedback, closeReason string) error {
-	// Construct resolution message
-	resolutionMessage := fmt.Sprintf("✅ Resolved in work %s (issue %s)", workID, *fb.BeadID)
+	// Construct resolution message with marker to prevent feedback loop
+	// The sarge-bot marker is filtered out by isActionableComment() in processor.go
+	resolutionMessage := fmt.Sprintf("<!-- sarge-bot -->✅ Resolved in work %s (issue %s)", workID, *fb.BeadID)
 	if closeReason != "" {
-		resolutionMessage = fmt.Sprintf("✅ Resolved in work %s (issue %s): %s", workID, *fb.BeadID, closeReason)
+		resolutionMessage = fmt.Sprintf("<!-- sarge-bot -->✅ Resolved in work %s (issue %s): %s", workID, *fb.BeadID, closeReason)
 	}
 
 	// Parse PR URL to get owner/repo/pr_number

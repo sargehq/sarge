@@ -605,6 +605,12 @@ func (p *FeedbackProcessor) categorizeWorkflowFailure(workflowName, failureDetai
 }
 
 func (p *FeedbackProcessor) isActionableComment(body string) bool {
+	// Filter out sarge's own comments to prevent feedback loops
+	// Sarge posts comments with a hidden marker that we can detect
+	if strings.Contains(body, "<!-- sarge-bot -->") {
+		return false
+	}
+
 	// Check for patterns that indicate actionable feedback
 	actionablePatterns := []string{
 		"please",

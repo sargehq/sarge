@@ -243,8 +243,9 @@ func processPRFeedbackInternal(ctx context.Context, proj *project.Project, datab
 			}
 
 			if commentID != 0 {
-				// Create the acknowledgment message
-				ackMessage := fmt.Sprintf("✅ Created tracking issue **%s** for this feedback.\n\nTitle: %s\nPriority: P%d",
+				// Create the acknowledgment message with marker to prevent feedback loop
+				// The sarge-bot marker is filtered out by isActionableComment() in processor.go
+				ackMessage := fmt.Sprintf("<!-- sarge-bot -->✅ Created tracking issue **%s** for this feedback.\n\nTitle: %s\nPriority: P%d",
 					beadID, item.Title, item.Priority)
 
 				client := github.NewClient()
