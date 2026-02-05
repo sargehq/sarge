@@ -1,4 +1,6 @@
-**MANDATORY**: When you are finished, your FINAL action MUST be running: `sarge complete {{.TaskID}}`
+**THIS IS A FULLY AUTOMATED TASK. DO NOT ask questions, request clarification, or wait for user input. There is no human to respond. If you cannot determine failures from the log, complete the task with no beads created.**
+
+**MANDATORY**: Your FINAL action MUST be running: `sarge complete {{.TaskID}}`
 
 You are analyzing CI logs for Work {{.WorkID}}.
 
@@ -19,6 +21,8 @@ The following issues already exist. Before creating a new bead, check if any fai
 1. Read the CI log file: {{.LogFilePath}}
 
 2. Analyze the log to identify all failures, errors, and issues.
+   - If the log appears truncated, incomplete, or contains no identifiable failures, **do not ask questions**. Simply complete the task with no beads created.
+   - If errors are ambiguous, use your best judgment to create beads for the most likely failures.
 
 3. For each distinct failure found:
    a. **First check** if it matches an existing issue above (same test name, same error type, same root cause)
@@ -65,5 +69,10 @@ YOUR FINAL ACTION MUST be running this command:
 ```
 sarge complete {{.TaskID}}
 ```
-Run this whether you created beads, matched existing issues, or found no failures at all.
-Do NOT exit without running this command.
+Run this in ALL cases:
+- You created beads for new failures
+- All failures matched existing issues
+- No failures were found in the log
+- The log was truncated or unreadable
+
+Do NOT exit without running this command. Do NOT ask the user any questions.
