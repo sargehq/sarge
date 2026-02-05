@@ -85,7 +85,7 @@ func NewBeadFormPanel() *BeadFormPanel {
 
 	descTextarea := textarea.New()
 	descTextarea.Placeholder = "Enter description (optional)..."
-	descTextarea.CharLimit = 2000
+	descTextarea.CharLimit = 32000
 	descTextarea.SetWidth(60)
 	descTextarea.SetHeight(4)
 
