@@ -12,9 +12,16 @@ import (
 	"github.com/sargehq/sarge/internal/worktree"
 )
 
+// TaskPrompt contains the prompt and any associated resources for a task.
+type TaskPrompt struct {
+	Prompt       string
+	TempFilePath string // Path to temp file that should be cleaned up after task execution
+}
+
 // buildPromptForTask builds the appropriate prompt for a task based on its type.
 // This centralizes prompt building logic for different task types.
-func buildPromptForTask(ctx context.Context, proj *project.Project, task *db.Task, work *db.Work) (string, error) {
+// Returns a TaskPrompt which includes the prompt and any temp files that need cleanup.
+func buildPromptForTask(ctx context.Context, proj *project.Project, task *db.Task, work *db.Work) (*TaskPrompt, error) {
 	baseBranch := work.BaseBranch
 	if baseBranch == "" {
 		baseBranch = proj.Config.Repo.GetBaseBranch()
@@ -24,55 +31,56 @@ func buildPromptForTask(ctx context.Context, proj *project.Project, task *db.Tas
 	case "estimate":
 		issues, err := getBeadsForTask(ctx, proj, task.ID)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
-		return claude.BuildEstimatePrompt(task.ID, issues), nil
+		return &TaskPrompt{Prompt: claude.BuildEstimatePrompt(task.ID, issues)}, nil
 
 	case "implement":
 		issues, err := getBeadsForTask(ctx, proj, task.ID)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
-		return claude.BuildTaskPrompt(task.ID, issues, work.BranchName, baseBranch), nil
+		return &TaskPrompt{Prompt: claude.BuildTaskPrompt(task.ID, issues, work.BranchName, baseBranch)}, nil
 
 	case "review":
-		return claude.BuildReviewPrompt(task.ID, work.ID, work.BranchName, baseBranch, work.RootIssueID), nil
+		return &TaskPrompt{Prompt: claude.BuildReviewPrompt(task.ID, work.ID, work.BranchName, baseBranch, work.RootIssueID)}, nil
 
 	case "pr":
-		return claude.BuildPRPrompt(task.ID, work.ID, work.BranchName, baseBranch), nil
+		return &TaskPrompt{Prompt: claude.BuildPRPrompt(task.ID, work.ID, work.BranchName, baseBranch)}, nil
 
 	case "update-pr-description":
 		if work.PRURL == "" {
-			return "", fmt.Errorf("work %s has no PR URL set", work.ID)
+			return nil, fmt.Errorf("work %s has no PR URL set", work.ID)
 		}
-		return claude.BuildUpdatePRDescriptionPrompt(task.ID, work.ID, work.PRURL, work.BranchName, baseBranch), nil
+		return &TaskPrompt{Prompt: claude.BuildUpdatePRDescriptionPrompt(task.ID, work.ID, work.PRURL, work.BranchName, baseBranch)}, nil
 
 	case "log_analysis":
 		// Log analysis tasks have metadata with log content stored by the feedback processor
 		return buildLogAnalysisPromptFromMetadata(ctx, proj, task, work)
 
 	default:
-		return "", fmt.Errorf("unknown task type: %s", task.TaskType)
+		return nil, fmt.Errorf("unknown task type: %s", task.TaskType)
 	}
 }
 
 // buildLogAnalysisPromptFromMetadata builds a log analysis prompt from task metadata.
 // The metadata is stored by the feedback processor when creating log_analysis tasks.
-func buildLogAnalysisPromptFromMetadata(ctx context.Context, proj *project.Project, task *db.Task, work *db.Work) (string, error) {
+// Returns a TaskPrompt including the path to the temp file that should be cleaned up.
+func buildLogAnalysisPromptFromMetadata(ctx context.Context, proj *project.Project, task *db.Task, work *db.Work) (*TaskPrompt, error) {
 	// Retrieve metadata stored by the feedback processor
 	workflowName, err := proj.DB.GetTaskMetadata(ctx, task.ID, "workflow_name")
 	if err != nil {
-		return "", fmt.Errorf("failed to get workflow_name metadata: %w", err)
+		return nil, fmt.Errorf("failed to get workflow_name metadata: %w", err)
 	}
 
 	jobName, err := proj.DB.GetTaskMetadata(ctx, task.ID, "job_name")
 	if err != nil {
-		return "", fmt.Errorf("failed to get job_name metadata: %w", err)
+		return nil, fmt.Errorf("failed to get job_name metadata: %w", err)
 	}
 
 	branchName, err := proj.DB.GetTaskMetadata(ctx, task.ID, "branch_name")
 	if err != nil {
-		return "", fmt.Errorf("failed to get branch_name metadata: %w", err)
+		return nil, fmt.Errorf("failed to get branch_name metadata: %w", err)
 	}
 	if branchName == "" {
 		branchName = work.BranchName
@@ -80,7 +88,7 @@ func buildLogAnalysisPromptFromMetadata(ctx context.Context, proj *project.Proje
 
 	rootIssueID, err := proj.DB.GetTaskMetadata(ctx, task.ID, "root_issue_id")
 	if err != nil {
-		return "", fmt.Errorf("failed to get root_issue_id metadata: %w", err)
+		return nil, fmt.Errorf("failed to get root_issue_id metadata: %w", err)
 	}
 	if rootIssueID == "" {
 		rootIssueID = work.RootIssueID
@@ -88,22 +96,22 @@ func buildLogAnalysisPromptFromMetadata(ctx context.Context, proj *project.Proje
 
 	logContent, err := proj.DB.GetTaskMetadata(ctx, task.ID, "log_content")
 	if err != nil {
-		return "", fmt.Errorf("failed to get log_content metadata: %w", err)
+		return nil, fmt.Errorf("failed to get log_content metadata: %w", err)
 	}
 	if logContent == "" {
-		return "", fmt.Errorf("log_content metadata is missing for task %s", task.ID)
+		return nil, fmt.Errorf("log_content metadata is missing for task %s", task.ID)
 	}
 
 	// Write log content to a temp file for Claude to read
 	// This keeps the prompt small and lets Claude read only what it needs
 	logFile, err := os.CreateTemp("", "ci-log-*.txt")
 	if err != nil {
-		return "", fmt.Errorf("failed to create temp file for log content: %w", err)
+		return nil, fmt.Errorf("failed to create temp file for log content: %w", err)
 	}
 	if _, err := logFile.WriteString(logContent); err != nil {
 		logFile.Close()
 		os.Remove(logFile.Name())
-		return "", fmt.Errorf("failed to write log content to temp file: %w", err)
+		return nil, fmt.Errorf("failed to write log content to temp file: %w", err)
 	}
 	logFile.Close()
 
@@ -121,7 +129,10 @@ func buildLogAnalysisPromptFromMetadata(ctx context.Context, proj *project.Proje
 		ExistingBeads: existingBeads,
 	}
 
-	return claude.BuildLogAnalysisPrompt(params), nil
+	return &TaskPrompt{
+		Prompt:       claude.BuildLogAnalysisPrompt(params),
+		TempFilePath: logFile.Name(),
+	}, nil
 }
 
 // fetchExistingBeadSummaries fetches open beads for the given work and converts them to summaries for matching.
@@ -255,13 +266,18 @@ func processTask(proj *project.Project, taskID string, runner claude.Runner) err
 	}
 
 	// Build prompt for Claude based on task type
-	prompt, err := buildPromptForTask(ctx, proj, dbTask, work)
+	taskPrompt, err := buildPromptForTask(ctx, proj, dbTask, work)
 	if err != nil {
 		return err
 	}
 
+	// Clean up temp file after execution (if any)
+	if taskPrompt.TempFilePath != "" {
+		defer os.Remove(taskPrompt.TempFilePath)
+	}
+
 	// Execute Claude inline (blocking)
-	if err := runner.Run(ctx, proj.DB, taskID, prompt, work.WorktreePath, proj.Config); err != nil {
+	if err := runner.Run(ctx, proj.DB, taskID, taskPrompt.Prompt, work.WorktreePath, proj.Config); err != nil {
 		return fmt.Errorf("task %s failed: %w", taskID, err)
 	}
 

@@ -260,13 +260,18 @@ func executeTask(proj *project.Project, t *db.Task, work *db.Work, runner claude
 	fmt.Printf("Task timeout: %v\n", timeout)
 
 	// Build prompt for Claude based on task type
-	prompt, err := buildPromptForTask(taskCtx, proj, t, work)
+	taskPrompt, err := buildPromptForTask(taskCtx, proj, t, work)
 	if err != nil {
 		return err
 	}
 
+	// Clean up temp file after execution (if any)
+	if taskPrompt.TempFilePath != "" {
+		defer os.Remove(taskPrompt.TempFilePath)
+	}
+
 	// Execute Claude inline with timeout context
-	if err = runner.Run(taskCtx, proj.DB, t.ID, prompt, work.WorktreePath, proj.Config); err != nil {
+	if err = runner.Run(taskCtx, proj.DB, t.ID, taskPrompt.Prompt, work.WorktreePath, proj.Config); err != nil {
 		// Check if it was a timeout error
 		if errors.Is(err, context.DeadlineExceeded) {
 			// Mark the task as failed due to timeout
