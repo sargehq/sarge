@@ -234,14 +234,15 @@ func (s *StatusBar) renderIssuesCommands() (string, string) {
 	eButton := zone.Mark(s.zonePrefix+"e", styleButtonWithHover("[e]Edit", s.hoveredButton == "e"))
 	aButton := zone.Mark(s.zonePrefix+"a", styleButtonWithHover("[a]Child", s.hoveredButton == "a"))
 	xButton := zone.Mark(s.zonePrefix+"x", styleButtonWithHover("[x]Close", s.hoveredButton == "x"))
+	dButton := zone.Mark(s.zonePrefix+"d", styleButtonWithHover("[d]Del", s.hoveredButton == "d"))
 	wButton := zone.Mark(s.zonePrefix+"w", styleButtonWithHover("[w]Work", s.hoveredButton == "w"))
 	AButton := zone.Mark(s.zonePrefix+"A", styleButtonWithHover("[A]dd", s.hoveredButton == "A"))
 	iButton := zone.Mark(s.zonePrefix+"i", styleButtonWithHover("[i]Import", s.hoveredButton == "i"))
 	pButton := zone.Mark(s.zonePrefix+"p", styleButtonWithHover(pAction, s.hoveredButton == "p"))
 	helpButton := zone.Mark(s.zonePrefix+"?", styleButtonWithHover("[?]Help", s.hoveredButton == "?"))
 
-	commands := nButton + " " + eButton + " " + aButton + " " + xButton + " " + wButton + " " + AButton + " " + iButton + " " + pButton + " " + helpButton
-	commandsPlain := fmt.Sprintf("[n]New [e]Edit [a]Child [x]Close [w]Work [A]dd [i]Import %s [?]Help", pAction)
+	commands := nButton + " " + eButton + " " + aButton + " " + xButton + " " + dButton + " " + wButton + " " + AButton + " " + iButton + " " + pButton + " " + helpButton
+	commandsPlain := fmt.Sprintf("[n]New [e]Edit [a]Child [x]Close [d]Del [w]Work [A]dd [i]Import %s [?]Help", pAction)
 
 	return commands, commandsPlain
 }
@@ -288,7 +289,7 @@ func (s *StatusBar) DetectButton(msg tea.MouseMsg) string {
 
 // detectIssuesButton detects button clicks for the issues panel using bubblezone
 func (s *StatusBar) detectIssuesButton(msg tea.MouseMsg) string {
-	buttons := []string{"n", "e", "a", "x", "w", "A", "i", "p", "?"}
+	buttons := []string{"n", "e", "a", "x", "d", "w", "A", "i", "p", "?"}
 	for _, btn := range buttons {
 		if zone.Get(s.zonePrefix + btn).InBounds(msg) {
 			return btn

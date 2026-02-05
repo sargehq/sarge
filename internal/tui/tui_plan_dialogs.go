@@ -94,6 +94,44 @@ func (m *planModel) updateCloseBeadConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	return m, nil
 }
 
+func (m *planModel) updateDeleteBeadConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if msg.Type == tea.KeyEsc || msg.String() == "esc" || msg.String() == "escape" {
+		m.viewMode = ViewNormal
+		return m, nil
+	}
+	switch msg.String() {
+	case "y", "Y":
+		// Collect selected beads
+		var beadIDs []string
+		for _, item := range m.beadItems {
+			if m.selectedBeads[item.ID] {
+				beadIDs = append(beadIDs, item.ID)
+			}
+		}
+
+		// If no selected beads, use cursor bead
+		if len(beadIDs) == 0 && len(m.beadItems) > 0 && m.beadsCursor < len(m.beadItems) {
+			beadIDs = append(beadIDs, m.beadItems[m.beadsCursor].ID)
+		}
+
+		m.viewMode = ViewNormal
+		// Clear selection after deletion
+		m.selectedBeads = make(map[string]bool)
+		if len(beadIDs) == 1 {
+			// Single bead - use the deleteBead function
+			return m, m.deleteBead(beadIDs[0])
+		} else if len(beadIDs) > 1 {
+			// Multiple beads - use the batch delete function
+			return m, m.deleteBeads(beadIDs)
+		}
+		return m, nil
+	case "n", "N":
+		m.viewMode = ViewNormal
+		return m, nil
+	}
+	return m, nil
+}
+
 // Dialog render helpers
 
 func (m *planModel) renderLabelFilterDialogContent() string {
@@ -158,6 +196,57 @@ func (m *planModel) renderCloseBeadConfirmContent() string {
 
   Are you sure you want to close:
 %s
+
+  [y] Yes  [n] No
+`, title, beadsList)
+
+	return tuiDialogStyle.Render(content)
+}
+
+func (m *planModel) renderDeleteBeadConfirmContent() string {
+	// Collect selected beads
+	var selectedBeads []beadItem
+	for _, item := range m.beadItems {
+		if m.selectedBeads[item.ID] {
+			selectedBeads = append(selectedBeads, item)
+		}
+	}
+
+	// If no selected beads, use cursor bead
+	if len(selectedBeads) == 0 && len(m.beadItems) > 0 && m.beadsCursor < len(m.beadItems) {
+		selectedBeads = append(selectedBeads, m.beadItems[m.beadsCursor])
+	}
+
+	// Build the confirmation message
+	var beadsList string
+	if len(selectedBeads) == 1 {
+		beadsList = fmt.Sprintf("  %s\n  %s", selectedBeads[0].ID, selectedBeads[0].Title)
+	} else if len(selectedBeads) > 1 {
+		beadsList = fmt.Sprintf("  %d issues:\n", len(selectedBeads))
+		for i, bead := range selectedBeads {
+			if i < 5 { // Show first 5 beads
+				beadsList += fmt.Sprintf("  - %s: %s\n", bead.ID, bead.Title)
+			}
+		}
+		if len(selectedBeads) > 5 {
+			beadsList += fmt.Sprintf("  ... and %d more", len(selectedBeads)-5)
+		}
+	}
+
+	var title string
+	if len(selectedBeads) == 1 {
+		title = "Delete Issue (PERMANENT)"
+	} else {
+		title = fmt.Sprintf("Delete %d Issues (PERMANENT)", len(selectedBeads))
+	}
+
+	content := fmt.Sprintf(`
+  %s
+
+  Are you sure you want to PERMANENTLY delete:
+%s
+
+  This action cannot be undone!
 
   [y] Yes  [n] No
 `, title, beadsList)

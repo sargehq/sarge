@@ -135,6 +135,7 @@ const (
 	ViewEditBead     // Edit selected issue
 	ViewDestroyConfirm
 	ViewCloseBeadConfirm
+	ViewDeleteBeadConfirm // Permanently delete bead(s)
 	ViewAssignBeads
 	ViewBeadSearch
 	ViewLabelFilter

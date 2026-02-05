@@ -279,6 +279,63 @@ func (m *planModel) closeBeads(beadIDs []string) tea.Cmd {
 	}
 }
 
+func (m *planModel) deleteBead(beadID string) tea.Cmd {
+	return func() tea.Msg {
+		beadsPath := m.proj.BeadsPath()
+		session := m.sessionName()
+		tabName := db.TabNameForBead(beadID)
+
+		// If there's an active session for this bead, close it
+		if m.activeBeadSessions[beadID] {
+			// Terminate and close the tab
+			_ = m.zj.Session(session).TerminateAndCloseTab(m.ctx, tabName)
+			// Unregister from database
+			_ = m.proj.DB.UnregisterPlanSession(m.ctx, beadID)
+		}
+
+		// Delete the bead permanently with --force to skip confirmation
+		if err := beads.Delete(m.ctx, beadID, beadsPath, true); err != nil {
+			return planDataMsg{err: fmt.Errorf("failed to delete issue: %w", err)}
+		}
+
+		// Refresh after delete
+		items, err := m.loadBeads()
+		activeSessions, _ := m.proj.DB.GetBeadsWithActiveSessions(m.ctx, session)
+		return planDataMsg{beads: items, activeSessions: activeSessions, err: err}
+	}
+}
+
+func (m *planModel) deleteBeads(beadIDs []string) tea.Cmd {
+	return func() tea.Msg {
+		beadsPath := m.proj.BeadsPath()
+		session := m.sessionName()
+
+		// First, close any active sessions for these beads
+		zjSession := m.zj.Session(session)
+		for _, beadID := range beadIDs {
+			if m.activeBeadSessions[beadID] {
+				tabName := db.TabNameForBead(beadID)
+				// Terminate and close the tab
+				_ = zjSession.TerminateAndCloseTab(m.ctx, tabName)
+				// Unregister from database
+				_ = m.proj.DB.UnregisterPlanSession(m.ctx, beadID)
+			}
+		}
+
+		// Delete all beads permanently with --force
+		for _, beadID := range beadIDs {
+			if err := beads.Delete(m.ctx, beadID, beadsPath, true); err != nil {
+				return planDataMsg{err: fmt.Errorf("failed to delete issue %s: %w", beadID, err)}
+			}
+		}
+
+		// Refresh after delete
+		items, err := m.loadBeads()
+		activeSessions, _ := m.proj.DB.GetBeadsWithActiveSessions(m.ctx, session)
+		return planDataMsg{beads: items, activeSessions: activeSessions, err: err}
+	}
+}
+
 func (m *planModel) saveBeadEdit(beadID, title, description, beadType, status string) tea.Cmd {
 	return func() tea.Msg {
 		beadsPath := m.proj.BeadsPath()

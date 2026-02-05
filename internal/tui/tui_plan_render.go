@@ -248,6 +248,7 @@ func (m *planModel) renderHelp() string {
   E             Edit issue in $EDITOR
   a             Add child issue (blocked by selected)
   x             Close selected issue
+  d             Delete issue (permanent removal)
   Space         Toggle issue selection (for multi-select)
   w             Create work from issue(s)
   A             Add issue to existing work

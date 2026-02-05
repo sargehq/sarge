@@ -236,6 +236,19 @@ func Close(ctx context.Context, beadID, beadsDir string) error {
 	return nil
 }
 
+// Delete permanently removes a bead.
+func Delete(ctx context.Context, beadID, beadsDir string, force bool) error {
+	args := []string{"delete", beadID}
+	if force {
+		args = append(args, "--force")
+	}
+	cmd := bdCommand(ctx, beadsDir, args...)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to delete bead %s: %w\n%s", beadID, err, output)
+	}
+	return nil
+}
+
 // AddComment adds a comment to a bead.
 func AddComment(ctx context.Context, beadID, comment, beadsDir string) error {
 	cmd := bdCommand(ctx, beadsDir, "comments", "add", beadID, comment)

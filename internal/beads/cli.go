@@ -17,6 +17,8 @@ type CLI interface {
 	Create(ctx context.Context, opts CreateOptions) (string, error)
 	// Close closes a bead.
 	Close(ctx context.Context, beadID string) error
+	// Delete permanently removes a bead.
+	Delete(ctx context.Context, beadID string, force bool) error
 	// Reopen reopens a closed bead.
 	Reopen(ctx context.Context, beadID string) error
 	// Update updates a bead's fields.
@@ -69,6 +71,11 @@ func (c *cliImpl) Create(ctx context.Context, opts CreateOptions) (string, error
 // Close implements CLI.Close.
 func (c *cliImpl) Close(ctx context.Context, beadID string) error {
 	return Close(ctx, beadID, c.beadsDir)
+}
+
+// Delete implements CLI.Delete.
+func (c *cliImpl) Delete(ctx context.Context, beadID string, force bool) error {
+	return Delete(ctx, beadID, c.beadsDir, force)
 }
 
 // Reopen implements CLI.Reopen.

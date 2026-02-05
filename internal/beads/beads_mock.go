@@ -33,6 +33,9 @@ var _ CLI = &BeadsCLIMock{}
 //			CreateFunc: func(ctx context.Context, opts CreateOptions) (string, error) {
 //				panic("mock out the Create method")
 //			},
+//			DeleteFunc: func(ctx context.Context, beadID string, force bool) error {
+//				panic("mock out the Delete method")
+//			},
 //			ReopenFunc: func(ctx context.Context, beadID string) error {
 //				panic("mock out the Reopen method")
 //			},
@@ -63,6 +66,9 @@ type BeadsCLIMock struct {
 
 	// CreateFunc mocks the Create method.
 	CreateFunc func(ctx context.Context, opts CreateOptions) (string, error)
+
+	// DeleteFunc mocks the Delete method.
+	DeleteFunc func(ctx context.Context, beadID string, force bool) error
 
 	// ReopenFunc mocks the Reopen method.
 	ReopenFunc func(ctx context.Context, beadID string) error
@@ -116,6 +122,15 @@ type BeadsCLIMock struct {
 			// Opts is the opts argument value.
 			Opts CreateOptions
 		}
+		// Delete holds details about calls to the Delete method.
+		Delete []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// BeadID is the beadID argument value.
+			BeadID string
+			// Force is the force argument value.
+			Force bool
+		}
 		// Reopen holds details about calls to the Reopen method.
 		Reopen []struct {
 			// Ctx is the ctx argument value.
@@ -147,6 +162,7 @@ type BeadsCLIMock struct {
 	lockAddLabels      sync.RWMutex
 	lockClose          sync.RWMutex
 	lockCreate         sync.RWMutex
+	lockDelete         sync.RWMutex
 	lockReopen         sync.RWMutex
 	lockSetExternalRef sync.RWMutex
 	lockUpdate         sync.RWMutex
@@ -357,6 +373,49 @@ func (mock *BeadsCLIMock) CreateCalls() []struct {
 	mock.lockCreate.RLock()
 	calls = mock.calls.Create
 	mock.lockCreate.RUnlock()
+	return calls
+}
+
+// Delete calls DeleteFunc.
+func (mock *BeadsCLIMock) Delete(ctx context.Context, beadID string, force bool) error {
+	callInfo := struct {
+		Ctx    context.Context
+		BeadID string
+		Force  bool
+	}{
+		Ctx:    ctx,
+		BeadID: beadID,
+		Force:  force,
+	}
+	mock.lockDelete.Lock()
+	mock.calls.Delete = append(mock.calls.Delete, callInfo)
+	mock.lockDelete.Unlock()
+	if mock.DeleteFunc == nil {
+		var (
+			errOut error
+		)
+		return errOut
+	}
+	return mock.DeleteFunc(ctx, beadID, force)
+}
+
+// DeleteCalls gets all the calls that were made to Delete.
+// Check the length with:
+//
+//	len(mockedCLI.DeleteCalls())
+func (mock *BeadsCLIMock) DeleteCalls() []struct {
+	Ctx    context.Context
+	BeadID string
+	Force  bool
+} {
+	var calls []struct {
+		Ctx    context.Context
+		BeadID string
+		Force  bool
+	}
+	mock.lockDelete.RLock()
+	calls = mock.calls.Delete
+	mock.lockDelete.RUnlock()
 	return calls
 }
 

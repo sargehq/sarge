@@ -442,6 +442,8 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m.handleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
 				case "x":
 					return m.handleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+				case "d":
+					return m.handleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
 				case "w":
 					return m.handleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'w'}})
 				case "p":
@@ -1059,6 +1061,8 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.updateLabelFilter(msg)
 	case ViewCloseBeadConfirm:
 		return m.updateCloseBeadConfirm(msg)
+	case ViewDeleteBeadConfirm:
+		return m.updateDeleteBeadConfirm(msg)
 	case ViewLinearImportInline:
 		// Delegate to linear import panel and handle returned action
 		cmd, action := m.linearImportPanel.Update(msg)
@@ -1330,6 +1334,24 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			// If we have selected beads or a cursor bead, show confirmation
 			if hasSelection || m.beadsCursor < len(m.beadItems) {
 				m.viewMode = ViewCloseBeadConfirm
+			}
+		}
+		return m, nil
+
+	case "d":
+		// Delete selected bead(s) permanently
+		if len(m.beadItems) > 0 {
+			// Check if we have any selected beads
+			hasSelection := false
+			for _, item := range m.beadItems {
+				if m.selectedBeads[item.ID] {
+					hasSelection = true
+					break
+				}
+			}
+			// If we have selected beads or a cursor bead, show confirmation
+			if hasSelection || m.beadsCursor < len(m.beadItems) {
+				m.viewMode = ViewDeleteBeadConfirm
 			}
 		}
 		return m, nil
@@ -1682,6 +1704,8 @@ func (m *planModel) View() string {
 		return m.renderWithDialog(m.renderLabelFilterDialogContent())
 	case ViewCloseBeadConfirm:
 		return m.renderWithDialog(m.renderCloseBeadConfirmContent())
+	case ViewDeleteBeadConfirm:
+		return m.renderWithDialog(m.renderDeleteBeadConfirmContent())
 	case ViewDestroyConfirm:
 		return m.renderWithDialog(m.renderDestroyConfirmContent())
 	case ViewLinearImportInline:
