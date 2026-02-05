@@ -272,4 +272,4 @@ bd ready  # View available beads
 
 ## License
 
-MIT
+Apache 2.0 with Commons Clause. See [LICENSE](LICENSE) for details.
