@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/sargehq/sarge/internal/beads"
 	"github.com/sargehq/sarge/internal/claude"
@@ -93,17 +94,74 @@ func buildLogAnalysisPromptFromMetadata(ctx context.Context, proj *project.Proje
 		return "", fmt.Errorf("log_content metadata is missing for task %s", task.ID)
 	}
 
+	// Write log content to a temp file for Claude to read
+	// This keeps the prompt small and lets Claude read only what it needs
+	logFile, err := os.CreateTemp("", "ci-log-*.txt")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp file for log content: %w", err)
+	}
+	if _, err := logFile.WriteString(logContent); err != nil {
+		logFile.Close()
+		os.Remove(logFile.Name())
+		return "", fmt.Errorf("failed to write log content to temp file: %w", err)
+	}
+	logFile.Close()
+
+	// Fetch existing open beads for this work to help Claude match against them
+	existingBeads := fetchExistingBeadSummaries(ctx, proj, work.ID)
+
 	params := claude.LogAnalysisParams{
-		TaskID:       task.ID,
-		WorkID:       work.ID,
-		BranchName:   branchName,
-		RootIssueID:  rootIssueID,
-		WorkflowName: workflowName,
-		JobName:      jobName,
-		LogContent:   logContent,
+		TaskID:        task.ID,
+		WorkID:        work.ID,
+		BranchName:    branchName,
+		RootIssueID:   rootIssueID,
+		WorkflowName:  workflowName,
+		JobName:       jobName,
+		LogFilePath:   logFile.Name(),
+		ExistingBeads: existingBeads,
 	}
 
 	return claude.BuildLogAnalysisPrompt(params), nil
+}
+
+// fetchExistingBeadSummaries fetches open beads for the given work and converts them to summaries for matching.
+func fetchExistingBeadSummaries(ctx context.Context, proj *project.Project, workID string) []claude.BeadSummary {
+	// Get bead IDs assigned to this work
+	workBeads, err := proj.DB.GetWorkBeads(ctx, workID)
+	if err != nil {
+		fmt.Printf("Warning: failed to fetch work beads for deduplication: %v\n", err)
+		return nil
+	}
+
+	if len(workBeads) == 0 {
+		return nil
+	}
+
+	// Extract bead IDs
+	beadIDs := make([]string, len(workBeads))
+	for i, wb := range workBeads {
+		beadIDs[i] = wb.BeadID
+	}
+
+	// Fetch bead details from beads database
+	result, err := proj.Beads.GetBeadsWithDeps(ctx, beadIDs)
+	if err != nil {
+		fmt.Printf("Warning: failed to fetch bead details for deduplication: %v\n", err)
+		return nil
+	}
+
+	// Filter to only open beads and convert to summaries
+	summaries := make([]claude.BeadSummary, 0, len(beadIDs))
+	for _, beadID := range beadIDs {
+		if bwd := result.GetBead(beadID); bwd != nil && bwd.Bead.Status == beads.StatusOpen {
+			summaries = append(summaries, claude.BeadSummary{
+				ID:          bwd.Bead.ID,
+				Title:       bwd.Bead.Title,
+				Description: bwd.Bead.Description,
+			})
+		}
+	}
+	return summaries
 }
 
 // getBeadsForTask retrieves the beads associated with a task.

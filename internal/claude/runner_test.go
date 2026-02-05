@@ -23,7 +23,7 @@ func TestBuildLogAnalysisPrompt(t *testing.T) {
 				RootIssueID:  "beads-123",
 				WorkflowName: "CI Pipeline",
 				JobName:      "Unit Tests",
-				LogContent:   "--- FAIL: TestSomething (0.02s)",
+				LogFilePath:   "--- FAIL: TestSomething (0.02s)",
 			},
 			wantContains: []string{
 				"Work w-abc",
@@ -44,7 +44,7 @@ func TestBuildLogAnalysisPrompt(t *testing.T) {
 				RootIssueID:  "",
 				WorkflowName: "Build",
 				JobName:      "Compile",
-				LogContent:   "compilation error: undefined reference",
+				LogFilePath:   "compilation error: undefined reference",
 			},
 			wantContains: []string{
 				"Work w-xyz",
@@ -59,7 +59,7 @@ func TestBuildLogAnalysisPrompt(t *testing.T) {
 			},
 		},
 		{
-			name: "Empty log content",
+			name: "Empty log file path",
 			params: LogAnalysisParams{
 				TaskID:       "w-test.2",
 				WorkID:       "w-test",
@@ -67,16 +67,16 @@ func TestBuildLogAnalysisPrompt(t *testing.T) {
 				RootIssueID:  "beads-456",
 				WorkflowName: "Tests",
 				JobName:      "Integration",
-				LogContent:   "",
+				LogFilePath:  "",
 			},
 			wantContains: []string{
 				"Work w-test",
 				"Job: Integration",
-				"--- CI Log Output ---",
+				"The CI log output is in:",
 			},
 		},
 		{
-			name: "Multiline log content",
+			name: "Log file path included",
 			params: LogAnalysisParams{
 				TaskID:       "w-multi.3",
 				WorkID:       "w-multi",
@@ -84,15 +84,11 @@ func TestBuildLogAnalysisPrompt(t *testing.T) {
 				RootIssueID:  "",
 				WorkflowName: "CI",
 				JobName:      "Test",
-				LogContent: `FAIL internal/auth/user_test.go:145
-    Error: Expected token to be valid
-    Got: token expired
---- FAIL: TestUserAuth (0.03s)`,
+				LogFilePath:  "/tmp/ci-log-12345.txt",
 			},
 			wantContains: []string{
-				"internal/auth/user_test.go:145",
-				"Error: Expected token to be valid",
-				"--- FAIL: TestUserAuth (0.03s)",
+				"/tmp/ci-log-12345.txt",
+				"Read this file to analyze the failures",
 			},
 		},
 	}
@@ -121,7 +117,7 @@ func TestLogAnalysisParams(t *testing.T) {
 		RootIssueID:  "issue-1",
 		WorkflowName: "workflow-1",
 		JobName:      "job-1",
-		LogContent:   "content",
+		LogFilePath:   "content",
 	}
 
 	require.Equal(t, "task-1", params.TaskID)
@@ -130,7 +126,7 @@ func TestLogAnalysisParams(t *testing.T) {
 	require.Equal(t, "issue-1", params.RootIssueID)
 	require.Equal(t, "workflow-1", params.WorkflowName)
 	require.Equal(t, "job-1", params.JobName)
-	require.Equal(t, "content", params.LogContent)
+	require.Equal(t, "content", params.LogFilePath)
 }
 
 func TestBuildLogAnalysisPromptPriorityGuidelines(t *testing.T) {
@@ -141,7 +137,7 @@ func TestBuildLogAnalysisPromptPriorityGuidelines(t *testing.T) {
 		BranchName:   "main",
 		WorkflowName: "CI",
 		JobName:      "Test",
-		LogContent:   "test failure",
+		LogFilePath:   "test failure",
 	}
 
 	result := BuildLogAnalysisPrompt(params)
@@ -167,7 +163,7 @@ func TestBuildLogAnalysisPromptBdCreateCommand(t *testing.T) {
 		BranchName:   "main",
 		WorkflowName: "CI",
 		JobName:      "Test",
-		LogContent:   "test failure",
+		LogFilePath:   "test failure",
 	}
 
 	result := BuildLogAnalysisPrompt(params)
@@ -180,4 +176,114 @@ func TestBuildLogAnalysisPromptBdCreateCommand(t *testing.T) {
 
 	// Check that it includes priority option
 	require.Contains(t, result, "--priority", "BuildLogAnalysisPrompt() missing --priority flag")
+}
+
+func TestLogAnalysisParamsExistingBeadsField(t *testing.T) {
+	// Test that ExistingBeads field is properly included in the struct
+	params := LogAnalysisParams{
+		TaskID:       "task-1",
+		WorkID:       "work-1",
+		BranchName:   "main",
+		RootIssueID:  "issue-1",
+		WorkflowName: "workflow-1",
+		JobName:      "job-1",
+		LogFilePath:   "content",
+		ExistingBeads: []BeadSummary{
+			{ID: "bead-1", Title: "Fix test failure", Description: "Test failed at file.go:42"},
+			{ID: "bead-2", Title: "Lint error", Description: "Missing comment on exported function"},
+		},
+	}
+
+	require.Len(t, params.ExistingBeads, 2)
+	require.Equal(t, "bead-1", params.ExistingBeads[0].ID)
+	require.Equal(t, "Fix test failure", params.ExistingBeads[0].Title)
+	require.Equal(t, "Test failed at file.go:42", params.ExistingBeads[0].Description)
+}
+
+func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
+	t.Run("renders existing beads section", func(t *testing.T) {
+		params := LogAnalysisParams{
+			TaskID:       "w-test.1",
+			WorkID:       "w-test",
+			BranchName:   "main",
+			WorkflowName: "CI",
+			JobName:      "Test",
+			LogFilePath:   "--- FAIL: TestSomething (0.02s)",
+			ExistingBeads: []BeadSummary{
+				{ID: "beads-123", Title: "Fix TestUserAuth failure", Description: "Test failed at auth_test.go:42"},
+				{ID: "beads-456", Title: "Fix lint error in utils", Description: "Missing comment"},
+			},
+		}
+
+		result := BuildLogAnalysisPrompt(params)
+
+		// Should contain the existing beads section header
+		require.Contains(t, result, "Existing Open Issues")
+
+		// Should contain bead IDs and titles
+		require.Contains(t, result, "beads-123")
+		require.Contains(t, result, "Fix TestUserAuth failure")
+		require.Contains(t, result, "beads-456")
+		require.Contains(t, result, "Fix lint error in utils")
+
+		// Should contain descriptions
+		require.Contains(t, result, "Test failed at auth_test.go:42")
+		require.Contains(t, result, "Missing comment")
+
+		// Should contain instructions to check existing beads
+		require.Contains(t, result, "matches an existing issue")
+		require.Contains(t, result, "skip it")
+	})
+
+	t.Run("no existing beads section when empty", func(t *testing.T) {
+		params := LogAnalysisParams{
+			TaskID:        "w-test.1",
+			WorkID:        "w-test",
+			BranchName:    "main",
+			WorkflowName:  "CI",
+			JobName:       "Test",
+			LogFilePath:    "--- FAIL: TestSomething (0.02s)",
+			ExistingBeads: nil,
+		}
+
+		result := BuildLogAnalysisPrompt(params)
+
+		// Should not contain the existing beads section header when no beads
+		require.NotContains(t, result, "Existing Open Issues")
+	})
+
+	t.Run("handles beads without description", func(t *testing.T) {
+		params := LogAnalysisParams{
+			TaskID:       "w-test.1",
+			WorkID:       "w-test",
+			BranchName:   "main",
+			WorkflowName: "CI",
+			JobName:      "Test",
+			LogFilePath:   "--- FAIL: TestSomething (0.02s)",
+			ExistingBeads: []BeadSummary{
+				{ID: "beads-789", Title: "Fix test", Description: ""},
+			},
+		}
+
+		result := BuildLogAnalysisPrompt(params)
+
+		// Should contain the bead ID and title
+		require.Contains(t, result, "beads-789")
+		require.Contains(t, result, "Fix test")
+
+		// Should not have extra whitespace issues
+		require.Contains(t, result, "Existing Open Issues")
+	})
+}
+
+func TestBeadSummaryStruct(t *testing.T) {
+	summary := BeadSummary{
+		ID:          "bead-test",
+		Title:       "Test Title",
+		Description: "Test Description",
+	}
+
+	require.Equal(t, "bead-test", summary.ID)
+	require.Equal(t, "Test Title", summary.Title)
+	require.Equal(t, "Test Description", summary.Description)
 }

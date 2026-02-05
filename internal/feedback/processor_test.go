@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/feedback/logparser"
 	"github.com/sargehq/sarge/internal/github"
 	"github.com/stretchr/testify/require"
 )
@@ -120,29 +121,6 @@ func TestIsActionableComment(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := processor.isActionableComment(tt.body)
 			require.Equal(t, tt.actionable, result)
-		})
-	}
-}
-
-func TestTruncateText(t *testing.T) {
-	processor := &FeedbackProcessor{}
-
-	tests := []struct {
-		name     string
-		text     string
-		maxLen   int
-		expected string
-	}{
-		{"Short text", "Hello", 10, "Hello"},
-		{"Exact length", "Hello", 5, "Hello"},
-		{"Long text", "Hello, World!", 5, "Hello..."},
-		{"Empty text", "", 10, ""},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := processor.truncateText(tt.text, tt.maxLen)
-			require.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -650,4 +628,298 @@ func TestTruncateLogContent(t *testing.T) {
 			require.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestNormalizeContent(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "strips ISO timestamp",
+			input:    "Error at 2024-01-15 10:30:45: connection failed",
+			expected: "Error at : connection failed",
+		},
+		{
+			name:     "strips ISO timestamp with T separator",
+			input:    "Error at 2024-01-15T10:30:45Z: connection failed",
+			expected: "Error at : connection failed",
+		},
+		{
+			name:     "strips timestamp with timezone offset",
+			input:    "Error at 2024-01-15T10:30:45+00:00: connection failed",
+			expected: "Error at : connection failed",
+		},
+		{
+			name:     "strips short time",
+			input:    "10:30:45 Error: test failed",
+			expected: "Error: test failed",
+		},
+		{
+			name:     "strips memory address",
+			input:    "panic at 0x7fff5fbff8c0: invalid pointer",
+			expected: "panic at : invalid pointer",
+		},
+		{
+			name:     "strips multiple memory addresses",
+			input:    "value 0xDEADBEEF != expected 0xCAFEBABE",
+			expected: "value != expected",
+		},
+		{
+			name:     "strips temp path /tmp",
+			input:    "failed to write /tmp/test-123/output.txt",
+			expected: "failed to write",
+		},
+		{
+			name:     "strips temp path /var/folders",
+			input:    "failed to read /var/folders/ab/cd/T/go-build123/test.go",
+			expected: "failed to read",
+		},
+		{
+			name:     "strips pid= format",
+			input:    "process pid=12345 crashed",
+			expected: "process crashed",
+		},
+		{
+			name:     "strips PID: format",
+			input:    "Process PID: 67890 terminated",
+			expected: "Process terminated",
+		},
+		{
+			name:     "strips goroutine ID",
+			input:    "goroutine 123 [running]:\nmain.doSomething()",
+			expected: "[running]: main.doSomething()",
+		},
+		{
+			name:     "strips duration values",
+			input:    "--- FAIL: TestSomething (1.234s)",
+			expected: "--- FAIL: TestSomething",
+		},
+		{
+			name:     "strips external stack trace lines",
+			input:    "called from /usr/local/go/src/runtime/panic.go:123",
+			expected: "called from",
+		},
+		{
+			name:     "collapses whitespace",
+			input:    "error   with    multiple   spaces",
+			expected: "error with multiple spaces",
+		},
+		{
+			name:     "preserves error message core",
+			input:    "TestUserAuth: expected valid token, got expired",
+			expected: "TestUserAuth: expected valid token, got expired",
+		},
+		{
+			name:     "handles complex CI log snippet",
+			input:    "2024-01-15 10:30:45 goroutine 42 [running]: TestAuth failed at 0x7fff5fbff8c0 (1.234s)",
+			expected: "[running]: TestAuth failed at",
+		},
+		{
+			name:     "empty input",
+			input:    "",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := normalizeContent(tt.input)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestGenerateFailureSourceID(t *testing.T) {
+	t.Run("same logical failure produces same hash", func(t *testing.T) {
+		// Simulate same test failure from different CI runs
+		id1 := generateFailureSourceID(
+			"TestUserAuth",
+			"auth_test.go",
+			42,
+			"2024-01-15 10:30:45 Error: expected valid token, got expired",
+		)
+		id2 := generateFailureSourceID(
+			"TestUserAuth",
+			"auth_test.go",
+			42,
+			"2024-01-16 14:22:33 Error: expected valid token, got expired",
+		)
+
+		require.Equal(t, id1, id2, "Same logical failure should produce same ID regardless of timestamp")
+		require.True(t, len(id1) > 0, "ID should not be empty")
+		require.Contains(t, id1, "fail-", "ID should have fail- prefix")
+	})
+
+	t.Run("different failures produce different hashes", func(t *testing.T) {
+		id1 := generateFailureSourceID(
+			"TestUserAuth",
+			"auth_test.go",
+			42,
+			"Error: expected valid token, got expired",
+		)
+		id2 := generateFailureSourceID(
+			"TestUserCreate",
+			"user_test.go",
+			100,
+			"Error: user already exists",
+		)
+
+		require.NotEqual(t, id1, id2, "Different failures should produce different IDs")
+	})
+
+	t.Run("different line numbers produce different hashes", func(t *testing.T) {
+		id1 := generateFailureSourceID("TestSomething", "test.go", 42, "error msg")
+		id2 := generateFailureSourceID("TestSomething", "test.go", 43, "error msg")
+
+		require.NotEqual(t, id1, id2, "Different line numbers should produce different IDs")
+	})
+
+	t.Run("normalizes memory addresses in message", func(t *testing.T) {
+		id1 := generateFailureSourceID(
+			"TestPointer",
+			"ptr_test.go",
+			10,
+			"invalid pointer at 0xDEADBEEF",
+		)
+		id2 := generateFailureSourceID(
+			"TestPointer",
+			"ptr_test.go",
+			10,
+			"invalid pointer at 0xCAFEBABE",
+		)
+
+		require.Equal(t, id1, id2, "Memory addresses should be normalized")
+	})
+
+	t.Run("normalizes PIDs in message", func(t *testing.T) {
+		id1 := generateFailureSourceID(
+			"TestProcess",
+			"proc_test.go",
+			20,
+			"process pid=12345 crashed",
+		)
+		id2 := generateFailureSourceID(
+			"TestProcess",
+			"proc_test.go",
+			20,
+			"process pid=67890 crashed",
+		)
+
+		require.Equal(t, id1, id2, "PIDs should be normalized")
+	})
+}
+
+func TestGenerateGenericFailureSourceID(t *testing.T) {
+	t.Run("same workflow failure produces same hash", func(t *testing.T) {
+		id1 := generateGenericFailureSourceID("CI Pipeline", "Build", "Compile")
+		id2 := generateGenericFailureSourceID("CI Pipeline", "Build", "Compile")
+
+		require.Equal(t, id1, id2, "Same workflow failure should produce same ID")
+		require.Contains(t, id1, "fail-", "ID should have fail- prefix")
+	})
+
+	t.Run("different workflow failures produce different hashes", func(t *testing.T) {
+		id1 := generateGenericFailureSourceID("CI Pipeline", "Build", "Compile")
+		id2 := generateGenericFailureSourceID("CI Pipeline", "Test", "Run tests")
+
+		require.NotEqual(t, id1, id2, "Different workflow failures should produce different IDs")
+	})
+
+	t.Run("different workflow names produce different hashes", func(t *testing.T) {
+		id1 := generateGenericFailureSourceID("CI Pipeline", "Build", "Compile")
+		id2 := generateGenericFailureSourceID("Nightly Build", "Build", "Compile")
+
+		require.NotEqual(t, id1, id2, "Different workflow names should produce different IDs")
+	})
+}
+
+func TestSourceIDStabilityAcrossCIRuns(t *testing.T) {
+	// Simulate feedback items from the same failure across different CI runs
+	t.Run("createFailureItem produces stable IDs", func(t *testing.T) {
+		processor := &FeedbackProcessor{
+			client: &github.Client{},
+		}
+
+		// First CI run
+		workflow1 := github.WorkflowRun{
+			ID:   12345, // Different run ID
+			Name: "Test Suite",
+		}
+		job1 := github.Job{
+			ID:   111111, // Different job ID
+			Name: "Unit Tests",
+		}
+		failure1 := logparser.Failure{
+			Name:    "TestUserAuth",
+			File:    "auth_test.go",
+			Line:    42,
+			Message: "2024-01-15 10:30:45 Error: expected valid token",
+		}
+
+		// Second CI run with different IDs but same failure
+		workflow2 := github.WorkflowRun{
+			ID:   67890, // Different run ID
+			Name: "Test Suite",
+		}
+		job2 := github.Job{
+			ID:   222222, // Different job ID
+			Name: "Unit Tests",
+		}
+		failure2 := logparser.Failure{
+			Name:    "TestUserAuth",
+			File:    "auth_test.go",
+			Line:    42,
+			Message: "2024-01-16 14:22:33 Error: expected valid token",
+		}
+
+		item1 := processor.createFailureItem(workflow1, job1, failure1)
+		item2 := processor.createFailureItem(workflow2, job2, failure2)
+
+		require.Equal(t, item1.Source.ID, item2.Source.ID,
+			"Same logical failure should have same source ID across CI runs")
+	})
+
+	t.Run("createGenericFailureItem produces stable IDs", func(t *testing.T) {
+		processor := &FeedbackProcessor{
+			client: &github.Client{},
+		}
+
+		// First CI run
+		workflow1 := github.WorkflowRun{
+			ID:   12345,
+			Name: "CI Pipeline",
+		}
+		job1 := github.Job{
+			ID:         111111,
+			Name:       "Build",
+			Conclusion: "failure",
+			Steps: []github.Step{
+				{Name: "Setup", Conclusion: "success"},
+				{Name: "Compile", Conclusion: "failure"},
+			},
+		}
+
+		// Second CI run
+		workflow2 := github.WorkflowRun{
+			ID:   67890,
+			Name: "CI Pipeline",
+		}
+		job2 := github.Job{
+			ID:         222222,
+			Name:       "Build",
+			Conclusion: "failure",
+			Steps: []github.Step{
+				{Name: "Setup", Conclusion: "success"},
+				{Name: "Compile", Conclusion: "failure"},
+			},
+		}
+
+		item1 := processor.createGenericFailureItem(workflow1, job1)
+		item2 := processor.createGenericFailureItem(workflow2, job2)
+
+		require.Equal(t, item1.Source.ID, item2.Source.ID,
+			"Same workflow failure should have same source ID across CI runs")
+	})
 }

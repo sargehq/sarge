@@ -2,7 +2,9 @@ package feedback
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/sargehq/sarge/internal/db"
@@ -14,7 +16,9 @@ import (
 
 // maxLogContentSize is the maximum size in bytes for log content stored in task metadata.
 // Logs exceeding this size are truncated, keeping the last portion (most relevant for errors).
-const maxLogContentSize = 50 * 1024 // 50KB
+// Since logs are written to a temp file for Claude to read (not embedded in prompt),
+// this can be quite large.
+const maxLogContentSize = 500 * 1024 // 500KB
 
 // FeedbackProcessor processes PR feedback and generates actionable items.
 type FeedbackProcessor struct {
@@ -301,13 +305,16 @@ func (p *FeedbackProcessor) createFailureItem(workflow github.WorkflowRun, job g
 		feedbackType = github.FeedbackTypeLint
 	}
 
+	// Generate content-based source ID for deduplication across CI runs
+	sourceID := generateFailureSourceID(f.Name, f.File, f.Line, f.Message)
+
 	return github.FeedbackItem{
 		Type:        feedbackType,
 		Title:       title,
 		Description: formatFailure(f),
 		Source: github.SourceInfo{
 			Type: github.SourceTypeWorkflow,
-			ID:   fmt.Sprintf("%d-%s-%s-%d-%d", job.ID, f.Name, f.File, f.Line, f.Column),
+			ID:   sourceID,
 			Name: workflow.Name,
 			URL:  job.URL,
 		},
@@ -340,13 +347,16 @@ func (p *FeedbackProcessor) createGenericFailureItem(workflow github.WorkflowRun
 	feedbackType := p.categorizeWorkflowFailure(workflow.Name, detail)
 	jobName, stepName := parseWorkflowDetail(detail)
 
+	// Generate content-based source ID for deduplication across CI runs
+	sourceID := generateGenericFailureSourceID(workflow.Name, jobName, stepName)
+
 	return github.FeedbackItem{
 		Type:        feedbackType,
 		Title:       fmt.Sprintf("Fix %s in %s", detail, workflow.Name),
 		Description: fmt.Sprintf("Workflow '%s' failed at: %s", workflow.Name, detail),
 		Source: github.SourceInfo{
 			Type: github.SourceTypeWorkflow,
-			ID:   fmt.Sprintf("%d", job.ID),
+			ID:   sourceID,
 			Name: workflow.Name,
 			URL:  job.URL,
 		},
@@ -440,7 +450,7 @@ func (p *FeedbackProcessor) processReviews(status *github.PRStatus) []github.Fee
 			item := github.FeedbackItem{
 				Type:        github.FeedbackTypeReview,
 				Title:       fmt.Sprintf("Address review feedback from %s", review.Author),
-				Description: p.truncateText(review.Body, 500),
+				Description: review.Body,
 				Source: github.SourceInfo{
 					Type: github.SourceTypeReviewComment,
 					ID:   fmt.Sprintf("%d", review.ID),
@@ -477,7 +487,7 @@ func (p *FeedbackProcessor) processReviews(status *github.PRStatus) []github.Fee
 			item := github.FeedbackItem{
 				Type:        github.FeedbackTypeReview,
 				Title:       fmt.Sprintf("Fix issue in %s (line %d)", comment.Path, lineNum),
-				Description: p.truncateText(comment.Body, 300),
+				Description: comment.Body,
 				Source: github.SourceInfo{
 					Type: github.SourceTypeReviewComment,
 					ID:   fmt.Sprintf("%d", comment.ID),
@@ -515,7 +525,7 @@ func (p *FeedbackProcessor) processComments(status *github.PRStatus) []github.Fe
 			item := github.FeedbackItem{
 				Type:        feedbackType,
 				Title:       p.extractTitleFromComment(comment.Body),
-				Description: p.truncateText(comment.Body, 500),
+				Description: comment.Body,
 				Source: github.SourceInfo{
 					Type: github.SourceTypeIssueComment,
 					ID:   fmt.Sprintf("%d", comment.ID),
@@ -713,13 +723,6 @@ func (p *FeedbackProcessor) getPriorityForType(feedbackType github.FeedbackType)
 	}
 }
 
-func (p *FeedbackProcessor) truncateText(text string, maxLen int) string {
-	if len(text) <= maxLen {
-		return text
-	}
-	return text[:maxLen] + "..."
-}
-
 // truncateLogContent truncates log content to the specified maximum size.
 // It keeps the last maxBytes of the log, as the end typically contains the most
 // relevant error information.
@@ -729,4 +732,77 @@ func truncateLogContent(logs string, maxBytes int) string {
 	}
 	// Keep the last maxBytes - error details are usually at the end
 	return logs[len(logs)-maxBytes:]
+}
+
+// Patterns for normalizing content to enable stable hashing
+var (
+	// Timestamps: 2024-01-15 10:30:45, 2024/01/15 10:30:45, Jan 15 10:30:45
+	timestampPattern = regexp.MustCompile(`\d{4}[-/]\d{2}[-/]\d{2}[T ]?\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?`)
+	// Short timestamps: 10:30:45
+	shortTimePattern = regexp.MustCompile(`\d{2}:\d{2}:\d{2}(?:\.\d+)?`)
+	// Memory addresses: 0x7fff5fbff8c0
+	memoryAddrPattern = regexp.MustCompile(`0x[0-9a-fA-F]+`)
+	// Temp paths: /tmp/..., /var/folders/..., C:\Users\...\AppData\Local\Temp\...
+	tempPathPattern = regexp.MustCompile(`(?:/tmp/[^\s:]+|/var/folders/[^\s:]+|C:\\[^:]*\\Temp\\[^\s:]+)`)
+	// Process IDs: pid=12345, pid: 12345, PID 12345
+	pidPattern = regexp.MustCompile(`(?i)pid[=:\s]+\d+`)
+	// Goroutine IDs: goroutine 123
+	goroutinePattern = regexp.MustCompile(`goroutine \d+`)
+	// Duration values: (1.234s), 1.234ms, 1234µs
+	durationPattern = regexp.MustCompile(`\(\d+\.?\d*[µmn]?s\)`)
+	// Stack trace line numbers from other packages (not the test file itself)
+	// e.g., /usr/local/go/src/runtime/panic.go:123
+	externalLinePattern = regexp.MustCompile(`(?:/usr/local/go/|/go/pkg/)[^\s:]+:\d+`)
+)
+
+// normalizeContent strips variable content from error messages to enable stable hashing.
+// This allows the same logical failure to produce the same hash across different CI runs,
+// even if timestamps, memory addresses, or other transient values change.
+func normalizeContent(content string) string {
+	normalized := content
+
+	// Strip timestamps
+	normalized = timestampPattern.ReplaceAllString(normalized, "")
+	normalized = shortTimePattern.ReplaceAllString(normalized, "")
+
+	// Strip memory addresses
+	normalized = memoryAddrPattern.ReplaceAllString(normalized, "")
+
+	// Strip temp paths
+	normalized = tempPathPattern.ReplaceAllString(normalized, "")
+
+	// Strip process IDs
+	normalized = pidPattern.ReplaceAllString(normalized, "")
+
+	// Strip goroutine IDs
+	normalized = goroutinePattern.ReplaceAllString(normalized, "")
+
+	// Strip duration values (which vary between runs)
+	normalized = durationPattern.ReplaceAllString(normalized, "")
+
+	// Strip external stack trace line numbers
+	normalized = externalLinePattern.ReplaceAllString(normalized, "")
+
+	// Collapse whitespace
+	normalized = strings.Join(strings.Fields(normalized), " ")
+
+	return strings.TrimSpace(normalized)
+}
+
+// generateFailureSourceID creates a content-based source ID for a parsed failure.
+// This produces stable IDs across CI runs for the same logical failure.
+func generateFailureSourceID(failureName, file string, line int, message string) string {
+	// Build content string from stable failure attributes
+	// Include file and line from the test itself (not stack traces)
+	content := fmt.Sprintf("%s|%s:%d|%s", failureName, file, line, normalizeContent(message))
+	hash := sha256.Sum256([]byte(content))
+	return fmt.Sprintf("fail-%x", hash[:8])
+}
+
+// generateGenericFailureSourceID creates a content-based source ID for a generic workflow failure.
+// This produces stable IDs across CI runs for the same logical failure.
+func generateGenericFailureSourceID(workflowName, jobName, stepName string) string {
+	content := fmt.Sprintf("%s|%s|%s", workflowName, jobName, normalizeContent(stepName))
+	hash := sha256.Sum256([]byte(content))
+	return fmt.Sprintf("fail-%x", hash[:8])
 }
