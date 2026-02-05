@@ -1,6 +1,7 @@
 package project
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -279,6 +280,120 @@ use_claude = true
 
 			require.Equal(t, tt.wantUseClaude, cfg.LogParser.ShouldUseClaude())
 			require.Equal(t, tt.wantModel, cfg.LogParser.GetModel())
+		})
+	}
+}
+
+func TestIDEConfig_GetIDECommand(t *testing.T) {
+	tests := []struct {
+		name      string
+		command   string
+		editorEnv string
+		expected  string
+	}{
+		{
+			name:      "returns Command when set",
+			command:   "code",
+			editorEnv: "vim",
+			expected:  "code",
+		},
+		{
+			name:      "falls back to EDITOR env var when Command is empty",
+			command:   "",
+			editorEnv: "nvim",
+			expected:  "nvim",
+		},
+		{
+			name:      "returns empty string when neither is configured",
+			command:   "",
+			editorEnv: "",
+			expected:  "",
+		},
+		{
+			name:      "Command takes precedence over EDITOR",
+			command:   "cursor",
+			editorEnv: "emacs",
+			expected:  "cursor",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Save and restore EDITOR environment variable
+			origEditor := os.Getenv("EDITOR")
+			defer func() {
+				if origEditor == "" {
+					os.Unsetenv("EDITOR")
+				} else {
+					os.Setenv("EDITOR", origEditor)
+				}
+			}()
+
+			// Set test environment
+			if tt.editorEnv == "" {
+				os.Unsetenv("EDITOR")
+			} else {
+				os.Setenv("EDITOR", tt.editorEnv)
+			}
+
+			cfg := IDEConfig{Command: tt.command}
+			result := cfg.GetIDECommand()
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestIDEConfigFromTOML(t *testing.T) {
+	tests := []struct {
+		name        string
+		tomlContent string
+		wantCommand string
+		wantArgs    []string
+	}{
+		{
+			name: "Not specified defaults to empty",
+			tomlContent: `
+[project]
+name = "test"
+`,
+			wantCommand: "",
+			wantArgs:    nil,
+		},
+		{
+			name: "Command only",
+			tomlContent: `
+[project]
+name = "test"
+
+[ide]
+command = "code"
+`,
+			wantCommand: "code",
+			wantArgs:    nil,
+		},
+		{
+			name: "Command with args",
+			tomlContent: `
+[project]
+name = "test"
+
+[ide]
+command = "cursor"
+args = ["--new-window", "--wait"]
+`,
+			wantCommand: "cursor",
+			wantArgs:    []string{"--new-window", "--wait"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var cfg Config
+			_, err := toml.Decode(tt.tomlContent, &cfg)
+			require.NoError(t, err)
+
+			require.Equal(t, tt.wantCommand, cfg.IDE.Command)
+			require.Equal(t, tt.wantArgs, cfg.IDE.Args)
 		})
 	}
 }
