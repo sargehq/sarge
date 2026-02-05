@@ -123,7 +123,7 @@ func processPRFeedbackInternal(ctx context.Context, proj *project.Project, datab
 
 			// Add the reply as a comment to the existing bead
 			commentText := fmt.Sprintf("Reply from %s:\n\n%s", item.GetSourceName(), item.Description)
-			if err := beads.AddComment(ctx, *parentFeedback.BeadID, commentText, beadsPath); err != nil {
+			if err := beads.NewCLI(beadsPath).AddComment(ctx, *parentFeedback.BeadID, commentText); err != nil {
 				if !quiet {
 					fmt.Printf("%d. [ERROR] Failed to add comment to bead %s: %v\n", i+1, *parentFeedback.BeadID, err)
 				}
