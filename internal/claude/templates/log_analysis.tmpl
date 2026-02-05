@@ -54,9 +54,8 @@ Instructions:
      --description "Lint error at internal/utils/helper.go:23 - exported function should have comment"
    ```
 
-6. After creating all beads (or if all failures matched existing issues), mark the task complete: sarge complete {{.TaskID}}
-
-If the logs show all checks passed with no failures, simply mark the task complete without creating any beads.
+6. **Always** mark the task complete when done: `sarge complete {{.TaskID}}`
+   Run this whether you created beads, matched existing issues, or found no failures at all.
 
 --- CI Log Output ---
 {{.LogContent}}
