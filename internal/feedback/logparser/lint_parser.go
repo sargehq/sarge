@@ -21,18 +21,10 @@ var (
 	lintErrorNoColPattern = regexp.MustCompile(`##\[error\]([^:]+):(\d+):\s*(.+)\s*\(([^)]+)\)`)
 )
 
-// CanParse returns true if the log contains golangci-lint output.
+// CanParse returns true if the log contains lint errors in GitHub Actions format.
+// Uses regex patterns that match any linter name, avoiding a hardcoded list.
 func (p *LintParser) CanParse(logContent string) bool {
-	return strings.Contains(logContent, "##[error]") &&
-		(strings.Contains(logContent, "(errcheck)") ||
-			strings.Contains(logContent, "(gofmt)") ||
-			strings.Contains(logContent, "(unused)") ||
-			strings.Contains(logContent, "(staticcheck)") ||
-			strings.Contains(logContent, "(govet)") ||
-			strings.Contains(logContent, "(gosimple)") ||
-			strings.Contains(logContent, "(ineffassign)") ||
-			strings.Contains(logContent, "(typecheck)") ||
-			strings.Contains(logContent, "(thelper)"))
+	return lintErrorPattern.MatchString(logContent) || lintErrorNoColPattern.MatchString(logContent)
 }
 
 // Parse extracts lint errors from the log content.
