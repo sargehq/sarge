@@ -186,3 +186,52 @@ func TestBuildBeadTree_ParentChildRelationship(t *testing.T) {
 	// Both parent and child should be visible
 	require.Len(t, result, 2, "expected parent to be visible with open child")
 }
+
+// TestBuildBeadTree_ClosedParentWithClosedChildren tests that closed parents with only closed children are filtered out
+func TestBuildBeadTree_ClosedParentWithClosedChildren(t *testing.T) {
+	items := []beadItem{
+		testBeadItemWithOptions("parent", "Parent", "closed", 1, "epic", true),
+		testBeadItemWithOptions("child-1", "Child 1", "closed", 2, "task", false, "parent"),
+		testBeadItemWithOptions("child-2", "Child 2", "closed", 2, "task", false, "parent"),
+	}
+
+	result := buildBeadTree(context.Background(), items, nil)
+
+	// All should be filtered out - parent has no open descendants
+	require.Empty(t, result, "expected all closed items to be filtered out when no open descendants")
+}
+
+// TestBuildBeadTree_ClosedParentWithMixedChildren tests closed parent with both closed and open children
+func TestBuildBeadTree_ClosedParentWithMixedChildren(t *testing.T) {
+	items := []beadItem{
+		testBeadItemWithOptions("parent", "Parent", "closed", 1, "epic", true),
+		testBeadItemWithOptions("child-1", "Child 1", "closed", 2, "task", false, "parent"),
+		testBeadItem("child-2", "Child 2", "open", 2, "task", "parent"),
+	}
+
+	result := buildBeadTree(context.Background(), items, nil)
+
+	// Parent and open child should be visible, closed child should be filtered out
+	require.Len(t, result, 2, "expected parent and open child visible")
+	ids := make([]string, len(result))
+	for i, item := range result {
+		ids[i] = item.ID
+	}
+	require.Contains(t, ids, "parent", "expected parent visible")
+	require.Contains(t, ids, "child-2", "expected open child visible")
+	require.NotContains(t, ids, "child-1", "expected closed child filtered out")
+}
+
+// TestBuildBeadTree_DeepClosedHierarchyWithOpenLeaf tests visibility propagates up through multiple closed levels
+func TestBuildBeadTree_DeepClosedHierarchyWithOpenLeaf(t *testing.T) {
+	items := []beadItem{
+		testBeadItemWithOptions("grandparent", "Grandparent", "closed", 1, "epic", true),
+		testBeadItemWithOptions("parent", "Parent", "closed", 2, "task", true, "grandparent"),
+		testBeadItem("child", "Child", "open", 3, "task", "parent"),
+	}
+
+	result := buildBeadTree(context.Background(), items, nil)
+
+	// All should be visible because the open leaf makes its ancestors visible
+	require.Len(t, result, 3, "expected all visible due to open leaf")
+}

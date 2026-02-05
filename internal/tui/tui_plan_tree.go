@@ -221,34 +221,55 @@ func buildBeadTree(ctx context.Context, items []beadItem, client *beads.Client) 
 		}
 	}
 
-	// Filter out closed parents that have no visible children.
-	// Build set of visible IDs from the result
-	visibleIDs := make(map[string]bool)
-	for _, item := range result {
-		visibleIDs[item.ID] = true
+	// Filter out closed items that have no open descendants.
+	// Build a map of ID -> item for quick lookup
+	resultMap := make(map[string]*beadItem)
+	for i := range result {
+		resultMap[result[i].ID] = &result[i]
 	}
 
-	// Filter closed items: only keep them if they have at least one visible child
-	var filtered []beadItem
-	for _, item := range result {
-		// Keep the item if it's not closed
-		if item.Status != beads.StatusClosed {
-			filtered = append(filtered, item)
-			continue
+	// Compute visibility recursively: an item is visible if:
+	// 1. It's not closed, OR
+	// 2. It's closed but has at least one visible descendant
+	// We use memoization to avoid recomputing visibility for the same item.
+	visibilityCache := make(map[string]bool)
+	var isVisible func(id string) bool
+	isVisible = func(id string) bool {
+		// Check cache first
+		if cached, ok := visibilityCache[id]; ok {
+			return cached
 		}
 
-		// For closed items, check if any of their children are visible
-		hasVisibleChild := false
-		if children, ok := childrenMap[item.ID]; ok {
+		item, exists := resultMap[id]
+		if !exists {
+			visibilityCache[id] = false
+			return false
+		}
+
+		// Non-closed items are always visible
+		if item.Status != beads.StatusClosed {
+			visibilityCache[id] = true
+			return true
+		}
+
+		// For closed items, check if any child is visible (recursively)
+		if children, ok := childrenMap[id]; ok {
 			for _, childID := range children {
-				if visibleIDs[childID] {
-					hasVisibleChild = true
-					break
+				if isVisible(childID) {
+					visibilityCache[id] = true
+					return true
 				}
 			}
 		}
 
-		if hasVisibleChild {
+		visibilityCache[id] = false
+		return false
+	}
+
+	// Filter based on computed visibility
+	var filtered []beadItem
+	for _, item := range result {
+		if isVisible(item.ID) {
 			filtered = append(filtered, item)
 		}
 	}
