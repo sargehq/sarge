@@ -127,7 +127,7 @@ func (i *Integration) CreateBeadFromFeedback(ctx context.Context, beadDir string
 		ExternalRef: externalRef,
 	}
 
-	beadID, err := beads.Create(ctx, beadDir, createOpts)
+	beadID, err := beads.NewCLI(beadDir).Create(ctx, createOpts)
 	if err != nil {
 		return "", fmt.Errorf("failed to create bead: %w", err)
 	}
