@@ -159,9 +159,9 @@ func (b *WorkTabsBar) Render() string {
 
 	// Ribbon as simple box (no triangles)
 	// Show focus indicator when work tabs panel is active
-	ribbonText := " Ørchestratör "
+	ribbonText := " Sarge "
 	if b.activePanel == PanelWorkTabs {
-		ribbonText = "► Ørchestratör ◄"
+		ribbonText = "► Sarge ◄"
 	}
 	ribbonStyle := lipgloss.NewStyle().
 		Bold(true).
