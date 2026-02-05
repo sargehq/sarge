@@ -97,10 +97,16 @@ func (p *FeedbackProcessor) processStatusChecks(status *github.PRStatus) []githu
 		if check.State == "FAILURE" || check.State == "ERROR" {
 			feedbackType := p.categorizeCheckFailure(check.Context)
 
+			// Use check description if available, otherwise provide a default
+			description := check.Description
+			if description == "" {
+				description = fmt.Sprintf("CI check '%s' failed with state: %s", check.Context, check.State)
+			}
+
 			item := github.FeedbackItem{
 				Type:        feedbackType,
 				Title:       fmt.Sprintf("Fix %s failure", check.Context),
-				Description: check.Description,
+				Description: description,
 				Source: github.SourceInfo{
 					Type: github.SourceTypeCI,
 					ID:   check.Context, // Use check name as ID for status checks
