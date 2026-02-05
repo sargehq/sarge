@@ -111,6 +111,8 @@ type Querier interface {
 	GetWorksWithPRs(ctx context.Context) ([]Work, error)
 	GetWorksWithUnseenChanges(ctx context.Context) ([]Work, error)
 	HasExistingFeedback(ctx context.Context, arg HasExistingFeedbackParams) (int64, error)
+	// Only consider feedback "existing" if a bead was actually created.
+	// This allows retry if bead creation failed on a previous attempt.
 	HasExistingFeedbackBySourceID(ctx context.Context, arg HasExistingFeedbackBySourceIDParams) (int64, error)
 	HasPendingDependencies(ctx context.Context, taskID string) (bool, error)
 	IdleWork(ctx context.Context, id string) (int64, error)

@@ -353,7 +353,7 @@ func (q *Queries) HasExistingFeedback(ctx context.Context, arg HasExistingFeedba
 
 const hasExistingFeedbackBySourceID = `-- name: HasExistingFeedbackBySourceID :one
 SELECT COUNT(*) as count FROM pr_feedback
-WHERE work_id = ? AND source_id = ?
+WHERE work_id = ? AND source_id = ? AND bead_id IS NOT NULL
 `
 
 type HasExistingFeedbackBySourceIDParams struct {
@@ -361,6 +361,8 @@ type HasExistingFeedbackBySourceIDParams struct {
 	SourceID sql.NullString `json:"source_id"`
 }
 
+// Only consider feedback "existing" if a bead was actually created.
+// This allows retry if bead creation failed on a previous attempt.
 func (q *Queries) HasExistingFeedbackBySourceID(ctx context.Context, arg HasExistingFeedbackBySourceIDParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, hasExistingFeedbackBySourceID, arg.WorkID, arg.SourceID)
 	var count int64

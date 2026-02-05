@@ -87,5 +87,7 @@ WHERE pf.work_id = ?
 ORDER BY pf.created_at ASC;
 
 -- name: HasExistingFeedbackBySourceID :one
+-- Only consider feedback "existing" if a bead was actually created.
+-- This allows retry if bead creation failed on a previous attempt.
 SELECT COUNT(*) as count FROM pr_feedback
-WHERE work_id = ? AND source_id = ?;
+WHERE work_id = ? AND source_id = ? AND bead_id IS NOT NULL;

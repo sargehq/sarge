@@ -109,11 +109,11 @@ func buildLogAnalysisPromptFromMetadata(ctx context.Context, proj *project.Proje
 		return nil, fmt.Errorf("failed to create temp file for log content: %w", err)
 	}
 	if _, err := logFile.WriteString(logContent); err != nil {
-		logFile.Close()
+		_ = logFile.Close()
 		_ = os.Remove(logFile.Name())
 		return nil, fmt.Errorf("failed to write log content to temp file: %w", err)
 	}
-	logFile.Close()
+	_ = logFile.Close()
 
 	// Fetch existing open beads for this work to help Claude match against them
 	existingBeads := fetchExistingBeadSummaries(ctx, proj, work.ID)
