@@ -228,16 +228,16 @@ func buildBeadTree(ctx context.Context, items []beadItem, client *beads.Client) 
 		visibleIDs[item.ID] = true
 	}
 
-	// Filter closed parents: only keep them if they have at least one visible child
+	// Filter closed items: only keep them if they have at least one visible child
 	var filtered []beadItem
 	for _, item := range result {
-		// Keep the item if it's not a closed parent
-		if !item.isClosedParent {
+		// Keep the item if it's not closed
+		if item.Status != beads.StatusClosed {
 			filtered = append(filtered, item)
 			continue
 		}
 
-		// For closed parents, check if any of their children are visible
+		// For closed items, check if any of their children are visible
 		hasVisibleChild := false
 		if children, ok := childrenMap[item.ID]; ok {
 			for _, childID := range children {
