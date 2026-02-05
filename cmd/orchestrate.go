@@ -267,7 +267,7 @@ func executeTask(proj *project.Project, t *db.Task, work *db.Work, runner claude
 
 	// Clean up temp file after execution (if any)
 	if taskPrompt.TempFilePath != "" {
-		defer os.Remove(taskPrompt.TempFilePath)
+		defer func() { _ = os.Remove(taskPrompt.TempFilePath) }()
 	}
 
 	// Execute Claude inline with timeout context
