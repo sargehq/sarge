@@ -13,6 +13,7 @@ const (
 	WorkDetailActionNone                WorkDetailAction = iota
 	WorkDetailActionOpenTerminal                         // Open terminal/console (t)
 	WorkDetailActionOpenClaude                           // Open Claude session (c)
+	WorkDetailActionOpenIDE                              // Open worktree in IDE (i)
 	WorkDetailActionRun                                  // Run work (r)
 	WorkDetailActionReview                               // Create review task (v)
 	WorkDetailActionPR                                   // Create PR task (p)
@@ -378,6 +379,8 @@ func (p *WorkDetailsPanel) Update(msg tea.KeyMsg) (tea.Cmd, WorkDetailAction) {
 			return cmd, WorkDetailActionOpenTerminal
 		case "c":
 			return cmd, WorkDetailActionOpenClaude
+		case "i":
+			return cmd, WorkDetailActionOpenIDE
 		case "r":
 			return cmd, WorkDetailActionRun
 		case "v":
@@ -425,6 +428,8 @@ func (p *WorkDetailsPanel) Update(msg tea.KeyMsg) (tea.Cmd, WorkDetailAction) {
 		return nil, WorkDetailActionOpenTerminal
 	case "c":
 		return nil, WorkDetailActionOpenClaude
+	case "i":
+		return nil, WorkDetailActionOpenIDE
 	case "r":
 		return nil, WorkDetailActionRun
 	case "v":
