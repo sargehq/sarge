@@ -1185,6 +1185,8 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, m.openConsole()
 		case WorkDetailActionOpenClaude:
 			return m, m.openClaude()
+		case WorkDetailActionOpenIDE:
+			return m, m.openIDE()
 		case WorkDetailActionRun:
 			// Run work - use auto-group if multiple unassigned beads
 			focusedWork := m.workDetails.GetFocusedWork()

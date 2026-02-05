@@ -6,7 +6,9 @@ package process
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"strings"
+	"syscall"
 )
 
 // ProcessLister provides an interface for listing processes.
@@ -74,4 +76,14 @@ func KillProcessWith(ctx context.Context, pattern string, lister ProcessLister, 
 	}
 
 	return killer.KillByPattern(ctx, pattern)
+}
+
+// StartDetached starts a command as a detached process that will continue running
+// after this process exits. The process runs in its own session.
+func StartDetached(_ context.Context, command string, args ...string) error {
+	cmd := exec.Command(command, args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Setsid: true, // Create a new session, detaching from terminal
+	}
+	return cmd.Start()
 }
