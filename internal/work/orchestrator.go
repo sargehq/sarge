@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/sargehq/sarge/internal/db"
@@ -71,7 +72,12 @@ func (m *DefaultOrchestratorManager) tabExists(ctx context.Context, sessionName,
 // TerminateWorkTabs terminates all zellij tabs associated with a work unit.
 // This includes the work orchestrator tab (work-<workID>), task tabs (task-<workID>.*),
 // console tabs (console-<workID>*), and claude tabs (claude-<workID>*).
-// Each tab's running process is terminated with Ctrl+C before the tab is closed.
+//
+// For the orchestrator tab, the process is sent SIGTERM via its tracked PID before
+// the tab is closed. For all other tabs, the tab is closed directly (which kills
+// the processes in it). This avoids sending Ctrl+C via "zellij action write",
+// which can hit the wrong pane after focus shifts.
+//
 // Progress messages are written to the provided writer. Pass io.Discard to suppress output.
 func (m *DefaultOrchestratorManager) TerminateWorkTabs(ctx context.Context, workID string, projectName string, w io.Writer) error {
 	sessionName := project.SessionNameForProject(projectName)
@@ -142,27 +148,64 @@ func (m *DefaultOrchestratorManager) TerminateWorkTabs(ctx context.Context, work
 
 	fmt.Fprintf(w, "Terminating %d zellij tab(s) for work %s...\n", len(tabsToClose), workID)
 
+	// For the orchestrator tab, send SIGTERM to its PID before closing.
+	// This gives the orchestrator a chance to shut down cleanly.
+	// Other tabs (console, claude, task) are closed directly — closing a zellij
+	// tab kills all processes in it without needing Ctrl+C.
+	//
+	// This avoids the previous bug where "zellij action write 3" (Ctrl+C) could
+	// hit the wrong pane (e.g. the control plane) after focus shifted due to
+	// a preceding tab close.
 	for _, tabName := range tabsToClose {
 		logging.Debug("Closing tab",
 			"work_id", workID,
 			"tab_name", tabName)
-		if err := session.TerminateAndCloseTab(ctx, tabName); err != nil {
-			logging.Warn("Failed to terminate tab",
+
+		// If this is the orchestrator tab, SIGTERM its process first
+		if strings.HasPrefix(tabName, workTabPrefix) {
+			m.terminateOrchestratorProcess(ctx, workID)
+		}
+
+		if err := session.CloseTabByName(ctx, tabName); err != nil {
+			logging.Warn("Failed to close tab",
 				"work_id", workID,
 				"tab_name", tabName,
 				"error", err)
-			fmt.Fprintf(w, "Warning: failed to terminate tab %s: %v\n", tabName, err)
+			fmt.Fprintf(w, "Warning: failed to close tab %s: %v\n", tabName, err)
 			// Continue with other tabs
 		} else {
 			logging.Debug("Tab closed successfully",
 				"work_id", workID,
 				"tab_name", tabName)
-			fmt.Fprintf(w, "  Terminated tab: %s\n", tabName)
+			fmt.Fprintf(w, "  Closed tab: %s\n", tabName)
 		}
 	}
 
 	logging.Debug("TerminateWorkTabs completed", "work_id", workID)
 	return nil
+}
+
+// terminateOrchestratorProcess sends SIGTERM to the orchestrator process for a work unit.
+// If the process is not found or already dead, this is a no-op.
+func (m *DefaultOrchestratorManager) terminateOrchestratorProcess(ctx context.Context, workID string) {
+	proc, err := m.database.GetOrchestratorProcess(ctx, workID)
+	if err != nil || proc == nil {
+		logging.Debug("No orchestrator process found to terminate",
+			"work_id", workID, "error", err)
+		return
+	}
+
+	logging.Debug("Sending SIGTERM to orchestrator process",
+		"work_id", workID, "pid", proc.PID)
+
+	if err := syscall.Kill(proc.PID, syscall.SIGTERM); err != nil {
+		logging.Debug("Failed to send SIGTERM (process may already be dead)",
+			"work_id", workID, "pid", proc.PID, "error", err)
+		return
+	}
+
+	// Brief wait for the process to handle the signal
+	time.Sleep(500 * time.Millisecond)
 }
 
 // SpawnWorkOrchestrator creates a zellij tab and runs the orchestrate command for a work unit.

@@ -219,6 +219,9 @@ var _ Session = &SessionMock{}
 //
 //		// make and configure a mocked Session
 //		mockedSession := &SessionMock{
+//			CloseTabByNameFunc: func(ctx context.Context, tabName string) error {
+//				panic("mock out the CloseTabByName method")
+//			},
 //			CreateTabWithCommandFunc: func(ctx context.Context, name string, cwd string, command string, args []string, paneName string) error {
 //				panic("mock out the CreateTabWithCommand method")
 //			},
@@ -241,6 +244,9 @@ var _ Session = &SessionMock{}
 //
 //	}
 type SessionMock struct {
+	// CloseTabByNameFunc mocks the CloseTabByName method.
+	CloseTabByNameFunc func(ctx context.Context, tabName string) error
+
 	// CreateTabWithCommandFunc mocks the CreateTabWithCommand method.
 	CreateTabWithCommandFunc func(ctx context.Context, name string, cwd string, command string, args []string, paneName string) error
 
@@ -258,6 +264,13 @@ type SessionMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// CloseTabByName holds details about calls to the CloseTabByName method.
+		CloseTabByName []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// TabName is the tabName argument value.
+			TabName string
+		}
 		// CreateTabWithCommand holds details about calls to the CreateTabWithCommand method.
 		CreateTabWithCommand []struct {
 			// Ctx is the ctx argument value.
@@ -300,11 +313,51 @@ type SessionMock struct {
 			TabName string
 		}
 	}
+	lockCloseTabByName       sync.RWMutex
 	lockCreateTabWithCommand sync.RWMutex
 	lockQueryTabNames        sync.RWMutex
 	lockSwitchToTab          sync.RWMutex
 	lockTabExists            sync.RWMutex
 	lockTerminateAndCloseTab sync.RWMutex
+}
+
+// CloseTabByName calls CloseTabByNameFunc.
+func (mock *SessionMock) CloseTabByName(ctx context.Context, tabName string) error {
+	callInfo := struct {
+		Ctx     context.Context
+		TabName string
+	}{
+		Ctx:     ctx,
+		TabName: tabName,
+	}
+	mock.lockCloseTabByName.Lock()
+	mock.calls.CloseTabByName = append(mock.calls.CloseTabByName, callInfo)
+	mock.lockCloseTabByName.Unlock()
+	if mock.CloseTabByNameFunc == nil {
+		var (
+			errOut error
+		)
+		return errOut
+	}
+	return mock.CloseTabByNameFunc(ctx, tabName)
+}
+
+// CloseTabByNameCalls gets all the calls that were made to CloseTabByName.
+// Check the length with:
+//
+//	len(mockedSession.CloseTabByNameCalls())
+func (mock *SessionMock) CloseTabByNameCalls() []struct {
+	Ctx     context.Context
+	TabName string
+} {
+	var calls []struct {
+		Ctx     context.Context
+		TabName string
+	}
+	mock.lockCloseTabByName.RLock()
+	calls = mock.calls.CloseTabByName
+	mock.lockCloseTabByName.RUnlock()
+	return calls
 }
 
 // CreateTabWithCommand calls CreateTabWithCommandFunc.
