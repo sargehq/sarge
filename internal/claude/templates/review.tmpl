@@ -6,7 +6,7 @@ Base: {{.BaseBranch}}
 Instructions:
 1. First, check the work details: sarge work show {{.WorkID}}
    - This will show all tasks and their completion status
-2. Use 'git diff {{.BaseBranch}}...{{.BranchName}}' to see all changes in this work
+2. Use 'git diff origin/{{.BaseBranch}}...{{.BranchName}}' to see all changes in this work (use origin/ to ensure comparison against upstream)
 3. Review the code for:
    - **Code Quality**: Is the code clean, readable, and maintainable?
    - **Security Issues**: Are there any vulnerabilities (injection, XSS, auth issues, etc.)?

@@ -9,7 +9,7 @@ Instructions:
 2. For each completed task, check what was implemented:
    - sarge task show <task-id> to see the beads that were completed
 3. Review the git log to understand all changes made in this work
-4. Use 'git diff {{.BaseBranch}}...{{.BranchName}}' to see all changes
+4. Use 'git diff origin/{{.BaseBranch}}...{{.BranchName}}' to see all changes (use origin/ to ensure comparison against upstream)
 5. Create a comprehensive PR that includes:
    - Clear title summarizing the work
    - Detailed description of changes
