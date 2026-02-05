@@ -65,6 +65,7 @@ type Session interface {
 
 	// High-level operations
 	TerminateAndCloseTab(ctx context.Context, tabName string) error
+	CloseTabByName(ctx context.Context, tabName string) error
 }
 
 // ASCIICtrlC is the ASCII code for Ctrl+C (interrupt)
@@ -398,6 +399,22 @@ func (s *session) terminateProcess(ctx context.Context) error {
 		return err
 	}
 	time.Sleep(s.CtrlCDelay)
+	return nil
+}
+
+// CloseTabByName switches to a tab by name and closes it without sending Ctrl+C.
+// Closing a zellij tab inherently kills all processes running in it.
+// This is safer than TerminateAndCloseTab because it doesn't send Ctrl+C
+// via "zellij action write 3", which can hit the wrong pane if focus shifts.
+func (s *session) CloseTabByName(ctx context.Context, tabName string) error {
+	if err := s.SwitchToTab(ctx, tabName); err != nil {
+		return fmt.Errorf("failed to switch to tab: %w", err)
+	}
+
+	if err := s.closeTab(ctx); err != nil {
+		return fmt.Errorf("failed to close tab: %w", err)
+	}
+
 	return nil
 }
 
