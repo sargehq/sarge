@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/sargehq/sarge/internal/beads"
 	"github.com/sargehq/sarge/internal/claude"
@@ -93,6 +94,19 @@ func buildLogAnalysisPromptFromMetadata(ctx context.Context, proj *project.Proje
 		return "", fmt.Errorf("log_content metadata is missing for task %s", task.ID)
 	}
 
+	// Write log content to a temp file for Claude to read
+	// This keeps the prompt small and lets Claude read only what it needs
+	logFile, err := os.CreateTemp("", "ci-log-*.txt")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp file for log content: %w", err)
+	}
+	if _, err := logFile.WriteString(logContent); err != nil {
+		logFile.Close()
+		os.Remove(logFile.Name())
+		return "", fmt.Errorf("failed to write log content to temp file: %w", err)
+	}
+	logFile.Close()
+
 	// Fetch existing open beads for this work to help Claude match against them
 	existingBeads := fetchExistingBeadSummaries(ctx, proj, work.ID)
 
@@ -103,7 +117,7 @@ func buildLogAnalysisPromptFromMetadata(ctx context.Context, proj *project.Proje
 		RootIssueID:   rootIssueID,
 		WorkflowName:  workflowName,
 		JobName:       jobName,
-		LogContent:    logContent,
+		LogFilePath:   logFile.Name(),
 		ExistingBeads: existingBeads,
 	}
 

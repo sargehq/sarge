@@ -16,7 +16,9 @@ import (
 
 // maxLogContentSize is the maximum size in bytes for log content stored in task metadata.
 // Logs exceeding this size are truncated, keeping the last portion (most relevant for errors).
-const maxLogContentSize = 50 * 1024 // 50KB
+// Since logs are written to a temp file for Claude to read (not embedded in prompt),
+// this can be quite large.
+const maxLogContentSize = 500 * 1024 // 500KB
 
 // FeedbackProcessor processes PR feedback and generates actionable items.
 type FeedbackProcessor struct {

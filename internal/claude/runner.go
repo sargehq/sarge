@@ -200,7 +200,7 @@ type LogAnalysisParams struct {
 	RootIssueID   string
 	WorkflowName  string
 	JobName       string
-	LogContent    string
+	LogFilePath   string        // Path to temp file containing CI logs
 	ExistingBeads []BeadSummary // Existing open beads to match against
 }
 
