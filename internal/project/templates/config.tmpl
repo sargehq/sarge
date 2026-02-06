@@ -153,6 +153,18 @@ path = {{.BeadsPath | tomlString}}
 # args = ["-n"]  # Example: -n opens a new window in VS Code
 
 # =============================================================================
+# Debug Configuration (Optional)
+# =============================================================================
+# Controls debug/diagnostics features.
+#
+# [debug]
+# # Enable the pprof HTTP server on an ephemeral port.
+# # When enabled, a pprof endpoint is started on a random available port
+# # and the port is recorded in the process table for discovery.
+# # Defaults to false when not specified.
+# pprof = true
+
+# =============================================================================
 # Linear Integration (Optional)
 # =============================================================================
 # Authentication for importing issues from Linear.

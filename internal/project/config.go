@@ -28,6 +28,7 @@ type Config struct {
 	Zellij    ZellijConfig    `toml:"zellij"`
 	LogParser LogParserConfig `toml:"log_parser"`
 	IDE       IDEConfig       `toml:"ide"`
+	Debug     DebugConfig     `toml:"debug"`
 }
 
 // IDEConfig contains IDE configuration for opening worktrees.
@@ -48,6 +49,13 @@ func (i *IDEConfig) GetIDECommand() string {
 		return i.Command
 	}
 	return os.Getenv("EDITOR")
+}
+
+// DebugConfig contains debug/diagnostics configuration.
+type DebugConfig struct {
+	// Pprof enables the pprof HTTP server on an ephemeral port.
+	// Defaults to false when not specified.
+	Pprof bool `toml:"pprof"`
 }
 
 // LogParserConfig contains log parser configuration.
