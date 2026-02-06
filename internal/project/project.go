@@ -295,7 +295,7 @@ func setupBeads(ctx context.Context, source, projectRoot, mainPath string) (bead
 // setupMise generates mise config and runs mise install.
 func setupMise(projectRoot, mainPath string) {
 	// Generate mise config in project root with sarge's required tools
-	if err := mise.GenerateConfig(projectRoot); err != nil {
+	if err := mise.GenerateConfig(projectRoot, ""); err != nil {
 		fmt.Printf("Warning: failed to generate mise config: %v\n", err)
 	} else {
 		fmt.Printf("Mise: generated .mise.toml with co requirements\n")
