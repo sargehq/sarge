@@ -32,6 +32,7 @@ type Process struct {
 	Hostname    string
 	Heartbeat   time.Time
 	StartedAt   time.Time
+	PprofPort   *int
 }
 
 // RegisterProcess registers or updates a process in the database.
@@ -227,6 +228,23 @@ func (db *DB) GetAllProcesses(ctx context.Context) ([]*Process, error) {
 	return result, nil
 }
 
+// UpdatePprofPort sets the pprof port for a process. Pass nil to clear.
+func (db *DB) UpdatePprofPort(ctx context.Context, id string, port *int) error {
+	var portParam sql.NullInt64
+	if port != nil {
+		portParam = sql.NullInt64{Int64: int64(*port), Valid: true}
+	}
+
+	err := db.queries.UpdatePprofPort(ctx, sqlc.UpdatePprofPortParams{
+		ID:        id,
+		PprofPort: portParam,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update pprof port: %w", err)
+	}
+	return nil
+}
+
 // processFromSqlc converts a SQLC Process to a local Process.
 func processFromSqlc(p *sqlc.Process) *Process {
 	proc := &Process{
@@ -239,6 +257,10 @@ func processFromSqlc(p *sqlc.Process) *Process {
 	}
 	if p.WorkID.Valid {
 		proc.WorkID = &p.WorkID.String
+	}
+	if p.PprofPort.Valid {
+		port := int(p.PprofPort.Int64)
+		proc.PprofPort = &port
 	}
 	return proc
 }

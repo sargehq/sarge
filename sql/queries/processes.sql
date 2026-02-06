@@ -68,3 +68,8 @@ LIMIT 1;
 
 -- name: GetAllProcesses :many
 SELECT * FROM processes ORDER BY started_at DESC;
+
+-- name: UpdatePprofPort :exec
+UPDATE processes
+SET pprof_port = ?
+WHERE id = ?;

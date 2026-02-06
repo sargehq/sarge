@@ -220,3 +220,9 @@ func (m *Manager) GetControlPlaneProcess(ctx context.Context) (*db.Process, erro
 func (m *Manager) GetAllProcesses(ctx context.Context) ([]*db.Process, error) {
 	return m.db.GetAllProcesses(ctx)
 }
+
+// SetPprofPort records the pprof HTTP server port for this process.
+// Pass nil to clear the port (e.g., when pprof is disabled).
+func (m *Manager) SetPprofPort(ctx context.Context, port *int) error {
+	return m.db.UpdatePprofPort(ctx, m.id, port)
+}

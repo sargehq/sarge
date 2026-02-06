@@ -67,6 +67,7 @@ type Process struct {
 	Hostname    string         `json:"hostname"`
 	Heartbeat   time.Time      `json:"heartbeat"`
 	StartedAt   time.Time      `json:"started_at"`
+	PprofPort   sql.NullInt64  `json:"pprof_port"`
 }
 
 type Scheduler struct {

@@ -49,7 +49,7 @@ func (q *Queries) DeleteStaleProcesses(ctx context.Context, dollar_1 sql.NullStr
 }
 
 const getAllProcesses = `-- name: GetAllProcesses :many
-SELECT id, process_type, work_id, pid, hostname, heartbeat, started_at FROM processes ORDER BY started_at DESC
+SELECT id, process_type, work_id, pid, hostname, heartbeat, started_at, pprof_port FROM processes ORDER BY started_at DESC
 `
 
 func (q *Queries) GetAllProcesses(ctx context.Context) ([]Process, error) {
@@ -69,6 +69,7 @@ func (q *Queries) GetAllProcesses(ctx context.Context) ([]Process, error) {
 			&i.Hostname,
 			&i.Heartbeat,
 			&i.StartedAt,
+			&i.PprofPort,
 		); err != nil {
 			return nil, err
 		}
@@ -84,7 +85,7 @@ func (q *Queries) GetAllProcesses(ctx context.Context) ([]Process, error) {
 }
 
 const getControlPlaneProcess = `-- name: GetControlPlaneProcess :one
-SELECT id, process_type, work_id, pid, hostname, heartbeat, started_at FROM processes
+SELECT id, process_type, work_id, pid, hostname, heartbeat, started_at, pprof_port FROM processes
 WHERE process_type = 'control_plane'
 LIMIT 1
 `
@@ -100,12 +101,13 @@ func (q *Queries) GetControlPlaneProcess(ctx context.Context) (Process, error) {
 		&i.Hostname,
 		&i.Heartbeat,
 		&i.StartedAt,
+		&i.PprofPort,
 	)
 	return i, err
 }
 
 const getOrchestratorProcess = `-- name: GetOrchestratorProcess :one
-SELECT id, process_type, work_id, pid, hostname, heartbeat, started_at FROM processes
+SELECT id, process_type, work_id, pid, hostname, heartbeat, started_at, pprof_port FROM processes
 WHERE work_id = ? AND process_type = 'orchestrator'
 LIMIT 1
 `
@@ -121,12 +123,13 @@ func (q *Queries) GetOrchestratorProcess(ctx context.Context, workID sql.NullStr
 		&i.Hostname,
 		&i.Heartbeat,
 		&i.StartedAt,
+		&i.PprofPort,
 	)
 	return i, err
 }
 
 const getProcess = `-- name: GetProcess :one
-SELECT id, process_type, work_id, pid, hostname, heartbeat, started_at FROM processes WHERE id = ?
+SELECT id, process_type, work_id, pid, hostname, heartbeat, started_at, pprof_port FROM processes WHERE id = ?
 `
 
 func (q *Queries) GetProcess(ctx context.Context, id string) (Process, error) {
@@ -140,12 +143,13 @@ func (q *Queries) GetProcess(ctx context.Context, id string) (Process, error) {
 		&i.Hostname,
 		&i.Heartbeat,
 		&i.StartedAt,
+		&i.PprofPort,
 	)
 	return i, err
 }
 
 const getProcessByWorkID = `-- name: GetProcessByWorkID :one
-SELECT id, process_type, work_id, pid, hostname, heartbeat, started_at FROM processes
+SELECT id, process_type, work_id, pid, hostname, heartbeat, started_at, pprof_port FROM processes
 WHERE work_id = ? AND process_type = 'orchestrator'
 LIMIT 1
 `
@@ -161,12 +165,13 @@ func (q *Queries) GetProcessByWorkID(ctx context.Context, workID sql.NullString)
 		&i.Hostname,
 		&i.Heartbeat,
 		&i.StartedAt,
+		&i.PprofPort,
 	)
 	return i, err
 }
 
 const getStaleProcesses = `-- name: GetStaleProcesses :many
-SELECT id, process_type, work_id, pid, hostname, heartbeat, started_at FROM processes
+SELECT id, process_type, work_id, pid, hostname, heartbeat, started_at, pprof_port FROM processes
 WHERE datetime(heartbeat) < datetime('now', ? || ' seconds')
 `
 
@@ -187,6 +192,7 @@ func (q *Queries) GetStaleProcesses(ctx context.Context, dollar_1 sql.NullString
 			&i.Hostname,
 			&i.Heartbeat,
 			&i.StartedAt,
+			&i.PprofPort,
 		); err != nil {
 			return nil, err
 		}
@@ -289,5 +295,21 @@ type UpdateHeartbeatWithTimeParams struct {
 
 func (q *Queries) UpdateHeartbeatWithTime(ctx context.Context, arg UpdateHeartbeatWithTimeParams) error {
 	_, err := q.db.ExecContext(ctx, updateHeartbeatWithTime, arg.Heartbeat, arg.ID)
+	return err
+}
+
+const updatePprofPort = `-- name: UpdatePprofPort :exec
+UPDATE processes
+SET pprof_port = ?
+WHERE id = ?
+`
+
+type UpdatePprofPortParams struct {
+	PprofPort sql.NullInt64 `json:"pprof_port"`
+	ID        string        `json:"id"`
+}
+
+func (q *Queries) UpdatePprofPort(ctx context.Context, arg UpdatePprofPortParams) error {
+	_, err := q.db.ExecContext(ctx, updatePprofPort, arg.PprofPort, arg.ID)
 	return err
 }
