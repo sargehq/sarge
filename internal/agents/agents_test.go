@@ -9,6 +9,8 @@ import (
 )
 
 func TestBuildLogAnalysisPrompt(t *testing.T) {
+	agent := NewAgent(nil)
+
 	tests := []struct {
 		name           string
 		params         LogAnalysisParams
@@ -96,7 +98,7 @@ func TestBuildLogAnalysisPrompt(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := BuildLogAnalysisPrompt(tt.params, AgentClaude)
+			result := agent.BuildLogAnalysisPrompt(tt.params)
 
 			for _, want := range tt.wantContains {
 				require.Contains(t, result, want, "BuildLogAnalysisPrompt() missing expected content")
@@ -131,6 +133,8 @@ func TestLogAnalysisParams(t *testing.T) {
 }
 
 func TestBuildLogAnalysisPromptPriorityGuidelines(t *testing.T) {
+	agent := NewAgent(nil)
+
 	// Verify the prompt includes priority guidelines
 	params := LogAnalysisParams{
 		TaskID:       "w-test.1",
@@ -141,7 +145,7 @@ func TestBuildLogAnalysisPromptPriorityGuidelines(t *testing.T) {
 		LogFilePath:   "test failure",
 	}
 
-	result := BuildLogAnalysisPrompt(params, AgentClaude)
+	result := agent.BuildLogAnalysisPrompt(params)
 
 	// Check that priority guidelines are included
 	priorities := []string{
@@ -157,6 +161,8 @@ func TestBuildLogAnalysisPromptPriorityGuidelines(t *testing.T) {
 }
 
 func TestBuildLogAnalysisPromptBdCreateCommand(t *testing.T) {
+	agent := NewAgent(nil)
+
 	// Verify the prompt includes bd create command examples
 	params := LogAnalysisParams{
 		TaskID:       "w-test.1",
@@ -167,7 +173,7 @@ func TestBuildLogAnalysisPromptBdCreateCommand(t *testing.T) {
 		LogFilePath:   "test failure",
 	}
 
-	result := BuildLogAnalysisPrompt(params, AgentClaude)
+	result := agent.BuildLogAnalysisPrompt(params)
 
 	// Check that bd create command format is included
 	require.Contains(t, result, "bd create", "BuildLogAnalysisPrompt() missing bd create command")
@@ -202,6 +208,8 @@ func TestLogAnalysisParamsExistingBeadsField(t *testing.T) {
 }
 
 func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
+	agent := NewAgent(nil)
+
 	t.Run("renders existing beads section", func(t *testing.T) {
 		params := LogAnalysisParams{
 			TaskID:       "w-test.1",
@@ -216,7 +224,7 @@ func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
 			},
 		}
 
-		result := BuildLogAnalysisPrompt(params, AgentClaude)
+		result := agent.BuildLogAnalysisPrompt(params)
 
 		// Should contain the existing beads section header
 		require.Contains(t, result, "Existing Open Issues")
@@ -247,7 +255,7 @@ func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
 			ExistingBeads: nil,
 		}
 
-		result := BuildLogAnalysisPrompt(params, AgentClaude)
+		result := agent.BuildLogAnalysisPrompt(params)
 
 		// Should not contain the existing beads section header when no beads
 		require.NotContains(t, result, "Existing Open Issues")
@@ -266,7 +274,7 @@ func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
 			},
 		}
 
-		result := BuildLogAnalysisPrompt(params, AgentClaude)
+		result := agent.BuildLogAnalysisPrompt(params)
 
 		// Should contain the bead ID and title
 		require.Contains(t, result, "beads-789")
@@ -289,56 +297,58 @@ func TestBeadSummaryStruct(t *testing.T) {
 	require.Equal(t, "Test Description", summary.Description)
 }
 
-func TestAgentTypeFromConfig(t *testing.T) {
+func TestNewAgent(t *testing.T) {
 	tests := []struct {
-		name     string
-		cfg      *project.Config
-		expected AgentType
+		name         string
+		cfg          *project.Config
+		expectedBin  string
 	}{
 		{
-			name:     "Nil config defaults to claude",
-			cfg:      nil,
-			expected: AgentClaude,
+			name:        "Nil config defaults to claude",
+			cfg:         nil,
+			expectedBin: "claude",
 		},
 		{
-			name:     "Empty type defaults to claude",
-			cfg:      &project.Config{},
-			expected: AgentClaude,
+			name:        "Empty type defaults to claude",
+			cfg:         &project.Config{},
+			expectedBin: "claude",
 		},
 		{
 			name: "Claude type",
 			cfg: &project.Config{
 				Agent: project.AgentConfig{Type: "claude"},
 			},
-			expected: AgentClaude,
+			expectedBin: "claude",
 		},
 		{
 			name: "Pi type",
 			cfg: &project.Config{
 				Agent: project.AgentConfig{Type: "pi"},
 			},
-			expected: AgentPi,
+			expectedBin: "pi",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := AgentTypeFromConfig(tt.cfg)
-			require.Equal(t, tt.expected, result)
+			agent := NewAgent(tt.cfg)
+			require.Equal(t, tt.expectedBin, agent.Binary())
 		})
 	}
 }
 
 func TestAgentBinary(t *testing.T) {
-	require.Equal(t, "claude", AgentBinary(AgentClaude))
-	require.Equal(t, "pi", AgentBinary(AgentPi))
-	require.Equal(t, "claude", AgentBinary(""), "unknown agent type should default to claude")
+	require.Equal(t, "claude", NewAgent(nil).Binary())
+	require.Equal(t, "pi", NewAgent(&project.Config{Agent: project.AgentConfig{Type: "pi"}}).Binary())
 }
 
 func TestBuildPlanPromptForPi(t *testing.T) {
 	// Verify plan prompts are generated for both agent types
-	claudePrompt := BuildPlanPrompt("bead-123", AgentClaude)
-	piPrompt := BuildPlanPrompt("bead-123", AgentPi)
+	claudeAgent := NewAgent(nil)
+	piAgent := NewAgent(&project.Config{Agent: project.AgentConfig{Type: "pi"}})
+
+	claudePrompt := claudeAgent.BuildPlanPrompt("bead-123")
+	piPrompt := piAgent.BuildPlanPrompt("bead-123")
 
 	require.Contains(t, claudePrompt, "bead-123")
 	require.Contains(t, piPrompt, "bead-123")

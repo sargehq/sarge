@@ -64,8 +64,9 @@ func runPlan(cmd *cobra.Command, args []string) error {
 
 	mainRepoPath := proj.MainRepoPath()
 
-	// Launch Claude with the plan prompt
-	if err := agents.RunPlanSession(ctx, beadID, mainRepoPath, os.Stdin, os.Stdout, os.Stderr, proj.Config); err != nil {
+	// Launch agent with the plan prompt
+	agent := agents.NewAgent(proj.Config)
+	if err := agents.RunPlanSession(ctx, agent, beadID, mainRepoPath, os.Stdin, os.Stdout, os.Stderr, proj.Config); err != nil {
 		return err
 	}
 

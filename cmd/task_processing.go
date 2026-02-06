@@ -26,7 +26,7 @@ func buildPromptForTask(ctx context.Context, proj *project.Project, task *db.Tas
 	if baseBranch == "" {
 		baseBranch = proj.Config.Repo.GetBaseBranch()
 	}
-	agentType := agents.AgentTypeFromConfig(proj.Config)
+	agent := agents.NewAgent(proj.Config)
 
 	switch task.TaskType {
 	case "estimate":
@@ -34,26 +34,26 @@ func buildPromptForTask(ctx context.Context, proj *project.Project, task *db.Tas
 		if err != nil {
 			return nil, err
 		}
-		return &TaskPrompt{Prompt: agents.BuildEstimatePrompt(task.ID, issues, agentType)}, nil
+		return &TaskPrompt{Prompt: agent.BuildEstimatePrompt(task.ID, issues)}, nil
 
 	case "implement":
 		issues, err := getBeadsForTask(ctx, proj, task.ID)
 		if err != nil {
 			return nil, err
 		}
-		return &TaskPrompt{Prompt: agents.BuildTaskPrompt(task.ID, issues, work.BranchName, baseBranch, agentType)}, nil
+		return &TaskPrompt{Prompt: agent.BuildTaskPrompt(task.ID, issues, work.BranchName, baseBranch)}, nil
 
 	case "review":
-		return &TaskPrompt{Prompt: agents.BuildReviewPrompt(task.ID, work.ID, work.BranchName, baseBranch, work.RootIssueID, agentType)}, nil
+		return &TaskPrompt{Prompt: agent.BuildReviewPrompt(task.ID, work.ID, work.BranchName, baseBranch, work.RootIssueID)}, nil
 
 	case "pr":
-		return &TaskPrompt{Prompt: agents.BuildPRPrompt(task.ID, work.ID, work.BranchName, baseBranch, agentType)}, nil
+		return &TaskPrompt{Prompt: agent.BuildPRPrompt(task.ID, work.ID, work.BranchName, baseBranch)}, nil
 
 	case "update-pr-description":
 		if work.PRURL == "" {
 			return nil, fmt.Errorf("work %s has no PR URL set", work.ID)
 		}
-		return &TaskPrompt{Prompt: agents.BuildUpdatePRDescriptionPrompt(task.ID, work.ID, work.PRURL, work.BranchName, baseBranch, agentType)}, nil
+		return &TaskPrompt{Prompt: agent.BuildUpdatePRDescriptionPrompt(task.ID, work.ID, work.PRURL, work.BranchName, baseBranch)}, nil
 
 	case "log_analysis":
 		// Log analysis tasks have metadata with log content stored by the feedback processor
@@ -130,9 +130,9 @@ func buildLogAnalysisPromptFromMetadata(ctx context.Context, proj *project.Proje
 		ExistingBeads: existingBeads,
 	}
 
-	agentType := agents.AgentTypeFromConfig(proj.Config)
+	agent := agents.NewAgent(proj.Config)
 	return &TaskPrompt{
-		Prompt:       agents.BuildLogAnalysisPrompt(params, agentType),
+		Prompt:       agent.BuildLogAnalysisPrompt(params),
 		TempFilePath: logFile.Name(),
 	}, nil
 }

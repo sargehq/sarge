@@ -14,15 +14,56 @@ import (
 	"github.com/sargehq/sarge/internal/project"
 )
 
-// AgentType represents which coding agent to use.
-type AgentType string
+// agentType represents which coding agent to use.
+type agentType string
 
 const (
-	// AgentClaude uses Claude Code as the coding agent.
-	AgentClaude AgentType = "claude"
-	// AgentPi uses the pi coding agent.
-	AgentPi AgentType = "pi"
+	agentClaude agentType = "claude"
+	agentPi     agentType = "pi"
 )
+
+// agentTypeFromConfig returns the agent type from project configuration.
+// Defaults to agentClaude if not configured.
+func agentTypeFromConfig(cfg *project.Config) agentType {
+	if cfg == nil || cfg.Agent.Type == "" {
+		return agentClaude
+	}
+	return agentType(cfg.Agent.Type)
+}
+
+// Agent encapsulates all agent-specific behavior: binary, CLI args, and prompt building.
+type Agent interface {
+	// Binary returns the CLI binary name for this agent.
+	Binary() string
+
+	// BuildArgs returns base CLI arguments for this agent from project configuration.
+	BuildArgs(cfg *project.Config) []string
+
+	// TaskArgs returns additional CLI arguments for a specific task type.
+	// For example, log_analysis tasks on Claude may need a specific --model flag.
+	TaskArgs(taskType string, cfg *project.Config) []string
+
+	// BuildTaskPrompt builds a prompt for a task with multiple beads.
+	BuildTaskPrompt(taskID string, beadList []beads.Bead, branchName, baseBranch string) string
+
+	// BuildEstimatePrompt builds a prompt for complexity estimation of beads.
+	BuildEstimatePrompt(taskID string, beadList []beads.Bead) string
+
+	// BuildPRPrompt builds a prompt for PR creation.
+	BuildPRPrompt(taskID string, workID string, branchName string, baseBranch string) string
+
+	// BuildReviewPrompt builds a prompt for code review.
+	BuildReviewPrompt(taskID string, workID string, branchName string, baseBranch string, rootIssueID string) string
+
+	// BuildUpdatePRDescriptionPrompt builds a prompt for updating a PR description.
+	BuildUpdatePRDescriptionPrompt(taskID string, workID string, prURL string, branchName string, baseBranch string) string
+
+	// BuildPlanPrompt builds a prompt for planning an issue.
+	BuildPlanPrompt(beadID string) string
+
+	// BuildLogAnalysisPrompt builds a prompt for agent-based CI log analysis.
+	BuildLogAnalysisPrompt(params LogAnalysisParams) string
+}
 
 // templateSet holds all compiled templates for a specific agent type.
 type templateSet struct {
@@ -55,36 +96,6 @@ var piTemplates = &templateSet{
 	logAnalysis:         pi.LogAnalysis,
 }
 
-// templatesFor returns the template set for the given agent type.
-// Defaults to Claude templates if the agent type is unknown.
-func templatesFor(agentType AgentType) *templateSet {
-	switch agentType {
-	case AgentPi:
-		return piTemplates
-	default:
-		return claudeTemplates
-	}
-}
-
-// AgentTypeFromConfig returns the agent type from project configuration.
-// Defaults to AgentClaude if not configured.
-func AgentTypeFromConfig(cfg *project.Config) AgentType {
-	if cfg == nil || cfg.Agent.Type == "" {
-		return AgentClaude
-	}
-	return AgentType(cfg.Agent.Type)
-}
-
-// AgentBinary returns the CLI binary name for the given agent type.
-func AgentBinary(agentType AgentType) string {
-	switch agentType {
-	case AgentPi:
-		return pi.Binary
-	default:
-		return claude.Binary
-	}
-}
-
 // BeadSummary provides a summary of an existing bead for matching.
 type BeadSummary struct {
 	ID          string
@@ -104,8 +115,12 @@ type LogAnalysisParams struct {
 	ExistingBeads []BeadSummary // Existing open beads to match against
 }
 
-// BuildTaskPrompt builds a prompt for a task with multiple beads.
-func BuildTaskPrompt(taskID string, beadList []beads.Bead, branchName, baseBranch string, agentType AgentType) string {
+// baseAgent implements the 7 prompt methods shared by all agents.
+type baseAgent struct {
+	templates *templateSet
+}
+
+func (a *baseAgent) BuildTaskPrompt(taskID string, beadList []beads.Bead, branchName, baseBranch string) string {
 	data := struct {
 		TaskID     string
 		BeadIDs    []string
@@ -119,24 +134,14 @@ func BuildTaskPrompt(taskID string, beadList []beads.Bead, branchName, baseBranc
 	}
 
 	var buf bytes.Buffer
-	if err := templatesFor(agentType).task.Execute(&buf, data); err != nil {
+	if err := a.templates.task.Execute(&buf, data); err != nil {
 		return fmt.Sprintf("Task %s on branch %s for beads: %v", taskID, branchName, getBeadIDs(beadList))
 	}
 
 	return buf.String()
 }
 
-// getBeadIDs extracts bead IDs from a slice of beads.
-func getBeadIDs(beadList []beads.Bead) []string {
-	ids := make([]string, len(beadList))
-	for i, b := range beadList {
-		ids[i] = b.ID
-	}
-	return ids
-}
-
-// BuildEstimatePrompt builds a prompt for complexity estimation of beads.
-func BuildEstimatePrompt(taskID string, beadList []beads.Bead, agentType AgentType) string {
+func (a *baseAgent) BuildEstimatePrompt(taskID string, beadList []beads.Bead) string {
 	data := struct {
 		TaskID  string
 		BeadIDs []string
@@ -146,15 +151,14 @@ func BuildEstimatePrompt(taskID string, beadList []beads.Bead, agentType AgentTy
 	}
 
 	var buf bytes.Buffer
-	if err := templatesFor(agentType).estimate.Execute(&buf, data); err != nil {
+	if err := a.templates.estimate.Execute(&buf, data); err != nil {
 		return fmt.Sprintf("Estimation task %s for beads: %v", taskID, getBeadIDs(beadList))
 	}
 
 	return buf.String()
 }
 
-// BuildPRPrompt builds a prompt for PR creation.
-func BuildPRPrompt(taskID string, workID string, branchName string, baseBranch string, agentType AgentType) string {
+func (a *baseAgent) BuildPRPrompt(taskID string, workID string, branchName string, baseBranch string) string {
 	data := struct {
 		TaskID     string
 		WorkID     string
@@ -168,15 +172,14 @@ func BuildPRPrompt(taskID string, workID string, branchName string, baseBranch s
 	}
 
 	var buf bytes.Buffer
-	if err := templatesFor(agentType).pr.Execute(&buf, data); err != nil {
+	if err := a.templates.pr.Execute(&buf, data); err != nil {
 		return fmt.Sprintf("PR creation task %s for work %s on branch %s (base: %s)", taskID, workID, branchName, baseBranch)
 	}
 
 	return buf.String()
 }
 
-// BuildReviewPrompt builds a prompt for code review.
-func BuildReviewPrompt(taskID string, workID string, branchName string, baseBranch string, rootIssueID string, agentType AgentType) string {
+func (a *baseAgent) BuildReviewPrompt(taskID string, workID string, branchName string, baseBranch string, rootIssueID string) string {
 	data := struct {
 		TaskID      string
 		WorkID      string
@@ -192,15 +195,14 @@ func BuildReviewPrompt(taskID string, workID string, branchName string, baseBran
 	}
 
 	var buf bytes.Buffer
-	if err := templatesFor(agentType).review.Execute(&buf, data); err != nil {
+	if err := a.templates.review.Execute(&buf, data); err != nil {
 		return fmt.Sprintf("Review task %s for work %s on branch %s (base: %s)", taskID, workID, branchName, baseBranch)
 	}
 
 	return buf.String()
 }
 
-// BuildUpdatePRDescriptionPrompt builds a prompt for updating a PR description.
-func BuildUpdatePRDescriptionPrompt(taskID string, workID string, prURL string, branchName string, baseBranch string, agentType AgentType) string {
+func (a *baseAgent) BuildUpdatePRDescriptionPrompt(taskID string, workID string, prURL string, branchName string, baseBranch string) string {
 	data := struct {
 		TaskID     string
 		WorkID     string
@@ -216,15 +218,14 @@ func BuildUpdatePRDescriptionPrompt(taskID string, workID string, prURL string, 
 	}
 
 	var buf bytes.Buffer
-	if err := templatesFor(agentType).updatePRDescription.Execute(&buf, data); err != nil {
+	if err := a.templates.updatePRDescription.Execute(&buf, data); err != nil {
 		return fmt.Sprintf("Update PR description task %s for work %s, PR %s on branch %s (base: %s)", taskID, workID, prURL, branchName, baseBranch)
 	}
 
 	return buf.String()
 }
 
-// BuildPlanPrompt builds a prompt for planning an issue.
-func BuildPlanPrompt(beadID string, agentType AgentType) string {
+func (a *baseAgent) BuildPlanPrompt(beadID string) string {
 	data := struct {
 		BeadID string
 	}{
@@ -232,38 +233,92 @@ func BuildPlanPrompt(beadID string, agentType AgentType) string {
 	}
 
 	var buf bytes.Buffer
-	if err := templatesFor(agentType).plan.Execute(&buf, data); err != nil {
+	if err := a.templates.plan.Execute(&buf, data); err != nil {
 		return fmt.Sprintf("Planning for issue %s", beadID)
 	}
 
 	return buf.String()
 }
 
-// BuildLogAnalysisPrompt builds a prompt for agent-based CI log analysis.
-func BuildLogAnalysisPrompt(params LogAnalysisParams, agentType AgentType) string {
+func (a *baseAgent) BuildLogAnalysisPrompt(params LogAnalysisParams) string {
 	var buf bytes.Buffer
-	if err := templatesFor(agentType).logAnalysis.Execute(&buf, params); err != nil {
+	if err := a.templates.logAnalysis.Execute(&buf, params); err != nil {
 		return fmt.Sprintf("Log analysis task %s for work %s", params.TaskID, params.WorkID)
 	}
 
 	return buf.String()
 }
 
+// getBeadIDs extracts bead IDs from a slice of beads.
+func getBeadIDs(beadList []beads.Bead) []string {
+	ids := make([]string, len(beadList))
+	for i, b := range beadList {
+		ids[i] = b.ID
+	}
+	return ids
+}
+
+// claudeAgent adapts baseAgent for the Claude Code CLI.
+type claudeAgent struct {
+	baseAgent
+}
+
+func (a *claudeAgent) Binary() string {
+	return claude.Binary
+}
+
+func (a *claudeAgent) BuildArgs(cfg *project.Config) []string {
+	return claude.BuildArgs(cfg)
+}
+
+func (a *claudeAgent) TaskArgs(taskType string, cfg *project.Config) []string {
+	// Use configured model for log_analysis tasks
+	if taskType == "log_analysis" && cfg != nil {
+		model := cfg.LogParser.GetModel()
+		if model != "" {
+			return []string{"--model", model}
+		}
+	}
+	return nil
+}
+
+// piAgent adapts baseAgent for the pi CLI.
+type piAgent struct {
+	baseAgent
+}
+
+func (a *piAgent) Binary() string {
+	return pi.Binary
+}
+
+func (a *piAgent) BuildArgs(cfg *project.Config) []string {
+	return pi.BuildArgs(cfg)
+}
+
+func (a *piAgent) TaskArgs(taskType string, cfg *project.Config) []string {
+	return nil
+}
+
+// NewAgent creates an Agent from project configuration.
+// Returns a Claude agent by default if cfg is nil or unconfigured.
+func NewAgent(cfg *project.Config) Agent {
+	switch agentTypeFromConfig(cfg) {
+	case agentPi:
+		return &piAgent{baseAgent{templates: piTemplates}}
+	default:
+		return &claudeAgent{baseAgent{templates: claudeTemplates}}
+	}
+}
+
 // RunPlanSession runs an interactive agent session for planning an issue.
 // This launches the agent with the plan prompt and connects stdin/stdout/stderr
-// for interactive use. The config parameter controls agent settings.
-func RunPlanSession(ctx context.Context, beadID string, workDir string, stdin io.Reader, stdout, stderr io.Writer, cfg *project.Config) error {
-	agentType := AgentTypeFromConfig(cfg)
-	prompt := BuildPlanPrompt(beadID, agentType)
+// for interactive use.
+func RunPlanSession(ctx context.Context, agent Agent, beadID string, workDir string, stdin io.Reader, stdout, stderr io.Writer, cfg *project.Config) error {
+	prompt := agent.BuildPlanPrompt(beadID)
 
-	agentBin := AgentBinary(agentType)
+	agentBin := agent.Binary()
 	var args []string
-	switch agentType {
-	case AgentPi:
-		args = append(args, pi.BuildArgs(cfg)...)
-	default:
-		args = append(args, claude.BuildArgs(cfg)...)
-	}
+	args = append(args, agent.BuildArgs(cfg)...)
 	args = append(args, prompt)
 
 	cmd := exec.CommandContext(ctx, agentBin, args...)

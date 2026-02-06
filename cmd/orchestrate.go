@@ -119,7 +119,8 @@ func runOrchestrate(cmd *cobra.Command, args []string) error {
 	// to be processed even when no orchestrator is running for a theWork.
 
 	// Create runner once for all tasks
-	runner := agents.NewRunner()
+	agent := agents.NewAgent(proj.Config)
+	runner := agents.NewRunner(agent)
 
 	// Main orchestration loop: poll for ready tasks and execute them
 	for {

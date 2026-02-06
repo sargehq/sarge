@@ -5,6 +5,7 @@ package agents
 
 import (
 	"context"
+	"github.com/sargehq/sarge/internal/beads"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/project"
 	"sync"
@@ -106,5 +107,586 @@ func (mock *AgentRunnerMock) RunCalls() []struct {
 	mock.lockRun.RLock()
 	calls = mock.calls.Run
 	mock.lockRun.RUnlock()
+	return calls
+}
+
+// Ensure, that AgentMock does implement Agent.
+// If this is not the case, regenerate this file with moq.
+var _ Agent = &AgentMock{}
+
+// AgentMock is a mock implementation of Agent.
+//
+//	func TestSomethingThatUsesAgent(t *testing.T) {
+//
+//		// make and configure a mocked Agent
+//		mockedAgent := &AgentMock{
+//			BinaryFunc: func() string {
+//				panic("mock out the Binary method")
+//			},
+//			BuildArgsFunc: func(cfg *project.Config) []string {
+//				panic("mock out the BuildArgs method")
+//			},
+//			BuildEstimatePromptFunc: func(taskID string, beadList []beads.Bead) string {
+//				panic("mock out the BuildEstimatePrompt method")
+//			},
+//			BuildLogAnalysisPromptFunc: func(params LogAnalysisParams) string {
+//				panic("mock out the BuildLogAnalysisPrompt method")
+//			},
+//			BuildPRPromptFunc: func(taskID string, workID string, branchName string, baseBranch string) string {
+//				panic("mock out the BuildPRPrompt method")
+//			},
+//			BuildPlanPromptFunc: func(beadID string) string {
+//				panic("mock out the BuildPlanPrompt method")
+//			},
+//			BuildReviewPromptFunc: func(taskID string, workID string, branchName string, baseBranch string, rootIssueID string) string {
+//				panic("mock out the BuildReviewPrompt method")
+//			},
+//			BuildTaskPromptFunc: func(taskID string, beadList []beads.Bead, branchName string, baseBranch string) string {
+//				panic("mock out the BuildTaskPrompt method")
+//			},
+//			BuildUpdatePRDescriptionPromptFunc: func(taskID string, workID string, prURL string, branchName string, baseBranch string) string {
+//				panic("mock out the BuildUpdatePRDescriptionPrompt method")
+//			},
+//			TaskArgsFunc: func(taskType string, cfg *project.Config) []string {
+//				panic("mock out the TaskArgs method")
+//			},
+//		}
+//
+//		// use mockedAgent in code that requires Agent
+//		// and then make assertions.
+//
+//	}
+type AgentMock struct {
+	// BinaryFunc mocks the Binary method.
+	BinaryFunc func() string
+
+	// BuildArgsFunc mocks the BuildArgs method.
+	BuildArgsFunc func(cfg *project.Config) []string
+
+	// BuildEstimatePromptFunc mocks the BuildEstimatePrompt method.
+	BuildEstimatePromptFunc func(taskID string, beadList []beads.Bead) string
+
+	// BuildLogAnalysisPromptFunc mocks the BuildLogAnalysisPrompt method.
+	BuildLogAnalysisPromptFunc func(params LogAnalysisParams) string
+
+	// BuildPRPromptFunc mocks the BuildPRPrompt method.
+	BuildPRPromptFunc func(taskID string, workID string, branchName string, baseBranch string) string
+
+	// BuildPlanPromptFunc mocks the BuildPlanPrompt method.
+	BuildPlanPromptFunc func(beadID string) string
+
+	// BuildReviewPromptFunc mocks the BuildReviewPrompt method.
+	BuildReviewPromptFunc func(taskID string, workID string, branchName string, baseBranch string, rootIssueID string) string
+
+	// BuildTaskPromptFunc mocks the BuildTaskPrompt method.
+	BuildTaskPromptFunc func(taskID string, beadList []beads.Bead, branchName string, baseBranch string) string
+
+	// BuildUpdatePRDescriptionPromptFunc mocks the BuildUpdatePRDescriptionPrompt method.
+	BuildUpdatePRDescriptionPromptFunc func(taskID string, workID string, prURL string, branchName string, baseBranch string) string
+
+	// TaskArgsFunc mocks the TaskArgs method.
+	TaskArgsFunc func(taskType string, cfg *project.Config) []string
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// Binary holds details about calls to the Binary method.
+		Binary []struct {
+		}
+		// BuildArgs holds details about calls to the BuildArgs method.
+		BuildArgs []struct {
+			// Cfg is the cfg argument value.
+			Cfg *project.Config
+		}
+		// BuildEstimatePrompt holds details about calls to the BuildEstimatePrompt method.
+		BuildEstimatePrompt []struct {
+			// TaskID is the taskID argument value.
+			TaskID string
+			// BeadList is the beadList argument value.
+			BeadList []beads.Bead
+		}
+		// BuildLogAnalysisPrompt holds details about calls to the BuildLogAnalysisPrompt method.
+		BuildLogAnalysisPrompt []struct {
+			// Params is the params argument value.
+			Params LogAnalysisParams
+		}
+		// BuildPRPrompt holds details about calls to the BuildPRPrompt method.
+		BuildPRPrompt []struct {
+			// TaskID is the taskID argument value.
+			TaskID string
+			// WorkID is the workID argument value.
+			WorkID string
+			// BranchName is the branchName argument value.
+			BranchName string
+			// BaseBranch is the baseBranch argument value.
+			BaseBranch string
+		}
+		// BuildPlanPrompt holds details about calls to the BuildPlanPrompt method.
+		BuildPlanPrompt []struct {
+			// BeadID is the beadID argument value.
+			BeadID string
+		}
+		// BuildReviewPrompt holds details about calls to the BuildReviewPrompt method.
+		BuildReviewPrompt []struct {
+			// TaskID is the taskID argument value.
+			TaskID string
+			// WorkID is the workID argument value.
+			WorkID string
+			// BranchName is the branchName argument value.
+			BranchName string
+			// BaseBranch is the baseBranch argument value.
+			BaseBranch string
+			// RootIssueID is the rootIssueID argument value.
+			RootIssueID string
+		}
+		// BuildTaskPrompt holds details about calls to the BuildTaskPrompt method.
+		BuildTaskPrompt []struct {
+			// TaskID is the taskID argument value.
+			TaskID string
+			// BeadList is the beadList argument value.
+			BeadList []beads.Bead
+			// BranchName is the branchName argument value.
+			BranchName string
+			// BaseBranch is the baseBranch argument value.
+			BaseBranch string
+		}
+		// BuildUpdatePRDescriptionPrompt holds details about calls to the BuildUpdatePRDescriptionPrompt method.
+		BuildUpdatePRDescriptionPrompt []struct {
+			// TaskID is the taskID argument value.
+			TaskID string
+			// WorkID is the workID argument value.
+			WorkID string
+			// PrURL is the prURL argument value.
+			PrURL string
+			// BranchName is the branchName argument value.
+			BranchName string
+			// BaseBranch is the baseBranch argument value.
+			BaseBranch string
+		}
+		// TaskArgs holds details about calls to the TaskArgs method.
+		TaskArgs []struct {
+			// TaskType is the taskType argument value.
+			TaskType string
+			// Cfg is the cfg argument value.
+			Cfg *project.Config
+		}
+	}
+	lockBinary                         sync.RWMutex
+	lockBuildArgs                      sync.RWMutex
+	lockBuildEstimatePrompt            sync.RWMutex
+	lockBuildLogAnalysisPrompt         sync.RWMutex
+	lockBuildPRPrompt                  sync.RWMutex
+	lockBuildPlanPrompt                sync.RWMutex
+	lockBuildReviewPrompt              sync.RWMutex
+	lockBuildTaskPrompt                sync.RWMutex
+	lockBuildUpdatePRDescriptionPrompt sync.RWMutex
+	lockTaskArgs                       sync.RWMutex
+}
+
+// Binary calls BinaryFunc.
+func (mock *AgentMock) Binary() string {
+	callInfo := struct {
+	}{}
+	mock.lockBinary.Lock()
+	mock.calls.Binary = append(mock.calls.Binary, callInfo)
+	mock.lockBinary.Unlock()
+	if mock.BinaryFunc == nil {
+		var (
+			sOut string
+		)
+		return sOut
+	}
+	return mock.BinaryFunc()
+}
+
+// BinaryCalls gets all the calls that were made to Binary.
+// Check the length with:
+//
+//	len(mockedAgent.BinaryCalls())
+func (mock *AgentMock) BinaryCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockBinary.RLock()
+	calls = mock.calls.Binary
+	mock.lockBinary.RUnlock()
+	return calls
+}
+
+// BuildArgs calls BuildArgsFunc.
+func (mock *AgentMock) BuildArgs(cfg *project.Config) []string {
+	callInfo := struct {
+		Cfg *project.Config
+	}{
+		Cfg: cfg,
+	}
+	mock.lockBuildArgs.Lock()
+	mock.calls.BuildArgs = append(mock.calls.BuildArgs, callInfo)
+	mock.lockBuildArgs.Unlock()
+	if mock.BuildArgsFunc == nil {
+		var (
+			stringsOut []string
+		)
+		return stringsOut
+	}
+	return mock.BuildArgsFunc(cfg)
+}
+
+// BuildArgsCalls gets all the calls that were made to BuildArgs.
+// Check the length with:
+//
+//	len(mockedAgent.BuildArgsCalls())
+func (mock *AgentMock) BuildArgsCalls() []struct {
+	Cfg *project.Config
+} {
+	var calls []struct {
+		Cfg *project.Config
+	}
+	mock.lockBuildArgs.RLock()
+	calls = mock.calls.BuildArgs
+	mock.lockBuildArgs.RUnlock()
+	return calls
+}
+
+// BuildEstimatePrompt calls BuildEstimatePromptFunc.
+func (mock *AgentMock) BuildEstimatePrompt(taskID string, beadList []beads.Bead) string {
+	callInfo := struct {
+		TaskID   string
+		BeadList []beads.Bead
+	}{
+		TaskID:   taskID,
+		BeadList: beadList,
+	}
+	mock.lockBuildEstimatePrompt.Lock()
+	mock.calls.BuildEstimatePrompt = append(mock.calls.BuildEstimatePrompt, callInfo)
+	mock.lockBuildEstimatePrompt.Unlock()
+	if mock.BuildEstimatePromptFunc == nil {
+		var (
+			sOut string
+		)
+		return sOut
+	}
+	return mock.BuildEstimatePromptFunc(taskID, beadList)
+}
+
+// BuildEstimatePromptCalls gets all the calls that were made to BuildEstimatePrompt.
+// Check the length with:
+//
+//	len(mockedAgent.BuildEstimatePromptCalls())
+func (mock *AgentMock) BuildEstimatePromptCalls() []struct {
+	TaskID   string
+	BeadList []beads.Bead
+} {
+	var calls []struct {
+		TaskID   string
+		BeadList []beads.Bead
+	}
+	mock.lockBuildEstimatePrompt.RLock()
+	calls = mock.calls.BuildEstimatePrompt
+	mock.lockBuildEstimatePrompt.RUnlock()
+	return calls
+}
+
+// BuildLogAnalysisPrompt calls BuildLogAnalysisPromptFunc.
+func (mock *AgentMock) BuildLogAnalysisPrompt(params LogAnalysisParams) string {
+	callInfo := struct {
+		Params LogAnalysisParams
+	}{
+		Params: params,
+	}
+	mock.lockBuildLogAnalysisPrompt.Lock()
+	mock.calls.BuildLogAnalysisPrompt = append(mock.calls.BuildLogAnalysisPrompt, callInfo)
+	mock.lockBuildLogAnalysisPrompt.Unlock()
+	if mock.BuildLogAnalysisPromptFunc == nil {
+		var (
+			sOut string
+		)
+		return sOut
+	}
+	return mock.BuildLogAnalysisPromptFunc(params)
+}
+
+// BuildLogAnalysisPromptCalls gets all the calls that were made to BuildLogAnalysisPrompt.
+// Check the length with:
+//
+//	len(mockedAgent.BuildLogAnalysisPromptCalls())
+func (mock *AgentMock) BuildLogAnalysisPromptCalls() []struct {
+	Params LogAnalysisParams
+} {
+	var calls []struct {
+		Params LogAnalysisParams
+	}
+	mock.lockBuildLogAnalysisPrompt.RLock()
+	calls = mock.calls.BuildLogAnalysisPrompt
+	mock.lockBuildLogAnalysisPrompt.RUnlock()
+	return calls
+}
+
+// BuildPRPrompt calls BuildPRPromptFunc.
+func (mock *AgentMock) BuildPRPrompt(taskID string, workID string, branchName string, baseBranch string) string {
+	callInfo := struct {
+		TaskID     string
+		WorkID     string
+		BranchName string
+		BaseBranch string
+	}{
+		TaskID:     taskID,
+		WorkID:     workID,
+		BranchName: branchName,
+		BaseBranch: baseBranch,
+	}
+	mock.lockBuildPRPrompt.Lock()
+	mock.calls.BuildPRPrompt = append(mock.calls.BuildPRPrompt, callInfo)
+	mock.lockBuildPRPrompt.Unlock()
+	if mock.BuildPRPromptFunc == nil {
+		var (
+			sOut string
+		)
+		return sOut
+	}
+	return mock.BuildPRPromptFunc(taskID, workID, branchName, baseBranch)
+}
+
+// BuildPRPromptCalls gets all the calls that were made to BuildPRPrompt.
+// Check the length with:
+//
+//	len(mockedAgent.BuildPRPromptCalls())
+func (mock *AgentMock) BuildPRPromptCalls() []struct {
+	TaskID     string
+	WorkID     string
+	BranchName string
+	BaseBranch string
+} {
+	var calls []struct {
+		TaskID     string
+		WorkID     string
+		BranchName string
+		BaseBranch string
+	}
+	mock.lockBuildPRPrompt.RLock()
+	calls = mock.calls.BuildPRPrompt
+	mock.lockBuildPRPrompt.RUnlock()
+	return calls
+}
+
+// BuildPlanPrompt calls BuildPlanPromptFunc.
+func (mock *AgentMock) BuildPlanPrompt(beadID string) string {
+	callInfo := struct {
+		BeadID string
+	}{
+		BeadID: beadID,
+	}
+	mock.lockBuildPlanPrompt.Lock()
+	mock.calls.BuildPlanPrompt = append(mock.calls.BuildPlanPrompt, callInfo)
+	mock.lockBuildPlanPrompt.Unlock()
+	if mock.BuildPlanPromptFunc == nil {
+		var (
+			sOut string
+		)
+		return sOut
+	}
+	return mock.BuildPlanPromptFunc(beadID)
+}
+
+// BuildPlanPromptCalls gets all the calls that were made to BuildPlanPrompt.
+// Check the length with:
+//
+//	len(mockedAgent.BuildPlanPromptCalls())
+func (mock *AgentMock) BuildPlanPromptCalls() []struct {
+	BeadID string
+} {
+	var calls []struct {
+		BeadID string
+	}
+	mock.lockBuildPlanPrompt.RLock()
+	calls = mock.calls.BuildPlanPrompt
+	mock.lockBuildPlanPrompt.RUnlock()
+	return calls
+}
+
+// BuildReviewPrompt calls BuildReviewPromptFunc.
+func (mock *AgentMock) BuildReviewPrompt(taskID string, workID string, branchName string, baseBranch string, rootIssueID string) string {
+	callInfo := struct {
+		TaskID      string
+		WorkID      string
+		BranchName  string
+		BaseBranch  string
+		RootIssueID string
+	}{
+		TaskID:      taskID,
+		WorkID:      workID,
+		BranchName:  branchName,
+		BaseBranch:  baseBranch,
+		RootIssueID: rootIssueID,
+	}
+	mock.lockBuildReviewPrompt.Lock()
+	mock.calls.BuildReviewPrompt = append(mock.calls.BuildReviewPrompt, callInfo)
+	mock.lockBuildReviewPrompt.Unlock()
+	if mock.BuildReviewPromptFunc == nil {
+		var (
+			sOut string
+		)
+		return sOut
+	}
+	return mock.BuildReviewPromptFunc(taskID, workID, branchName, baseBranch, rootIssueID)
+}
+
+// BuildReviewPromptCalls gets all the calls that were made to BuildReviewPrompt.
+// Check the length with:
+//
+//	len(mockedAgent.BuildReviewPromptCalls())
+func (mock *AgentMock) BuildReviewPromptCalls() []struct {
+	TaskID      string
+	WorkID      string
+	BranchName  string
+	BaseBranch  string
+	RootIssueID string
+} {
+	var calls []struct {
+		TaskID      string
+		WorkID      string
+		BranchName  string
+		BaseBranch  string
+		RootIssueID string
+	}
+	mock.lockBuildReviewPrompt.RLock()
+	calls = mock.calls.BuildReviewPrompt
+	mock.lockBuildReviewPrompt.RUnlock()
+	return calls
+}
+
+// BuildTaskPrompt calls BuildTaskPromptFunc.
+func (mock *AgentMock) BuildTaskPrompt(taskID string, beadList []beads.Bead, branchName string, baseBranch string) string {
+	callInfo := struct {
+		TaskID     string
+		BeadList   []beads.Bead
+		BranchName string
+		BaseBranch string
+	}{
+		TaskID:     taskID,
+		BeadList:   beadList,
+		BranchName: branchName,
+		BaseBranch: baseBranch,
+	}
+	mock.lockBuildTaskPrompt.Lock()
+	mock.calls.BuildTaskPrompt = append(mock.calls.BuildTaskPrompt, callInfo)
+	mock.lockBuildTaskPrompt.Unlock()
+	if mock.BuildTaskPromptFunc == nil {
+		var (
+			sOut string
+		)
+		return sOut
+	}
+	return mock.BuildTaskPromptFunc(taskID, beadList, branchName, baseBranch)
+}
+
+// BuildTaskPromptCalls gets all the calls that were made to BuildTaskPrompt.
+// Check the length with:
+//
+//	len(mockedAgent.BuildTaskPromptCalls())
+func (mock *AgentMock) BuildTaskPromptCalls() []struct {
+	TaskID     string
+	BeadList   []beads.Bead
+	BranchName string
+	BaseBranch string
+} {
+	var calls []struct {
+		TaskID     string
+		BeadList   []beads.Bead
+		BranchName string
+		BaseBranch string
+	}
+	mock.lockBuildTaskPrompt.RLock()
+	calls = mock.calls.BuildTaskPrompt
+	mock.lockBuildTaskPrompt.RUnlock()
+	return calls
+}
+
+// BuildUpdatePRDescriptionPrompt calls BuildUpdatePRDescriptionPromptFunc.
+func (mock *AgentMock) BuildUpdatePRDescriptionPrompt(taskID string, workID string, prURL string, branchName string, baseBranch string) string {
+	callInfo := struct {
+		TaskID     string
+		WorkID     string
+		PrURL      string
+		BranchName string
+		BaseBranch string
+	}{
+		TaskID:     taskID,
+		WorkID:     workID,
+		PrURL:      prURL,
+		BranchName: branchName,
+		BaseBranch: baseBranch,
+	}
+	mock.lockBuildUpdatePRDescriptionPrompt.Lock()
+	mock.calls.BuildUpdatePRDescriptionPrompt = append(mock.calls.BuildUpdatePRDescriptionPrompt, callInfo)
+	mock.lockBuildUpdatePRDescriptionPrompt.Unlock()
+	if mock.BuildUpdatePRDescriptionPromptFunc == nil {
+		var (
+			sOut string
+		)
+		return sOut
+	}
+	return mock.BuildUpdatePRDescriptionPromptFunc(taskID, workID, prURL, branchName, baseBranch)
+}
+
+// BuildUpdatePRDescriptionPromptCalls gets all the calls that were made to BuildUpdatePRDescriptionPrompt.
+// Check the length with:
+//
+//	len(mockedAgent.BuildUpdatePRDescriptionPromptCalls())
+func (mock *AgentMock) BuildUpdatePRDescriptionPromptCalls() []struct {
+	TaskID     string
+	WorkID     string
+	PrURL      string
+	BranchName string
+	BaseBranch string
+} {
+	var calls []struct {
+		TaskID     string
+		WorkID     string
+		PrURL      string
+		BranchName string
+		BaseBranch string
+	}
+	mock.lockBuildUpdatePRDescriptionPrompt.RLock()
+	calls = mock.calls.BuildUpdatePRDescriptionPrompt
+	mock.lockBuildUpdatePRDescriptionPrompt.RUnlock()
+	return calls
+}
+
+// TaskArgs calls TaskArgsFunc.
+func (mock *AgentMock) TaskArgs(taskType string, cfg *project.Config) []string {
+	callInfo := struct {
+		TaskType string
+		Cfg      *project.Config
+	}{
+		TaskType: taskType,
+		Cfg:      cfg,
+	}
+	mock.lockTaskArgs.Lock()
+	mock.calls.TaskArgs = append(mock.calls.TaskArgs, callInfo)
+	mock.lockTaskArgs.Unlock()
+	if mock.TaskArgsFunc == nil {
+		var (
+			stringsOut []string
+		)
+		return stringsOut
+	}
+	return mock.TaskArgsFunc(taskType, cfg)
+}
+
+// TaskArgsCalls gets all the calls that were made to TaskArgs.
+// Check the length with:
+//
+//	len(mockedAgent.TaskArgsCalls())
+func (mock *AgentMock) TaskArgsCalls() []struct {
+	TaskType string
+	Cfg      *project.Config
+} {
+	var calls []struct {
+		TaskType string
+		Cfg      *project.Config
+	}
+	mock.lockTaskArgs.RLock()
+	calls = mock.calls.TaskArgs
+	mock.lockTaskArgs.RUnlock()
 	return calls
 }

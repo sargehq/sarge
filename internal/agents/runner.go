@@ -1,6 +1,6 @@
 package agents
 
-//go:generate moq -stub -out agents_mock.go . Runner:AgentRunnerMock
+//go:generate moq -stub -out agents_mock.go . Runner:AgentRunnerMock Agent:AgentMock
 
 import (
 	"context"
@@ -12,8 +12,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sargehq/sarge/internal/agents/claude"
-	"github.com/sargehq/sarge/internal/agents/pi"
 	"github.com/sargehq/sarge/internal/beads/pubsub"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/project"
@@ -28,14 +26,16 @@ type Runner interface {
 }
 
 // CLIRunner implements Runner using the coding agent CLI.
-type CLIRunner struct{}
+type CLIRunner struct {
+	agent Agent
+}
 
 // Compile-time check that CLIRunner implements Runner.
 var _ Runner = (*CLIRunner)(nil)
 
-// NewRunner creates a new Runner that uses the coding agent CLI.
-func NewRunner() Runner {
-	return &CLIRunner{}
+// NewRunner creates a new Runner that uses the given Agent for binary and args resolution.
+func NewRunner(agent Agent) Runner {
+	return &CLIRunner{agent: agent}
 }
 
 // Run implements Runner.Run.
@@ -54,27 +54,15 @@ func (r *CLIRunner) Run(ctx context.Context, database *db.DB, taskID string, pro
 		return fmt.Errorf("failed to start task: %w", err)
 	}
 
-	agentType := AgentTypeFromConfig(cfg)
-	agentBin := AgentBinary(agentType)
+	agentBin := r.agent.Binary()
 
 	startTime := time.Now()
 	fmt.Printf("\n=== Starting %s for task %s at %s ===\n", agentBin, taskID, startTime.Format("15:04:05"))
 
 	// Set up agent command with prompt as argument
 	var agentArgs []string
-	switch agentType {
-	case AgentPi:
-		agentArgs = append(agentArgs, pi.BuildArgs(cfg)...)
-	default:
-		agentArgs = append(agentArgs, claude.BuildArgs(cfg)...)
-	}
-	// Use configured model for log_analysis tasks (Claude only)
-	if agentType == AgentClaude && task.TaskType == "log_analysis" && cfg != nil {
-		model := cfg.LogParser.GetModel()
-		if model != "" {
-			agentArgs = append(agentArgs, "--model", model)
-		}
-	}
+	agentArgs = append(agentArgs, r.agent.BuildArgs(cfg)...)
+	agentArgs = append(agentArgs, r.agent.TaskArgs(task.TaskType, cfg)...)
 	agentArgs = append(agentArgs, prompt)
 	agentCmd := exec.CommandContext(ctx, agentBin, agentArgs...)
 	agentCmd.Dir = workDir
