@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/sargehq/sarge/internal/agents"
-	agenttypes "github.com/sargehq/sarge/internal/agents/types"
+	"github.com/sargehq/sarge/internal/agents/types"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/project"
 	"github.com/spf13/cobra"
@@ -65,11 +65,7 @@ func runPlan(cmd *cobra.Command, args []string) error {
 
 	mainRepoPath := proj.MainRepoPath()
 
-	// Launch agent with the plan prompt
+	// Launch agent interactively with plan params
 	agent := agents.NewAgent(proj.Config)
-	prompt, err := agent.BuildPrompt(agenttypes.TaskParams{Type: agenttypes.TaskTypePlan, BeadID: beadID})
-	if err != nil {
-		return fmt.Errorf("failed to build plan prompt: %w", err)
-	}
-	return agent.RunInteractive(ctx, prompt, mainRepoPath, os.Stdin, os.Stdout, os.Stderr, proj.Config)
+	return agent.RunInteractive(ctx, types.TaskParams{Type: types.TaskTypePlan, BeadID: beadID}, mainRepoPath, os.Stdin, os.Stdout, os.Stderr, proj.Config)
 }

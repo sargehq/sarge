@@ -10,7 +10,7 @@ import (
 )
 
 func TestBuildLogAnalysisPrompt(t *testing.T) {
-	agent := NewAgent(nil)
+	agent := NewAgent(nil).(*templateAgent)
 
 	tests := []struct {
 		name           string
@@ -103,15 +103,15 @@ func TestBuildLogAnalysisPrompt(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := agent.BuildPrompt(tt.params)
+			result, err := agent.buildPrompt(tt.params)
 			require.NoError(t, err)
 
 			for _, want := range tt.wantContains {
-				require.Contains(t, result, want, "BuildPrompt() missing expected content")
+				require.Contains(t, result, want, "buildPrompt() missing expected content")
 			}
 
 			for _, notWant := range tt.wantNotContain {
-				require.NotContains(t, result, notWant, "BuildPrompt() contains unexpected content")
+				require.NotContains(t, result, notWant, "buildPrompt() contains unexpected content")
 			}
 		})
 	}
@@ -141,7 +141,7 @@ func TestTaskParams(t *testing.T) {
 }
 
 func TestBuildLogAnalysisPromptPriorityGuidelines(t *testing.T) {
-	agent := NewAgent(nil)
+	agent := NewAgent(nil).(*templateAgent)
 
 	// Verify the prompt includes priority guidelines
 	params := types.TaskParams{
@@ -154,7 +154,7 @@ func TestBuildLogAnalysisPromptPriorityGuidelines(t *testing.T) {
 		LogFilePath:  "test failure",
 	}
 
-	result, err := agent.BuildPrompt(params)
+	result, err := agent.buildPrompt(params)
 	require.NoError(t, err)
 
 	// Check that priority guidelines are included
@@ -166,12 +166,12 @@ func TestBuildLogAnalysisPromptPriorityGuidelines(t *testing.T) {
 	}
 
 	for _, p := range priorities {
-		require.True(t, strings.Contains(result, p), "BuildPrompt() missing priority guideline: %s", p)
+		require.True(t, strings.Contains(result, p), "buildPrompt() missing priority guideline: %s", p)
 	}
 }
 
 func TestBuildLogAnalysisPromptBdCreateCommand(t *testing.T) {
-	agent := NewAgent(nil)
+	agent := NewAgent(nil).(*templateAgent)
 
 	// Verify the prompt includes bd create command examples
 	params := types.TaskParams{
@@ -184,17 +184,17 @@ func TestBuildLogAnalysisPromptBdCreateCommand(t *testing.T) {
 		LogFilePath:  "test failure",
 	}
 
-	result, err := agent.BuildPrompt(params)
+	result, err := agent.buildPrompt(params)
 	require.NoError(t, err)
 
 	// Check that bd create command format is included
-	require.Contains(t, result, "bd create", "BuildPrompt() missing bd create command")
+	require.Contains(t, result, "bd create", "buildPrompt() missing bd create command")
 
 	// Check that it includes type options
-	require.Contains(t, result, "--type", "BuildPrompt() missing --type flag")
+	require.Contains(t, result, "--type", "buildPrompt() missing --type flag")
 
 	// Check that it includes priority option
-	require.Contains(t, result, "--priority", "BuildPrompt() missing --priority flag")
+	require.Contains(t, result, "--priority", "buildPrompt() missing --priority flag")
 }
 
 func TestTaskParamsExistingBeadsField(t *testing.T) {
@@ -221,7 +221,7 @@ func TestTaskParamsExistingBeadsField(t *testing.T) {
 }
 
 func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
-	agent := NewAgent(nil)
+	agent := NewAgent(nil).(*templateAgent)
 
 	t.Run("renders existing beads section", func(t *testing.T) {
 		params := types.TaskParams{
@@ -238,7 +238,7 @@ func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
 			},
 		}
 
-		result, err := agent.BuildPrompt(params)
+		result, err := agent.buildPrompt(params)
 		require.NoError(t, err)
 
 		// Should contain the existing beads section header
@@ -271,7 +271,7 @@ func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
 			ExistingBeads: nil,
 		}
 
-		result, err := agent.BuildPrompt(params)
+		result, err := agent.buildPrompt(params)
 		require.NoError(t, err)
 
 		// Should not contain the existing beads section header when no beads
@@ -292,7 +292,7 @@ func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
 			},
 		}
 
-		result, err := agent.BuildPrompt(params)
+		result, err := agent.buildPrompt(params)
 		require.NoError(t, err)
 
 		// Should contain the bead ID and title
@@ -353,7 +353,8 @@ func TestNewAgent(t *testing.T) {
 			agent := NewAgent(tt.cfg)
 			require.NotNil(t, agent)
 			if tt.wantPrompt {
-				prompt, err := agent.BuildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeadID: "test-123"})
+				ta := agent.(*templateAgent)
+				prompt, err := ta.buildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeadID: "test-123"})
 				require.NoError(t, err)
 				require.NotEmpty(t, prompt)
 				require.Contains(t, prompt, "test-123")
@@ -364,12 +365,12 @@ func TestNewAgent(t *testing.T) {
 
 func TestBuildPlanPromptForPi(t *testing.T) {
 	// Verify plan prompts are generated for both agent types
-	claudeAgent := NewAgent(nil)
-	piAgent := NewAgent(&project.Config{Agent: project.AgentConfig{Type: "pi"}})
+	claudeAgent := NewAgent(nil).(*templateAgent)
+	piAgent := NewAgent(&project.Config{Agent: project.AgentConfig{Type: "pi"}}).(*templateAgent)
 
-	claudePrompt, err := claudeAgent.BuildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeadID: "bead-123"})
+	claudePrompt, err := claudeAgent.buildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeadID: "bead-123"})
 	require.NoError(t, err)
-	piPrompt, err := piAgent.BuildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeadID: "bead-123"})
+	piPrompt, err := piAgent.buildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeadID: "bead-123"})
 	require.NoError(t, err)
 
 	require.Contains(t, claudePrompt, "bead-123")
@@ -380,14 +381,14 @@ func TestBuildPlanPromptForPi(t *testing.T) {
 }
 
 func TestBuildPromptUnknownType(t *testing.T) {
-	agent := NewAgent(nil)
-	_, err := agent.BuildPrompt(types.TaskParams{Type: "nonexistent"})
+	agent := NewAgent(nil).(*templateAgent)
+	_, err := agent.buildPrompt(types.TaskParams{Type: "nonexistent"})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "unknown task type")
 }
 
 func TestBuildPromptAllTypes(t *testing.T) {
-	agent := NewAgent(nil)
+	agent := NewAgent(nil).(*templateAgent)
 
 	tests := []struct {
 		name         string
@@ -461,7 +462,7 @@ func TestBuildPromptAllTypes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := agent.BuildPrompt(tt.params)
+			result, err := agent.buildPrompt(tt.params)
 			require.NoError(t, err)
 			require.NotEmpty(t, result)
 			require.Contains(t, result, tt.wantContains)

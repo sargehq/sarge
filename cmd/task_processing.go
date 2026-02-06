@@ -13,25 +13,24 @@ import (
 	"github.com/sargehq/sarge/internal/worktree"
 )
 
-// TaskPrompt contains the prompt and any associated resources for a task.
-type TaskPrompt struct {
-	Prompt       string
+// TaskInput contains the params and any associated resources for a task.
+type TaskInput struct {
+	Params       agenttypes.TaskParams
 	TempFilePath string // Path to temp file that should be cleaned up after task execution
 }
 
-// buildPromptForTask builds the appropriate prompt for a task based on its type.
-// This centralizes prompt building logic for different task types.
-// Returns a TaskPrompt which includes the prompt and any temp files that need cleanup.
-func buildPromptForTask(ctx context.Context, proj *project.Project, task *db.Task, work *db.Work) (*TaskPrompt, error) {
+// taskInputForTask builds the appropriate TaskInput for a task based on its type.
+// This centralizes param building logic for different task types.
+// Returns a TaskInput which includes the params and any temp files that need cleanup.
+func taskInputForTask(ctx context.Context, proj *project.Project, task *db.Task, work *db.Work) (*TaskInput, error) {
 	baseBranch := work.BaseBranch
 	if baseBranch == "" {
 		baseBranch = proj.Config.Repo.GetBaseBranch()
 	}
-	agent := agents.NewAgent(proj.Config)
 
 	// Log analysis has its own metadata-fetching flow and temp file.
 	if task.TaskType == "log_analysis" {
-		return buildLogAnalysisPromptFromMetadata(ctx, proj, task, work)
+		return logAnalysisInputFromMetadata(ctx, proj, task, work)
 	}
 
 	params := agenttypes.TaskParams{
@@ -76,17 +75,13 @@ func buildPromptForTask(ctx context.Context, proj *project.Project, task *db.Tas
 		return nil, fmt.Errorf("unknown task type: %s", task.TaskType)
 	}
 
-	prompt, err := agent.BuildPrompt(params)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build prompt for task %s: %w", task.ID, err)
-	}
-	return &TaskPrompt{Prompt: prompt}, nil
+	return &TaskInput{Params: params}, nil
 }
 
-// buildLogAnalysisPromptFromMetadata builds a log analysis prompt from task metadata.
+// logAnalysisInputFromMetadata builds a log analysis TaskInput from task metadata.
 // The metadata is stored by the feedback processor when creating log_analysis tasks.
-// Returns a TaskPrompt including the path to the temp file that should be cleaned up.
-func buildLogAnalysisPromptFromMetadata(ctx context.Context, proj *project.Project, task *db.Task, work *db.Work) (*TaskPrompt, error) {
+// Returns a TaskInput including the path to the temp file that should be cleaned up.
+func logAnalysisInputFromMetadata(ctx context.Context, proj *project.Project, task *db.Task, work *db.Work) (*TaskInput, error) {
 	// Retrieve metadata stored by the feedback processor
 	workflowName, err := proj.DB.GetTaskMetadata(ctx, task.ID, "workflow_name")
 	if err != nil {
@@ -138,26 +133,18 @@ func buildLogAnalysisPromptFromMetadata(ctx context.Context, proj *project.Proje
 	// Fetch existing open beads for this work to help Claude match against them
 	existingBeads := fetchExistingBeadSummaries(ctx, proj, work.ID)
 
-	params := agenttypes.TaskParams{
-		Type:          agenttypes.TaskTypeLogAnalysis,
-		TaskID:        task.ID,
-		WorkID:        work.ID,
-		BranchName:    branchName,
-		RootIssueID:   rootIssueID,
-		WorkflowName:  workflowName,
-		JobName:       jobName,
-		LogFilePath:   logFile.Name(),
-		ExistingBeads: existingBeads,
-	}
-
-	agent := agents.NewAgent(proj.Config)
-	prompt, err := agent.BuildPrompt(params)
-	if err != nil {
-		_ = os.Remove(logFile.Name())
-		return nil, fmt.Errorf("failed to build log analysis prompt: %w", err)
-	}
-	return &TaskPrompt{
-		Prompt:       prompt,
+	return &TaskInput{
+		Params: agenttypes.TaskParams{
+			Type:          agenttypes.TaskTypeLogAnalysis,
+			TaskID:        task.ID,
+			WorkID:        work.ID,
+			BranchName:    branchName,
+			RootIssueID:   rootIssueID,
+			WorkflowName:  workflowName,
+			JobName:       jobName,
+			LogFilePath:   logFile.Name(),
+			ExistingBeads: existingBeads,
+		},
 		TempFilePath: logFile.Name(),
 	}, nil
 }
@@ -306,19 +293,19 @@ func processTask(proj *project.Project, taskID string, agent agents.Agent) error
 		return fmt.Errorf("work %s worktree does not exist at %s", work.ID, work.WorktreePath)
 	}
 
-	// Build prompt for Claude based on task type
-	taskPrompt, err := buildPromptForTask(ctx, proj, dbTask, work)
+	// Build params for Claude based on task type
+	taskInput, err := taskInputForTask(ctx, proj, dbTask, work)
 	if err != nil {
 		return err
 	}
 
 	// Clean up temp file after execution (if any)
-	if taskPrompt.TempFilePath != "" {
-		defer func() { _ = os.Remove(taskPrompt.TempFilePath) }()
+	if taskInput.TempFilePath != "" {
+		defer func() { _ = os.Remove(taskInput.TempFilePath) }()
 	}
 
 	// Execute Claude inline (blocking)
-	if err := agent.Run(ctx, proj.DB, taskID, taskPrompt.Prompt, work.WorktreePath, proj.Config); err != nil {
+	if err := agent.Run(ctx, proj.DB, taskID, taskInput.Params, work.WorktreePath, proj.Config); err != nil {
 		return fmt.Errorf("task %s failed: %w", taskID, err)
 	}
 

@@ -33,15 +33,12 @@ func agentTypeFromConfig(cfg *project.Config) agentType {
 
 // Agent encapsulates all agent-specific behavior: prompt building and execution.
 type Agent interface {
-	// BuildPrompt builds a prompt string for the given task parameters.
-	BuildPrompt(params types.TaskParams) (string, error)
+	// Run builds a prompt from params and executes the agent directly in the current terminal (fork/exec).
+	Run(ctx context.Context, database *db.DB, taskID string, params types.TaskParams, workDir string, cfg *project.Config) error
 
-	// Run executes the agent directly in the current terminal (fork/exec).
-	Run(ctx context.Context, database *db.DB, taskID string, prompt string, workDir string, cfg *project.Config) error
-
-	// RunInteractive runs the agent interactively, connecting the given
-	// stdin/stdout/stderr for direct user interaction (e.g. plan sessions).
-	RunInteractive(ctx context.Context, prompt, workDir string, stdin io.Reader, stdout, stderr io.Writer, cfg *project.Config) error
+	// RunInteractive builds a prompt from params and runs the agent interactively,
+	// connecting the given stdin/stdout/stderr for direct user interaction (e.g. plan sessions).
+	RunInteractive(ctx context.Context, params types.TaskParams, workDir string, stdin io.Reader, stdout, stderr io.Writer, cfg *project.Config) error
 }
 
 // NewAgent creates an Agent from project configuration.

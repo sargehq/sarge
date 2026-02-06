@@ -37,7 +37,7 @@ type templateAgent struct {
 	taskArgs   func(taskType string, cfg *project.Config) []string
 }
 
-func (a *templateAgent) BuildPrompt(params types.TaskParams) (string, error) {
+func (a *templateAgent) buildPrompt(params types.TaskParams) (string, error) {
 	tmpl, data, err := a.resolveTemplate(params)
 	if err != nil {
 		return "", err
@@ -149,8 +149,13 @@ func (a *templateAgent) resolveTemplate(params types.TaskParams) (*template.Temp
 	}
 }
 
-// Run executes the agent directly in the current terminal (fork/exec).
-func (a *templateAgent) Run(ctx context.Context, database *db.DB, taskID string, prompt string, workDir string, cfg *project.Config) error {
+// Run builds a prompt from params and executes the agent directly in the current terminal (fork/exec).
+func (a *templateAgent) Run(ctx context.Context, database *db.DB, taskID string, params types.TaskParams, workDir string, cfg *project.Config) error {
+	prompt, err := a.buildPrompt(params)
+	if err != nil {
+		return fmt.Errorf("failed to build prompt: %w", err)
+	}
+
 	// Get task to verify it exists
 	task, err := database.GetTask(ctx, taskID)
 	if err != nil {
@@ -193,9 +198,14 @@ func (a *templateAgent) Run(ctx context.Context, database *db.DB, taskID string,
 	return monitorAgent(ctx, database, taskID, agentCmd, startTime, projectRoot)
 }
 
-// RunInteractive runs the agent interactively with the given prompt,
+// RunInteractive builds a prompt from params and runs the agent interactively,
 // connecting stdin/stdout/stderr directly.
-func (a *templateAgent) RunInteractive(ctx context.Context, prompt, workDir string, stdin io.Reader, stdout, stderr io.Writer, cfg *project.Config) error {
+func (a *templateAgent) RunInteractive(ctx context.Context, params types.TaskParams, workDir string, stdin io.Reader, stdout, stderr io.Writer, cfg *project.Config) error {
+	prompt, err := a.buildPrompt(params)
+	if err != nil {
+		return fmt.Errorf("failed to build prompt: %w", err)
+	}
+
 	var args []string
 	args = append(args, a.baseArgs(cfg)...)
 	args = append(args, prompt)

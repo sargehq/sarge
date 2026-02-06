@@ -22,13 +22,10 @@ var _ Agent = &AgentMock{}
 //
 //		// make and configure a mocked Agent
 //		mockedAgent := &AgentMock{
-//			BuildPromptFunc: func(params types.TaskParams) (string, error) {
-//				panic("mock out the BuildPrompt method")
-//			},
-//			RunFunc: func(ctx context.Context, database *db.DB, taskID string, prompt string, workDir string, cfg *project.Config) error {
+//			RunFunc: func(ctx context.Context, database *db.DB, taskID string, params types.TaskParams, workDir string, cfg *project.Config) error {
 //				panic("mock out the Run method")
 //			},
-//			RunInteractiveFunc: func(ctx context.Context, prompt string, workDir string, stdin io.Reader, stdout io.Writer, stderr io.Writer, cfg *project.Config) error {
+//			RunInteractiveFunc: func(ctx context.Context, params types.TaskParams, workDir string, stdin io.Reader, stdout io.Writer, stderr io.Writer, cfg *project.Config) error {
 //				panic("mock out the RunInteractive method")
 //			},
 //		}
@@ -38,22 +35,14 @@ var _ Agent = &AgentMock{}
 //
 //	}
 type AgentMock struct {
-	// BuildPromptFunc mocks the BuildPrompt method.
-	BuildPromptFunc func(params types.TaskParams) (string, error)
-
 	// RunFunc mocks the Run method.
-	RunFunc func(ctx context.Context, database *db.DB, taskID string, prompt string, workDir string, cfg *project.Config) error
+	RunFunc func(ctx context.Context, database *db.DB, taskID string, params types.TaskParams, workDir string, cfg *project.Config) error
 
 	// RunInteractiveFunc mocks the RunInteractive method.
-	RunInteractiveFunc func(ctx context.Context, prompt string, workDir string, stdin io.Reader, stdout io.Writer, stderr io.Writer, cfg *project.Config) error
+	RunInteractiveFunc func(ctx context.Context, params types.TaskParams, workDir string, stdin io.Reader, stdout io.Writer, stderr io.Writer, cfg *project.Config) error
 
 	// calls tracks calls to the methods.
 	calls struct {
-		// BuildPrompt holds details about calls to the BuildPrompt method.
-		BuildPrompt []struct {
-			// Params is the params argument value.
-			Params types.TaskParams
-		}
 		// Run holds details about calls to the Run method.
 		Run []struct {
 			// Ctx is the ctx argument value.
@@ -62,8 +51,8 @@ type AgentMock struct {
 			Database *db.DB
 			// TaskID is the taskID argument value.
 			TaskID string
-			// Prompt is the prompt argument value.
-			Prompt string
+			// Params is the params argument value.
+			Params types.TaskParams
 			// WorkDir is the workDir argument value.
 			WorkDir string
 			// Cfg is the cfg argument value.
@@ -73,8 +62,8 @@ type AgentMock struct {
 		RunInteractive []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Prompt is the prompt argument value.
-			Prompt string
+			// Params is the params argument value.
+			Params types.TaskParams
 			// WorkDir is the workDir argument value.
 			WorkDir string
 			// Stdin is the stdin argument value.
@@ -87,61 +76,24 @@ type AgentMock struct {
 			Cfg *project.Config
 		}
 	}
-	lockBuildPrompt    sync.RWMutex
 	lockRun            sync.RWMutex
 	lockRunInteractive sync.RWMutex
 }
 
-// BuildPrompt calls BuildPromptFunc.
-func (mock *AgentMock) BuildPrompt(params types.TaskParams) (string, error) {
-	callInfo := struct {
-		Params types.TaskParams
-	}{
-		Params: params,
-	}
-	mock.lockBuildPrompt.Lock()
-	mock.calls.BuildPrompt = append(mock.calls.BuildPrompt, callInfo)
-	mock.lockBuildPrompt.Unlock()
-	if mock.BuildPromptFunc == nil {
-		var (
-			sOut   string
-			errOut error
-		)
-		return sOut, errOut
-	}
-	return mock.BuildPromptFunc(params)
-}
-
-// BuildPromptCalls gets all the calls that were made to BuildPrompt.
-// Check the length with:
-//
-//	len(mockedAgent.BuildPromptCalls())
-func (mock *AgentMock) BuildPromptCalls() []struct {
-	Params types.TaskParams
-} {
-	var calls []struct {
-		Params types.TaskParams
-	}
-	mock.lockBuildPrompt.RLock()
-	calls = mock.calls.BuildPrompt
-	mock.lockBuildPrompt.RUnlock()
-	return calls
-}
-
 // Run calls RunFunc.
-func (mock *AgentMock) Run(ctx context.Context, database *db.DB, taskID string, prompt string, workDir string, cfg *project.Config) error {
+func (mock *AgentMock) Run(ctx context.Context, database *db.DB, taskID string, params types.TaskParams, workDir string, cfg *project.Config) error {
 	callInfo := struct {
 		Ctx      context.Context
 		Database *db.DB
 		TaskID   string
-		Prompt   string
+		Params   types.TaskParams
 		WorkDir  string
 		Cfg      *project.Config
 	}{
 		Ctx:      ctx,
 		Database: database,
 		TaskID:   taskID,
-		Prompt:   prompt,
+		Params:   params,
 		WorkDir:  workDir,
 		Cfg:      cfg,
 	}
@@ -154,7 +106,7 @@ func (mock *AgentMock) Run(ctx context.Context, database *db.DB, taskID string, 
 		)
 		return errOut
 	}
-	return mock.RunFunc(ctx, database, taskID, prompt, workDir, cfg)
+	return mock.RunFunc(ctx, database, taskID, params, workDir, cfg)
 }
 
 // RunCalls gets all the calls that were made to Run.
@@ -165,7 +117,7 @@ func (mock *AgentMock) RunCalls() []struct {
 	Ctx      context.Context
 	Database *db.DB
 	TaskID   string
-	Prompt   string
+	Params   types.TaskParams
 	WorkDir  string
 	Cfg      *project.Config
 } {
@@ -173,7 +125,7 @@ func (mock *AgentMock) RunCalls() []struct {
 		Ctx      context.Context
 		Database *db.DB
 		TaskID   string
-		Prompt   string
+		Params   types.TaskParams
 		WorkDir  string
 		Cfg      *project.Config
 	}
@@ -184,10 +136,10 @@ func (mock *AgentMock) RunCalls() []struct {
 }
 
 // RunInteractive calls RunInteractiveFunc.
-func (mock *AgentMock) RunInteractive(ctx context.Context, prompt string, workDir string, stdin io.Reader, stdout io.Writer, stderr io.Writer, cfg *project.Config) error {
+func (mock *AgentMock) RunInteractive(ctx context.Context, params types.TaskParams, workDir string, stdin io.Reader, stdout io.Writer, stderr io.Writer, cfg *project.Config) error {
 	callInfo := struct {
 		Ctx     context.Context
-		Prompt  string
+		Params  types.TaskParams
 		WorkDir string
 		Stdin   io.Reader
 		Stdout  io.Writer
@@ -195,7 +147,7 @@ func (mock *AgentMock) RunInteractive(ctx context.Context, prompt string, workDi
 		Cfg     *project.Config
 	}{
 		Ctx:     ctx,
-		Prompt:  prompt,
+		Params:  params,
 		WorkDir: workDir,
 		Stdin:   stdin,
 		Stdout:  stdout,
@@ -211,7 +163,7 @@ func (mock *AgentMock) RunInteractive(ctx context.Context, prompt string, workDi
 		)
 		return errOut
 	}
-	return mock.RunInteractiveFunc(ctx, prompt, workDir, stdin, stdout, stderr, cfg)
+	return mock.RunInteractiveFunc(ctx, params, workDir, stdin, stdout, stderr, cfg)
 }
 
 // RunInteractiveCalls gets all the calls that were made to RunInteractive.
@@ -220,7 +172,7 @@ func (mock *AgentMock) RunInteractive(ctx context.Context, prompt string, workDi
 //	len(mockedAgent.RunInteractiveCalls())
 func (mock *AgentMock) RunInteractiveCalls() []struct {
 	Ctx     context.Context
-	Prompt  string
+	Params  types.TaskParams
 	WorkDir string
 	Stdin   io.Reader
 	Stdout  io.Writer
@@ -229,7 +181,7 @@ func (mock *AgentMock) RunInteractiveCalls() []struct {
 } {
 	var calls []struct {
 		Ctx     context.Context
-		Prompt  string
+		Params  types.TaskParams
 		WorkDir string
 		Stdin   io.Reader
 		Stdout  io.Writer

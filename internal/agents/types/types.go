@@ -13,7 +13,7 @@ const (
 	TaskTypeLogAnalysis         TaskType = "log_analysis"
 )
 
-// TaskParams is the single input struct for BuildPrompt.
+// TaskParams is the single input struct for agent Run/RunInteractive.
 // Not all fields are used for every TaskType.
 type TaskParams struct {
 	Type          TaskType
