@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sargehq/sarge/internal/agent"
+	"github.com/sargehq/sarge/internal/agents"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/project"
 	"github.com/spf13/cobra"
@@ -65,7 +65,7 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	mainRepoPath := proj.MainRepoPath()
 
 	// Launch Claude with the plan prompt
-	if err := agent.RunPlanSession(ctx, beadID, mainRepoPath, os.Stdin, os.Stdout, os.Stderr, proj.Config); err != nil {
+	if err := agents.RunPlanSession(ctx, beadID, mainRepoPath, os.Stdin, os.Stdout, os.Stderr, proj.Config); err != nil {
 		return err
 	}
 

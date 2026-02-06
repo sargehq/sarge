@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/sargehq/sarge/internal/beads"
-	"github.com/sargehq/sarge/internal/agent"
+	"github.com/sargehq/sarge/internal/agents"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/feedback"
 	"github.com/sargehq/sarge/internal/logging"
@@ -119,7 +119,7 @@ func runOrchestrate(cmd *cobra.Command, args []string) error {
 	// to be processed even when no orchestrator is running for a theWork.
 
 	// Create runner once for all tasks
-	runner := agent.NewRunner()
+	runner := agents.NewRunner()
 
 	// Main orchestration loop: poll for ready tasks and execute them
 	for {
@@ -250,7 +250,7 @@ func runOrchestrate(cmd *cobra.Command, args []string) error {
 }
 
 // executeTask executes a single task inline based on its type.
-func executeTask(proj *project.Project, t *db.Task, work *db.Work, runner agent.Runner) error {
+func executeTask(proj *project.Project, t *db.Task, work *db.Work, runner agents.Runner) error {
 	ctx := GetContext()
 
 	// Create a context with timeout from configuration
