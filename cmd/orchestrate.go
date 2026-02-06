@@ -119,7 +119,10 @@ func runOrchestrate(cmd *cobra.Command, args []string) error {
 	// to be processed even when no orchestrator is running for a theWork.
 
 	// Create agent once for all tasks
-	agent := agents.NewAgent(proj.Config)
+	agent, err := agents.NewAgent(proj.Config)
+	if err != nil {
+		return err
+	}
 
 	// Main orchestration loop: poll for ready tasks and execute them
 	for {

@@ -2,6 +2,7 @@ package agents
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	"github.com/sargehq/sarge/internal/agents/claude"
@@ -43,21 +44,25 @@ type Agent interface {
 
 // NewAgent creates an Agent from project configuration.
 // Returns a Claude agent by default if cfg is nil or unconfigured.
-func NewAgent(cfg *project.Config) Agent {
-	switch agentTypeFromConfig(cfg) {
+// Returns an error if the configured agent type is not recognized.
+func NewAgent(cfg *project.Config) (Agent, error) {
+	at := agentTypeFromConfig(cfg)
+	switch at {
 	case agentPi:
 		return &templateAgent{
 			binaryName: pi.Binary,
 			templates:  pi.Templates(),
 			baseArgs:   pi.BaseArgs,
 			taskArgs:   pi.TaskArgs,
-		}
-	default:
+		}, nil
+	case agentClaude:
 		return &templateAgent{
 			binaryName: claude.Binary,
 			templates:  claude.Templates(),
 			baseArgs:   claude.BaseArgs,
 			taskArgs:   claude.TaskArgs,
-		}
+		}, nil
+	default:
+		return nil, fmt.Errorf("unknown agent type %q (supported: %q, %q)", at, agentClaude, agentPi)
 	}
 }

@@ -9,8 +9,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// mustNewAgent is a test helper that creates an agent and fails the test on error.
+func mustNewAgent(t *testing.T, cfg *project.Config) *templateAgent {
+	t.Helper()
+	a, err := NewAgent(cfg)
+	require.NoError(t, err)
+	return a.(*templateAgent)
+}
+
 func TestBuildLogAnalysisPrompt(t *testing.T) {
-	agent := NewAgent(nil).(*templateAgent)
+	agent := mustNewAgent(t, nil)
 
 	tests := []struct {
 		name           string
@@ -141,7 +149,7 @@ func TestTaskParams(t *testing.T) {
 }
 
 func TestBuildLogAnalysisPromptPriorityGuidelines(t *testing.T) {
-	agent := NewAgent(nil).(*templateAgent)
+	agent := mustNewAgent(t, nil)
 
 	// Verify the prompt includes priority guidelines
 	params := types.TaskParams{
@@ -171,7 +179,7 @@ func TestBuildLogAnalysisPromptPriorityGuidelines(t *testing.T) {
 }
 
 func TestBuildLogAnalysisPromptBdCreateCommand(t *testing.T) {
-	agent := NewAgent(nil).(*templateAgent)
+	agent := mustNewAgent(t, nil)
 
 	// Verify the prompt includes bd create command examples
 	params := types.TaskParams{
@@ -221,7 +229,7 @@ func TestTaskParamsExistingBeadsField(t *testing.T) {
 }
 
 func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
-	agent := NewAgent(nil).(*templateAgent)
+	agent := mustNewAgent(t, nil)
 
 	t.Run("renders existing beads section", func(t *testing.T) {
 		params := types.TaskParams{
@@ -350,7 +358,8 @@ func TestNewAgent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			agent := NewAgent(tt.cfg)
+			agent, err := NewAgent(tt.cfg)
+			require.NoError(t, err)
 			require.NotNil(t, agent)
 			if tt.wantPrompt {
 				ta := agent.(*templateAgent)
@@ -365,8 +374,12 @@ func TestNewAgent(t *testing.T) {
 
 func TestBuildPlanPromptForPi(t *testing.T) {
 	// Verify plan prompts are generated for both agent types
-	claudeAgent := NewAgent(nil).(*templateAgent)
-	piAgent := NewAgent(&project.Config{Agent: project.AgentConfig{Type: "pi"}}).(*templateAgent)
+	claudeAgentI, err := NewAgent(nil)
+	require.NoError(t, err)
+	claudeAgent := claudeAgentI.(*templateAgent)
+	piAgentI, err := NewAgent(&project.Config{Agent: project.AgentConfig{Type: "pi"}})
+	require.NoError(t, err)
+	piAgent := piAgentI.(*templateAgent)
 
 	claudePrompt, err := claudeAgent.buildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeadID: "bead-123"})
 	require.NoError(t, err)
@@ -380,15 +393,21 @@ func TestBuildPlanPromptForPi(t *testing.T) {
 	require.NotEmpty(t, piPrompt)
 }
 
+func TestNewAgentUnknownType(t *testing.T) {
+	_, err := NewAgent(&project.Config{Agent: project.AgentConfig{Type: "unknown-agent"}})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unknown agent type")
+}
+
 func TestBuildPromptUnknownType(t *testing.T) {
-	agent := NewAgent(nil).(*templateAgent)
+	agent := mustNewAgent(t, nil)
 	_, err := agent.buildPrompt(types.TaskParams{Type: "nonexistent"})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "unknown task type")
 }
 
 func TestBuildPromptAllTypes(t *testing.T) {
-	agent := NewAgent(nil).(*templateAgent)
+	agent := mustNewAgent(t, nil)
 
 	tests := []struct {
 		name         string

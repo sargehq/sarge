@@ -755,7 +755,10 @@ func runWorkPR(cmd *cobra.Command, args []string) error {
 
 	// Auto-run the PR task
 	fmt.Printf("Running PR task...\n")
-	agent := agents.NewAgent(proj.Config)
+	agent, err := agents.NewAgent(proj.Config)
+	if err != nil {
+		return err
+	}
 	if err := processTask(proj, result.TaskID, agent); err != nil {
 		return err
 	}
@@ -837,7 +840,10 @@ func runWorkReview(cmd *cobra.Command, args []string) error {
 	}
 
 	// Run review-fix loop if --auto is set
-	agent := agents.NewAgent(proj.Config)
+	agent, err := agents.NewAgent(proj.Config)
+	if err != nil {
+		return err
+	}
 	maxIterations := proj.Config.Workflow.GetMaxReviewIterations()
 	for iteration := 0; ; iteration++ {
 		// Check max iterations

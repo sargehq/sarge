@@ -66,6 +66,9 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	mainRepoPath := proj.MainRepoPath()
 
 	// Launch agent interactively with plan params
-	agent := agents.NewAgent(proj.Config)
+	agent, err := agents.NewAgent(proj.Config)
+	if err != nil {
+		return err
+	}
 	return agent.RunInteractive(ctx, types.TaskParams{Type: types.TaskTypePlan, BeadID: beadID}, mainRepoPath, os.Stdin, os.Stdout, os.Stderr, proj.Config)
 }
