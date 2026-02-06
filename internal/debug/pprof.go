@@ -5,6 +5,8 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof" // Register pprof handlers on DefaultServeMux
+
+	"github.com/sargehq/sarge/internal/logging"
 )
 
 // StartPprof starts an HTTP server with pprof handlers on an ephemeral port.
@@ -17,7 +19,7 @@ func StartPprof() (int, error) {
 	}
 
 	port := listener.Addr().(*net.TCPAddr).Port
-	fmt.Printf("pprof server listening on http://localhost:%d/debug/pprof/\n", port)
+	logging.Info("pprof server listening", "url", fmt.Sprintf("http://localhost:%d/debug/pprof/", port))
 
 	go func() {
 		_ = http.Serve(listener, nil)
