@@ -294,16 +294,8 @@ func RunPlanSession(ctx context.Context, beadID string, workDir string, stdin io
 	if agentType == AgentClaude && cfg != nil && cfg.Claude.ShouldSkipPermissions() {
 		args = append(args, "--dangerously-skip-permissions")
 	}
-	if agentType == AgentPi && cfg != nil {
-		if cfg.Pi.Provider != "" {
-			args = append(args, "--provider", cfg.Pi.Provider)
-		}
-		if cfg.Pi.Model != "" {
-			args = append(args, "--model", cfg.Pi.Model)
-		}
-		if cfg.Pi.Thinking != "" {
-			args = append(args, "--thinking", cfg.Pi.Thinking)
-		}
+	if agentType == AgentPi {
+		args = append(args, buildPiArgs(cfg)...)
 	}
 	args = append(args, prompt)
 
@@ -318,6 +310,25 @@ func RunPlanSession(ctx context.Context, beadID string, workDir string, stdin io
 	}
 
 	return nil
+}
+
+// buildPiArgs returns the CLI arguments for configuring the pi agent
+// (provider, model, thinking) from project configuration.
+func buildPiArgs(cfg *project.Config) []string {
+	if cfg == nil {
+		return nil
+	}
+	var args []string
+	if cfg.Pi.Provider != "" {
+		args = append(args, "--provider", cfg.Pi.Provider)
+	}
+	if cfg.Pi.Model != "" {
+		args = append(args, "--model", cfg.Pi.Model)
+	}
+	if cfg.Pi.Thinking != "" {
+		args = append(args, "--thinking", cfg.Pi.Thinking)
+	}
+	return args
 }
 
 // AgentBinary returns the CLI binary name for the given agent type.

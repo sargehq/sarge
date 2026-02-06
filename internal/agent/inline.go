@@ -63,16 +63,8 @@ func (r *CLIRunner) Run(ctx context.Context, database *db.DB, taskID string, pro
 	if agentType == AgentClaude && cfg != nil && cfg.Claude.ShouldSkipPermissions() {
 		agentArgs = append(agentArgs, "--dangerously-skip-permissions")
 	}
-	if agentType == AgentPi && cfg != nil {
-		if cfg.Pi.Provider != "" {
-			agentArgs = append(agentArgs, "--provider", cfg.Pi.Provider)
-		}
-		if cfg.Pi.Model != "" {
-			agentArgs = append(agentArgs, "--model", cfg.Pi.Model)
-		}
-		if cfg.Pi.Thinking != "" {
-			agentArgs = append(agentArgs, "--thinking", cfg.Pi.Thinking)
-		}
+	if agentType == AgentPi {
+		agentArgs = append(agentArgs, buildPiArgs(cfg)...)
 	}
 	// Use configured model for log_analysis tasks (Claude only)
 	if agentType == AgentClaude && task.TaskType == "log_analysis" && cfg != nil {
