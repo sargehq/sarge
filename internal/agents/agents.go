@@ -10,8 +10,12 @@ import (
 	"github.com/sargehq/sarge/internal/agents/pi"
 	"github.com/sargehq/sarge/internal/agents/types"
 	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/project"
 )
+
+// Compile-time check that agentWithRunner implements Agent.
+var _ Agent = (*agentWithRunner)(nil)
 
 // agentType represents which coding agent to use.
 type agentType string
@@ -30,7 +34,7 @@ func agentTypeFromConfig(cfg *project.Config) agentType {
 	return agentType(cfg.Agent.Type)
 }
 
-// Agent encapsulates all agent-specific behavior: binary, CLI args, and prompt building.
+// Agent encapsulates all agent-specific behavior: binary, CLI args, prompt building, and execution.
 type Agent interface {
 	// Binary returns the CLI binary name for this agent.
 	Binary() string
@@ -62,16 +66,20 @@ type Agent interface {
 
 	// BuildLogAnalysisPrompt builds a prompt for agent-based CI log analysis.
 	BuildLogAnalysisPrompt(params types.LogAnalysisParams) string
+
+	// Run executes the agent directly in the current terminal (fork/exec).
+	Run(ctx context.Context, database *db.DB, taskID string, prompt string, workDir string, cfg *project.Config) error
 }
 
 // NewAgent creates an Agent from project configuration.
 // Returns a Claude agent by default if cfg is nil or unconfigured.
+// The returned Agent includes a Run method that handles task execution.
 func NewAgent(cfg *project.Config) Agent {
 	switch agentTypeFromConfig(cfg) {
 	case agentPi:
-		return &pi.Agent{}
+		return &agentWithRunner{baseAgent: &pi.Agent{}}
 	default:
-		return &claude.Agent{}
+		return &agentWithRunner{baseAgent: &claude.Agent{}}
 	}
 }
 

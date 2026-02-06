@@ -12,105 +12,6 @@ import (
 	"sync"
 )
 
-// Ensure, that AgentRunnerMock does implement Runner.
-// If this is not the case, regenerate this file with moq.
-var _ Runner = &AgentRunnerMock{}
-
-// AgentRunnerMock is a mock implementation of Runner.
-//
-//	func TestSomethingThatUsesRunner(t *testing.T) {
-//
-//		// make and configure a mocked Runner
-//		mockedRunner := &AgentRunnerMock{
-//			RunFunc: func(ctx context.Context, database *db.DB, taskID string, prompt string, workDir string, cfg *project.Config) error {
-//				panic("mock out the Run method")
-//			},
-//		}
-//
-//		// use mockedRunner in code that requires Runner
-//		// and then make assertions.
-//
-//	}
-type AgentRunnerMock struct {
-	// RunFunc mocks the Run method.
-	RunFunc func(ctx context.Context, database *db.DB, taskID string, prompt string, workDir string, cfg *project.Config) error
-
-	// calls tracks calls to the methods.
-	calls struct {
-		// Run holds details about calls to the Run method.
-		Run []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Database is the database argument value.
-			Database *db.DB
-			// TaskID is the taskID argument value.
-			TaskID string
-			// Prompt is the prompt argument value.
-			Prompt string
-			// WorkDir is the workDir argument value.
-			WorkDir string
-			// Cfg is the cfg argument value.
-			Cfg *project.Config
-		}
-	}
-	lockRun sync.RWMutex
-}
-
-// Run calls RunFunc.
-func (mock *AgentRunnerMock) Run(ctx context.Context, database *db.DB, taskID string, prompt string, workDir string, cfg *project.Config) error {
-	callInfo := struct {
-		Ctx      context.Context
-		Database *db.DB
-		TaskID   string
-		Prompt   string
-		WorkDir  string
-		Cfg      *project.Config
-	}{
-		Ctx:      ctx,
-		Database: database,
-		TaskID:   taskID,
-		Prompt:   prompt,
-		WorkDir:  workDir,
-		Cfg:      cfg,
-	}
-	mock.lockRun.Lock()
-	mock.calls.Run = append(mock.calls.Run, callInfo)
-	mock.lockRun.Unlock()
-	if mock.RunFunc == nil {
-		var (
-			errOut error
-		)
-		return errOut
-	}
-	return mock.RunFunc(ctx, database, taskID, prompt, workDir, cfg)
-}
-
-// RunCalls gets all the calls that were made to Run.
-// Check the length with:
-//
-//	len(mockedRunner.RunCalls())
-func (mock *AgentRunnerMock) RunCalls() []struct {
-	Ctx      context.Context
-	Database *db.DB
-	TaskID   string
-	Prompt   string
-	WorkDir  string
-	Cfg      *project.Config
-} {
-	var calls []struct {
-		Ctx      context.Context
-		Database *db.DB
-		TaskID   string
-		Prompt   string
-		WorkDir  string
-		Cfg      *project.Config
-	}
-	mock.lockRun.RLock()
-	calls = mock.calls.Run
-	mock.lockRun.RUnlock()
-	return calls
-}
-
 // Ensure, that AgentMock does implement Agent.
 // If this is not the case, regenerate this file with moq.
 var _ Agent = &AgentMock{}
@@ -148,6 +49,9 @@ var _ Agent = &AgentMock{}
 //			BuildUpdatePRDescriptionPromptFunc: func(taskID string, workID string, prURL string, branchName string, baseBranch string) string {
 //				panic("mock out the BuildUpdatePRDescriptionPrompt method")
 //			},
+//			RunFunc: func(ctx context.Context, database *db.DB, taskID string, prompt string, workDir string, cfg *project.Config) error {
+//				panic("mock out the Run method")
+//			},
 //			TaskArgsFunc: func(taskType string, cfg *project.Config) []string {
 //				panic("mock out the TaskArgs method")
 //			},
@@ -184,6 +88,9 @@ type AgentMock struct {
 
 	// BuildUpdatePRDescriptionPromptFunc mocks the BuildUpdatePRDescriptionPrompt method.
 	BuildUpdatePRDescriptionPromptFunc func(taskID string, workID string, prURL string, branchName string, baseBranch string) string
+
+	// RunFunc mocks the Run method.
+	RunFunc func(ctx context.Context, database *db.DB, taskID string, prompt string, workDir string, cfg *project.Config) error
 
 	// TaskArgsFunc mocks the TaskArgs method.
 	TaskArgsFunc func(taskType string, cfg *project.Config) []string
@@ -263,6 +170,21 @@ type AgentMock struct {
 			// BaseBranch is the baseBranch argument value.
 			BaseBranch string
 		}
+		// Run holds details about calls to the Run method.
+		Run []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Database is the database argument value.
+			Database *db.DB
+			// TaskID is the taskID argument value.
+			TaskID string
+			// Prompt is the prompt argument value.
+			Prompt string
+			// WorkDir is the workDir argument value.
+			WorkDir string
+			// Cfg is the cfg argument value.
+			Cfg *project.Config
+		}
 		// TaskArgs holds details about calls to the TaskArgs method.
 		TaskArgs []struct {
 			// TaskType is the taskType argument value.
@@ -280,6 +202,7 @@ type AgentMock struct {
 	lockBuildReviewPrompt              sync.RWMutex
 	lockBuildTaskPrompt                sync.RWMutex
 	lockBuildUpdatePRDescriptionPrompt sync.RWMutex
+	lockRun                            sync.RWMutex
 	lockTaskArgs                       sync.RWMutex
 }
 
@@ -650,6 +573,61 @@ func (mock *AgentMock) BuildUpdatePRDescriptionPromptCalls() []struct {
 	mock.lockBuildUpdatePRDescriptionPrompt.RLock()
 	calls = mock.calls.BuildUpdatePRDescriptionPrompt
 	mock.lockBuildUpdatePRDescriptionPrompt.RUnlock()
+	return calls
+}
+
+// Run calls RunFunc.
+func (mock *AgentMock) Run(ctx context.Context, database *db.DB, taskID string, prompt string, workDir string, cfg *project.Config) error {
+	callInfo := struct {
+		Ctx      context.Context
+		Database *db.DB
+		TaskID   string
+		Prompt   string
+		WorkDir  string
+		Cfg      *project.Config
+	}{
+		Ctx:      ctx,
+		Database: database,
+		TaskID:   taskID,
+		Prompt:   prompt,
+		WorkDir:  workDir,
+		Cfg:      cfg,
+	}
+	mock.lockRun.Lock()
+	mock.calls.Run = append(mock.calls.Run, callInfo)
+	mock.lockRun.Unlock()
+	if mock.RunFunc == nil {
+		var (
+			errOut error
+		)
+		return errOut
+	}
+	return mock.RunFunc(ctx, database, taskID, prompt, workDir, cfg)
+}
+
+// RunCalls gets all the calls that were made to Run.
+// Check the length with:
+//
+//	len(mockedAgent.RunCalls())
+func (mock *AgentMock) RunCalls() []struct {
+	Ctx      context.Context
+	Database *db.DB
+	TaskID   string
+	Prompt   string
+	WorkDir  string
+	Cfg      *project.Config
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Database *db.DB
+		TaskID   string
+		Prompt   string
+		WorkDir  string
+		Cfg      *project.Config
+	}
+	mock.lockRun.RLock()
+	calls = mock.calls.Run
+	mock.lockRun.RUnlock()
 	return calls
 }
 

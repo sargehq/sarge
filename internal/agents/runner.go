@@ -1,6 +1,6 @@
 package agents
 
-//go:generate moq -stub -out agents_mock.go . Runner:AgentRunnerMock Agent:AgentMock
+//go:generate moq -stub -out agents_mock.go . Agent:AgentMock
 
 import (
 	"context"
@@ -12,34 +12,73 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/sargehq/sarge/internal/agents/types"
+	"github.com/sargehq/sarge/internal/beads"
 	"github.com/sargehq/sarge/internal/beads/pubsub"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/project"
 	trackingwatcher "github.com/sargehq/sarge/internal/tracking/watcher"
 )
 
-// Runner defines the interface for running a coding agent.
-// This abstraction enables testing without spawning the actual CLI.
-type Runner interface {
-	// Run executes the agent directly in the current terminal (fork/exec).
-	Run(ctx context.Context, database *db.DB, taskID string, prompt string, workDir string, cfg *project.Config) error
+// promptAgent is the subset of Agent that subpackage agents (claude, pi) implement.
+// It contains everything except Run.
+type promptAgent interface {
+	Binary() string
+	BuildArgs(cfg *project.Config) []string
+	TaskArgs(taskType string, cfg *project.Config) []string
+	BuildTaskPrompt(taskID string, beadList []beads.Bead, branchName, baseBranch string) string
+	BuildEstimatePrompt(taskID string, beadList []beads.Bead) string
+	BuildPRPrompt(taskID string, workID string, branchName string, baseBranch string) string
+	BuildReviewPrompt(taskID string, workID string, branchName string, baseBranch string, rootIssueID string) string
+	BuildUpdatePRDescriptionPrompt(taskID string, workID string, prURL string, branchName string, baseBranch string) string
+	BuildPlanPrompt(beadID string) string
+	BuildLogAnalysisPrompt(params types.LogAnalysisParams) string
 }
 
-// CLIRunner implements Runner using the coding agent CLI.
-type CLIRunner struct {
-	agent Agent
+// agentWithRunner wraps a promptAgent (which provides Binary, BuildArgs, prompts, etc.)
+// and adds the Run method so it satisfies the full Agent interface.
+type agentWithRunner struct {
+	baseAgent promptAgent
 }
 
-// Compile-time check that CLIRunner implements Runner.
-var _ Runner = (*CLIRunner)(nil)
+// Delegate all baseAgent methods.
 
-// NewRunner creates a new Runner that uses the given Agent for binary and args resolution.
-func NewRunner(agent Agent) Runner {
-	return &CLIRunner{agent: agent}
+func (a *agentWithRunner) Binary() string                         { return a.baseAgent.Binary() }
+func (a *agentWithRunner) BuildArgs(cfg *project.Config) []string { return a.baseAgent.BuildArgs(cfg) }
+func (a *agentWithRunner) TaskArgs(taskType string, cfg *project.Config) []string {
+	return a.baseAgent.TaskArgs(taskType, cfg)
 }
 
-// Run implements Runner.Run.
-func (r *CLIRunner) Run(ctx context.Context, database *db.DB, taskID string, prompt string, workDir string, cfg *project.Config) error {
+func (a *agentWithRunner) BuildTaskPrompt(taskID string, beadList []beads.Bead, branchName, baseBranch string) string {
+	return a.baseAgent.BuildTaskPrompt(taskID, beadList, branchName, baseBranch)
+}
+
+func (a *agentWithRunner) BuildEstimatePrompt(taskID string, beadList []beads.Bead) string {
+	return a.baseAgent.BuildEstimatePrompt(taskID, beadList)
+}
+
+func (a *agentWithRunner) BuildPRPrompt(taskID string, workID string, branchName string, baseBranch string) string {
+	return a.baseAgent.BuildPRPrompt(taskID, workID, branchName, baseBranch)
+}
+
+func (a *agentWithRunner) BuildReviewPrompt(taskID string, workID string, branchName string, baseBranch string, rootIssueID string) string {
+	return a.baseAgent.BuildReviewPrompt(taskID, workID, branchName, baseBranch, rootIssueID)
+}
+
+func (a *agentWithRunner) BuildUpdatePRDescriptionPrompt(taskID string, workID string, prURL string, branchName string, baseBranch string) string {
+	return a.baseAgent.BuildUpdatePRDescriptionPrompt(taskID, workID, prURL, branchName, baseBranch)
+}
+
+func (a *agentWithRunner) BuildPlanPrompt(beadID string) string {
+	return a.baseAgent.BuildPlanPrompt(beadID)
+}
+
+func (a *agentWithRunner) BuildLogAnalysisPrompt(params types.LogAnalysisParams) string {
+	return a.baseAgent.BuildLogAnalysisPrompt(params)
+}
+
+// Run executes the agent directly in the current terminal.
+func (a *agentWithRunner) Run(ctx context.Context, database *db.DB, taskID string, prompt string, workDir string, cfg *project.Config) error {
 	// Get task to verify it exists
 	task, err := database.GetTask(ctx, taskID)
 	if err != nil {
@@ -54,15 +93,15 @@ func (r *CLIRunner) Run(ctx context.Context, database *db.DB, taskID string, pro
 		return fmt.Errorf("failed to start task: %w", err)
 	}
 
-	agentBin := r.agent.Binary()
+	agentBin := a.baseAgent.Binary()
 
 	startTime := time.Now()
 	fmt.Printf("\n=== Starting %s for task %s at %s ===\n", agentBin, taskID, startTime.Format("15:04:05"))
 
 	// Set up agent command with prompt as argument
 	var agentArgs []string
-	agentArgs = append(agentArgs, r.agent.BuildArgs(cfg)...)
-	agentArgs = append(agentArgs, r.agent.TaskArgs(task.TaskType, cfg)...)
+	agentArgs = append(agentArgs, a.baseAgent.BuildArgs(cfg)...)
+	agentArgs = append(agentArgs, a.baseAgent.TaskArgs(task.TaskType, cfg)...)
 	agentArgs = append(agentArgs, prompt)
 	agentCmd := exec.CommandContext(ctx, agentBin, agentArgs...)
 	agentCmd.Dir = workDir

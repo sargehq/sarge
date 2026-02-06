@@ -178,7 +178,7 @@ Mocks are generated in their respective package directories:
 - `internal/zellij/zellij_mock.go` - Zellij session management (`SessionManagerMock`, `SessionMock`)
 - `internal/beads/beads_mock.go` - Beads CLI and reader interfaces (`BeadsCLIMock`, `BeadsReaderMock`)
 - `internal/github/github_mock.go` - GitHub API client (`GitHubClientMock`)
-- `internal/agents/agents_mock.go` - Agent runner and agent (`AgentRunnerMock`, `AgentMock`)
+- `internal/agents/agents_mock.go` - Agent interface (`AgentMock`)
 - `internal/process/process_mock.go` - Process lister/killer (`ProcessListerMock`, `ProcessKillerMock`)
 - `internal/task/task_mock.go` - Complexity estimator (`ComplexityEstimatorMock`)
 - `internal/linear/linear_mock.go` - Linear API client (`LinearClientMock`)

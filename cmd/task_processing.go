@@ -206,7 +206,7 @@ func getBeadsForTask(ctx context.Context, proj *project.Project, taskID string) 
 
 // processTask processes a single task by ID using inline execution.
 // This blocks until the task is complete.
-func processTask(proj *project.Project, taskID string, runner agents.Runner) error {
+func processTask(proj *project.Project, taskID string, agent agents.Agent) error {
 	ctx := GetContext()
 
 	// Get the task
@@ -280,7 +280,7 @@ func processTask(proj *project.Project, taskID string, runner agents.Runner) err
 	}
 
 	// Execute Claude inline (blocking)
-	if err := runner.Run(ctx, proj.DB, taskID, taskPrompt.Prompt, work.WorktreePath, proj.Config); err != nil {
+	if err := agent.Run(ctx, proj.DB, taskID, taskPrompt.Prompt, work.WorktreePath, proj.Config); err != nil {
 		return fmt.Errorf("task %s failed: %w", taskID, err)
 	}
 
