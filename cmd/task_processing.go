@@ -293,7 +293,7 @@ func processTask(proj *project.Project, taskID string, agent agents.Agent) error
 		return fmt.Errorf("work %s worktree does not exist at %s", work.ID, work.WorktreePath)
 	}
 
-	// Build params for Claude based on task type
+	// Build params for agent based on task type
 	taskInput, err := taskInputForTask(ctx, proj, dbTask, work)
 	if err != nil {
 		return err
@@ -304,7 +304,7 @@ func processTask(proj *project.Project, taskID string, agent agents.Agent) error
 		defer func() { _ = os.Remove(taskInput.TempFilePath) }()
 	}
 
-	// Execute Claude inline (blocking)
+	// Execute agent inline (blocking)
 	if err := agent.Run(ctx, proj.DB, taskID, taskInput.Params, work.WorktreePath, proj.Config); err != nil {
 		return fmt.Errorf("task %s failed: %w", taskID, err)
 	}
