@@ -10,6 +10,7 @@ import (
 	"github.com/sargehq/sarge/internal/beads"
 	"github.com/sargehq/sarge/internal/claude"
 	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/debug"
 	"github.com/sargehq/sarge/internal/feedback"
 	"github.com/sargehq/sarge/internal/logging"
 	"github.com/sargehq/sarge/internal/orchestration"
@@ -112,6 +113,17 @@ func runOrchestrate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to register orchestrator: %w", err)
 	}
 	defer procManager.Stop()
+
+	// Start pprof server if enabled in config
+	if proj.Config.Debug.Pprof {
+		pprofPort, err := debug.StartPprof()
+		if err != nil {
+			return fmt.Errorf("failed to start pprof: %w", err)
+		}
+		if err := procManager.SetPprofPort(ctx, &pprofPort); err != nil {
+			return fmt.Errorf("failed to set pprof port: %w", err)
+		}
+	}
 
 	// NOTE: Scheduler watching is now handled by the control plane globally.
 	// The control plane watches for scheduled tasks across ALL works and handles
