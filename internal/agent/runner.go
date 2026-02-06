@@ -294,6 +294,17 @@ func RunPlanSession(ctx context.Context, beadID string, workDir string, stdin io
 	if agentType == AgentClaude && cfg != nil && cfg.Claude.ShouldSkipPermissions() {
 		args = append(args, "--dangerously-skip-permissions")
 	}
+	if agentType == AgentPi && cfg != nil {
+		if cfg.Pi.Provider != "" {
+			args = append(args, "--provider", cfg.Pi.Provider)
+		}
+		if cfg.Pi.Model != "" {
+			args = append(args, "--model", cfg.Pi.Model)
+		}
+		if cfg.Pi.Thinking != "" {
+			args = append(args, "--thinking", cfg.Pi.Thinking)
+		}
+	}
 	args = append(args, prompt)
 
 	cmd := exec.CommandContext(ctx, agentBin, args...)
