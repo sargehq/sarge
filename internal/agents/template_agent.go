@@ -32,7 +32,7 @@ const (
 // provided by the claude/ and pi/ subpackages.
 type templateAgent struct {
 	binaryName string
-	templates  [7]*template.Template
+	templates  []*template.Template
 	baseArgs   func(cfg *project.Config) []string
 	taskArgs   func(taskType string, cfg *project.Config) []string
 }

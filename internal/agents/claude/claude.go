@@ -31,8 +31,8 @@ var planText string
 var logAnalysisText string
 
 // Templates returns all compiled Claude templates.
-func Templates() [7]*template.Template {
-	return [7]*template.Template{
+func Templates() []*template.Template {
+	return []*template.Template{
 		template.Must(template.New("implement").Parse(taskText)),
 		template.Must(template.New("estimate").Parse(estimateText)),
 		template.Must(template.New("pr").Parse(prText)),
