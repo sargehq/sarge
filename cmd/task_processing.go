@@ -29,40 +29,58 @@ func buildPromptForTask(ctx context.Context, proj *project.Project, task *db.Tas
 	}
 	agent := agents.NewAgent(proj.Config)
 
+	// Log analysis has its own metadata-fetching flow and temp file.
+	if task.TaskType == "log_analysis" {
+		return buildLogAnalysisPromptFromMetadata(ctx, proj, task, work)
+	}
+
+	params := agenttypes.TaskParams{
+		TaskID:     task.ID,
+		WorkID:     work.ID,
+		BranchName: work.BranchName,
+		BaseBranch: baseBranch,
+	}
+
 	switch task.TaskType {
 	case "estimate":
-		issues, err := getBeadsForTask(ctx, proj, task.ID)
+		beadIDs, err := beadIDsForTask(ctx, proj, task.ID)
 		if err != nil {
 			return nil, err
 		}
-		return &TaskPrompt{Prompt: agent.BuildEstimatePrompt(task.ID, issues)}, nil
+		params.Type = agenttypes.TaskTypeEstimate
+		params.BeadIDs = beadIDs
 
 	case "implement":
-		issues, err := getBeadsForTask(ctx, proj, task.ID)
+		beadIDs, err := beadIDsForTask(ctx, proj, task.ID)
 		if err != nil {
 			return nil, err
 		}
-		return &TaskPrompt{Prompt: agent.BuildTaskPrompt(task.ID, issues, work.BranchName, baseBranch)}, nil
+		params.Type = agenttypes.TaskTypeImplement
+		params.BeadIDs = beadIDs
 
 	case "review":
-		return &TaskPrompt{Prompt: agent.BuildReviewPrompt(task.ID, work.ID, work.BranchName, baseBranch, work.RootIssueID)}, nil
+		params.Type = agenttypes.TaskTypeReview
+		params.RootIssueID = work.RootIssueID
 
 	case "pr":
-		return &TaskPrompt{Prompt: agent.BuildPRPrompt(task.ID, work.ID, work.BranchName, baseBranch)}, nil
+		params.Type = agenttypes.TaskTypePR
 
 	case "update-pr-description":
 		if work.PRURL == "" {
 			return nil, fmt.Errorf("work %s has no PR URL set", work.ID)
 		}
-		return &TaskPrompt{Prompt: agent.BuildUpdatePRDescriptionPrompt(task.ID, work.ID, work.PRURL, work.BranchName, baseBranch)}, nil
-
-	case "log_analysis":
-		// Log analysis tasks have metadata with log content stored by the feedback processor
-		return buildLogAnalysisPromptFromMetadata(ctx, proj, task, work)
+		params.Type = agenttypes.TaskTypeUpdatePRDescription
+		params.PRURL = work.PRURL
 
 	default:
 		return nil, fmt.Errorf("unknown task type: %s", task.TaskType)
 	}
+
+	prompt, err := agent.BuildPrompt(params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build prompt for task %s: %w", task.ID, err)
+	}
+	return &TaskPrompt{Prompt: prompt}, nil
 }
 
 // buildLogAnalysisPromptFromMetadata builds a log analysis prompt from task metadata.
@@ -120,7 +138,8 @@ func buildLogAnalysisPromptFromMetadata(ctx context.Context, proj *project.Proje
 	// Fetch existing open beads for this work to help Claude match against them
 	existingBeads := fetchExistingBeadSummaries(ctx, proj, work.ID)
 
-	params := agenttypes.LogAnalysisParams{
+	params := agenttypes.TaskParams{
+		Type:          agenttypes.TaskTypeLogAnalysis,
 		TaskID:        task.ID,
 		WorkID:        work.ID,
 		BranchName:    branchName,
@@ -132,8 +151,13 @@ func buildLogAnalysisPromptFromMetadata(ctx context.Context, proj *project.Proje
 	}
 
 	agent := agents.NewAgent(proj.Config)
+	prompt, err := agent.BuildPrompt(params)
+	if err != nil {
+		_ = os.Remove(logFile.Name())
+		return nil, fmt.Errorf("failed to build log analysis prompt: %w", err)
+	}
 	return &TaskPrompt{
-		Prompt:       agent.BuildLogAnalysisPrompt(params),
+		Prompt:       prompt,
 		TempFilePath: logFile.Name(),
 	}, nil
 }
@@ -176,6 +200,20 @@ func fetchExistingBeadSummaries(ctx context.Context, proj *project.Project, work
 		}
 	}
 	return summaries
+}
+
+// beadIDsForTask returns the bead IDs associated with a task, resolving them through
+// the beads database to get full details and extracting just the IDs.
+func beadIDsForTask(ctx context.Context, proj *project.Project, taskID string) ([]string, error) {
+	beadList, err := getBeadsForTask(ctx, proj, taskID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(beadList))
+	for i, b := range beadList {
+		ids[i] = b.ID
+	}
+	return ids, nil
 }
 
 // getBeadsForTask retrieves the beads associated with a task.

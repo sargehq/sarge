@@ -14,13 +14,14 @@ func TestBuildLogAnalysisPrompt(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		params         types.LogAnalysisParams
+		params         types.TaskParams
 		wantContains   []string
 		wantNotContain []string
 	}{
 		{
 			name: "Full parameters",
-			params: types.LogAnalysisParams{
+			params: types.TaskParams{
+				Type:         types.TaskTypeLogAnalysis,
 				TaskID:       "w-abc.5",
 				WorkID:       "w-abc",
 				BranchName:   "feature/test-branch",
@@ -41,7 +42,8 @@ func TestBuildLogAnalysisPrompt(t *testing.T) {
 		},
 		{
 			name: "Without root issue ID",
-			params: types.LogAnalysisParams{
+			params: types.TaskParams{
+				Type:         types.TaskTypeLogAnalysis,
 				TaskID:       "w-xyz.1",
 				WorkID:       "w-xyz",
 				BranchName:   "main",
@@ -64,7 +66,8 @@ func TestBuildLogAnalysisPrompt(t *testing.T) {
 		},
 		{
 			name: "Empty log file path",
-			params: types.LogAnalysisParams{
+			params: types.TaskParams{
+				Type:         types.TaskTypeLogAnalysis,
 				TaskID:       "w-test.2",
 				WorkID:       "w-test",
 				BranchName:   "dev",
@@ -81,7 +84,8 @@ func TestBuildLogAnalysisPrompt(t *testing.T) {
 		},
 		{
 			name: "Log file path included",
-			params: types.LogAnalysisParams{
+			params: types.TaskParams{
+				Type:         types.TaskTypeLogAnalysis,
 				TaskID:       "w-multi.3",
 				WorkID:       "w-multi",
 				BranchName:   "feature/multiline",
@@ -99,22 +103,24 @@ func TestBuildLogAnalysisPrompt(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := agent.BuildLogAnalysisPrompt(tt.params)
+			result, err := agent.BuildPrompt(tt.params)
+			require.NoError(t, err)
 
 			for _, want := range tt.wantContains {
-				require.Contains(t, result, want, "BuildLogAnalysisPrompt() missing expected content")
+				require.Contains(t, result, want, "BuildPrompt() missing expected content")
 			}
 
 			for _, notWant := range tt.wantNotContain {
-				require.NotContains(t, result, notWant, "BuildLogAnalysisPrompt() contains unexpected content")
+				require.NotContains(t, result, notWant, "BuildPrompt() contains unexpected content")
 			}
 		})
 	}
 }
 
-func TestLogAnalysisParams(t *testing.T) {
+func TestTaskParams(t *testing.T) {
 	// Test that the struct can be properly initialized
-	params := types.LogAnalysisParams{
+	params := types.TaskParams{
+		Type:         types.TaskTypeLogAnalysis,
 		TaskID:       "task-1",
 		WorkID:       "work-1",
 		BranchName:   "main",
@@ -124,6 +130,7 @@ func TestLogAnalysisParams(t *testing.T) {
 		LogFilePath:  "content",
 	}
 
+	require.Equal(t, types.TaskTypeLogAnalysis, params.Type)
 	require.Equal(t, "task-1", params.TaskID)
 	require.Equal(t, "work-1", params.WorkID)
 	require.Equal(t, "main", params.BranchName)
@@ -137,7 +144,8 @@ func TestBuildLogAnalysisPromptPriorityGuidelines(t *testing.T) {
 	agent := NewAgent(nil)
 
 	// Verify the prompt includes priority guidelines
-	params := types.LogAnalysisParams{
+	params := types.TaskParams{
+		Type:         types.TaskTypeLogAnalysis,
 		TaskID:       "w-test.1",
 		WorkID:       "w-test",
 		BranchName:   "main",
@@ -146,7 +154,8 @@ func TestBuildLogAnalysisPromptPriorityGuidelines(t *testing.T) {
 		LogFilePath:  "test failure",
 	}
 
-	result := agent.BuildLogAnalysisPrompt(params)
+	result, err := agent.BuildPrompt(params)
+	require.NoError(t, err)
 
 	// Check that priority guidelines are included
 	priorities := []string{
@@ -157,7 +166,7 @@ func TestBuildLogAnalysisPromptPriorityGuidelines(t *testing.T) {
 	}
 
 	for _, p := range priorities {
-		require.True(t, strings.Contains(result, p), "BuildLogAnalysisPrompt() missing priority guideline: %s", p)
+		require.True(t, strings.Contains(result, p), "BuildPrompt() missing priority guideline: %s", p)
 	}
 }
 
@@ -165,7 +174,8 @@ func TestBuildLogAnalysisPromptBdCreateCommand(t *testing.T) {
 	agent := NewAgent(nil)
 
 	// Verify the prompt includes bd create command examples
-	params := types.LogAnalysisParams{
+	params := types.TaskParams{
+		Type:         types.TaskTypeLogAnalysis,
 		TaskID:       "w-test.1",
 		WorkID:       "w-test",
 		BranchName:   "main",
@@ -174,21 +184,23 @@ func TestBuildLogAnalysisPromptBdCreateCommand(t *testing.T) {
 		LogFilePath:  "test failure",
 	}
 
-	result := agent.BuildLogAnalysisPrompt(params)
+	result, err := agent.BuildPrompt(params)
+	require.NoError(t, err)
 
 	// Check that bd create command format is included
-	require.Contains(t, result, "bd create", "BuildLogAnalysisPrompt() missing bd create command")
+	require.Contains(t, result, "bd create", "BuildPrompt() missing bd create command")
 
 	// Check that it includes type options
-	require.Contains(t, result, "--type", "BuildLogAnalysisPrompt() missing --type flag")
+	require.Contains(t, result, "--type", "BuildPrompt() missing --type flag")
 
 	// Check that it includes priority option
-	require.Contains(t, result, "--priority", "BuildLogAnalysisPrompt() missing --priority flag")
+	require.Contains(t, result, "--priority", "BuildPrompt() missing --priority flag")
 }
 
-func TestLogAnalysisParamsExistingBeadsField(t *testing.T) {
+func TestTaskParamsExistingBeadsField(t *testing.T) {
 	// Test that ExistingBeads field is properly included in the struct
-	params := types.LogAnalysisParams{
+	params := types.TaskParams{
+		Type:         types.TaskTypeLogAnalysis,
 		TaskID:       "task-1",
 		WorkID:       "work-1",
 		BranchName:   "main",
@@ -212,7 +224,8 @@ func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
 	agent := NewAgent(nil)
 
 	t.Run("renders existing beads section", func(t *testing.T) {
-		params := types.LogAnalysisParams{
+		params := types.TaskParams{
+			Type:         types.TaskTypeLogAnalysis,
 			TaskID:       "w-test.1",
 			WorkID:       "w-test",
 			BranchName:   "main",
@@ -225,7 +238,8 @@ func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
 			},
 		}
 
-		result := agent.BuildLogAnalysisPrompt(params)
+		result, err := agent.BuildPrompt(params)
+		require.NoError(t, err)
 
 		// Should contain the existing beads section header
 		require.Contains(t, result, "Existing Open Issues")
@@ -246,7 +260,8 @@ func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
 	})
 
 	t.Run("no existing beads section when empty", func(t *testing.T) {
-		params := types.LogAnalysisParams{
+		params := types.TaskParams{
+			Type:          types.TaskTypeLogAnalysis,
 			TaskID:        "w-test.1",
 			WorkID:        "w-test",
 			BranchName:    "main",
@@ -256,14 +271,16 @@ func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
 			ExistingBeads: nil,
 		}
 
-		result := agent.BuildLogAnalysisPrompt(params)
+		result, err := agent.BuildPrompt(params)
+		require.NoError(t, err)
 
 		// Should not contain the existing beads section header when no beads
 		require.NotContains(t, result, "Existing Open Issues")
 	})
 
 	t.Run("handles beads without description", func(t *testing.T) {
-		params := types.LogAnalysisParams{
+		params := types.TaskParams{
+			Type:         types.TaskTypeLogAnalysis,
 			TaskID:       "w-test.1",
 			WorkID:       "w-test",
 			BranchName:   "main",
@@ -275,7 +292,8 @@ func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
 			},
 		}
 
-		result := agent.BuildLogAnalysisPrompt(params)
+		result, err := agent.BuildPrompt(params)
+		require.NoError(t, err)
 
 		// Should contain the bead ID and title
 		require.Contains(t, result, "beads-789")
@@ -302,45 +320,46 @@ func TestNewAgent(t *testing.T) {
 	tests := []struct {
 		name        string
 		cfg         *project.Config
-		expectedBin string
+		wantPrompt  bool // can build a prompt without error
 	}{
 		{
-			name:        "Nil config defaults to claude",
-			cfg:         nil,
-			expectedBin: "claude",
+			name:       "Nil config defaults to claude",
+			cfg:        nil,
+			wantPrompt: true,
 		},
 		{
-			name:        "Empty type defaults to claude",
-			cfg:         &project.Config{},
-			expectedBin: "claude",
+			name:       "Empty type defaults to claude",
+			cfg:        &project.Config{},
+			wantPrompt: true,
 		},
 		{
 			name: "Claude type",
 			cfg: &project.Config{
 				Agent: project.AgentConfig{Type: "claude"},
 			},
-			expectedBin: "claude",
+			wantPrompt: true,
 		},
 		{
 			name: "Pi type",
 			cfg: &project.Config{
 				Agent: project.AgentConfig{Type: "pi"},
 			},
-			expectedBin: "pi",
+			wantPrompt: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			agent := NewAgent(tt.cfg)
-			require.Equal(t, tt.expectedBin, agent.Binary())
+			require.NotNil(t, agent)
+			if tt.wantPrompt {
+				prompt, err := agent.BuildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeadID: "test-123"})
+				require.NoError(t, err)
+				require.NotEmpty(t, prompt)
+				require.Contains(t, prompt, "test-123")
+			}
 		})
 	}
-}
-
-func TestAgentBinary(t *testing.T) {
-	require.Equal(t, "claude", NewAgent(nil).Binary())
-	require.Equal(t, "pi", NewAgent(&project.Config{Agent: project.AgentConfig{Type: "pi"}}).Binary())
 }
 
 func TestBuildPlanPromptForPi(t *testing.T) {
@@ -348,12 +367,104 @@ func TestBuildPlanPromptForPi(t *testing.T) {
 	claudeAgent := NewAgent(nil)
 	piAgent := NewAgent(&project.Config{Agent: project.AgentConfig{Type: "pi"}})
 
-	claudePrompt := claudeAgent.BuildPlanPrompt("bead-123")
-	piPrompt := piAgent.BuildPlanPrompt("bead-123")
+	claudePrompt, err := claudeAgent.BuildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeadID: "bead-123"})
+	require.NoError(t, err)
+	piPrompt, err := piAgent.BuildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeadID: "bead-123"})
+	require.NoError(t, err)
 
 	require.Contains(t, claudePrompt, "bead-123")
 	require.Contains(t, piPrompt, "bead-123")
 	// Both should produce non-empty prompts
 	require.NotEmpty(t, claudePrompt)
 	require.NotEmpty(t, piPrompt)
+}
+
+func TestBuildPromptUnknownType(t *testing.T) {
+	agent := NewAgent(nil)
+	_, err := agent.BuildPrompt(types.TaskParams{Type: "nonexistent"})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unknown task type")
+}
+
+func TestBuildPromptAllTypes(t *testing.T) {
+	agent := NewAgent(nil)
+
+	tests := []struct {
+		name         string
+		params       types.TaskParams
+		wantContains string
+	}{
+		{
+			name: "implement",
+			params: types.TaskParams{
+				Type:       types.TaskTypeImplement,
+				TaskID:     "w-abc.1",
+				BeadIDs:    []string{"bead-1"},
+				BranchName: "feat/test",
+				BaseBranch: "main",
+			},
+			wantContains: "w-abc.1",
+		},
+		{
+			name: "estimate",
+			params: types.TaskParams{
+				Type:    types.TaskTypeEstimate,
+				TaskID:  "w-abc.2",
+				BeadIDs: []string{"bead-1"},
+			},
+			wantContains: "w-abc.2",
+		},
+		{
+			name: "pr",
+			params: types.TaskParams{
+				Type:       types.TaskTypePR,
+				TaskID:     "w-abc.3",
+				WorkID:     "w-abc",
+				BranchName: "feat/test",
+				BaseBranch: "main",
+			},
+			wantContains: "w-abc",
+		},
+		{
+			name: "review",
+			params: types.TaskParams{
+				Type:        types.TaskTypeReview,
+				TaskID:      "w-abc.4",
+				WorkID:      "w-abc",
+				BranchName:  "feat/test",
+				BaseBranch:  "main",
+				RootIssueID: "root-1",
+			},
+			wantContains: "w-abc",
+		},
+		{
+			name: "update_pr_description",
+			params: types.TaskParams{
+				Type:       types.TaskTypeUpdatePRDescription,
+				TaskID:     "w-abc.5",
+				WorkID:     "w-abc",
+				PRURL:      "https://github.com/test/pr/1",
+				BranchName: "feat/test",
+				BaseBranch: "main",
+			},
+			wantContains: "https://github.com/test/pr/1",
+		},
+		{
+			name: "plan",
+			params: types.TaskParams{
+				Type:   types.TaskTypePlan,
+				BeadID: "bead-plan-1",
+			},
+			wantContains: "bead-plan-1",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := agent.BuildPrompt(tt.params)
+			require.NoError(t, err)
+			require.NotEmpty(t, result)
+			require.Contains(t, result, tt.wantContains)
+		})
+	}
 }
