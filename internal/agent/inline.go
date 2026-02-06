@@ -25,13 +25,13 @@ type Runner interface {
 	Run(ctx context.Context, database *db.DB, taskID string, prompt string, workDir string, cfg *project.Config) error
 }
 
-// CLIRunner implements Runner using the claude CLI.
+// CLIRunner implements Runner using the coding agent CLI.
 type CLIRunner struct{}
 
 // Compile-time check that CLIRunner implements Runner.
 var _ Runner = (*CLIRunner)(nil)
 
-// NewRunner creates a new Runner that uses the claude CLI.
+// NewRunner creates a new Runner that uses the coding agent CLI.
 func NewRunner() Runner {
 	return &CLIRunner{}
 }
