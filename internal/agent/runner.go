@@ -1,4 +1,4 @@
-package claude
+package agent
 
 import (
 	"bytes"
@@ -215,9 +215,9 @@ func BuildLogAnalysisPrompt(params LogAnalysisParams) string {
 	return buf.String()
 }
 
-// RunPlanSession runs an interactive Claude session for planning an issue.
+// RunPlanSession runs an interactive agent session for planning an issue.
 // This launches Claude with the plan prompt and connects stdin/stdout/stderr
-// for interactive use. The config parameter controls Claude settings like --dangerously-skip-permissions.
+// for interactive use. The config parameter controls settings like --dangerously-skip-permissions.
 func RunPlanSession(ctx context.Context, beadID string, workDir string, stdin io.Reader, stdout, stderr io.Writer, cfg *project.Config) error {
 	prompt := BuildPlanPrompt(beadID)
 

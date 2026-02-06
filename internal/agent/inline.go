@@ -1,6 +1,6 @@
-package claude
+package agent
 
-//go:generate moq -stub -out claude_mock.go . Runner:ClaudeRunnerMock
+//go:generate moq -stub -out agent_mock.go . Runner:AgentRunnerMock
 
 import (
 	"context"
@@ -18,10 +18,10 @@ import (
 	trackingwatcher "github.com/sargehq/sarge/internal/tracking/watcher"
 )
 
-// Runner defines the interface for running Claude.
-// This abstraction enables testing without spawning the actual claude CLI.
+// Runner defines the interface for running a coding agent.
+// This abstraction enables testing without spawning the actual CLI.
 type Runner interface {
-	// Run executes Claude directly in the current terminal (fork/exec).
+	// Run executes the agent directly in the current terminal (fork/exec).
 	Run(ctx context.Context, database *db.DB, taskID string, prompt string, workDir string, cfg *project.Config) error
 }
 
@@ -85,21 +85,21 @@ func (r *CLIRunner) Run(ctx context.Context, database *db.DB, taskID string, pro
 	// Run the main monitoring loop
 	// Derive project root from workDir (assumes workDir is <project>/<work-id>/tree/)
 	projectRoot := filepath.Dir(filepath.Dir(workDir))
-	return monitorClaude(ctx, database, taskID, claudeCmd, startTime, projectRoot)
+	return monitorAgent(ctx, database, taskID, claudeCmd, startTime, projectRoot)
 }
 
-// monitorClaude handles the main event loop for monitoring Claude execution.
-// It watches for Claude exit, task completion in database, signals, and context cancellation.
-func monitorClaude(ctx context.Context, database *db.DB, taskID string, claudeCmd *exec.Cmd, startTime time.Time, projectRoot string) error {
+// monitorAgent handles the main event loop for monitoring agent execution.
+// It watches for agent exit, task completion in database, signals, and context cancellation.
+func monitorAgent(ctx context.Context, database *db.DB, taskID string, agentCmd *exec.Cmd, startTime time.Time, projectRoot string) error {
 	// Set up signal handling
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	defer signal.Stop(sigChan)
 
-	// Wait for Claude to complete
+	// Wait for agent to complete
 	done := make(chan error, 1)
 	go func() {
-		done <- claudeCmd.Wait()
+		done <- agentCmd.Wait()
 	}()
 
 	// Try to set up database watcher for event-driven monitoring
@@ -132,13 +132,13 @@ func monitorClaude(ctx context.Context, database *db.DB, taskID string, claudeCm
 			return nil // continue monitoring
 		}
 		if task == nil {
-			fmt.Printf("\nTask %s no longer exists, terminating Claude...\n", taskID)
-			terminateGracefully(claudeCmd, done)
+			fmt.Printf("\nTask %s no longer exists, terminating agent...\n", taskID)
+			terminateGracefully(agentCmd, done)
 			return fmt.Errorf("task %s was deleted", taskID)
 		}
 		if task.Status == db.StatusCompleted || task.Status == db.StatusFailed {
-			fmt.Printf("\nTask marked as %s in database, terminating Claude...\n", task.Status)
-			terminateGracefully(claudeCmd, done)
+			fmt.Printf("\nTask marked as %s in database, terminating agent...\n", task.Status)
+			terminateGracefully(agentCmd, done)
 			elapsed := time.Since(startTime)
 			fmt.Printf("\n=== Task %s %s (took %s) ===\n", taskID, task.Status, elapsed.Round(time.Second))
 			return fmt.Errorf("task_status_changed") // Special error to indicate normal completion
@@ -149,8 +149,8 @@ func monitorClaude(ctx context.Context, database *db.DB, taskID string, claudeCm
 	for {
 		select {
 		case err := <-done:
-			// Claude exited on its own - no termination needed
-			return handleClaudeExit(ctx, database, taskID, err, startTime)
+			// Agent exited on its own - no termination needed
+			return handleAgentExit(ctx, database, taskID, err, startTime)
 
 		case event, ok := <-watcherSub:
 			if !ok {
@@ -183,18 +183,18 @@ func monitorClaude(ctx context.Context, database *db.DB, taskID string, claudeCm
 			}
 
 		case sig := <-sigChan:
-			fmt.Printf("\nReceived signal %v, forwarding to Claude...\n", sig)
+			fmt.Printf("\nReceived signal %v, forwarding to agent...\n", sig)
 			if sysSig, ok := sig.(syscall.Signal); ok {
-				claudeCmd.Process.Signal(sysSig)
+				agentCmd.Process.Signal(sysSig)
 			} else {
-				claudeCmd.Process.Signal(syscall.SIGTERM)
+				agentCmd.Process.Signal(syscall.SIGTERM)
 			}
-			terminateGracefully(claudeCmd, done)
+			terminateGracefully(agentCmd, done)
 			return fmt.Errorf("interrupted by signal %v", sig)
 
 		case <-ctx.Done():
-			fmt.Println("\nContext cancelled, terminating Claude...")
-			terminateGracefully(claudeCmd, done)
+			fmt.Println("\nContext cancelled, terminating agent...")
+			terminateGracefully(agentCmd, done)
 			return ctx.Err()
 		}
 	}
@@ -207,14 +207,14 @@ func terminateGracefully(cmd *exec.Cmd, done <-chan error) {
 	case <-done:
 		// Exited gracefully
 	case <-time.After(5 * time.Second):
-		fmt.Println("Claude didn't exit gracefully, force killing...")
+		fmt.Println("Agent didn't exit gracefully, force killing...")
 		cmd.Process.Kill()
 		<-done
 	}
 }
 
-// handleClaudeExit processes Claude's exit and returns the appropriate result.
-func handleClaudeExit(ctx context.Context, database *db.DB, taskID string, exitErr error, startTime time.Time) error {
+// handleAgentExit processes the agent's exit and returns the appropriate result.
+func handleAgentExit(ctx context.Context, database *db.DB, taskID string, exitErr error, startTime time.Time) error {
 	elapsed := time.Since(startTime)
 
 	if exitErr != nil {
@@ -225,13 +225,13 @@ func handleClaudeExit(ctx context.Context, database *db.DB, taskID string, exitE
 			return nil
 		}
 		// Actual error
-		if dbErr := database.FailTask(ctx, taskID, fmt.Sprintf("Claude exited with error: %v", exitErr)); dbErr != nil {
+		if dbErr := database.FailTask(ctx, taskID, fmt.Sprintf("agent exited with error: %v", exitErr)); dbErr != nil {
 			fmt.Printf("Warning: failed to mark task as failed: %v\n", dbErr)
 		}
-		return fmt.Errorf("claude exited with error: %w", exitErr)
+		return fmt.Errorf("agent exited with error: %w", exitErr)
 	}
 
-	// Claude exited successfully - check task status
+	// Agent exited successfully - check task status
 	task, err := database.GetTask(ctx, taskID)
 	if err != nil {
 		return fmt.Errorf("failed to get task %s: %w", taskID, err)
@@ -241,7 +241,7 @@ func handleClaudeExit(ctx context.Context, database *db.DB, taskID string, exitE
 	} else if task != nil && task.Status == db.StatusFailed {
 		fmt.Printf("\n=== Task %s failed (took %s) ===\n", taskID, elapsed.Round(time.Second))
 	} else {
-		fmt.Printf("\n=== Claude exited for task %s (took %s) ===\n", taskID, elapsed.Round(time.Second))
+		fmt.Printf("\n=== Agent exited for task %s (took %s) ===\n", taskID, elapsed.Round(time.Second))
 	}
 	return nil
 }

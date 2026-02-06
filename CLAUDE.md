@@ -37,7 +37,7 @@ go test ./...
 ### Internal Packages
 - `internal/beads/` - Beads database client (bd CLI wrapper)
 - `internal/linear/` - Linear MCP client and import logic
-- `internal/claude/` - Claude Code invocation
+- `internal/agent/` - Coding agent invocation (Claude, pi)
 - `internal/db/` - SQLite tracking database
 - `internal/task/` - Task planning and complexity estimation
 - `internal/git/` - Git operations
@@ -176,7 +176,7 @@ Mocks are generated in their respective package directories:
 - `internal/zellij/zellij_mock.go` - Zellij session management (`SessionManagerMock`, `SessionMock`)
 - `internal/beads/beads_mock.go` - Beads CLI and reader interfaces (`BeadsCLIMock`, `BeadsReaderMock`)
 - `internal/github/github_mock.go` - GitHub API client (`GitHubClientMock`)
-- `internal/claude/claude_mock.go` - Claude runner (`ClaudeRunnerMock`)
+- `internal/agent/agent_mock.go` - Agent runner (`AgentRunnerMock`)
 - `internal/process/process_mock.go` - Process lister/killer (`ProcessListerMock`, `ProcessKillerMock`)
 - `internal/task/task_mock.go` - Complexity estimator (`ComplexityEstimatorMock`)
 - `internal/linear/linear_mock.go` - Linear API client (`LinearClientMock`)

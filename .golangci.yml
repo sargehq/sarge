@@ -247,13 +247,13 @@ linters:
         text: "cancelled"
 
       # G204: claude CLI calls with controlled arguments
-      - path: internal/claude/
+      - path: internal/agent/
         linters:
           - gosec
         text: "G204"
 
       # G104: Process signal and cleanup errors in claude package
-      - path: internal/claude/
+      - path: internal/agent/
         linters:
           - gosec
         text: "G104"

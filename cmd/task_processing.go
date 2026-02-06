@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/sargehq/sarge/internal/beads"
-	"github.com/sargehq/sarge/internal/claude"
+	"github.com/sargehq/sarge/internal/agent"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/project"
 	"github.com/sargehq/sarge/internal/worktree"
@@ -33,26 +33,26 @@ func buildPromptForTask(ctx context.Context, proj *project.Project, task *db.Tas
 		if err != nil {
 			return nil, err
 		}
-		return &TaskPrompt{Prompt: claude.BuildEstimatePrompt(task.ID, issues)}, nil
+		return &TaskPrompt{Prompt: agent.BuildEstimatePrompt(task.ID, issues)}, nil
 
 	case "implement":
 		issues, err := getBeadsForTask(ctx, proj, task.ID)
 		if err != nil {
 			return nil, err
 		}
-		return &TaskPrompt{Prompt: claude.BuildTaskPrompt(task.ID, issues, work.BranchName, baseBranch)}, nil
+		return &TaskPrompt{Prompt: agent.BuildTaskPrompt(task.ID, issues, work.BranchName, baseBranch)}, nil
 
 	case "review":
-		return &TaskPrompt{Prompt: claude.BuildReviewPrompt(task.ID, work.ID, work.BranchName, baseBranch, work.RootIssueID)}, nil
+		return &TaskPrompt{Prompt: agent.BuildReviewPrompt(task.ID, work.ID, work.BranchName, baseBranch, work.RootIssueID)}, nil
 
 	case "pr":
-		return &TaskPrompt{Prompt: claude.BuildPRPrompt(task.ID, work.ID, work.BranchName, baseBranch)}, nil
+		return &TaskPrompt{Prompt: agent.BuildPRPrompt(task.ID, work.ID, work.BranchName, baseBranch)}, nil
 
 	case "update-pr-description":
 		if work.PRURL == "" {
 			return nil, fmt.Errorf("work %s has no PR URL set", work.ID)
 		}
-		return &TaskPrompt{Prompt: claude.BuildUpdatePRDescriptionPrompt(task.ID, work.ID, work.PRURL, work.BranchName, baseBranch)}, nil
+		return &TaskPrompt{Prompt: agent.BuildUpdatePRDescriptionPrompt(task.ID, work.ID, work.PRURL, work.BranchName, baseBranch)}, nil
 
 	case "log_analysis":
 		// Log analysis tasks have metadata with log content stored by the feedback processor
@@ -118,7 +118,7 @@ func buildLogAnalysisPromptFromMetadata(ctx context.Context, proj *project.Proje
 	// Fetch existing open beads for this work to help Claude match against them
 	existingBeads := fetchExistingBeadSummaries(ctx, proj, work.ID)
 
-	params := claude.LogAnalysisParams{
+	params := agent.LogAnalysisParams{
 		TaskID:        task.ID,
 		WorkID:        work.ID,
 		BranchName:    branchName,
@@ -130,13 +130,13 @@ func buildLogAnalysisPromptFromMetadata(ctx context.Context, proj *project.Proje
 	}
 
 	return &TaskPrompt{
-		Prompt:       claude.BuildLogAnalysisPrompt(params),
+		Prompt:       agent.BuildLogAnalysisPrompt(params),
 		TempFilePath: logFile.Name(),
 	}, nil
 }
 
 // fetchExistingBeadSummaries fetches open beads for the given work and converts them to summaries for matching.
-func fetchExistingBeadSummaries(ctx context.Context, proj *project.Project, workID string) []claude.BeadSummary {
+func fetchExistingBeadSummaries(ctx context.Context, proj *project.Project, workID string) []agent.BeadSummary {
 	// Get bead IDs assigned to this work
 	workBeads, err := proj.DB.GetWorkBeads(ctx, workID)
 	if err != nil {
@@ -162,10 +162,10 @@ func fetchExistingBeadSummaries(ctx context.Context, proj *project.Project, work
 	}
 
 	// Filter to only open beads and convert to summaries
-	summaries := make([]claude.BeadSummary, 0, len(beadIDs))
+	summaries := make([]agent.BeadSummary, 0, len(beadIDs))
 	for _, beadID := range beadIDs {
 		if bwd := result.GetBead(beadID); bwd != nil && bwd.Bead.Status == beads.StatusOpen {
-			summaries = append(summaries, claude.BeadSummary{
+			summaries = append(summaries, agent.BeadSummary{
 				ID:          bwd.Bead.ID,
 				Title:       bwd.Bead.Title,
 				Description: bwd.Bead.Description,
@@ -203,7 +203,7 @@ func getBeadsForTask(ctx context.Context, proj *project.Project, taskID string) 
 
 // processTask processes a single task by ID using inline execution.
 // This blocks until the task is complete.
-func processTask(proj *project.Project, taskID string, runner claude.Runner) error {
+func processTask(proj *project.Project, taskID string, runner agent.Runner) error {
 	ctx := GetContext()
 
 	// Get the task

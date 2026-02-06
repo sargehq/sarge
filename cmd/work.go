@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/sargehq/sarge/internal/beads"
-	"github.com/sargehq/sarge/internal/claude"
+	"github.com/sargehq/sarge/internal/agent"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/git"
 	"github.com/sargehq/sarge/internal/project"
@@ -755,7 +755,7 @@ func runWorkPR(cmd *cobra.Command, args []string) error {
 
 	// Auto-run the PR task
 	fmt.Printf("Running PR task...\n")
-	runner := claude.NewRunner()
+	runner := agent.NewRunner()
 	if err := processTask(proj, result.TaskID, runner); err != nil {
 		return err
 	}
@@ -837,7 +837,7 @@ func runWorkReview(cmd *cobra.Command, args []string) error {
 	}
 
 	// Run review-fix loop if --auto is set
-	runner := claude.NewRunner()
+	runner := agent.NewRunner()
 	maxIterations := proj.Config.Workflow.GetMaxReviewIterations()
 	for iteration := 0; ; iteration++ {
 		// Check max iterations
