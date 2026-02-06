@@ -22,6 +22,7 @@ type Config struct {
 	Beads     BeadsConfig     `toml:"beads"`
 	Hooks     HooksConfig     `toml:"hooks"`
 	Linear    LinearConfig    `toml:"linear"`
+	Agent     AgentConfig     `toml:"agent"`
 	Claude    ClaudeConfig    `toml:"claude"`
 	Workflow  WorkflowConfig  `toml:"workflow"`
 	Scheduler SchedulerConfig `toml:"scheduler"`
@@ -82,6 +83,12 @@ func (l *LogParserConfig) GetModel() string {
 		// Return default for invalid values
 		return "haiku"
 	}
+}
+
+// AgentConfig contains coding agent configuration.
+type AgentConfig struct {
+	// Type selects which coding agent to use: "claude" (default) or "pi".
+	Type string `toml:"type"`
 }
 
 // ClaudeConfig contains Claude Code configuration.

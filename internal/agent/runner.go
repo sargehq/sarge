@@ -13,39 +13,106 @@ import (
 	"github.com/sargehq/sarge/internal/project"
 )
 
-//go:embed templates/estimate.tmpl
-var estimateTemplateText string
+// AgentType represents which coding agent to use.
+type AgentType string
 
-//go:embed templates/task.tmpl
-var taskTemplateText string
-
-//go:embed templates/pr.tmpl
-var prTemplateText string
-
-//go:embed templates/review.tmpl
-var reviewTemplateText string
-
-//go:embed templates/update-pr-description.tmpl
-var updatePRDescriptionTemplateText string
-
-//go:embed templates/plan.tmpl
-var planTemplateText string
-
-//go:embed templates/log_analysis.tmpl
-var logAnalysisTemplateText string
-
-var (
-	estimateTmpl            = template.Must(template.New("estimate").Parse(estimateTemplateText))
-	taskTmpl                = template.Must(template.New("task").Parse(taskTemplateText))
-	prTmpl                  = template.Must(template.New("pr").Parse(prTemplateText))
-	reviewTmpl              = template.Must(template.New("review").Parse(reviewTemplateText))
-	updatePRDescriptionTmpl = template.Must(template.New("update-pr-description").Parse(updatePRDescriptionTemplateText))
-	planTmpl                = template.Must(template.New("plan").Parse(planTemplateText))
-	logAnalysisTmpl         = template.Must(template.New("log_analysis").Parse(logAnalysisTemplateText))
+const (
+	// AgentClaude uses Claude Code as the coding agent.
+	AgentClaude AgentType = "claude"
+	// AgentPi uses the pi coding agent.
+	AgentPi AgentType = "pi"
 )
 
+// Claude templates
+//
+//go:embed templates/estimate.tmpl
+var claudeEstimateText string
+
+//go:embed templates/task.tmpl
+var claudeTaskText string
+
+//go:embed templates/pr.tmpl
+var claudePRText string
+
+//go:embed templates/review.tmpl
+var claudeReviewText string
+
+//go:embed templates/update-pr-description.tmpl
+var claudeUpdatePRDescriptionText string
+
+//go:embed templates/plan.tmpl
+var claudePlanText string
+
+//go:embed templates/log_analysis.tmpl
+var claudeLogAnalysisText string
+
+// Pi templates
+//
+//go:embed templates/pi/estimate.tmpl
+var piEstimateText string
+
+//go:embed templates/pi/task.tmpl
+var piTaskText string
+
+//go:embed templates/pi/pr.tmpl
+var piPRText string
+
+//go:embed templates/pi/review.tmpl
+var piReviewText string
+
+//go:embed templates/pi/update-pr-description.tmpl
+var piUpdatePRDescriptionText string
+
+//go:embed templates/pi/plan.tmpl
+var piPlanText string
+
+//go:embed templates/pi/log_analysis.tmpl
+var piLogAnalysisText string
+
+// templateSet holds all compiled templates for a specific agent type.
+type templateSet struct {
+	estimate            *template.Template
+	task                *template.Template
+	pr                  *template.Template
+	review              *template.Template
+	updatePRDescription *template.Template
+	plan                *template.Template
+	logAnalysis         *template.Template
+}
+
+var claudeTemplates = &templateSet{
+	estimate:            template.Must(template.New("estimate").Parse(claudeEstimateText)),
+	task:                template.Must(template.New("task").Parse(claudeTaskText)),
+	pr:                  template.Must(template.New("pr").Parse(claudePRText)),
+	review:              template.Must(template.New("review").Parse(claudeReviewText)),
+	updatePRDescription: template.Must(template.New("update-pr-description").Parse(claudeUpdatePRDescriptionText)),
+	plan:                template.Must(template.New("plan").Parse(claudePlanText)),
+	logAnalysis:         template.Must(template.New("log_analysis").Parse(claudeLogAnalysisText)),
+}
+
+var piTemplates = &templateSet{
+	estimate:            template.Must(template.New("estimate").Parse(piEstimateText)),
+	task:                template.Must(template.New("task").Parse(piTaskText)),
+	pr:                  template.Must(template.New("pr").Parse(piPRText)),
+	review:              template.Must(template.New("review").Parse(piReviewText)),
+	updatePRDescription: template.Must(template.New("update-pr-description").Parse(piUpdatePRDescriptionText)),
+	plan:                template.Must(template.New("plan").Parse(piPlanText)),
+	logAnalysis:         template.Must(template.New("log_analysis").Parse(piLogAnalysisText)),
+}
+
+// templatesFor returns the template set for the given agent type.
+// Defaults to Claude templates if the agent type is unknown.
+func templatesFor(agentType AgentType) *templateSet {
+	switch agentType {
+	case AgentPi:
+		return piTemplates
+	default:
+		return claudeTemplates
+	}
+}
+
 // BuildTaskPrompt builds a prompt for a task with multiple beads.
-func BuildTaskPrompt(taskID string, beadList []beads.Bead, branchName, baseBranch string) string {
+func BuildTaskPrompt(taskID string, beadList []beads.Bead, branchName, baseBranch string, agentType AgentType) string {
 	data := struct {
 		TaskID     string
 		BeadIDs    []string
@@ -59,7 +126,7 @@ func BuildTaskPrompt(taskID string, beadList []beads.Bead, branchName, baseBranc
 	}
 
 	var buf bytes.Buffer
-	if err := taskTmpl.Execute(&buf, data); err != nil {
+	if err := templatesFor(agentType).task.Execute(&buf, data); err != nil {
 		// Fallback to simple string if template execution fails
 		return fmt.Sprintf("Task %s on branch %s for beads: %v", taskID, branchName, getBeadIDs(beadList))
 	}
@@ -77,7 +144,7 @@ func getBeadIDs(beadList []beads.Bead) []string {
 }
 
 // BuildEstimatePrompt builds a prompt for complexity estimation of beads.
-func BuildEstimatePrompt(taskID string, beadList []beads.Bead) string {
+func BuildEstimatePrompt(taskID string, beadList []beads.Bead, agentType AgentType) string {
 	data := struct {
 		TaskID  string
 		BeadIDs []string
@@ -87,7 +154,7 @@ func BuildEstimatePrompt(taskID string, beadList []beads.Bead) string {
 	}
 
 	var buf bytes.Buffer
-	if err := estimateTmpl.Execute(&buf, data); err != nil {
+	if err := templatesFor(agentType).estimate.Execute(&buf, data); err != nil {
 		// Fallback to simple string if template execution fails
 		return fmt.Sprintf("Estimation task %s for beads: %v", taskID, getBeadIDs(beadList))
 	}
@@ -96,7 +163,7 @@ func BuildEstimatePrompt(taskID string, beadList []beads.Bead) string {
 }
 
 // BuildPRPrompt builds a prompt for PR creation.
-func BuildPRPrompt(taskID string, workID string, branchName string, baseBranch string) string {
+func BuildPRPrompt(taskID string, workID string, branchName string, baseBranch string, agentType AgentType) string {
 	data := struct {
 		TaskID     string
 		WorkID     string
@@ -110,7 +177,7 @@ func BuildPRPrompt(taskID string, workID string, branchName string, baseBranch s
 	}
 
 	var buf bytes.Buffer
-	if err := prTmpl.Execute(&buf, data); err != nil {
+	if err := templatesFor(agentType).pr.Execute(&buf, data); err != nil {
 		// Fallback to simple string if template execution fails
 		return fmt.Sprintf("PR creation task %s for work %s on branch %s (base: %s)", taskID, workID, branchName, baseBranch)
 	}
@@ -119,7 +186,7 @@ func BuildPRPrompt(taskID string, workID string, branchName string, baseBranch s
 }
 
 // BuildReviewPrompt builds a prompt for code review.
-func BuildReviewPrompt(taskID string, workID string, branchName string, baseBranch string, rootIssueID string) string {
+func BuildReviewPrompt(taskID string, workID string, branchName string, baseBranch string, rootIssueID string, agentType AgentType) string {
 	data := struct {
 		TaskID      string
 		WorkID      string
@@ -135,7 +202,7 @@ func BuildReviewPrompt(taskID string, workID string, branchName string, baseBran
 	}
 
 	var buf bytes.Buffer
-	if err := reviewTmpl.Execute(&buf, data); err != nil {
+	if err := templatesFor(agentType).review.Execute(&buf, data); err != nil {
 		// Fallback to simple string if template execution fails
 		return fmt.Sprintf("Review task %s for work %s on branch %s (base: %s)", taskID, workID, branchName, baseBranch)
 	}
@@ -144,7 +211,7 @@ func BuildReviewPrompt(taskID string, workID string, branchName string, baseBran
 }
 
 // BuildUpdatePRDescriptionPrompt builds a prompt for updating a PR description.
-func BuildUpdatePRDescriptionPrompt(taskID string, workID string, prURL string, branchName string, baseBranch string) string {
+func BuildUpdatePRDescriptionPrompt(taskID string, workID string, prURL string, branchName string, baseBranch string, agentType AgentType) string {
 	data := struct {
 		TaskID     string
 		WorkID     string
@@ -160,7 +227,7 @@ func BuildUpdatePRDescriptionPrompt(taskID string, workID string, prURL string, 
 	}
 
 	var buf bytes.Buffer
-	if err := updatePRDescriptionTmpl.Execute(&buf, data); err != nil {
+	if err := templatesFor(agentType).updatePRDescription.Execute(&buf, data); err != nil {
 		// Fallback to simple string if template execution fails
 		return fmt.Sprintf("Update PR description task %s for work %s, PR %s on branch %s (base: %s)", taskID, workID, prURL, branchName, baseBranch)
 	}
@@ -169,7 +236,7 @@ func BuildUpdatePRDescriptionPrompt(taskID string, workID string, prURL string, 
 }
 
 // BuildPlanPrompt builds a prompt for planning an issue.
-func BuildPlanPrompt(beadID string) string {
+func BuildPlanPrompt(beadID string, agentType AgentType) string {
 	data := struct {
 		BeadID string
 	}{
@@ -177,7 +244,7 @@ func BuildPlanPrompt(beadID string) string {
 	}
 
 	var buf bytes.Buffer
-	if err := planTmpl.Execute(&buf, data); err != nil {
+	if err := templatesFor(agentType).plan.Execute(&buf, data); err != nil {
 		// Fallback to simple string if template execution fails
 		return fmt.Sprintf("Planning for issue %s", beadID)
 	}
@@ -204,10 +271,10 @@ type LogAnalysisParams struct {
 	ExistingBeads []BeadSummary // Existing open beads to match against
 }
 
-// BuildLogAnalysisPrompt builds a prompt for Claude-based CI log analysis.
-func BuildLogAnalysisPrompt(params LogAnalysisParams) string {
+// BuildLogAnalysisPrompt builds a prompt for agent-based CI log analysis.
+func BuildLogAnalysisPrompt(params LogAnalysisParams, agentType AgentType) string {
 	var buf bytes.Buffer
-	if err := logAnalysisTmpl.Execute(&buf, params); err != nil {
+	if err := templatesFor(agentType).logAnalysis.Execute(&buf, params); err != nil {
 		// Fallback to simple string if template execution fails
 		return fmt.Sprintf("Log analysis task %s for work %s", params.TaskID, params.WorkID)
 	}
@@ -216,26 +283,47 @@ func BuildLogAnalysisPrompt(params LogAnalysisParams) string {
 }
 
 // RunPlanSession runs an interactive agent session for planning an issue.
-// This launches Claude with the plan prompt and connects stdin/stdout/stderr
-// for interactive use. The config parameter controls settings like --dangerously-skip-permissions.
+// This launches the agent with the plan prompt and connects stdin/stdout/stderr
+// for interactive use. The config parameter controls agent settings.
 func RunPlanSession(ctx context.Context, beadID string, workDir string, stdin io.Reader, stdout, stderr io.Writer, cfg *project.Config) error {
-	prompt := BuildPlanPrompt(beadID)
+	agentType := AgentTypeFromConfig(cfg)
+	prompt := BuildPlanPrompt(beadID, agentType)
 
+	agentBin := AgentBinary(agentType)
 	var args []string
-	if cfg != nil && cfg.Claude.ShouldSkipPermissions() {
+	if agentType == AgentClaude && cfg != nil && cfg.Claude.ShouldSkipPermissions() {
 		args = append(args, "--dangerously-skip-permissions")
 	}
 	args = append(args, prompt)
 
-	cmd := exec.CommandContext(ctx, "claude", args...)
+	cmd := exec.CommandContext(ctx, agentBin, args...)
 	cmd.Dir = workDir
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("claude exited with error: %w", err)
+		return fmt.Errorf("%s exited with error: %w", agentBin, err)
 	}
 
 	return nil
+}
+
+// AgentBinary returns the CLI binary name for the given agent type.
+func AgentBinary(agentType AgentType) string {
+	switch agentType {
+	case AgentPi:
+		return "pi"
+	default:
+		return "claude"
+	}
+}
+
+// AgentTypeFromConfig returns the agent type from project configuration.
+// Defaults to AgentClaude if not configured.
+func AgentTypeFromConfig(cfg *project.Config) AgentType {
+	if cfg == nil {
+		return AgentClaude
+	}
+	return AgentType(cfg.Agent.Type)
 }

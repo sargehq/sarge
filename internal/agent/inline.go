@@ -52,40 +52,43 @@ func (r *CLIRunner) Run(ctx context.Context, database *db.DB, taskID string, pro
 		return fmt.Errorf("failed to start task: %w", err)
 	}
 
-	startTime := time.Now()
-	fmt.Printf("\n=== Starting Claude for task %s at %s ===\n", taskID, startTime.Format("15:04:05"))
+	agentType := AgentTypeFromConfig(cfg)
+	agentBin := AgentBinary(agentType)
 
-	// Set up Claude command with prompt as argument
-	var claudeArgs []string
-	if cfg != nil && cfg.Claude.ShouldSkipPermissions() {
-		claudeArgs = append(claudeArgs, "--dangerously-skip-permissions")
+	startTime := time.Now()
+	fmt.Printf("\n=== Starting %s for task %s at %s ===\n", agentBin, taskID, startTime.Format("15:04:05"))
+
+	// Set up agent command with prompt as argument
+	var agentArgs []string
+	if agentType == AgentClaude && cfg != nil && cfg.Claude.ShouldSkipPermissions() {
+		agentArgs = append(agentArgs, "--dangerously-skip-permissions")
 	}
 	// Use configured model for log_analysis tasks
 	if task.TaskType == "log_analysis" && cfg != nil {
 		model := cfg.LogParser.GetModel()
 		if model != "" {
-			claudeArgs = append(claudeArgs, "--model", model)
+			agentArgs = append(agentArgs, "--model", model)
 		}
 	}
-	claudeArgs = append(claudeArgs, prompt)
-	claudeCmd := exec.CommandContext(ctx, "claude", claudeArgs...)
-	claudeCmd.Dir = workDir
-	claudeCmd.Stdin = os.Stdin
-	claudeCmd.Stdout = os.Stdout
-	claudeCmd.Stderr = os.Stderr
+	agentArgs = append(agentArgs, prompt)
+	agentCmd := exec.CommandContext(ctx, agentBin, agentArgs...)
+	agentCmd.Dir = workDir
+	agentCmd.Stdin = os.Stdin
+	agentCmd.Stdout = os.Stdout
+	agentCmd.Stderr = os.Stderr
 
-	// Start Claude
-	if err := claudeCmd.Start(); err != nil {
-		if dbErr := database.FailTask(ctx, taskID, fmt.Sprintf("failed to start Claude: %v", err)); dbErr != nil {
+	// Start agent
+	if err := agentCmd.Start(); err != nil {
+		if dbErr := database.FailTask(ctx, taskID, fmt.Sprintf("failed to start %s: %v", agentBin, err)); dbErr != nil {
 			fmt.Printf("Warning: failed to mark task as failed: %v\n", dbErr)
 		}
-		return fmt.Errorf("failed to start Claude: %w", err)
+		return fmt.Errorf("failed to start %s: %w", agentBin, err)
 	}
 
 	// Run the main monitoring loop
 	// Derive project root from workDir (assumes workDir is <project>/<work-id>/tree/)
 	projectRoot := filepath.Dir(filepath.Dir(workDir))
-	return monitorAgent(ctx, database, taskID, claudeCmd, startTime, projectRoot)
+	return monitorAgent(ctx, database, taskID, agentCmd, startTime, projectRoot)
 }
 
 // monitorAgent handles the main event loop for monitoring agent execution.

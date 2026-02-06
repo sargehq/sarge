@@ -95,7 +95,7 @@ func TestBuildLogAnalysisPrompt(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := BuildLogAnalysisPrompt(tt.params)
+			result := BuildLogAnalysisPrompt(tt.params, AgentClaude)
 
 			for _, want := range tt.wantContains {
 				require.Contains(t, result, want, "BuildLogAnalysisPrompt() missing expected content")
@@ -140,7 +140,7 @@ func TestBuildLogAnalysisPromptPriorityGuidelines(t *testing.T) {
 		LogFilePath:   "test failure",
 	}
 
-	result := BuildLogAnalysisPrompt(params)
+	result := BuildLogAnalysisPrompt(params, AgentClaude)
 
 	// Check that priority guidelines are included
 	priorities := []string{
@@ -166,7 +166,7 @@ func TestBuildLogAnalysisPromptBdCreateCommand(t *testing.T) {
 		LogFilePath:   "test failure",
 	}
 
-	result := BuildLogAnalysisPrompt(params)
+	result := BuildLogAnalysisPrompt(params, AgentClaude)
 
 	// Check that bd create command format is included
 	require.Contains(t, result, "bd create", "BuildLogAnalysisPrompt() missing bd create command")
@@ -215,7 +215,7 @@ func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
 			},
 		}
 
-		result := BuildLogAnalysisPrompt(params)
+		result := BuildLogAnalysisPrompt(params, AgentClaude)
 
 		// Should contain the existing beads section header
 		require.Contains(t, result, "Existing Open Issues")
@@ -246,7 +246,7 @@ func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
 			ExistingBeads: nil,
 		}
 
-		result := BuildLogAnalysisPrompt(params)
+		result := BuildLogAnalysisPrompt(params, AgentClaude)
 
 		// Should not contain the existing beads section header when no beads
 		require.NotContains(t, result, "Existing Open Issues")
@@ -265,7 +265,7 @@ func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
 			},
 		}
 
-		result := BuildLogAnalysisPrompt(params)
+		result := BuildLogAnalysisPrompt(params, AgentClaude)
 
 		// Should contain the bead ID and title
 		require.Contains(t, result, "beads-789")
