@@ -333,7 +333,7 @@ func AgentBinary(agentType AgentType) string {
 // AgentTypeFromConfig returns the agent type from project configuration.
 // Defaults to AgentClaude if not configured.
 func AgentTypeFromConfig(cfg *project.Config) AgentType {
-	if cfg == nil {
+	if cfg == nil || cfg.Agent.Type == "" {
 		return AgentClaude
 	}
 	return AgentType(cfg.Agent.Type)

@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sargehq/sarge/internal/project"
 	"github.com/stretchr/testify/require"
 )
 
@@ -286,4 +287,62 @@ func TestBeadSummaryStruct(t *testing.T) {
 	require.Equal(t, "bead-test", summary.ID)
 	require.Equal(t, "Test Title", summary.Title)
 	require.Equal(t, "Test Description", summary.Description)
+}
+
+func TestAgentTypeFromConfig(t *testing.T) {
+	tests := []struct {
+		name     string
+		cfg      *project.Config
+		expected AgentType
+	}{
+		{
+			name:     "Nil config defaults to claude",
+			cfg:      nil,
+			expected: AgentClaude,
+		},
+		{
+			name:     "Empty type defaults to claude",
+			cfg:      &project.Config{},
+			expected: AgentClaude,
+		},
+		{
+			name: "Claude type",
+			cfg: &project.Config{
+				Agent: project.AgentConfig{Type: "claude"},
+			},
+			expected: AgentClaude,
+		},
+		{
+			name: "Pi type",
+			cfg: &project.Config{
+				Agent: project.AgentConfig{Type: "pi"},
+			},
+			expected: AgentPi,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := AgentTypeFromConfig(tt.cfg)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestAgentBinary(t *testing.T) {
+	require.Equal(t, "claude", AgentBinary(AgentClaude))
+	require.Equal(t, "pi", AgentBinary(AgentPi))
+	require.Equal(t, "claude", AgentBinary(""), "unknown agent type should default to claude")
+}
+
+func TestBuildPlanPromptForPi(t *testing.T) {
+	// Verify plan prompts are generated for both agent types
+	claudePrompt := BuildPlanPrompt("bead-123", AgentClaude)
+	piPrompt := BuildPlanPrompt("bead-123", AgentPi)
+
+	require.Contains(t, claudePrompt, "bead-123")
+	require.Contains(t, piPrompt, "bead-123")
+	// Both should produce non-empty prompts
+	require.NotEmpty(t, claudePrompt)
+	require.NotEmpty(t, piPrompt)
 }
