@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sargehq/sarge/internal/beads"
 	"github.com/sargehq/sarge/internal/agents"
+	agenttypes "github.com/sargehq/sarge/internal/agents/types"
+	"github.com/sargehq/sarge/internal/beads"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/project"
 	"github.com/sargehq/sarge/internal/worktree"
@@ -119,7 +120,7 @@ func buildLogAnalysisPromptFromMetadata(ctx context.Context, proj *project.Proje
 	// Fetch existing open beads for this work to help Claude match against them
 	existingBeads := fetchExistingBeadSummaries(ctx, proj, work.ID)
 
-	params := agents.LogAnalysisParams{
+	params := agenttypes.LogAnalysisParams{
 		TaskID:        task.ID,
 		WorkID:        work.ID,
 		BranchName:    branchName,
@@ -138,7 +139,7 @@ func buildLogAnalysisPromptFromMetadata(ctx context.Context, proj *project.Proje
 }
 
 // fetchExistingBeadSummaries fetches open beads for the given work and converts them to summaries for matching.
-func fetchExistingBeadSummaries(ctx context.Context, proj *project.Project, workID string) []agents.BeadSummary {
+func fetchExistingBeadSummaries(ctx context.Context, proj *project.Project, workID string) []agenttypes.BeadSummary {
 	// Get bead IDs assigned to this work
 	workBeads, err := proj.DB.GetWorkBeads(ctx, workID)
 	if err != nil {
@@ -164,10 +165,10 @@ func fetchExistingBeadSummaries(ctx context.Context, proj *project.Project, work
 	}
 
 	// Filter to only open beads and convert to summaries
-	summaries := make([]agents.BeadSummary, 0, len(beadIDs))
+	summaries := make([]agenttypes.BeadSummary, 0, len(beadIDs))
 	for _, beadID := range beadIDs {
 		if bwd := result.GetBead(beadID); bwd != nil && bwd.Bead.Status == beads.StatusOpen {
-			summaries = append(summaries, agents.BeadSummary{
+			summaries = append(summaries, agenttypes.BeadSummary{
 				ID:          bwd.Bead.ID,
 				Title:       bwd.Bead.Title,
 				Description: bwd.Bead.Description,

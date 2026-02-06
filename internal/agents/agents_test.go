@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sargehq/sarge/internal/agents/types"
 	"github.com/sargehq/sarge/internal/project"
 	"github.com/stretchr/testify/require"
 )
@@ -13,20 +14,20 @@ func TestBuildLogAnalysisPrompt(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		params         LogAnalysisParams
+		params         types.LogAnalysisParams
 		wantContains   []string
 		wantNotContain []string
 	}{
 		{
 			name: "Full parameters",
-			params: LogAnalysisParams{
+			params: types.LogAnalysisParams{
 				TaskID:       "w-abc.5",
 				WorkID:       "w-abc",
 				BranchName:   "feature/test-branch",
 				RootIssueID:  "beads-123",
 				WorkflowName: "CI Pipeline",
 				JobName:      "Unit Tests",
-				LogFilePath:   "--- FAIL: TestSomething (0.02s)",
+				LogFilePath:  "--- FAIL: TestSomething (0.02s)",
 			},
 			wantContains: []string{
 				"Work w-abc",
@@ -40,14 +41,14 @@ func TestBuildLogAnalysisPrompt(t *testing.T) {
 		},
 		{
 			name: "Without root issue ID",
-			params: LogAnalysisParams{
+			params: types.LogAnalysisParams{
 				TaskID:       "w-xyz.1",
 				WorkID:       "w-xyz",
 				BranchName:   "main",
 				RootIssueID:  "",
 				WorkflowName: "Build",
 				JobName:      "Compile",
-				LogFilePath:   "compilation error: undefined reference",
+				LogFilePath:  "compilation error: undefined reference",
 			},
 			wantContains: []string{
 				"Work w-xyz",
@@ -63,7 +64,7 @@ func TestBuildLogAnalysisPrompt(t *testing.T) {
 		},
 		{
 			name: "Empty log file path",
-			params: LogAnalysisParams{
+			params: types.LogAnalysisParams{
 				TaskID:       "w-test.2",
 				WorkID:       "w-test",
 				BranchName:   "dev",
@@ -80,7 +81,7 @@ func TestBuildLogAnalysisPrompt(t *testing.T) {
 		},
 		{
 			name: "Log file path included",
-			params: LogAnalysisParams{
+			params: types.LogAnalysisParams{
 				TaskID:       "w-multi.3",
 				WorkID:       "w-multi",
 				BranchName:   "feature/multiline",
@@ -113,14 +114,14 @@ func TestBuildLogAnalysisPrompt(t *testing.T) {
 
 func TestLogAnalysisParams(t *testing.T) {
 	// Test that the struct can be properly initialized
-	params := LogAnalysisParams{
+	params := types.LogAnalysisParams{
 		TaskID:       "task-1",
 		WorkID:       "work-1",
 		BranchName:   "main",
 		RootIssueID:  "issue-1",
 		WorkflowName: "workflow-1",
 		JobName:      "job-1",
-		LogFilePath:   "content",
+		LogFilePath:  "content",
 	}
 
 	require.Equal(t, "task-1", params.TaskID)
@@ -136,13 +137,13 @@ func TestBuildLogAnalysisPromptPriorityGuidelines(t *testing.T) {
 	agent := NewAgent(nil)
 
 	// Verify the prompt includes priority guidelines
-	params := LogAnalysisParams{
+	params := types.LogAnalysisParams{
 		TaskID:       "w-test.1",
 		WorkID:       "w-test",
 		BranchName:   "main",
 		WorkflowName: "CI",
 		JobName:      "Test",
-		LogFilePath:   "test failure",
+		LogFilePath:  "test failure",
 	}
 
 	result := agent.BuildLogAnalysisPrompt(params)
@@ -164,13 +165,13 @@ func TestBuildLogAnalysisPromptBdCreateCommand(t *testing.T) {
 	agent := NewAgent(nil)
 
 	// Verify the prompt includes bd create command examples
-	params := LogAnalysisParams{
+	params := types.LogAnalysisParams{
 		TaskID:       "w-test.1",
 		WorkID:       "w-test",
 		BranchName:   "main",
 		WorkflowName: "CI",
 		JobName:      "Test",
-		LogFilePath:   "test failure",
+		LogFilePath:  "test failure",
 	}
 
 	result := agent.BuildLogAnalysisPrompt(params)
@@ -187,15 +188,15 @@ func TestBuildLogAnalysisPromptBdCreateCommand(t *testing.T) {
 
 func TestLogAnalysisParamsExistingBeadsField(t *testing.T) {
 	// Test that ExistingBeads field is properly included in the struct
-	params := LogAnalysisParams{
+	params := types.LogAnalysisParams{
 		TaskID:       "task-1",
 		WorkID:       "work-1",
 		BranchName:   "main",
 		RootIssueID:  "issue-1",
 		WorkflowName: "workflow-1",
 		JobName:      "job-1",
-		LogFilePath:   "content",
-		ExistingBeads: []BeadSummary{
+		LogFilePath:  "content",
+		ExistingBeads: []types.BeadSummary{
 			{ID: "bead-1", Title: "Fix test failure", Description: "Test failed at file.go:42"},
 			{ID: "bead-2", Title: "Lint error", Description: "Missing comment on exported function"},
 		},
@@ -211,14 +212,14 @@ func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
 	agent := NewAgent(nil)
 
 	t.Run("renders existing beads section", func(t *testing.T) {
-		params := LogAnalysisParams{
+		params := types.LogAnalysisParams{
 			TaskID:       "w-test.1",
 			WorkID:       "w-test",
 			BranchName:   "main",
 			WorkflowName: "CI",
 			JobName:      "Test",
-			LogFilePath:   "--- FAIL: TestSomething (0.02s)",
-			ExistingBeads: []BeadSummary{
+			LogFilePath:  "--- FAIL: TestSomething (0.02s)",
+			ExistingBeads: []types.BeadSummary{
 				{ID: "beads-123", Title: "Fix TestUserAuth failure", Description: "Test failed at auth_test.go:42"},
 				{ID: "beads-456", Title: "Fix lint error in utils", Description: "Missing comment"},
 			},
@@ -245,13 +246,13 @@ func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
 	})
 
 	t.Run("no existing beads section when empty", func(t *testing.T) {
-		params := LogAnalysisParams{
+		params := types.LogAnalysisParams{
 			TaskID:        "w-test.1",
 			WorkID:        "w-test",
 			BranchName:    "main",
 			WorkflowName:  "CI",
 			JobName:       "Test",
-			LogFilePath:    "--- FAIL: TestSomething (0.02s)",
+			LogFilePath:   "--- FAIL: TestSomething (0.02s)",
 			ExistingBeads: nil,
 		}
 
@@ -262,14 +263,14 @@ func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
 	})
 
 	t.Run("handles beads without description", func(t *testing.T) {
-		params := LogAnalysisParams{
+		params := types.LogAnalysisParams{
 			TaskID:       "w-test.1",
 			WorkID:       "w-test",
 			BranchName:   "main",
 			WorkflowName: "CI",
 			JobName:      "Test",
-			LogFilePath:   "--- FAIL: TestSomething (0.02s)",
-			ExistingBeads: []BeadSummary{
+			LogFilePath:  "--- FAIL: TestSomething (0.02s)",
+			ExistingBeads: []types.BeadSummary{
 				{ID: "beads-789", Title: "Fix test", Description: ""},
 			},
 		}
@@ -286,7 +287,7 @@ func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
 }
 
 func TestBeadSummaryStruct(t *testing.T) {
-	summary := BeadSummary{
+	summary := types.BeadSummary{
 		ID:          "bead-test",
 		Title:       "Test Title",
 		Description: "Test Description",
@@ -299,9 +300,9 @@ func TestBeadSummaryStruct(t *testing.T) {
 
 func TestNewAgent(t *testing.T) {
 	tests := []struct {
-		name         string
-		cfg          *project.Config
-		expectedBin  string
+		name        string
+		cfg         *project.Config
+		expectedBin string
 	}{
 		{
 			name:        "Nil config defaults to claude",

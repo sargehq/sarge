@@ -5,6 +5,7 @@ package agents
 
 import (
 	"context"
+	"github.com/sargehq/sarge/internal/agents/types"
 	"github.com/sargehq/sarge/internal/beads"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/project"
@@ -129,7 +130,7 @@ var _ Agent = &AgentMock{}
 //			BuildEstimatePromptFunc: func(taskID string, beadList []beads.Bead) string {
 //				panic("mock out the BuildEstimatePrompt method")
 //			},
-//			BuildLogAnalysisPromptFunc: func(params LogAnalysisParams) string {
+//			BuildLogAnalysisPromptFunc: func(params types.LogAnalysisParams) string {
 //				panic("mock out the BuildLogAnalysisPrompt method")
 //			},
 //			BuildPRPromptFunc: func(taskID string, workID string, branchName string, baseBranch string) string {
@@ -167,7 +168,7 @@ type AgentMock struct {
 	BuildEstimatePromptFunc func(taskID string, beadList []beads.Bead) string
 
 	// BuildLogAnalysisPromptFunc mocks the BuildLogAnalysisPrompt method.
-	BuildLogAnalysisPromptFunc func(params LogAnalysisParams) string
+	BuildLogAnalysisPromptFunc func(params types.LogAnalysisParams) string
 
 	// BuildPRPromptFunc mocks the BuildPRPrompt method.
 	BuildPRPromptFunc func(taskID string, workID string, branchName string, baseBranch string) string
@@ -207,7 +208,7 @@ type AgentMock struct {
 		// BuildLogAnalysisPrompt holds details about calls to the BuildLogAnalysisPrompt method.
 		BuildLogAnalysisPrompt []struct {
 			// Params is the params argument value.
-			Params LogAnalysisParams
+			Params types.LogAnalysisParams
 		}
 		// BuildPRPrompt holds details about calls to the BuildPRPrompt method.
 		BuildPRPrompt []struct {
@@ -387,9 +388,9 @@ func (mock *AgentMock) BuildEstimatePromptCalls() []struct {
 }
 
 // BuildLogAnalysisPrompt calls BuildLogAnalysisPromptFunc.
-func (mock *AgentMock) BuildLogAnalysisPrompt(params LogAnalysisParams) string {
+func (mock *AgentMock) BuildLogAnalysisPrompt(params types.LogAnalysisParams) string {
 	callInfo := struct {
-		Params LogAnalysisParams
+		Params types.LogAnalysisParams
 	}{
 		Params: params,
 	}
@@ -410,10 +411,10 @@ func (mock *AgentMock) BuildLogAnalysisPrompt(params LogAnalysisParams) string {
 //
 //	len(mockedAgent.BuildLogAnalysisPromptCalls())
 func (mock *AgentMock) BuildLogAnalysisPromptCalls() []struct {
-	Params LogAnalysisParams
+	Params types.LogAnalysisParams
 } {
 	var calls []struct {
-		Params LogAnalysisParams
+		Params types.LogAnalysisParams
 	}
 	mock.lockBuildLogAnalysisPrompt.RLock()
 	calls = mock.calls.BuildLogAnalysisPrompt
