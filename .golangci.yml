@@ -246,14 +246,14 @@ linters:
           - misspell
         text: "cancelled"
 
-      # G204: claude CLI calls with controlled arguments
-      - path: internal/agent/
+      # G204: agent CLI calls with controlled arguments
+      - path: internal/agents/
         linters:
           - gosec
         text: "G204"
 
-      # G104: Process signal and cleanup errors in claude package
-      - path: internal/agent/
+      # G104: Process signal and cleanup errors in agents package
+      - path: internal/agents/
         linters:
           - gosec
         text: "G104"
