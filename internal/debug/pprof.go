@@ -11,7 +11,7 @@ import (
 // It returns the actual port the server is listening on.
 // The server runs in a background goroutine and serves until the process exits.
 func StartPprof() (int, error) {
-	listener, err := net.Listen("tcp", ":0")
+	listener, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		return 0, fmt.Errorf("failed to listen for pprof: %w", err)
 	}
