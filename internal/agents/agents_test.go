@@ -9,16 +9,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mustNewAgent is a test helper that creates an agent and fails the test on error.
-func mustNewAgent(t *testing.T, cfg *project.Config) *templateAgent {
+// mustNewAgent is a test helper that creates an agent with default config and fails the test on error.
+func mustNewAgent(t *testing.T) *templateAgent {
 	t.Helper()
-	a, err := NewAgent(cfg)
+	a, err := NewAgent(nil)
 	require.NoError(t, err)
 	return a.(*templateAgent)
 }
 
 func TestBuildLogAnalysisPrompt(t *testing.T) {
-	agent := mustNewAgent(t, nil)
+	agent := mustNewAgent(t)
 
 	tests := []struct {
 		name           string
@@ -149,7 +149,7 @@ func TestTaskParams(t *testing.T) {
 }
 
 func TestBuildLogAnalysisPromptPriorityGuidelines(t *testing.T) {
-	agent := mustNewAgent(t, nil)
+	agent := mustNewAgent(t)
 
 	// Verify the prompt includes priority guidelines
 	params := types.TaskParams{
@@ -179,7 +179,7 @@ func TestBuildLogAnalysisPromptPriorityGuidelines(t *testing.T) {
 }
 
 func TestBuildLogAnalysisPromptBdCreateCommand(t *testing.T) {
-	agent := mustNewAgent(t, nil)
+	agent := mustNewAgent(t)
 
 	// Verify the prompt includes bd create command examples
 	params := types.TaskParams{
@@ -229,7 +229,7 @@ func TestTaskParamsExistingBeadsField(t *testing.T) {
 }
 
 func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
-	agent := mustNewAgent(t, nil)
+	agent := mustNewAgent(t)
 
 	t.Run("renders existing beads section", func(t *testing.T) {
 		params := types.TaskParams{
@@ -400,14 +400,14 @@ func TestNewAgentUnknownType(t *testing.T) {
 }
 
 func TestBuildPromptUnknownType(t *testing.T) {
-	agent := mustNewAgent(t, nil)
+	agent := mustNewAgent(t)
 	_, err := agent.buildPrompt(types.TaskParams{Type: "nonexistent"})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "unknown task type")
 }
 
 func TestBuildPromptAllTypes(t *testing.T) {
-	agent := mustNewAgent(t, nil)
+	agent := mustNewAgent(t)
 
 	tests := []struct {
 		name         string
