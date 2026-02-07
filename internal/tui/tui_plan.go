@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -14,7 +15,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/tui/components/linearconfig"
 	"github.com/sargehq/sarge/internal/tui/components/splash"
+	"github.com/sargehq/sarge/internal/tui/ui"
 	beadswatcher "github.com/sargehq/sarge/internal/beads/watcher"
 	"github.com/sargehq/sarge/internal/git"
 	"github.com/sargehq/sarge/internal/progress"
@@ -108,7 +111,9 @@ type planModel struct {
 	newBeads map[string]time.Time // beadID -> creation timestamp for animation
 
 	// Splash screen config (tool availability, platform, colors — computed once at startup)
-	splashConfig splash.Config
+	splashConfig       splash.Config
+	linearConfigPanel  *linearconfig.Panel
+	uiColors           ui.Colors
 
 	// Info box state (for ViewToolMissing / ViewLinearNotConfigured overlays)
 	infoBoxTitle string
@@ -182,6 +187,18 @@ func newPlanModel(ctx context.Context, proj *project.Project, version string) *p
 			sortBy: "default",
 		},
 	}
+
+	// Build shared UI colors from theme
+	t := CurrentTheme()
+	m.uiColors = ui.Colors{
+		Accent: t.Accent,
+		Text:   t.Text,
+		Dim:    t.Dim,
+		Border: t.DialogBorder,
+		Error:  t.Error,
+		Black:  t.Black,
+	}
+	m.linearConfigPanel = linearconfig.New(m.uiColors)
 
 	// Initialize panels
 	m.statusBar = NewStatusBar()
@@ -1138,7 +1155,19 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case ViewHelp:
 		m.viewMode = ViewNormal
 		return m, nil
-	case ViewLinearNotConfigured, ViewToolMissing:
+	case ViewLinearNotConfigured:
+		// Route to linear config panel
+		cmd, action := m.linearConfigPanel.Update(msg)
+		switch action {
+		case linearconfig.ActionCancel:
+			m.viewMode = ViewNormal
+			return m, nil
+		case linearconfig.ActionSubmit:
+			m.viewMode = ViewNormal
+			return m, m.saveLinearAPIKey(m.linearConfigPanel.Value())
+		}
+		return m, cmd
+	case ViewToolMissing:
 		// Any key dismisses the info box
 		m.viewMode = ViewNormal
 		return m, nil
@@ -1532,15 +1561,9 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			apiKey = m.proj.Config.Linear.APIKey
 		}
 		if apiKey == "" {
-			m.infoBoxTitle = "Linear Not Configured"
-			m.infoBoxBody = "Linear API key is not configured.\n\n" +
-				"Add to .co/config.toml:\n\n" +
-				"  [linear]\n" +
-				"  api_key = \"lin_api_...\"\n\n" +
-				"Get your API key from:\n" +
-				"  Linear Settings > API > Personal API keys"
+			m.linearConfigPanel.SetSize(m.width, m.height)
 			m.viewMode = ViewLinearNotConfigured
-			return m, nil
+			return m, m.linearConfigPanel.Init()
 		}
 		m.viewMode = ViewLinearImportInline
 		m.linearImportPanel.Reset()
@@ -1746,7 +1769,10 @@ func (m *planModel) View() string {
 		// Fall through to normal rendering
 	case ViewHelp:
 		return m.renderHelp()
-	case ViewLinearNotConfigured, ViewToolMissing:
+	case ViewLinearNotConfigured:
+		m.linearConfigPanel.SetSize(m.width, m.height)
+		return m.linearConfigPanel.Render()
+	case ViewToolMissing:
 		return splash.RenderInfoBox(m.width, m.height, m.infoBoxTitle, m.infoBoxBody, m.splashConfig)
 	}
 
@@ -1923,4 +1949,37 @@ func (m *planModel) findWorkByID(id string) *progress.WorkProgress {
 		}
 	}
 	return nil
+}
+
+// buildSplashConfig creates a splash.Config from the current theme and tool checks.
+func buildSplashConfig() splash.Config {
+	t := CurrentTheme()
+	return splash.Config{
+		Gradient: t.SplashGradient,
+		Accent:   t.Accent,
+		Error:    t.Error,
+		Warning:  t.Warning,
+		Dim:      t.Dim,
+		Text:     t.Text,
+		Border:   t.DialogBorder,
+		HasBd:    isToolAvailable("bd"),
+		HasGh:    isToolAvailable("gh"),
+		Platform: splash.DetectPlatform(),
+	}
+}
+
+// isToolAvailable checks if a CLI tool is on PATH.
+func isToolAvailable(name string) bool {
+	_, err := exec.LookPath(name)
+	return err == nil
+}
+
+// shouldShowSplash returns true when the splash screen should be shown:
+// no issues, no works, not loading, and initial data fetch completed.
+func (m *planModel) shouldShowSplash() bool {
+	return m.viewMode == ViewNormal &&
+		len(m.beadItems) == 0 &&
+		len(m.workTiles) == 0 &&
+		!m.loading &&
+		!m.lastUpdate.IsZero()
 }
