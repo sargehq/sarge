@@ -12,8 +12,11 @@ import (
 	"github.com/sargehq/sarge/internal/project"
 )
 
-// Compile-time check that templateAgent implements Agent.
-var _ Agent = (*templateAgent)(nil)
+// Compile-time checks that concrete agents implement Agent.
+var (
+	_ Agent = (*claude.Agent)(nil)
+	_ Agent = (*pi.Agent)(nil)
+)
 
 // agentType represents which coding agent to use.
 type agentType string
@@ -49,19 +52,9 @@ func NewAgent(cfg *project.Config) (Agent, error) {
 	at := agentTypeFromConfig(cfg)
 	switch at {
 	case agentPi:
-		return &templateAgent{
-			binaryName: pi.Binary,
-			templates:  pi.Templates(),
-			baseArgs:   pi.BaseArgs,
-			taskArgs:   pi.TaskArgs,
-		}, nil
+		return pi.New(), nil
 	case agentClaude:
-		return &templateAgent{
-			binaryName: claude.Binary,
-			templates:  claude.Templates(),
-			baseArgs:   claude.BaseArgs,
-			taskArgs:   claude.TaskArgs,
-		}, nil
+		return claude.New(), nil
 	default:
 		return nil, fmt.Errorf("unknown agent type %q (supported: %q, %q)", at, agentClaude, agentPi)
 	}
