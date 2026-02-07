@@ -154,22 +154,50 @@ func promptToolSelections() mise.ToolSelections {
 
 	fmt.Println("\n🔧 Tool Configuration")
 	fmt.Println("Configure which tools mise should manage for this project.")
+	fmt.Println("(beads is always included - required for sarge)")
 	fmt.Println()
 
-	// Agent type selection
+	// Detect installed tools and report
+	hasClaude := isCommandAvailable("claude")
+	hasPi := isCommandAvailable("pi")
+	hasGH := isCommandAvailable("gh")
+	hasZellij := isCommandAvailable("zellij")
+
+	detected := []string{}
+	if hasClaude {
+		detected = append(detected, "claude")
+	}
+	if hasPi {
+		detected = append(detected, "pi")
+	}
+	if hasGH {
+		detected = append(detected, "gh")
+	}
+	if hasZellij {
+		detected = append(detected, "zellij")
+	}
+	if len(detected) > 0 {
+		fmt.Printf("Detected on PATH: %s\n\n", strings.Join(detected, ", "))
+	}
+
+	// Agent type selection - default to what's detected
+	defaultAgentIdx := 0 // claude
+	if hasPi && !hasClaude {
+		defaultAgentIdx = 1 // pi
+	}
 	agentChoice := promptChoice("Which coding agent would you like to use?",
-		[]string{"claude", "pi", "none"}, 0)
+		[]string{"claude", "pi", "none"}, defaultAgentIdx)
 	selections.AgentType = agentChoice
 
-	// GitHub CLI
-	if isCommandAvailable("gh") {
+	// GitHub CLI - default to skip if already installed
+	if hasGH {
 		selections.IncludeGH = promptYesNo("gh (GitHub CLI) is already installed. Include in mise anyway?", false)
 	} else {
 		selections.IncludeGH = promptYesNo("Include gh (GitHub CLI) in mise?", true)
 	}
 
-	// Zellij
-	if isCommandAvailable("zellij") {
+	// Zellij - default to skip if already installed
+	if hasZellij {
 		selections.IncludeZellij = promptYesNo("zellij is already installed. Include in mise anyway?", false)
 	} else {
 		selections.IncludeZellij = promptYesNo("Include zellij in mise?", true)
