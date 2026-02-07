@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sargehq/sarge/internal/claude"
+	"github.com/sargehq/sarge/internal/agents"
+	"github.com/sargehq/sarge/internal/agents/types"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/project"
 	"github.com/spf13/cobra"
@@ -64,10 +65,10 @@ func runPlan(cmd *cobra.Command, args []string) error {
 
 	mainRepoPath := proj.MainRepoPath()
 
-	// Launch Claude with the plan prompt
-	if err := claude.RunPlanSession(ctx, beadID, mainRepoPath, os.Stdin, os.Stdout, os.Stderr, proj.Config); err != nil {
+	// Launch agent interactively with plan params
+	agent, err := agents.NewAgent(proj.Config)
+	if err != nil {
 		return err
 	}
-
-	return nil
+	return agent.RunInteractive(ctx, types.TaskParams{Type: types.TaskTypePlan, BeadID: beadID}, mainRepoPath, os.Stdin, os.Stdout, os.Stderr, proj.Config)
 }

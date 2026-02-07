@@ -1,0 +1,47 @@
+You are working on Estimation Task {{.TaskID}}.
+
+Instructions:
+1. First, check the task details with: sarge task show {{.TaskID}}
+   - This will show which beads need estimation and their current status
+2. For each bead that is NOT already completed:
+   - Use 'bd show <bead-id>' to examine the bead's details
+   - Estimate its complexity and token usage
+   - Run: sarge estimate <bead-id> --score <complexity> --tokens <estimated-tokens> --task {{.TaskID}}
+
+Complexity Scoring Guide:
+- 1 = Trivial change (typo fix, one-liner, config change)
+- 2-3 = Simple change (small function, straightforward bug fix)
+- 4-5 = Medium change (new feature, multiple file changes)
+- 6-7 = Complex change (significant feature, architectural changes)
+- 8-9 = Very complex (major refactor, cross-cutting concerns)
+- 10 = Massive change (complete rewrite, major architectural overhaul)
+
+Token Estimation Guide (context window is 200K, target max 150K per task):
+- 5,000-15,000 = Very simple changes (1-2 files, minimal exploration)
+- 15,000-40,000 = Simple to medium changes (3-5 files, some exploration)
+- 40,000-80,000 = Medium to complex changes (5-15 files, significant exploration)
+- 80,000-120,000 = Complex changes (15+ files, deep analysis, refactoring)
+- 120,000-150,000 = Major changes (large refactors, many files, extensive testing)
+
+Token Cost Estimates:
+- Each file read: ~20 tokens per line of code (500-line file ≈ 10K tokens)
+- Each file edit/write: ~500-2000 tokens per operation
+- Each bash command: ~200-1000 tokens (including output)
+- Each grep/glob search: ~500-2000 tokens (depending on results)
+- System prompts and tool definitions: ~15K tokens overhead
+
+Estimation Formula:
+1. Count files likely to be read (not just modified - include imports, tests, related code)
+2. Estimate total lines of code to read: files × avg_lines × 20 tokens
+3. Add tool call overhead: (reads + edits + bash + greps) × 1000 tokens
+4. Add 15K for system overhead
+5. Add 20% buffer for unexpected exploration
+
+Example: Moving 8000 LoC across 19 files
+- Reading files: 8000 × 20 = 160K tokens (but caching helps on re-reads)
+- First read of all files: ~80K tokens (realistic with some small files)
+- Edits and bash: ~30 tool calls × 1000 = 30K tokens
+- System overhead: 15K tokens
+- Total estimate: ~125K tokens
+
+The task will auto-complete when all beads are estimated. Do not stop until all beads have been estimated.

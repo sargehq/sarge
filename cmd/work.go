@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/sargehq/sarge/internal/beads"
-	"github.com/sargehq/sarge/internal/claude"
+	"github.com/sargehq/sarge/internal/agents"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/git"
 	"github.com/sargehq/sarge/internal/project"
@@ -755,8 +755,11 @@ func runWorkPR(cmd *cobra.Command, args []string) error {
 
 	// Auto-run the PR task
 	fmt.Printf("Running PR task...\n")
-	runner := claude.NewRunner()
-	if err := processTask(proj, result.TaskID, runner); err != nil {
+	agent, err := agents.NewAgent(proj.Config)
+	if err != nil {
+		return err
+	}
+	if err := processTask(proj, result.TaskID, agent); err != nil {
 		return err
 	}
 
@@ -837,7 +840,10 @@ func runWorkReview(cmd *cobra.Command, args []string) error {
 	}
 
 	// Run review-fix loop if --auto is set
-	runner := claude.NewRunner()
+	agent, err := agents.NewAgent(proj.Config)
+	if err != nil {
+		return err
+	}
 	maxIterations := proj.Config.Workflow.GetMaxReviewIterations()
 	for iteration := 0; ; iteration++ {
 		// Check max iterations
@@ -864,7 +870,7 @@ func runWorkReview(cmd *cobra.Command, args []string) error {
 
 		// Run the review task
 		fmt.Printf("Running review task...\n")
-		if err := processTask(proj, reviewTaskID, runner); err != nil {
+		if err := processTask(proj, reviewTaskID, agent); err != nil {
 			return fmt.Errorf("review task failed: %w", err)
 		}
 
@@ -922,7 +928,7 @@ func runWorkReview(cmd *cobra.Command, args []string) error {
 			fmt.Printf("Created fix task %s for bead %s: %s\n", taskID, b.ID, b.Title)
 
 			// Run the fix task
-			if err := processTask(proj, taskID, runner); err != nil {
+			if err := processTask(proj, taskID, agent); err != nil {
 				return fmt.Errorf("fix task %s failed: %w", taskID, err)
 			}
 		}

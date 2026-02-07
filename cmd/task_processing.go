@@ -5,68 +5,83 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/sargehq/sarge/internal/agents"
+	agenttypes "github.com/sargehq/sarge/internal/agents/types"
 	"github.com/sargehq/sarge/internal/beads"
-	"github.com/sargehq/sarge/internal/claude"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/project"
 	"github.com/sargehq/sarge/internal/worktree"
 )
 
-// TaskPrompt contains the prompt and any associated resources for a task.
-type TaskPrompt struct {
-	Prompt       string
+// TaskInput contains the params and any associated resources for a task.
+type TaskInput struct {
+	Params       agenttypes.TaskParams
 	TempFilePath string // Path to temp file that should be cleaned up after task execution
 }
 
-// buildPromptForTask builds the appropriate prompt for a task based on its type.
-// This centralizes prompt building logic for different task types.
-// Returns a TaskPrompt which includes the prompt and any temp files that need cleanup.
-func buildPromptForTask(ctx context.Context, proj *project.Project, task *db.Task, work *db.Work) (*TaskPrompt, error) {
+// taskInputForTask builds the appropriate TaskInput for a task based on its type.
+// This centralizes param building logic for different task types.
+// Returns a TaskInput which includes the params and any temp files that need cleanup.
+func taskInputForTask(ctx context.Context, proj *project.Project, task *db.Task, work *db.Work) (*TaskInput, error) {
 	baseBranch := work.BaseBranch
 	if baseBranch == "" {
 		baseBranch = proj.Config.Repo.GetBaseBranch()
 	}
 
+	// Log analysis has its own metadata-fetching flow and temp file.
+	if task.TaskType == "log_analysis" {
+		return logAnalysisInputFromMetadata(ctx, proj, task, work)
+	}
+
+	params := agenttypes.TaskParams{
+		TaskID:     task.ID,
+		WorkID:     work.ID,
+		BranchName: work.BranchName,
+		BaseBranch: baseBranch,
+	}
+
 	switch task.TaskType {
 	case "estimate":
-		issues, err := getBeadsForTask(ctx, proj, task.ID)
+		beadIDs, err := beadIDsForTask(ctx, proj, task.ID)
 		if err != nil {
 			return nil, err
 		}
-		return &TaskPrompt{Prompt: claude.BuildEstimatePrompt(task.ID, issues)}, nil
+		params.Type = agenttypes.TaskTypeEstimate
+		params.BeadIDs = beadIDs
 
 	case "implement":
-		issues, err := getBeadsForTask(ctx, proj, task.ID)
+		beadIDs, err := beadIDsForTask(ctx, proj, task.ID)
 		if err != nil {
 			return nil, err
 		}
-		return &TaskPrompt{Prompt: claude.BuildTaskPrompt(task.ID, issues, work.BranchName, baseBranch)}, nil
+		params.Type = agenttypes.TaskTypeImplement
+		params.BeadIDs = beadIDs
 
 	case "review":
-		return &TaskPrompt{Prompt: claude.BuildReviewPrompt(task.ID, work.ID, work.BranchName, baseBranch, work.RootIssueID)}, nil
+		params.Type = agenttypes.TaskTypeReview
+		params.RootIssueID = work.RootIssueID
 
 	case "pr":
-		return &TaskPrompt{Prompt: claude.BuildPRPrompt(task.ID, work.ID, work.BranchName, baseBranch)}, nil
+		params.Type = agenttypes.TaskTypePR
 
 	case "update-pr-description":
 		if work.PRURL == "" {
 			return nil, fmt.Errorf("work %s has no PR URL set", work.ID)
 		}
-		return &TaskPrompt{Prompt: claude.BuildUpdatePRDescriptionPrompt(task.ID, work.ID, work.PRURL, work.BranchName, baseBranch)}, nil
-
-	case "log_analysis":
-		// Log analysis tasks have metadata with log content stored by the feedback processor
-		return buildLogAnalysisPromptFromMetadata(ctx, proj, task, work)
+		params.Type = agenttypes.TaskTypeUpdatePRDescription
+		params.PRURL = work.PRURL
 
 	default:
 		return nil, fmt.Errorf("unknown task type: %s", task.TaskType)
 	}
+
+	return &TaskInput{Params: params}, nil
 }
 
-// buildLogAnalysisPromptFromMetadata builds a log analysis prompt from task metadata.
+// logAnalysisInputFromMetadata builds a log analysis TaskInput from task metadata.
 // The metadata is stored by the feedback processor when creating log_analysis tasks.
-// Returns a TaskPrompt including the path to the temp file that should be cleaned up.
-func buildLogAnalysisPromptFromMetadata(ctx context.Context, proj *project.Project, task *db.Task, work *db.Work) (*TaskPrompt, error) {
+// Returns a TaskInput including the path to the temp file that should be cleaned up.
+func logAnalysisInputFromMetadata(ctx context.Context, proj *project.Project, task *db.Task, work *db.Work) (*TaskInput, error) {
 	// Retrieve metadata stored by the feedback processor
 	workflowName, err := proj.DB.GetTaskMetadata(ctx, task.ID, "workflow_name")
 	if err != nil {
@@ -118,25 +133,24 @@ func buildLogAnalysisPromptFromMetadata(ctx context.Context, proj *project.Proje
 	// Fetch existing open beads for this work to help Claude match against them
 	existingBeads := fetchExistingBeadSummaries(ctx, proj, work.ID)
 
-	params := claude.LogAnalysisParams{
-		TaskID:        task.ID,
-		WorkID:        work.ID,
-		BranchName:    branchName,
-		RootIssueID:   rootIssueID,
-		WorkflowName:  workflowName,
-		JobName:       jobName,
-		LogFilePath:   logFile.Name(),
-		ExistingBeads: existingBeads,
-	}
-
-	return &TaskPrompt{
-		Prompt:       claude.BuildLogAnalysisPrompt(params),
+	return &TaskInput{
+		Params: agenttypes.TaskParams{
+			Type:          agenttypes.TaskTypeLogAnalysis,
+			TaskID:        task.ID,
+			WorkID:        work.ID,
+			BranchName:    branchName,
+			RootIssueID:   rootIssueID,
+			WorkflowName:  workflowName,
+			JobName:       jobName,
+			LogFilePath:   logFile.Name(),
+			ExistingBeads: existingBeads,
+		},
 		TempFilePath: logFile.Name(),
 	}, nil
 }
 
 // fetchExistingBeadSummaries fetches open beads for the given work and converts them to summaries for matching.
-func fetchExistingBeadSummaries(ctx context.Context, proj *project.Project, workID string) []claude.BeadSummary {
+func fetchExistingBeadSummaries(ctx context.Context, proj *project.Project, workID string) []agenttypes.BeadSummary {
 	// Get bead IDs assigned to this work
 	workBeads, err := proj.DB.GetWorkBeads(ctx, workID)
 	if err != nil {
@@ -162,10 +176,10 @@ func fetchExistingBeadSummaries(ctx context.Context, proj *project.Project, work
 	}
 
 	// Filter to only open beads and convert to summaries
-	summaries := make([]claude.BeadSummary, 0, len(beadIDs))
+	summaries := make([]agenttypes.BeadSummary, 0, len(beadIDs))
 	for _, beadID := range beadIDs {
 		if bwd := result.GetBead(beadID); bwd != nil && bwd.Bead.Status == beads.StatusOpen {
-			summaries = append(summaries, claude.BeadSummary{
+			summaries = append(summaries, agenttypes.BeadSummary{
 				ID:          bwd.Bead.ID,
 				Title:       bwd.Bead.Title,
 				Description: bwd.Bead.Description,
@@ -173,6 +187,20 @@ func fetchExistingBeadSummaries(ctx context.Context, proj *project.Project, work
 		}
 	}
 	return summaries
+}
+
+// beadIDsForTask returns the bead IDs associated with a task, resolving them through
+// the beads database to get full details and extracting just the IDs.
+func beadIDsForTask(ctx context.Context, proj *project.Project, taskID string) ([]string, error) {
+	beadList, err := getBeadsForTask(ctx, proj, taskID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(beadList))
+	for i, b := range beadList {
+		ids[i] = b.ID
+	}
+	return ids, nil
 }
 
 // getBeadsForTask retrieves the beads associated with a task.
@@ -203,7 +231,7 @@ func getBeadsForTask(ctx context.Context, proj *project.Project, taskID string) 
 
 // processTask processes a single task by ID using inline execution.
 // This blocks until the task is complete.
-func processTask(proj *project.Project, taskID string, runner claude.Runner) error {
+func processTask(proj *project.Project, taskID string, agent agents.Agent) error {
 	ctx := GetContext()
 
 	// Get the task
@@ -265,19 +293,19 @@ func processTask(proj *project.Project, taskID string, runner claude.Runner) err
 		return fmt.Errorf("work %s worktree does not exist at %s", work.ID, work.WorktreePath)
 	}
 
-	// Build prompt for Claude based on task type
-	taskPrompt, err := buildPromptForTask(ctx, proj, dbTask, work)
+	// Build params for agent based on task type
+	taskInput, err := taskInputForTask(ctx, proj, dbTask, work)
 	if err != nil {
 		return err
 	}
 
 	// Clean up temp file after execution (if any)
-	if taskPrompt.TempFilePath != "" {
-		defer func() { _ = os.Remove(taskPrompt.TempFilePath) }()
+	if taskInput.TempFilePath != "" {
+		defer func() { _ = os.Remove(taskInput.TempFilePath) }()
 	}
 
-	// Execute Claude inline (blocking)
-	if err := runner.Run(ctx, proj.DB, taskID, taskPrompt.Prompt, work.WorktreePath, proj.Config); err != nil {
+	// Execute agent inline (blocking)
+	if err := agent.Run(ctx, proj.DB, taskID, taskInput.Params, work.WorktreePath, proj.Config); err != nil {
 		return fmt.Errorf("task %s failed: %w", taskID, err)
 	}
 

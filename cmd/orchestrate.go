@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/sargehq/sarge/internal/beads"
-	"github.com/sargehq/sarge/internal/claude"
+	"github.com/sargehq/sarge/internal/agents"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/feedback"
 	"github.com/sargehq/sarge/internal/logging"
@@ -118,8 +118,11 @@ func runOrchestrate(cmd *cobra.Command, args []string) error {
 	// git push retries, PR feedback polling, etc. This allows scheduled tasks
 	// to be processed even when no orchestrator is running for a theWork.
 
-	// Create runner once for all tasks
-	runner := claude.NewRunner()
+	// Create agent once for all tasks
+	agent, err := agents.NewAgent(proj.Config)
+	if err != nil {
+		return err
+	}
 
 	// Main orchestration loop: poll for ready tasks and execute them
 	for {
@@ -243,14 +246,14 @@ func runOrchestrate(cmd *cobra.Command, args []string) error {
 			fmt.Printf("Warning: failed to update task activity at start: %v\n", err)
 		}
 
-		if err := executeTask(proj, task, theWork, runner); err != nil {
+		if err := executeTask(proj, task, theWork, agent); err != nil {
 			return fmt.Errorf("task %s failed: %w", task.ID, err)
 		}
 	}
 }
 
 // executeTask executes a single task inline based on its type.
-func executeTask(proj *project.Project, t *db.Task, work *db.Work, runner claude.Runner) error {
+func executeTask(proj *project.Project, t *db.Task, work *db.Work, agent agents.Agent) error {
 	ctx := GetContext()
 
 	// Create a context with timeout from configuration
@@ -260,19 +263,19 @@ func executeTask(proj *project.Project, t *db.Task, work *db.Work, runner claude
 
 	fmt.Printf("Task timeout: %v\n", timeout)
 
-	// Build prompt for Claude based on task type
-	taskPrompt, err := buildPromptForTask(taskCtx, proj, t, work)
+	// Build params for Claude based on task type
+	taskInput, err := taskInputForTask(taskCtx, proj, t, work)
 	if err != nil {
 		return err
 	}
 
 	// Clean up temp file after execution (if any)
-	if taskPrompt.TempFilePath != "" {
-		defer func() { _ = os.Remove(taskPrompt.TempFilePath) }()
+	if taskInput.TempFilePath != "" {
+		defer func() { _ = os.Remove(taskInput.TempFilePath) }()
 	}
 
 	// Execute Claude inline with timeout context
-	if err = runner.Run(taskCtx, proj.DB, t.ID, taskPrompt.Prompt, work.WorktreePath, proj.Config); err != nil {
+	if err = agent.Run(taskCtx, proj.DB, t.ID, taskInput.Params, work.WorktreePath, proj.Config); err != nil {
 		// Check if it was a timeout error
 		if errors.Is(err, context.DeadlineExceeded) {
 			// Mark the task as failed due to timeout

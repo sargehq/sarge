@@ -161,7 +161,12 @@ func Create(ctx context.Context, dir, repoSource string) (*Project, error) {
 	}
 
 	// 3. Generate mise config and run mise install
-	setupMise(absDir, mainPath)
+	// Check if the cloned repo has a sarge config with an agent type preference
+	var agentType string
+	if existingCfg, err := LoadConfig(filepath.Join(absDir, ConfigDir, ConfigFile)); err == nil && existingCfg.Agent.Type != "" {
+		agentType = existingCfg.Agent.Type
+	}
+	setupMise(absDir, mainPath, agentType)
 
 	// 4. Create config (before beads init, so config exists)
 	cfg := &Config{
@@ -293,9 +298,10 @@ func setupBeads(ctx context.Context, source, projectRoot, mainPath string) (bead
 }
 
 // setupMise generates mise config and runs mise install.
-func setupMise(projectRoot, mainPath string) {
+// agentType selects which coding agent tool to include ("claude" or "pi"); defaults to "claude" if empty.
+func setupMise(projectRoot, mainPath, agentType string) {
 	// Generate mise config in project root with sarge's required tools
-	if err := mise.GenerateConfig(projectRoot); err != nil {
+	if err := mise.GenerateConfig(projectRoot, agentType); err != nil {
 		fmt.Printf("Warning: failed to generate mise config: %v\n", err)
 	} else {
 		fmt.Printf("Mise: generated .mise.toml with co requirements\n")

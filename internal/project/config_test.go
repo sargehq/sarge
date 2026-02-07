@@ -397,3 +397,112 @@ args = ["--new-window", "--wait"]
 		})
 	}
 }
+
+func TestPiConfigFromTOML(t *testing.T) {
+	tests := []struct {
+		name         string
+		tomlContent  string
+		wantProvider string
+		wantModel    string
+		wantThinking string
+	}{
+		{
+			name: "Not specified defaults to empty",
+			tomlContent: `
+[project]
+name = "test"
+`,
+			wantProvider: "",
+			wantModel:    "",
+			wantThinking: "",
+		},
+		{
+			name: "All fields specified",
+			tomlContent: `
+[project]
+name = "test"
+
+[pi]
+provider = "anthropic"
+model = "claude-sonnet-4-5-20250929"
+thinking = "high"
+`,
+			wantProvider: "anthropic",
+			wantModel:    "claude-sonnet-4-5-20250929",
+			wantThinking: "high",
+		},
+		{
+			name: "Only provider",
+			tomlContent: `
+[project]
+name = "test"
+
+[pi]
+provider = "openai"
+`,
+			wantProvider: "openai",
+			wantModel:    "",
+			wantThinking: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var cfg Config
+			_, err := toml.Decode(tt.tomlContent, &cfg)
+			require.NoError(t, err)
+
+			require.Equal(t, tt.wantProvider, cfg.Pi.Provider)
+			require.Equal(t, tt.wantModel, cfg.Pi.Model)
+			require.Equal(t, tt.wantThinking, cfg.Pi.Thinking)
+		})
+	}
+}
+
+func TestAgentConfigFromTOML(t *testing.T) {
+	tests := []struct {
+		name     string
+		toml     string
+		wantType string
+	}{
+		{
+			name: "Default empty",
+			toml: `
+[project]
+name = "test"
+`,
+			wantType: "",
+		},
+		{
+			name: "Claude agent",
+			toml: `
+[project]
+name = "test"
+
+[agent]
+type = "claude"
+`,
+			wantType: "claude",
+		},
+		{
+			name: "Pi agent",
+			toml: `
+[project]
+name = "test"
+
+[agent]
+type = "pi"
+`,
+			wantType: "pi",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var cfg Config
+			_, err := toml.Decode(tt.toml, &cfg)
+			require.NoError(t, err)
+			require.Equal(t, tt.wantType, cfg.Agent.Type)
+		})
+	}
+}

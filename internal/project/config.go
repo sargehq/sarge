@@ -22,7 +22,9 @@ type Config struct {
 	Beads     BeadsConfig     `toml:"beads"`
 	Hooks     HooksConfig     `toml:"hooks"`
 	Linear    LinearConfig    `toml:"linear"`
+	Agent     AgentConfig     `toml:"agent"`
 	Claude    ClaudeConfig    `toml:"claude"`
+	Pi        PiConfig        `toml:"pi"`
 	Workflow  WorkflowConfig  `toml:"workflow"`
 	Scheduler SchedulerConfig `toml:"scheduler"`
 	Zellij    ZellijConfig    `toml:"zellij"`
@@ -82,6 +84,24 @@ func (l *LogParserConfig) GetModel() string {
 		// Return default for invalid values
 		return "haiku"
 	}
+}
+
+// AgentConfig contains coding agent configuration.
+type AgentConfig struct {
+	// Type selects which coding agent to use: "claude" (default) or "pi".
+	Type string `toml:"type"`
+}
+
+// PiConfig contains pi coding agent configuration.
+type PiConfig struct {
+	// Provider selects the AI provider (e.g., "anthropic", "openai", "google").
+	Provider string `toml:"provider"`
+
+	// Model specifies which model to use with the selected provider.
+	Model string `toml:"model"`
+
+	// Thinking sets the reasoning/thinking level (e.g., "low", "medium", "high").
+	Thinking string `toml:"thinking"`
 }
 
 // ClaudeConfig contains Claude Code configuration.

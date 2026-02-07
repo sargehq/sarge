@@ -53,6 +53,15 @@ path = {{.BeadsPath | tomlString}}
 # ]
 
 # =============================================================================
+# Agent Configuration (Optional)
+# =============================================================================
+# Which coding agent to use for this project.
+#
+# [agent]
+# # Agent type: "claude" (default) or "pi"
+# type = "claude"
+
+# =============================================================================
 # Claude Configuration (Optional)
 # =============================================================================
 # Controls how Claude Code sessions are executed.
@@ -72,6 +81,22 @@ path = {{.BeadsPath | tomlString}}
 # # Defaults to 60 minutes when not specified.
 # # If time_limit is set and is less, time_limit takes precedence.
 # task_timeout_minutes = 120
+
+# =============================================================================
+# Pi Configuration (Optional)
+# =============================================================================
+# Controls how the pi coding agent is executed (when agent.type = "pi").
+# Pi's built-in tools execute without permission prompts by default.
+#
+# [pi]
+# # AI provider to use (e.g., "anthropic", "openai", "google")
+# provider = "anthropic"
+#
+# # Model to use with the selected provider
+# model = "claude-sonnet-4-5-20250929"
+#
+# # Thinking/reasoning level: "low", "medium", or "high"
+# thinking = "medium"
 
 # =============================================================================
 # Workflow Configuration (Optional)
