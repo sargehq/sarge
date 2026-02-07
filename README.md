@@ -11,7 +11,7 @@ Sarge is designed to manage an army of Claude agents, turning your issue tracker
 1. **Create or import issues** - Define work in your issue tracker (beads), or import from Linear
 2. **Plan the implementation** - Use Claude Code interactively to break down complex issues into actionable tasks
 3. **Execute with a Work** - Create a work unit that represents a git worktree and feature branch
-4. **Automatic execution** - CO orchestrates Claude to solve all issues, commit changes, and push continuously
+4. **Automatic execution** - Sarge orchestrates Claude to solve all issues, commit changes, and push continuously
 5. **Code review** - Claude automatically reviews its own work, creating fix issues for any problems found
 6. **PR creation** - Once implementation and review pass, Claude creates a comprehensive PR
 7. **Handle feedback** - CI failures and review comments automatically become new issues, which can be planned or added to the existing work
@@ -116,7 +116,23 @@ sarge proj create ~/myproject ~/path/to/repo
 cd ~/myproject
 ```
 
-### 2. Choose Your Interface
+This clones the repo (or symlinks a local one), installs tools via mise, and initializes the beads issue tracker.
+
+### 2. Create Issues
+
+Create issues in the beads tracker for sarge to work on:
+
+```bash
+cd main
+bd create --title "Add user authentication" --type feature
+bd create --title "Fix login page crash" --type bug --priority 1
+bd ready   # See what's available
+cd ..
+```
+
+Or import from Linear: `sarge linear import ENG-123`
+
+### 3. Choose Your Interface
 
 Sarge provides two ways to interact with your project:
 
@@ -130,7 +146,7 @@ sarge
 
 Features:
 - Three-panel drill-down: Beads → Works → Tasks
-- Create/destroy works, run tasks
+- Create/destroy works, run tasks, monitor progress
 - Bead filtering, search, multi-select
 - Press `?` for keyboard shortcuts
 
@@ -139,7 +155,7 @@ Features:
 Use individual commands for scripting or when you prefer the command line:
 
 ```bash
-# Create a work unit from a bead
+# Create a work unit from a bead (creates worktree + feature branch)
 sarge work create bead-1
 
 # Navigate to the work directory
@@ -148,8 +164,23 @@ cd w-abc
 # Execute tasks
 sarge run
 
-# Or use full automation
+# Or skip the manual steps - full automation in one command
 sarge work create bead-1 --auto
+```
+
+### 4. Monitor and Merge
+
+```bash
+# Check on progress
+sarge poll
+
+# Once work is idle (all tasks finished), review the PR
+sarge work pr          # Creates PR via Claude
+sarge run              # Executes the PR task
+
+# After PR approval
+sarge work complete    # Mark work as done
+sarge work destroy w-abc
 ```
 
 ## Project Commands
