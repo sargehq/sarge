@@ -13,6 +13,14 @@ import (
 	"github.com/sargehq/sarge/internal/project"
 )
 
+// Package-level compiled regexes for extractGitHubID
+var (
+	reviewCommentIDPattern = regexp.MustCompile(`#discussion_r(\d+)`)
+	issueCommentIDPattern  = regexp.MustCompile(`#issuecomment-(\d+)`)
+	prNumberPattern        = regexp.MustCompile(`/pull/(\d+)`)
+	issueNumberPattern     = regexp.MustCompile(`/issues/(\d+)`)
+)
+
 // BeadInfo represents information for creating a bead from feedback.
 type BeadInfo struct {
 	Title       string
@@ -142,26 +150,22 @@ func (i *Integration) CreateBeadFromFeedback(ctx context.Context, beadDir string
 // returns "review-comment-789"
 func extractGitHubID(url string) string {
 	// Try to extract review comment ID (e.g., #discussion_r123456)
-	reviewCommentRe := regexp.MustCompile(`#discussion_r(\d+)`)
-	if matches := reviewCommentRe.FindStringSubmatch(url); len(matches) > 1 {
+	if matches := reviewCommentIDPattern.FindStringSubmatch(url); len(matches) > 1 {
 		return "review-comment-" + matches[1]
 	}
 
 	// Try to extract regular comment ID (e.g., #issuecomment-456789)
-	commentRe := regexp.MustCompile(`#issuecomment-(\d+)`)
-	if matches := commentRe.FindStringSubmatch(url); len(matches) > 1 {
+	if matches := issueCommentIDPattern.FindStringSubmatch(url); len(matches) > 1 {
 		return "comment-" + matches[1]
 	}
 
 	// Try to extract PR number
-	prRe := regexp.MustCompile(`/pull/(\d+)`)
-	if matches := prRe.FindStringSubmatch(url); len(matches) > 1 {
+	if matches := prNumberPattern.FindStringSubmatch(url); len(matches) > 1 {
 		return "pr-" + matches[1]
 	}
 
 	// Try to extract issue number
-	issueRe := regexp.MustCompile(`/issues/(\d+)`)
-	if matches := issueRe.FindStringSubmatch(url); len(matches) > 1 {
+	if matches := issueNumberPattern.FindStringSubmatch(url); len(matches) > 1 {
 		return "issue-" + matches[1]
 	}
 
