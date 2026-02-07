@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/charmbracelet/huh"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/sargehq/sarge/internal/mise"
 	"github.com/sargehq/sarge/internal/project"
 	"github.com/sargehq/sarge/internal/worktree"
@@ -97,64 +99,21 @@ func isCommandAvailable(name string) bool {
 	return err == nil
 }
 
-// promptYesNo asks the user a yes/no question and returns the answer.
-// defaultYes determines the default if the user just presses enter.
-func promptYesNo(question string, defaultYes bool) bool {
-	reader := bufio.NewReader(os.Stdin)
-	suffix := " [Y/n]: "
-	if !defaultYes {
-		suffix = " [y/N]: "
-	}
-	fmt.Print(question + suffix)
-	response, _ := reader.ReadString('\n')
-	response = strings.TrimSpace(strings.ToLower(response))
-	if response == "" {
-		return defaultYes
-	}
-	return response == "y" || response == "yes"
-}
-
-// promptChoice asks the user to pick from a list of options.
-// Returns the selected option string.
-func promptChoice(question string, options []string, defaultIdx int) string {
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Println(question)
-	for i, opt := range options {
-		marker := "  "
-		if i == defaultIdx {
-			marker = "* "
-		}
-		fmt.Printf("  %s%d) %s\n", marker, i+1, opt)
-	}
-	fmt.Printf("Choice [%d]: ", defaultIdx+1)
-	response, _ := reader.ReadString('\n')
-	response = strings.TrimSpace(response)
-	if response == "" {
-		return options[defaultIdx]
-	}
-	// Parse number
-	for i, opt := range options {
-		if response == fmt.Sprintf("%d", i+1) {
-			return opt
-		}
-	}
-	// Try matching by name
-	for _, opt := range options {
-		if strings.EqualFold(response, opt) {
-			return opt
-		}
-	}
-	return options[defaultIdx]
-}
-
 // promptToolSelections interactively asks the user which tools to include.
+// It uses charmbracelet/huh for a polished interactive UI.
 // It detects already-installed tools and adjusts defaults accordingly.
 func promptToolSelections() mise.ToolSelections {
 	selections := mise.DefaultToolSelections()
 
-	fmt.Println("\n🔧 Tool Configuration")
+	// Styled header
+	headerStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("212"))
+
+	fmt.Println()
+	fmt.Println(headerStyle.Render("🔧 Tool Configuration"))
 	fmt.Println("Configure which tools mise should manage for this project.")
-	fmt.Println("(beads is always included - required for sarge)")
+	fmt.Println(lipgloss.NewStyle().Faint(true).Render("(beads is always included — required for sarge)"))
 	fmt.Println()
 
 	// Detect installed tools and report
@@ -177,31 +136,80 @@ func promptToolSelections() mise.ToolSelections {
 		detected = append(detected, "zellij")
 	}
 	if len(detected) > 0 {
-		fmt.Printf("Detected on PATH: %s\n\n", strings.Join(detected, ", "))
+		detectedStyle := lipgloss.NewStyle().
+			Faint(true).
+			Italic(true)
+		fmt.Println(detectedStyle.Render(fmt.Sprintf("Detected on PATH: %s", strings.Join(detected, ", "))))
+		fmt.Println()
 	}
 
 	// Agent type selection - default to what's detected
-	defaultAgentIdx := 0 // claude
+	defaultAgent := "claude"
 	if hasPi && !hasClaude {
-		defaultAgentIdx = 1 // pi
+		defaultAgent = "pi"
 	}
-	agentChoice := promptChoice("Which coding agent would you like to use?",
-		[]string{"claude", "pi", "none"}, defaultAgentIdx)
-	selections.AgentType = agentChoice
 
-	// GitHub CLI - default to skip if already installed
+	agentOptions := []huh.Option[string]{
+		huh.NewOption("Claude — Anthropic's coding agent", "claude"),
+		huh.NewOption("Pi — pi coding agent", "pi"),
+		huh.NewOption("None — no coding agent", "none"),
+	}
+
+	// GitHub CLI description varies based on detection
+	ghDescription := "Include gh (GitHub CLI) in mise?"
+	ghDefault := true
 	if hasGH {
-		selections.IncludeGH = promptYesNo("gh (GitHub CLI) is already installed. Include in mise anyway?", false)
-	} else {
-		selections.IncludeGH = promptYesNo("Include gh (GitHub CLI) in mise?", true)
+		ghDescription = "gh (GitHub CLI) is already installed. Include in mise anyway?"
+		ghDefault = false
 	}
 
-	// Zellij - default to skip if already installed
+	// Zellij description varies based on detection
+	zellijDescription := "Include zellij (terminal multiplexer) in mise?"
+	zellijDefault := true
 	if hasZellij {
-		selections.IncludeZellij = promptYesNo("zellij is already installed. Include in mise anyway?", false)
-	} else {
-		selections.IncludeZellij = promptYesNo("Include zellij in mise?", true)
+		zellijDescription = "zellij is already installed. Include in mise anyway?"
+		zellijDefault = false
 	}
+
+	var includeGH, includeZellij bool
+
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("Coding Agent").
+				Description("Which coding agent would you like to use?").
+				Options(agentOptions...).
+				Value(&selections.AgentType),
+
+			huh.NewConfirm().
+				Title(ghDescription).
+				Value(&includeGH).
+				Affirmative("Yes").
+				Negative("No"),
+
+			huh.NewConfirm().
+				Title(zellijDescription).
+				Value(&includeZellij).
+				Affirmative("Yes").
+				Negative("No"),
+		),
+	).WithTheme(huh.ThemeCharm())
+
+	// Set defaults
+	selections.AgentType = defaultAgent
+	includeGH = ghDefault
+	includeZellij = zellijDefault
+
+	err := form.Run()
+	if err != nil {
+		// If user cancelled (ctrl+c), use defaults
+		fmt.Println("\nUsing default selections.")
+		selections = mise.DefaultToolSelections()
+		return selections
+	}
+
+	selections.IncludeGH = includeGH
+	selections.IncludeZellij = includeZellij
 
 	fmt.Println()
 	return selections
