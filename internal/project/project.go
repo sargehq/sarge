@@ -132,9 +132,15 @@ func load(ctx context.Context, root string) (*Project, error) {
 	return proj, nil
 }
 
-// Create initializes a new project at the given directory.
+// Create initializes a new project at the given directory with default tool selections.
 // repoSource can be a local path (symlinked) or GitHub URL (cloned).
 func Create(ctx context.Context, dir, repoSource string) (*Project, error) {
+	return CreateWithSelections(ctx, dir, repoSource, mise.DefaultToolSelections())
+}
+
+// CreateWithSelections initializes a new project at the given directory with specific tool selections.
+// repoSource can be a local path (symlinked) or GitHub URL (cloned).
+func CreateWithSelections(ctx context.Context, dir, repoSource string, toolSelections mise.ToolSelections) (*Project, error) {
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve path: %w", err)
@@ -162,7 +168,6 @@ func Create(ctx context.Context, dir, repoSource string) (*Project, error) {
 
 	// 3. Generate mise config and run mise install
 	// Check if the cloned repo has a sarge config with an agent type preference
-	toolSelections := mise.DefaultToolSelections()
 	if existingCfg, err := LoadConfig(filepath.Join(absDir, ConfigDir, ConfigFile)); err == nil && existingCfg.Agent.Type != "" {
 		toolSelections.AgentType = existingCfg.Agent.Type
 	}

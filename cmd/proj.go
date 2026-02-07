@@ -4,8 +4,10 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 
+	"github.com/sargehq/sarge/internal/mise"
 	"github.com/sargehq/sarge/internal/project"
 	"github.com/sargehq/sarge/internal/worktree"
 	"github.com/spf13/cobra"
@@ -71,7 +73,10 @@ func runProjCreate(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Creating project at %s from %s...\n", dir, repo)
 
-	proj, err := project.Create(ctx, dir, repo)
+	// Interactive tool selection
+	selections := promptToolSelections()
+
+	proj, err := project.CreateWithSelections(ctx, dir, repo, selections)
 	if err != nil {
 		return fmt.Errorf("failed to create project: %w", err)
 	}
@@ -84,6 +89,94 @@ func runProjCreate(cmd *cobra.Command, args []string) error {
 	fmt.Printf("  Main repo: %s\n", proj.MainRepoPath())
 
 	return nil
+}
+
+// isCommandAvailable checks if a command is available on the system PATH.
+func isCommandAvailable(name string) bool {
+	_, err := exec.LookPath(name)
+	return err == nil
+}
+
+// promptYesNo asks the user a yes/no question and returns the answer.
+// defaultYes determines the default if the user just presses enter.
+func promptYesNo(question string, defaultYes bool) bool {
+	reader := bufio.NewReader(os.Stdin)
+	suffix := " [Y/n]: "
+	if !defaultYes {
+		suffix = " [y/N]: "
+	}
+	fmt.Print(question + suffix)
+	response, _ := reader.ReadString('\n')
+	response = strings.TrimSpace(strings.ToLower(response))
+	if response == "" {
+		return defaultYes
+	}
+	return response == "y" || response == "yes"
+}
+
+// promptChoice asks the user to pick from a list of options.
+// Returns the selected option string.
+func promptChoice(question string, options []string, defaultIdx int) string {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Println(question)
+	for i, opt := range options {
+		marker := "  "
+		if i == defaultIdx {
+			marker = "* "
+		}
+		fmt.Printf("  %s%d) %s\n", marker, i+1, opt)
+	}
+	fmt.Printf("Choice [%d]: ", defaultIdx+1)
+	response, _ := reader.ReadString('\n')
+	response = strings.TrimSpace(response)
+	if response == "" {
+		return options[defaultIdx]
+	}
+	// Parse number
+	for i, opt := range options {
+		if response == fmt.Sprintf("%d", i+1) {
+			return opt
+		}
+	}
+	// Try matching by name
+	for _, opt := range options {
+		if strings.EqualFold(response, opt) {
+			return opt
+		}
+	}
+	return options[defaultIdx]
+}
+
+// promptToolSelections interactively asks the user which tools to include.
+// It detects already-installed tools and adjusts defaults accordingly.
+func promptToolSelections() mise.ToolSelections {
+	selections := mise.DefaultToolSelections()
+
+	fmt.Println("\n🔧 Tool Configuration")
+	fmt.Println("Configure which tools mise should manage for this project.")
+	fmt.Println()
+
+	// Agent type selection
+	agentChoice := promptChoice("Which coding agent would you like to use?",
+		[]string{"claude", "pi", "none"}, 0)
+	selections.AgentType = agentChoice
+
+	// GitHub CLI
+	if isCommandAvailable("gh") {
+		selections.IncludeGH = promptYesNo("gh (GitHub CLI) is already installed. Include in mise anyway?", false)
+	} else {
+		selections.IncludeGH = promptYesNo("Include gh (GitHub CLI) in mise?", true)
+	}
+
+	// Zellij
+	if isCommandAvailable("zellij") {
+		selections.IncludeZellij = promptYesNo("zellij is already installed. Include in mise anyway?", false)
+	} else {
+		selections.IncludeZellij = promptYesNo("Include zellij in mise?", true)
+	}
+
+	fmt.Println()
+	return selections
 }
 
 func runProjDestroy(cmd *cobra.Command, args []string) error {
