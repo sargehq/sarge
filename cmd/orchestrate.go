@@ -7,9 +7,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/sargehq/sarge/internal/beads"
 	"github.com/sargehq/sarge/internal/agents"
+	"github.com/sargehq/sarge/internal/beads"
 	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/execwatch"
 	"github.com/sargehq/sarge/internal/debug"
 	"github.com/sargehq/sarge/internal/feedback"
 	"github.com/sargehq/sarge/internal/logging"
@@ -130,6 +131,16 @@ func runOrchestrate(cmd *cobra.Command, args []string) error {
 	// git push retries, PR feedback polling, etc. This allows scheduled tasks
 	// to be processed even when no orchestrator is running for a theWork.
 
+	// Initialize executable change watcher to detect when a new binary is installed.
+	// When detected (between tasks), we exit gracefully and the control plane restarts us.
+	exeWatcher, err := execwatch.New()
+	if err != nil {
+		fmt.Printf("Warning: failed to initialize executable watcher: %v\n", err)
+		// Non-fatal: continue without executable change detection
+	} else {
+		fmt.Printf("Executable watcher initialized: %s\n", exeWatcher.Path())
+	}
+
 	// Create agent once for all tasks
 	agent, err := agents.NewAgent(proj.Config)
 	if err != nil {
@@ -144,6 +155,17 @@ func runOrchestrate(cmd *cobra.Command, args []string) error {
 			fmt.Println("Orchestrator evicted by new process, shutting down gracefully.")
 			return nil
 		default:
+		}
+
+		// Check if the executable has changed (only between tasks, never mid-task)
+		if exeWatcher != nil {
+			result, checkErr := exeWatcher.Check()
+			if checkErr != nil {
+				fmt.Printf("Warning: failed to check executable for changes: %v\n", checkErr)
+			} else if result.Changed {
+				fmt.Printf("\nDetected new sarge binary (%s). Shutting down for restart...\n", result.Reason)
+				return nil
+			}
 		}
 
 		// Check if theWork still exists (may have been destroyed)
