@@ -25,9 +25,12 @@ Transitive dependencies are also included.
 
 The branch name is generated from bead titles and you're prompted for confirmation.
 
-| Flag | Description |
-|------|-------------|
-| `--auto` | Full automated workflow (implement, review/fix loop, PR) |
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--auto` | | Full automated workflow (implement, review/fix loop, PR) |
+| `--branch` | | Branch name to use (skips the confirmation prompt) |
+| `--from-branch` | | Use an existing git branch instead of creating a new one |
+| `--yes` | `-y` | Skip confirmation prompts |
 
 Base branch is configured in `config.toml` under `[repo] base_branch` (default: main).
 
@@ -116,6 +119,28 @@ sarge work complete w-abc  # Explicit ID
 - Transitions work to `completed` (terminal state)
 - Use when PR is merged or work is truly finished
 
+### `sarge work console [<id>]`
+
+Opens a zellij tab with a shell in the work's worktree.
+
+```bash
+sarge work console        # Current directory
+sarge work console w-abc  # Explicit ID
+```
+
+Useful for running tests, exploring the codebase, or debugging while the orchestrator runs in a separate tab.
+
+### `sarge work claude [<id>]`
+
+Opens a zellij tab with an interactive Claude Code session in the work's worktree.
+
+```bash
+sarge work claude        # Current directory
+sarge work claude w-abc  # Explicit ID
+```
+
+Useful for manual exploration, debugging, or ad-hoc changes while the orchestrator runs in a separate tab.
+
 ### `sarge work pr [<id>]`
 
 Creates a PR task for Claude to generate a pull request.
@@ -125,7 +150,7 @@ sarge work pr          # Current directory
 sarge work pr w-abc    # Explicit ID
 ```
 
-Work must be completed before creating PR. After creating the PR task, run `sarge run` to execute it.
+Work must be idle (all tasks finished) before creating a PR. After creating the PR task, run `sarge run` to execute it.
 
 ### `sarge work review [<id>]`
 
@@ -143,6 +168,25 @@ sarge work review --auto       # Review-fix loop
 
 Claude examines the work's branch for quality and security issues and creates beads for issues found.
 
+### `sarge work import-pr <pr-url>`
+
+Creates a work unit from an existing GitHub pull request.
+
+```bash
+sarge work import-pr https://github.com/owner/repo/pull/123
+sarge work import-pr https://github.com/owner/repo/pull/123 --branch custom-branch-name
+```
+
+| Flag | Description |
+|------|-------------|
+| `--branch` | Override the local branch name (default: use PR's branch name) |
+
+This command:
+- Fetches PR metadata (title, author, branch, state)
+- Creates a bead from the PR metadata
+- Sets up a work unit with the PR's feature branch
+- Schedules worktree creation via the control plane
+
 ### `sarge work feedback [<id>]`
 
 Processes PR feedback and creates beads from actionable items.
@@ -151,15 +195,11 @@ Processes PR feedback and creates beads from actionable items.
 sarge work feedback                    # Current directory
 sarge work feedback w-abc              # Explicit ID
 sarge work feedback --dry-run          # Preview only
-sarge work feedback --auto-add         # Add beads to work
-sarge work feedback --min-priority 2   # Filter by priority
 ```
 
 | Flag | Description |
 |------|-------------|
 | `--dry-run` | Preview what beads would be created |
-| `--auto-add` | Automatically add beads to work |
-| `--min-priority N` | Set minimum priority (0-4) |
 
 The feedback system processes:
 - **CI/Build Failures**: Failed status checks and workflow runs
@@ -188,6 +228,8 @@ sarge run --dry-run            # Preview execution plan
 | `--dry-run` | | Show execution plan without running |
 | `--plan` | | Use LLM complexity estimation to auto-group beads |
 | `--auto` | | Full automated workflow (implement, review/fix loop, PR) |
+| `--auto-close` | | Automatically close zellij tabs after task completion |
+| `--force-estimate` | | Force re-estimation of complexity (use with `--plan`) |
 | `--project` | | Specify project directory (default: auto-detect from cwd) |
 | `--work` | | Specify work ID (default: auto-detect from current directory) |
 
@@ -236,17 +278,6 @@ sarge task reset w-abc.1
 ```
 
 Changes task status from processing/failed back to pending. Resets all bead statuses for the task.
-
-### `sarge task set-review-epic <epic-id>`
-
-Associates a review epic with a review task.
-
-```bash
-sarge task set-review-epic epic-1
-sarge task set-review-epic epic-1 --task w-abc.2
-```
-
-Task is auto-detected from CO_TASK_ID env var or current processing review task.
 
 ## Monitoring Commands
 
@@ -305,6 +336,16 @@ sarge list --status completed
 |------|-------------|
 | `--status` | Filter: pending, processing, completed, failed |
 
+### `sarge plan <bead-id>`
+
+Launches an interactive Claude Code session for planning work on a specific issue.
+
+```bash
+sarge plan bead-1
+```
+
+Typically invoked by the TUI's Plan mode, which creates a zellij tab for each issue. Claude can investigate the issue, break it down into subtasks, plan implementation strategies, and create related issues.
+
 ### `sarge sync`
 
 Pulls from upstream in all repositories.
@@ -314,6 +355,36 @@ sarge sync
 ```
 
 Runs git pull in each worktree (main and all work worktrees).
+
+## Database Commands
+
+### `sarge migrate`
+
+Manage database migrations for the tracking database. Migrations run automatically when the database is accessed, but these commands allow manual control.
+
+### `sarge migrate status`
+
+Show all applied database migrations.
+
+```bash
+sarge migrate status
+```
+
+### `sarge migrate up`
+
+Apply all pending database migrations.
+
+```bash
+sarge migrate up
+```
+
+### `sarge migrate rollback`
+
+Rollback the most recently applied database migration.
+
+```bash
+sarge migrate rollback
+```
 
 ## Linear Integration
 
@@ -410,7 +481,7 @@ Works have the following status states:
 
 ## ID Generation
 
-CO uses a hierarchical ID system:
+Sarge uses a hierarchical ID system:
 
 - **Work IDs**: Content-based hash (e.g., `w-8xa`)
   - Generated from branch name + project + timestamp
