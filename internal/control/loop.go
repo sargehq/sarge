@@ -79,6 +79,14 @@ func RunControlPlaneLoopWithControlPlane(ctx context.Context, proj *project.Proj
 			fmt.Println("\nControl plane stopped.")
 			return nil
 
+		case <-procManager.EvictedCh():
+			logging.Info("Control plane evicted by new process, shutting down gracefully")
+			if runningCount := asyncExecutor.RunningCount(); runningCount > 0 {
+				fmt.Printf("\nWaiting for %d async task(s) to complete...\n", runningCount)
+			}
+			fmt.Println("\nControl plane evicted, stopped.")
+			return nil
+
 		case event, ok := <-sub:
 			if !ok {
 				logging.Debug("Watcher subscription closed")

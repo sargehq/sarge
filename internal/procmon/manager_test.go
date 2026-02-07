@@ -218,7 +218,7 @@ func TestCleanupStaleProcessRecords(t *testing.T) {
 
 	// Set heartbeat to 60 seconds ago to simulate a stale process
 	oldTime := time.Now().Add(-60 * time.Second)
-	err = database.UpdateHeartbeatWithTime(ctx, "stale-id", oldTime)
+	_, err = database.UpdateHeartbeatWithTime(ctx, "stale-id", oldTime)
 	require.NoError(t, err)
 
 	// Verify the stale process exists
@@ -318,4 +318,199 @@ func TestGetAllProcesses(t *testing.T) {
 	procs, err = m.GetAllProcesses(ctx)
 	require.NoError(t, err)
 	assert.Len(t, procs, 3, "expected 3 processes (1 control plane + 2 orchestrators)")
+}
+
+// --- Eviction tests ---
+
+func TestOrchestratorEvictionDetection(t *testing.T) {
+	database, cleanup := setupTestDB(t)
+	defer cleanup()
+	ctx := context.Background()
+
+	// Register Manager A as orchestrator
+	mA := NewManager(database, time.Hour)
+	err := mA.RegisterOrchestrator(ctx, "work-123")
+	require.NoError(t, err)
+	defer mA.Stop()
+
+	// Force-delete A's record (simulating another process taking over)
+	err = database.DeleteOrchestratorByWorkID(ctx, "work-123")
+	require.NoError(t, err)
+
+	// Trigger heartbeat on A — should detect eviction
+	err = mA.TriggerHeartbeat()
+	require.NoError(t, err)
+
+	// evictedCh should be closed
+	select {
+	case <-mA.EvictedCh():
+		// Expected: eviction detected
+	case <-time.After(time.Second):
+		t.Fatal("expected evictedCh to be closed after heartbeat row was deleted")
+	}
+}
+
+func TestOrchestratorRestartEviction(t *testing.T) {
+	database, cleanup := setupTestDB(t)
+	defer cleanup()
+	ctx := context.Background()
+
+	// Register Manager A as orchestrator for work-123
+	mA := NewManager(database, time.Hour)
+	err := mA.RegisterOrchestrator(ctx, "work-123")
+	require.NoError(t, err)
+	defer mA.Stop()
+
+	// Register Manager B as orchestrator for same work-123 (force-takes over)
+	mB := NewManager(database, time.Hour)
+	err = mB.RegisterOrchestrator(ctx, "work-123")
+	require.NoError(t, err)
+	defer mB.Stop()
+
+	// Trigger A's heartbeat — should detect eviction
+	err = mA.TriggerHeartbeat()
+	require.NoError(t, err)
+
+	select {
+	case <-mA.EvictedCh():
+		// Expected
+	case <-time.After(time.Second):
+		t.Fatal("expected mA to detect eviction after mB took over")
+	}
+
+	// B should NOT be evicted
+	select {
+	case <-mB.EvictedCh():
+		t.Fatal("mB should not be evicted")
+	default:
+		// Expected: B is still running
+	}
+}
+
+func TestOrchestratorNormalOperation(t *testing.T) {
+	database, cleanup := setupTestDB(t)
+	defer cleanup()
+	ctx := context.Background()
+
+	m := NewManager(database, time.Hour)
+	defer m.Stop()
+
+	err := m.RegisterOrchestrator(ctx, "work-456")
+	require.NoError(t, err)
+
+	// Trigger heartbeat — should NOT trigger eviction
+	err = m.TriggerHeartbeat()
+	require.NoError(t, err)
+
+	select {
+	case <-m.EvictedCh():
+		t.Fatal("should not be evicted during normal operation")
+	default:
+		// Expected
+	}
+}
+
+func TestOrchestratorGracefulStopStillWorks(t *testing.T) {
+	database, cleanup := setupTestDB(t)
+	defer cleanup()
+	ctx := context.Background()
+
+	m := NewManager(database, time.Hour)
+	err := m.RegisterOrchestrator(ctx, "work-789")
+	require.NoError(t, err)
+
+	// Stop gracefully
+	m.Stop()
+
+	// Process should be unregistered
+	proc, err := database.GetOrchestratorProcess(ctx, "work-789")
+	require.NoError(t, err)
+	assert.Nil(t, proc, "process should be nil after graceful stop")
+}
+
+func TestControlPlaneEvictionDetection(t *testing.T) {
+	database, cleanup := setupTestDB(t)
+	defer cleanup()
+	ctx := context.Background()
+
+	// Register Manager A as control plane
+	mA := NewManager(database, time.Hour)
+	err := mA.RegisterControlPlane(ctx)
+	require.NoError(t, err)
+	defer mA.Stop()
+
+	// Force-delete A's record
+	err = database.DeleteControlPlaneProcess(ctx)
+	require.NoError(t, err)
+
+	// Trigger heartbeat on A — should detect eviction
+	err = mA.TriggerHeartbeat()
+	require.NoError(t, err)
+
+	select {
+	case <-mA.EvictedCh():
+		// Expected
+	case <-time.After(time.Second):
+		t.Fatal("expected evictedCh to be closed after control plane row was deleted")
+	}
+}
+
+func TestControlPlaneRestartEviction(t *testing.T) {
+	database, cleanup := setupTestDB(t)
+	defer cleanup()
+	ctx := context.Background()
+
+	// Register Manager A as control plane
+	mA := NewManager(database, time.Hour)
+	err := mA.RegisterControlPlane(ctx)
+	require.NoError(t, err)
+	defer mA.Stop()
+
+	// Register Manager B as control plane (force-takes over)
+	mB := NewManager(database, time.Hour)
+	err = mB.RegisterControlPlane(ctx)
+	require.NoError(t, err)
+	defer mB.Stop()
+
+	// Trigger A's heartbeat — should detect eviction
+	err = mA.TriggerHeartbeat()
+	require.NoError(t, err)
+
+	select {
+	case <-mA.EvictedCh():
+		// Expected
+	case <-time.After(time.Second):
+		t.Fatal("expected mA to detect eviction after mB took over")
+	}
+
+	// B should NOT be evicted
+	select {
+	case <-mB.EvictedCh():
+		t.Fatal("mB should not be evicted")
+	default:
+		// Expected
+	}
+}
+
+func TestControlPlaneNormalOperation(t *testing.T) {
+	database, cleanup := setupTestDB(t)
+	defer cleanup()
+	ctx := context.Background()
+
+	m := NewManager(database, time.Hour)
+	defer m.Stop()
+
+	err := m.RegisterControlPlane(ctx)
+	require.NoError(t, err)
+
+	// Trigger heartbeat — should NOT trigger eviction
+	err = m.TriggerHeartbeat()
+	require.NoError(t, err)
+
+	select {
+	case <-m.EvictedCh():
+		t.Fatal("should not be evicted during normal operation")
+	default:
+		// Expected
+	}
 }

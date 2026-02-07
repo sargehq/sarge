@@ -28,6 +28,7 @@ type Manager struct {
 	stopCh    chan struct{}
 	stoppedCh chan struct{}
 	triggerCh chan chan error // For testing: trigger immediate heartbeat
+	evictedCh chan struct{}  // Closed when this process is evicted by a new one
 }
 
 // NewManager creates a new process manager.
@@ -49,7 +50,8 @@ func (m *Manager) SetNowFunc(f func() time.Time) {
 }
 
 // RegisterControlPlane registers this process as the control plane.
-// Any existing stale control plane record is cleaned up first.
+// Any existing control plane record is unconditionally deleted first (force-takeover).
+// The old process will detect eviction on its next heartbeat and shut down.
 // Returns an error if registration fails.
 func (m *Manager) RegisterControlPlane(ctx context.Context) error {
 	m.mu.Lock()
@@ -59,11 +61,10 @@ func (m *Manager) RegisterControlPlane(ctx context.Context) error {
 		return fmt.Errorf("manager already running")
 	}
 
-	// Clean up any stale control plane record before registering
-	// This handles cases where a previous control plane was killed without cleanup
-	if err := m.db.CleanupStaleControlPlane(ctx); err != nil {
-		logging.Warn("failed to cleanup stale control plane", "error", err)
-		// Continue anyway - the registration will fail if there's a real conflict
+	// Force-delete any existing control plane record before registering
+	// The old process (if still alive) will detect eviction on its next heartbeat
+	if err := m.db.DeleteControlPlaneProcess(ctx); err != nil {
+		logging.Warn("failed to delete existing control plane", "error", err)
 	}
 
 	m.id = uuid.New().String()
@@ -80,7 +81,8 @@ func (m *Manager) RegisterControlPlane(ctx context.Context) error {
 }
 
 // RegisterOrchestrator registers this process as an orchestrator for the given work ID.
-// Any existing stale orchestrator record for this work ID is cleaned up first.
+// Any existing orchestrator record for this work ID is unconditionally deleted first (force-takeover).
+// The old process will detect eviction on its next heartbeat and shut down.
 // Returns an error if registration fails.
 func (m *Manager) RegisterOrchestrator(ctx context.Context, workID string) error {
 	m.mu.Lock()
@@ -90,11 +92,10 @@ func (m *Manager) RegisterOrchestrator(ctx context.Context, workID string) error
 		return fmt.Errorf("manager already running")
 	}
 
-	// Clean up any stale orchestrator record before registering
-	// This handles cases where a previous orchestrator was killed without cleanup
-	if err := m.db.CleanupStaleOrchestrator(ctx, workID); err != nil {
-		logging.Warn("failed to cleanup stale orchestrator", "workID", workID, "error", err)
-		// Continue anyway - the registration will fail if there's a real conflict
+	// Force-delete any existing orchestrator record before registering
+	// The old process (if still alive) will detect eviction on its next heartbeat
+	if err := m.db.DeleteOrchestratorByWorkID(ctx, workID); err != nil {
+		logging.Warn("failed to delete existing orchestrator", "workID", workID, "error", err)
 	}
 
 	m.id = uuid.New().String()
@@ -116,6 +117,7 @@ func (m *Manager) startHeartbeat() {
 	m.stopCh = make(chan struct{})
 	m.stoppedCh = make(chan struct{})
 	m.triggerCh = make(chan chan error)
+	m.evictedCh = make(chan struct{})
 
 	go func() {
 		defer close(m.stoppedCh)
@@ -127,15 +129,33 @@ func (m *Manager) startHeartbeat() {
 			case <-m.stopCh:
 				return
 			case <-ticker.C:
-				if err := m.db.UpdateHeartbeatWithTime(context.Background(), m.id, m.nowFunc()); err != nil {
+				rows, err := m.db.UpdateHeartbeatWithTime(context.Background(), m.id, m.nowFunc())
+				if err != nil {
 					logging.Warn("failed to update heartbeat", "id", m.id, "error", err)
+				} else if rows == 0 {
+					logging.Info("process evicted: heartbeat row deleted by new process", "id", m.id)
+					close(m.evictedCh)
+					return
 				}
 			case resultCh := <-m.triggerCh:
-				err := m.db.UpdateHeartbeatWithTime(context.Background(), m.id, m.nowFunc())
+				rows, err := m.db.UpdateHeartbeatWithTime(context.Background(), m.id, m.nowFunc())
+				if err == nil && rows == 0 {
+					logging.Info("process evicted: heartbeat row deleted by new process", "id", m.id)
+					close(m.evictedCh)
+					resultCh <- nil
+					return
+				}
 				resultCh <- err
 			}
 		}
 	}()
+}
+
+// EvictedCh returns a channel that is closed when this process has been evicted
+// by a new process taking over its registration. Callers should select on this
+// channel to gracefully shut down when evicted.
+func (m *Manager) EvictedCh() <-chan struct{} {
+	return m.evictedCh
 }
 
 // TriggerHeartbeat forces an immediate heartbeat update and waits for it to complete.

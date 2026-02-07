@@ -138,6 +138,13 @@ func runOrchestrate(cmd *cobra.Command, args []string) error {
 
 	// Main orchestration loop: poll for ready tasks and execute them
 	for {
+		// Check if we've been evicted by a new orchestrator taking over
+		select {
+		case <-procManager.EvictedCh():
+			fmt.Println("Orchestrator evicted by new process, shutting down gracefully.")
+			return nil
+		default:
+		}
 
 		// Check if theWork still exists (may have been destroyed)
 		theWork, err = proj.DB.GetWork(ctx, workID)
