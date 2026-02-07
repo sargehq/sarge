@@ -133,12 +133,13 @@ func runOrchestrate(cmd *cobra.Command, args []string) error {
 	// to be processed even when no orchestrator is running for a theWork.
 
 	// Initialize executable change watcher to detect when a new binary is installed.
-	// When detected (between tasks), we exit gracefully and the control plane restarts us.
+	// Uses fsnotify — signals immediately when the binary changes on disk.
 	exeWatcher, err := execwatch.New()
 	if err != nil {
 		fmt.Printf("Warning: failed to initialize executable watcher: %v\n", err)
 		// Non-fatal: continue without executable change detection
 	} else {
+		defer exeWatcher.Stop()
 		fmt.Printf("Executable watcher initialized: %s\n", exeWatcher.Path())
 	}
 
@@ -160,21 +161,20 @@ func runOrchestrate(cmd *cobra.Command, args []string) error {
 
 		// Check if the executable has changed (only between tasks, never mid-task)
 		if exeWatcher != nil {
-			result, checkErr := exeWatcher.Check()
-			if checkErr != nil {
-				fmt.Printf("Warning: failed to check executable for changes: %v\n", checkErr)
-			} else if result.Changed {
-				fmt.Printf("\nDetected new sarge binary (%s). Restarting...\n", result.Reason)
-				// Re-exec the new binary to pick up the update.
+			select {
+			case <-exeWatcher.Changed():
+				fmt.Printf("\nDetected new sarge binary. Restarting...\n")
 				exePath, execErr := os.Executable()
 				if execErr != nil {
 					return fmt.Errorf("failed to resolve executable for restart: %w", execErr)
 				}
 				fmt.Printf("Re-executing: %s\n", exePath)
-				// Close resources before exec
 				proj.Close()
 				procManager.Stop()
-				return syscall.Exec(exePath, os.Args, os.Environ())
+				exeWatcher.Stop()
+				return syscall.Exec(exePath, os.Args, os.Environ()) //nolint:gosec // exePath is from os.Executable(), not user input
+			default:
+				// No change, continue
 			}
 		}
 

@@ -29,12 +29,13 @@ func RunControlPlaneLoop(ctx context.Context, proj *project.Project, procManager
 // This allows testing with mock dependencies.
 func RunControlPlaneLoopWithControlPlane(ctx context.Context, proj *project.Project, procManager *procmon.Manager, cp *ControlPlane) error {
 	// Initialize executable change watcher to detect when a new binary is installed.
-	// When detected, we exit gracefully and the next EnsureControlPlane call restarts us.
+	// Uses fsnotify to watch the binary's directory — signals immediately on change.
 	exeWatcher, err := execwatch.New()
 	if err != nil {
 		logging.Warn("Failed to initialize executable watcher", "error", err)
 		// Non-fatal: continue without executable change detection
 	} else {
+		defer exeWatcher.Stop()
 		logging.Info("Executable watcher initialized", "path", exeWatcher.Path())
 	}
 
@@ -85,10 +86,11 @@ func RunControlPlaneLoopWithControlPlane(ctx context.Context, proj *project.Proj
 	cleanupTimer := time.NewTimer(cleanupInterval)
 	defer cleanupTimer.Stop()
 
-	// Set up executable change check timer
-	exeCheckInterval := 30 * time.Second
-	exeCheckTimer := time.NewTimer(exeCheckInterval)
-	defer exeCheckTimer.Stop()
+	// Channel for executable change detection (nil if watcher failed to init)
+	var exeChanged <-chan struct{}
+	if exeWatcher != nil {
+		exeChanged = exeWatcher.Changed()
+	}
 
 	for {
 		select {
@@ -134,23 +136,15 @@ func RunControlPlaneLoopWithControlPlane(ctx context.Context, proj *project.Proj
 			}
 			cleanupTimer.Reset(cleanupInterval)
 
-		case <-exeCheckTimer.C:
-			// Periodic check for executable changes
-			if exeWatcher != nil {
-				result, err := exeWatcher.Check()
-				if err != nil {
-					logging.Warn("Failed to check executable for changes", "error", err)
-				} else if result.Changed {
-					logging.Info("Executable has changed, initiating graceful shutdown",
-						"reason", result.Reason, "path", exeWatcher.Path())
-					fmt.Printf("\nDetected new sarge binary (%s). Restarting...\n", result.Reason)
-					if runningCount := asyncExecutor.RunningCount(); runningCount > 0 {
-						fmt.Printf("Waiting for %d async task(s) to complete...\n", runningCount)
-					}
-					return ErrBinaryChanged
-				}
+		case <-exeChanged:
+			// Executable binary changed on disk — restart with new binary
+			logging.Info("Executable has changed, initiating restart",
+				"path", exeWatcher.Path())
+			fmt.Printf("\nDetected new sarge binary. Restarting...\n")
+			if runningCount := asyncExecutor.RunningCount(); runningCount > 0 {
+				fmt.Printf("Waiting for %d async task(s) to complete...\n", runningCount)
 			}
-			exeCheckTimer.Reset(exeCheckInterval)
+			return ErrBinaryChanged
 		}
 	}
 }

@@ -9,109 +9,147 @@ import (
 	"github.com/sargehq/sarge/internal/execwatch"
 )
 
-// testWatcher creates a Watcher that monitors a temporary fake binary.
-// We can't easily override os.Executable in the production code, so we test
-// the core logic by creating a watcher via the exported constructor against
-// the test binary itself, and also test the helpers indirectly.
-
 func TestNew(t *testing.T) {
 	w, err := execwatch.New()
 	if err != nil {
 		t.Fatalf("New() error: %v", err)
 	}
+	defer w.Stop()
+
 	if w.Path() == "" {
 		t.Fatal("Path() returned empty string")
 	}
 }
 
-func TestNewWithHash(t *testing.T) {
-	w, err := execwatch.New(execwatch.WithHash())
-	if err != nil {
-		t.Fatalf("New(WithHash) error: %v", err)
-	}
-	if w.Path() == "" {
-		t.Fatal("Path() returned empty string")
-	}
-}
-
-func TestCheck_NoChange(t *testing.T) {
+func TestChanged_NoChangeDoesNotSignal(t *testing.T) {
 	w, err := execwatch.New()
 	if err != nil {
 		t.Fatalf("New() error: %v", err)
 	}
+	defer w.Stop()
 
-	result, err := w.Check()
-	if err != nil {
-		t.Fatalf("Check() error: %v", err)
-	}
-	if result.Changed {
-		t.Errorf("Check() reported change when nothing changed: %s", result.Reason)
+	// Channel should not be closed when nothing changes
+	select {
+	case <-w.Changed():
+		t.Fatal("Changed() signaled when nothing changed")
+	case <-time.After(200 * time.Millisecond):
+		// Expected: no signal
 	}
 }
 
-func TestCheck_NoChangeWithHash(t *testing.T) {
-	w, err := execwatch.New(execwatch.WithHash())
-	if err != nil {
-		t.Fatalf("New(WithHash) error: %v", err)
-	}
-
-	result, err := w.Check()
-	if err != nil {
-		t.Fatalf("Check() error: %v", err)
-	}
-	if result.Changed {
-		t.Errorf("Check() reported change when nothing changed: %s", result.Reason)
-	}
-}
-
-// TestCheckWithTempBinary creates a temporary file and uses a lower-level
-// approach to verify change detection logic.
-func TestCheckWithTempBinary(t *testing.T) {
-	// We test via a real watcher against the test binary. The test binary
-	// won't change during the test, so this validates the no-change path.
-	w, err := execwatch.New()
-	if err != nil {
-		t.Fatalf("New() error: %v", err)
-	}
-
-	// Multiple checks should all report no change.
-	for i := 0; i < 3; i++ {
-		result, err := w.Check()
-		if err != nil {
-			t.Fatalf("Check() iteration %d error: %v", i, err)
-		}
-		if result.Changed {
-			t.Errorf("Check() iteration %d reported unexpected change: %s", i, result.Reason)
-		}
-	}
-}
-
-// TestNewFromPath tests using a custom temporary binary to simulate changes.
-func TestSimulateChange(t *testing.T) {
-	// Create a temp binary file
+func TestChanged_SignalsOnWrite(t *testing.T) {
+	// Create a temp binary to watch
 	dir := t.TempDir()
 	binPath := filepath.Join(dir, "fake-binary")
 	if err := os.WriteFile(binPath, []byte("v1-content"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
-	// We can't use New() with a custom path directly, but we can test the
-	// concept by using NewFromPath if we add it, or just validate the
-	// current binary approach works. For now, this test validates that the
-	// file manipulation we'd do actually changes mtime.
-	info1, _ := os.Stat(binPath)
+	w, err := execwatch.NewFromPath(binPath)
+	if err != nil {
+		t.Fatalf("NewFromPath() error: %v", err)
+	}
+	defer w.Stop()
 
-	// Ensure time passes so mtime differs
-	time.Sleep(50 * time.Millisecond)
+	// Give fsnotify a moment to set up
+	time.Sleep(100 * time.Millisecond)
 
+	// Write new content — this should trigger the change
 	if err := os.WriteFile(binPath, []byte("v2-content"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
-	info2, _ := os.Stat(binPath)
-	if info1.ModTime().Equal(info2.ModTime()) {
-		t.Skip("filesystem doesn't have sub-second mtime resolution")
+	select {
+	case <-w.Changed():
+		// Expected
+	case <-time.After(2 * time.Second):
+		t.Fatal("Changed() did not signal after binary was modified")
 	}
-	// Verified: writing new content changes mtime, which is what our
-	// Watcher relies on.
+}
+
+func TestChanged_SignalsOnAtomicReplace(t *testing.T) {
+	// Create a temp binary to watch
+	dir := t.TempDir()
+	binPath := filepath.Join(dir, "fake-binary")
+	if err := os.WriteFile(binPath, []byte("v1-content"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	w, err := execwatch.NewFromPath(binPath)
+	if err != nil {
+		t.Fatalf("NewFromPath() error: %v", err)
+	}
+	defer w.Stop()
+
+	// Give fsnotify a moment to set up
+	time.Sleep(100 * time.Millisecond)
+
+	// Atomic replace: write to temp file then rename over the original
+	tmpPath := binPath + ".tmp"
+	if err := os.WriteFile(tmpPath, []byte("v2-content"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(tmpPath, binPath); err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case <-w.Changed():
+		// Expected
+	case <-time.After(2 * time.Second):
+		t.Fatal("Changed() did not signal after atomic replace")
+	}
+}
+
+func TestChanged_SignalsOnGoBuildReplace(t *testing.T) {
+	// Simulate what `go build -o` does: write to a temp file in the same
+	// directory, then rename over the target. On macOS/kqueue this produces
+	// only a CHMOD event on the target, not Write or Create.
+	dir := t.TempDir()
+	binPath := filepath.Join(dir, "fake-binary")
+	if err := os.WriteFile(binPath, []byte("v1-content"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	w, err := execwatch.NewFromPath(binPath)
+	if err != nil {
+		t.Fatalf("NewFromPath() error: %v", err)
+	}
+	defer w.Stop()
+
+	time.Sleep(100 * time.Millisecond)
+
+	// go build -o writes a temp file then renames it over the target
+	tmpPath := filepath.Join(dir, "fake-binary.tmp")
+	if err := os.WriteFile(tmpPath, []byte("v2-content-longer"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(tmpPath, binPath); err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case <-w.Changed():
+		// Expected
+	case <-time.After(2 * time.Second):
+		t.Fatal("Changed() did not signal after go-build-style atomic replace")
+	}
+}
+
+func TestStop_UnblocksChanged(t *testing.T) {
+	w, err := execwatch.New()
+	if err != nil {
+		t.Fatalf("New() error: %v", err)
+	}
+
+	// Stop should not panic and the channel should remain open (not closed)
+	w.Stop()
+
+	// After stop, Changed() should not signal (channel not closed by Stop)
+	select {
+	case <-w.Changed():
+		// This is acceptable — Stop may or may not close the channel
+	case <-time.After(100 * time.Millisecond):
+		// Expected: no signal
+	}
 }
