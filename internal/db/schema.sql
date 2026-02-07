@@ -232,7 +232,8 @@ CREATE TABLE processes (
     pid INTEGER NOT NULL,                  -- OS process ID
     hostname TEXT NOT NULL DEFAULT '',     -- machine hostname
     heartbeat DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    pprof_port INTEGER                    -- ephemeral port for pprof HTTP server (NULL if disabled)
 );
 
 -- Index for looking up by type

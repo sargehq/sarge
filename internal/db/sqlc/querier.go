@@ -163,6 +163,7 @@ type Querier interface {
 	UpdateHeartbeat(ctx context.Context, id string) error
 	UpdateHeartbeatWithTime(ctx context.Context, arg UpdateHeartbeatWithTimeParams) error
 	UpdateMigrationDownSQL(ctx context.Context, arg UpdateMigrationDownSQLParams) error
+	UpdatePprofPort(ctx context.Context, arg UpdatePprofPortParams) error
 	UpdateScheduledTaskTime(ctx context.Context, arg UpdateScheduledTaskTimeParams) error
 	UpdateTaskActivity(ctx context.Context, arg UpdateTaskActivityParams) (int64, error)
 	UpdateWorkPRStatus(ctx context.Context, arg UpdateWorkPRStatusParams) (int64, error)

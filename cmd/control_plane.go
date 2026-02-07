@@ -6,6 +6,7 @@ import (
 
 	"github.com/sargehq/sarge/internal/control"
 	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/debug"
 	"github.com/sargehq/sarge/internal/procmon"
 	"github.com/sargehq/sarge/internal/project"
 	"github.com/spf13/cobra"
@@ -54,6 +55,17 @@ func runControlPlane(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to register control plane: %w", err)
 	}
 	defer procManager.Stop()
+
+	// Start pprof server if enabled in config
+	if proj.Config.Debug.Pprof {
+		pprofPort, err := debug.StartPprof()
+		if err != nil {
+			return fmt.Errorf("failed to start pprof: %w", err)
+		}
+		if err := procManager.SetPprofPort(ctx, &pprofPort); err != nil {
+			return fmt.Errorf("failed to set pprof port: %w", err)
+		}
+	}
 
 	fmt.Println("=== Control Plane Started ===")
 	fmt.Printf("Project: %s\n", proj.Config.Project.Name)
