@@ -14,6 +14,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/tui/components/splash"
 	beadswatcher "github.com/sargehq/sarge/internal/beads/watcher"
 	"github.com/sargehq/sarge/internal/git"
 	"github.com/sargehq/sarge/internal/progress"
@@ -105,6 +106,13 @@ type planModel struct {
 
 	// New bead animation tracking
 	newBeads map[string]time.Time // beadID -> creation timestamp for animation
+
+	// Splash screen config (tool availability, platform, colors — computed once at startup)
+	splashConfig splash.Config
+
+	// Info box state (for ViewToolMissing / ViewLinearNotConfigured overlays)
+	infoBoxTitle string
+	infoBoxBody  string
 }
 
 // newPlanModel creates a new Plan Mode model
@@ -165,7 +173,8 @@ func newPlanModel(ctx context.Context, proj *project.Project, version string) *p
 		hoveredIssue:           -1,   // No issue hovered initially
 		hoveredWorkItem:        -1,   // No work item hovered initially
 		pendingWorkSelectIndex: -1,   // No pending work selection
-		workDetailsFocusLeft:   true, // Start with left panel focused
+		workDetailsFocusLeft:   true,              // Start with left panel focused
+		splashConfig:           buildSplashConfig(), // Tool checks run once at startup
 		beadsWatcher:           beadsWatcher,
 		trackingWatcher:        trackingWatcher,
 		filters: beadFilters{
@@ -1129,6 +1138,10 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case ViewHelp:
 		m.viewMode = ViewNormal
 		return m, nil
+	case ViewLinearNotConfigured, ViewToolMissing:
+		// Any key dismisses the info box
+		m.viewMode = ViewNormal
+		return m, nil
 	}
 
 	// Normal mode key handling
@@ -1319,7 +1332,14 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "n":
-		// Create new bead inline
+		// Create new bead inline — requires bd
+		if !m.splashConfig.HasBd {
+			m.infoBoxTitle = "beads (bd) Not Installed"
+			m.infoBoxBody = "Creating issues requires the bd CLI.\n\n" +
+				"See https://github.com/beads-project/beads"
+			m.viewMode = ViewToolMissing
+			return m, nil
+		}
 		m.viewMode = ViewCreateBeadInline
 		m.beadFormPanel.Reset()
 		return m, m.beadFormPanel.Init()
@@ -1512,8 +1532,14 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			apiKey = m.proj.Config.Linear.APIKey
 		}
 		if apiKey == "" {
-			m.statusMessage = "Linear API key not configured (set [linear] api_key in config.toml)"
-			m.statusIsError = true
+			m.infoBoxTitle = "Linear Not Configured"
+			m.infoBoxBody = "Linear API key is not configured.\n\n" +
+				"Add to .co/config.toml:\n\n" +
+				"  [linear]\n" +
+				"  api_key = \"lin_api_...\"\n\n" +
+				"Get your API key from:\n" +
+				"  Linear Settings > API > Personal API keys"
+			m.viewMode = ViewLinearNotConfigured
 			return m, nil
 		}
 		m.viewMode = ViewLinearImportInline
@@ -1720,11 +1746,13 @@ func (m *planModel) View() string {
 		// Fall through to normal rendering
 	case ViewHelp:
 		return m.renderHelp()
+	case ViewLinearNotConfigured, ViewToolMissing:
+		return splash.RenderInfoBox(m.width, m.height, m.infoBoxTitle, m.infoBoxBody, m.splashConfig)
 	}
 
 	// Show splash screen when project is empty (no status bar — splash has its own hints)
 	if m.shouldShowSplash() {
-		return renderSplash(m.width, m.height)
+		return splash.Render(m.width, m.height, m.splashConfig)
 	}
 
 	// Render work tabs bar (always visible)

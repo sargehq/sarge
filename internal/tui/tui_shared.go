@@ -156,6 +156,8 @@ const (
 	ViewLinearImportInline // Import from Linear (inline in details panel)
 	ViewPRImportInline     // Import from GitHub PR (inline in details panel)
 	ViewHelp
+	ViewLinearNotConfigured // Show Linear configuration instructions
+	ViewToolMissing         // Show tool missing info box
 )
 
 // beadItem represents a bead in the beads panel with TUI-specific display state.
