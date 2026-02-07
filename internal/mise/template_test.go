@@ -25,21 +25,22 @@ func TestGenerateConfigWithSelections_DefaultSelections(t *testing.T) {
 	err := GenerateConfigWithSelections(dir, sel)
 	require.NoError(t, err)
 
-	content := readMiseConfig(t, dir)
-
-	s := string(content)
-	// Default selections: no agent in mise, gh and zellij included
+	s := string(readMiseConfig(t, dir))
+	// Default: no agent, gh and zellij active
 	assert.NotContains(t, s, "claude")
 	assert.NotContains(t, s, "pi-coding-agent")
 	assert.Contains(t, s, "gh = \"latest\"")
+	assert.NotContains(t, s, "# gh = \"latest\"")
 	assert.Contains(t, s, "zellij = \"latest\"")
+	assert.NotContains(t, s, "# zellij = \"latest\"")
 	assert.Contains(t, s, "beads")
 }
 
-func TestGenerateConfigWithSelections_AgentClaude(t *testing.T) {
+func TestGenerateConfigWithSelections_AgentClaudeActive(t *testing.T) {
 	dir := t.TempDir()
 	sel := ToolSelections{
 		AgentType:     "claude",
+		AgentInMise:   true,
 		IncludeGH:     true,
 		IncludeZellij: true,
 	}
@@ -47,19 +48,36 @@ func TestGenerateConfigWithSelections_AgentClaude(t *testing.T) {
 	err := GenerateConfigWithSelections(dir, sel)
 	require.NoError(t, err)
 
-	content := readMiseConfig(t, dir)
-
-	s := string(content)
+	s := string(readMiseConfig(t, dir))
 	assert.Contains(t, s, "claude = \"latest\"")
+	assert.NotContains(t, s, "# claude = \"latest\"")
 	assert.NotContains(t, s, "pi-coding-agent")
-	assert.Contains(t, s, "gh = \"latest\"")
-	assert.Contains(t, s, "zellij = \"latest\"")
 }
 
-func TestGenerateConfigWithSelections_AgentPi(t *testing.T) {
+func TestGenerateConfigWithSelections_AgentClaudeCommented(t *testing.T) {
+	dir := t.TempDir()
+	sel := ToolSelections{
+		AgentType:     "claude",
+		AgentInMise:   false,
+		IncludeGH:     true,
+		IncludeZellij: true,
+	}
+
+	err := GenerateConfigWithSelections(dir, sel)
+	require.NoError(t, err)
+
+	s := string(readMiseConfig(t, dir))
+	assert.Contains(t, s, "# claude = \"latest\"")
+	// Make sure the uncommented version is NOT present
+	// (the commented line contains "claude" so we check for the exact uncommented pattern)
+	assert.NotRegexp(t, `(?m)^claude = "latest"`, s)
+}
+
+func TestGenerateConfigWithSelections_AgentPiActive(t *testing.T) {
 	dir := t.TempDir()
 	sel := ToolSelections{
 		AgentType:     "pi",
+		AgentInMise:   true,
 		IncludeGH:     true,
 		IncludeZellij: true,
 	}
@@ -67,17 +85,17 @@ func TestGenerateConfigWithSelections_AgentPi(t *testing.T) {
 	err := GenerateConfigWithSelections(dir, sel)
 	require.NoError(t, err)
 
-	content := readMiseConfig(t, dir)
-
-	s := string(content)
-	assert.Contains(t, s, "pi-coding-agent")
+	s := string(readMiseConfig(t, dir))
+	assert.Contains(t, s, "\"npm:@mariozechner/pi-coding-agent\" = \"latest\"")
+	assert.NotContains(t, s, "# \"npm:@mariozechner/pi-coding-agent\"")
 	assert.NotContains(t, s, "claude")
 }
 
-func TestGenerateConfigWithSelections_NoAgentInMise(t *testing.T) {
+func TestGenerateConfigWithSelections_AgentPiCommented(t *testing.T) {
 	dir := t.TempDir()
 	sel := ToolSelections{
-		AgentType:     "", // no agent in mise
+		AgentType:     "pi",
+		AgentInMise:   false,
 		IncludeGH:     true,
 		IncludeZellij: true,
 	}
@@ -85,19 +103,32 @@ func TestGenerateConfigWithSelections_NoAgentInMise(t *testing.T) {
 	err := GenerateConfigWithSelections(dir, sel)
 	require.NoError(t, err)
 
-	content := readMiseConfig(t, dir)
+	s := string(readMiseConfig(t, dir))
+	assert.Contains(t, s, "# \"npm:@mariozechner/pi-coding-agent\" = \"latest\"")
+	assert.NotRegexp(t, `(?m)^"npm:@mariozechner/pi-coding-agent"`, s)
+}
 
-	s := string(content)
+func TestGenerateConfigWithSelections_AgentNone(t *testing.T) {
+	dir := t.TempDir()
+	sel := ToolSelections{
+		AgentType:     "none",
+		AgentInMise:   false,
+		IncludeGH:     true,
+		IncludeZellij: true,
+	}
+
+	err := GenerateConfigWithSelections(dir, sel)
+	require.NoError(t, err)
+
+	s := string(readMiseConfig(t, dir))
 	assert.NotContains(t, s, "claude")
 	assert.NotContains(t, s, "pi-coding-agent")
-	assert.Contains(t, s, "gh = \"latest\"")
-	assert.Contains(t, s, "zellij = \"latest\"")
 }
 
-func TestGenerateConfigWithSelections_NoGH(t *testing.T) {
+func TestGenerateConfigWithSelections_GHCommented(t *testing.T) {
 	dir := t.TempDir()
 	sel := ToolSelections{
-		AgentType:     "claude",
+		AgentType:     "none",
 		IncludeGH:     false,
 		IncludeZellij: true,
 	}
@@ -105,18 +136,16 @@ func TestGenerateConfigWithSelections_NoGH(t *testing.T) {
 	err := GenerateConfigWithSelections(dir, sel)
 	require.NoError(t, err)
 
-	content := readMiseConfig(t, dir)
-
-	s := string(content)
-	assert.Contains(t, s, "claude = \"latest\"")
-	assert.NotContains(t, s, "gh = \"latest\"")
+	s := string(readMiseConfig(t, dir))
+	assert.Contains(t, s, "# gh = \"latest\"")
+	assert.NotRegexp(t, `(?m)^gh = "latest"`, s)
 	assert.Contains(t, s, "zellij = \"latest\"")
 }
 
-func TestGenerateConfigWithSelections_NoZellij(t *testing.T) {
+func TestGenerateConfigWithSelections_ZellijCommented(t *testing.T) {
 	dir := t.TempDir()
 	sel := ToolSelections{
-		AgentType:     "claude",
+		AgentType:     "none",
 		IncludeGH:     true,
 		IncludeZellij: false,
 	}
@@ -124,18 +153,17 @@ func TestGenerateConfigWithSelections_NoZellij(t *testing.T) {
 	err := GenerateConfigWithSelections(dir, sel)
 	require.NoError(t, err)
 
-	content := readMiseConfig(t, dir)
-
-	s := string(content)
-	assert.Contains(t, s, "claude = \"latest\"")
+	s := string(readMiseConfig(t, dir))
 	assert.Contains(t, s, "gh = \"latest\"")
-	assert.NotContains(t, s, "zellij = \"latest\"")
+	assert.Contains(t, s, "# zellij = \"latest\"")
+	assert.NotRegexp(t, `(?m)^zellij = "latest"`, s)
 }
 
-func TestGenerateConfigWithSelections_AllToolsDisabled(t *testing.T) {
+func TestGenerateConfigWithSelections_AllCommented(t *testing.T) {
 	dir := t.TempDir()
 	sel := ToolSelections{
-		AgentType:     "",
+		AgentType:     "claude",
+		AgentInMise:   false,
 		IncludeGH:     false,
 		IncludeZellij: false,
 	}
@@ -143,21 +171,16 @@ func TestGenerateConfigWithSelections_AllToolsDisabled(t *testing.T) {
 	err := GenerateConfigWithSelections(dir, sel)
 	require.NoError(t, err)
 
-	content := readMiseConfig(t, dir)
-
-	s := string(content)
-	// Only beads should remain
+	s := string(readMiseConfig(t, dir))
 	assert.Contains(t, s, "beads")
-	assert.NotContains(t, s, "claude")
-	assert.NotContains(t, s, "pi-coding-agent")
-	assert.NotContains(t, s, "gh = \"latest\"")
-	assert.NotContains(t, s, "zellij = \"latest\"")
+	assert.Contains(t, s, "# claude = \"latest\"")
+	assert.Contains(t, s, "# gh = \"latest\"")
+	assert.Contains(t, s, "# zellij = \"latest\"")
 }
 
 func TestGenerateConfigWithSelections_SkipsExistingConfig(t *testing.T) {
 	dir := t.TempDir()
 
-	// Create an existing config
 	existingContent := []byte("# existing config")
 	err := os.WriteFile(filepath.Join(dir, ".mise.toml"), existingContent, 0600)
 	require.NoError(t, err)
@@ -166,7 +189,6 @@ func TestGenerateConfigWithSelections_SkipsExistingConfig(t *testing.T) {
 	err = GenerateConfigWithSelections(dir, sel)
 	require.NoError(t, err)
 
-	// Should not have overwritten
 	content := readMiseConfig(t, dir)
 	assert.Equal(t, existingContent, content)
 }
@@ -174,6 +196,7 @@ func TestGenerateConfigWithSelections_SkipsExistingConfig(t *testing.T) {
 func TestDefaultToolSelections(t *testing.T) {
 	sel := DefaultToolSelections()
 	assert.Equal(t, "", sel.AgentType)
+	assert.False(t, sel.AgentInMise)
 	assert.True(t, sel.IncludeGH)
 	assert.True(t, sel.IncludeZellij)
 }

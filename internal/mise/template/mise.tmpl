@@ -14,23 +14,42 @@
 
 # Pi - AI coding agent
 # Used to run AI-powered coding sessions
+{{- if .AgentActive}}
 "npm:@mariozechner/pi-coding-agent" = "latest"
+{{- else}}
+# "npm:@mariozechner/pi-coding-agent" = "latest"
+{{- end}}
 {{- else if eq .AgentType "claude"}}
 
 # Claude Code - Anthropic's CLI for Claude
 # Used to run AI-powered coding sessions
+{{- if .AgentActive}}
 claude = "latest"
+{{- else}}
+# claude = "latest"
 {{- end}}
-{{- if .IncludeGH}}
+{{- end}}
+
+{{- if .GHActive}}
 # GitHub CLI - Official GitHub command-line tool
 # Used for PR creation, merging, and GitHub API access
 gh = "latest"
-{{end}}
-{{- if .IncludeZellij}}
+{{- else}}
+# GitHub CLI - Official GitHub command-line tool
+# Used for PR creation, merging, and GitHub API access
+# gh = "latest"
+{{- end}}
+
+{{- if .ZellijActive}}
 # Zellij - Terminal multiplexer
 # Used for session management and parallel task execution
 zellij = "latest"
-{{end}}
+{{- else}}
+# Zellij - Terminal multiplexer
+# Used for session management and parallel task execution
+# zellij = "latest"
+{{- end}}
+
 # =============================================================================
 # Tasks (Optional)
 # =============================================================================

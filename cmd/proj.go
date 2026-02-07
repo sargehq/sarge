@@ -219,9 +219,8 @@ func promptToolSelections() (agentType string, selections mise.ToolSelections) {
 		return "claude", mise.DefaultToolSelections()
 	}
 
-	if includeAgentInMise && agentType != "none" {
-		selections.AgentType = agentType
-	}
+	selections.AgentType = agentType
+	selections.AgentInMise = includeAgentInMise && agentType != "none"
 	selections.IncludeGH = includeGH
 	selections.IncludeZellij = includeZellij
 

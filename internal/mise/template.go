@@ -15,25 +15,44 @@ var miseTemplateText string
 var miseTemplate = template.Must(template.New("mise").Parse(miseTemplateText))
 
 // miseTemplateData holds the data used to render the mise config template.
+// Each tool has an "active" flag: true = uncommented, false = commented out.
+// AgentType "none" means no agent section at all.
 type miseTemplateData struct {
-	AgentType     string // "claude", "pi", or "" (none)
-	IncludeGH     bool   // whether to include GitHub CLI
-	IncludeZellij bool   // whether to include zellij
+	AgentType   string // "claude", "pi", or "none"
+	AgentActive bool   // true = uncommented, false = commented out
+	GHActive    bool   // true = uncommented, false = commented out
+	ZellijActive bool  // true = uncommented, false = commented out
 }
 
 // ToolSelections holds user choices about which tools to include in mise config.
 type ToolSelections struct {
-	AgentType     string // "claude", "pi", or "" (empty = don't include agent in mise)
-	IncludeGH     bool
-	IncludeZellij bool
+	AgentType    string // "claude", "pi", or "none"/"" — which agent was chosen
+	AgentInMise  bool   // whether to activate (uncomment) the agent in mise
+	IncludeGH    bool   // whether to activate (uncomment) gh in mise
+	IncludeZellij bool  // whether to activate (uncomment) zellij in mise
 }
 
-// DefaultToolSelections returns the default tool selections (gh and zellij included, no agent in mise).
+// DefaultToolSelections returns the default tool selections (gh and zellij included, agent not in mise).
 func DefaultToolSelections() ToolSelections {
 	return ToolSelections{
 		AgentType:     "",
+		AgentInMise:   false,
 		IncludeGH:     true,
 		IncludeZellij: true,
+	}
+}
+
+// toTemplateData converts ToolSelections to miseTemplateData for rendering.
+func (s ToolSelections) toTemplateData() miseTemplateData {
+	agentType := s.AgentType
+	if agentType == "" {
+		agentType = "none"
+	}
+	return miseTemplateData{
+		AgentType:    agentType,
+		AgentActive:  s.AgentInMise,
+		GHActive:     s.IncludeGH,
+		ZellijActive: s.IncludeZellij,
 	}
 }
 
@@ -54,7 +73,7 @@ func GenerateConfigWithSelections(dir string, selections ToolSelections) error {
 		return nil // Skip generation - config already exists
 	}
 
-	data := miseTemplateData(selections)
+	data := selections.toTemplateData()
 
 	var buf bytes.Buffer
 	if err := miseTemplate.Execute(&buf, data); err != nil {
