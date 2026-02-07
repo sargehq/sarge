@@ -172,7 +172,7 @@ func runOrchestrate(cmd *cobra.Command, args []string) error {
 				proj.Close()
 				procManager.Stop()
 				exeWatcher.Stop()
-				return syscall.Exec(exePath, os.Args, os.Environ())
+				return syscall.Exec(exePath, os.Args, os.Environ()) //nolint:gosec // exePath is from os.Executable(), not user input
 			default:
 				// No change, continue
 			}

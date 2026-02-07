@@ -86,7 +86,7 @@ func runControlPlane(cmd *cobra.Command, args []string) error {
 		// Close project DB before exec so the new process gets a clean connection
 		proj.Close()
 		procManager.Stop()
-		return syscall.Exec(exePath, os.Args, os.Environ())
+		return syscall.Exec(exePath, os.Args, os.Environ()) //nolint:gosec // exePath is from os.Executable(), not user input
 	}
 	return err
 }

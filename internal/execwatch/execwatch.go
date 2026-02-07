@@ -58,7 +58,7 @@ func NewFromPath(path string) (*Watcher, error) {
 	// catches both in-place writes and atomic replacements.
 	dir := filepath.Dir(resolved)
 	if err := fsw.Add(dir); err != nil {
-		fsw.Close()
+		_ = fsw.Close()
 		return nil, fmt.Errorf("execwatch: watch directory %s: %w", dir, err)
 	}
 
@@ -89,7 +89,7 @@ func (w *Watcher) Path() string {
 // Stop terminates the watcher and releases resources.
 func (w *Watcher) Stop() {
 	close(w.done)
-	w.fsw.Close()
+	_ = w.fsw.Close()
 }
 
 // loop processes fsnotify events and signals when the binary changes.
