@@ -287,6 +287,39 @@ func TestGetControlPlaneProcess(t *testing.T) {
 	assert.Equal(t, db.ProcessTypeControlPlane, proc.ProcessType)
 }
 
+func TestSetPprofPort(t *testing.T) {
+	database, cleanup := setupTestDB(t)
+	defer cleanup()
+	ctx := context.Background()
+
+	m := NewManager(database, 100*time.Millisecond)
+	defer m.Stop()
+
+	err := m.RegisterControlPlane(ctx)
+	require.NoError(t, err)
+
+	// Set pprof port
+	port := 8080
+	err = m.SetPprofPort(ctx, &port)
+	require.NoError(t, err)
+
+	// Verify via GetControlPlaneProcess
+	proc, err := m.GetControlPlaneProcess(ctx)
+	require.NoError(t, err)
+	require.NotNil(t, proc)
+	require.NotNil(t, proc.PprofPort)
+	assert.Equal(t, 8080, *proc.PprofPort)
+
+	// Clear pprof port
+	err = m.SetPprofPort(ctx, nil)
+	require.NoError(t, err)
+
+	proc, err = m.GetControlPlaneProcess(ctx)
+	require.NoError(t, err)
+	require.NotNil(t, proc)
+	assert.Nil(t, proc.PprofPort)
+}
+
 func TestGetAllProcesses(t *testing.T) {
 	database, cleanup := setupTestDB(t)
 	defer cleanup()
