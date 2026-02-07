@@ -16,6 +16,10 @@ GOPATH = "{{env.HOME}}/go"
 description = "Build the sarge binary"
 run = "go build -o sarge ."
 
+[tasks.install]
+description = "Install sarge to ~/go/bin for development"
+run = "go build -o $HOME/go/bin/sarge ."
+
 [tasks.test]
 description = "Run tests"
 run = "go test ./..."

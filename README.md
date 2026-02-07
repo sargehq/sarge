@@ -264,6 +264,9 @@ go test ./...
 
 ```bash
 go build -o sarge .
+
+# Install to ~/go/bin for use anywhere
+mise run install
 ```
 
 ## Troubleshooting
