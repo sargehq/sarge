@@ -28,16 +28,18 @@ func TestGenerateConfigWithSelections_DefaultSelections(t *testing.T) {
 	content := readMiseConfig(t, dir)
 
 	s := string(content)
-	assert.Contains(t, s, "claude = \"latest\"")
+	// Default selections: no agent in mise, gh and zellij included
+	assert.NotContains(t, s, "claude")
+	assert.NotContains(t, s, "pi-coding-agent")
 	assert.Contains(t, s, "gh = \"latest\"")
 	assert.Contains(t, s, "zellij = \"latest\"")
 	assert.Contains(t, s, "beads")
 }
 
-func TestGenerateConfigWithSelections_AgentNone(t *testing.T) {
+func TestGenerateConfigWithSelections_AgentClaude(t *testing.T) {
 	dir := t.TempDir()
 	sel := ToolSelections{
-		AgentType:     "none",
+		AgentType:     "claude",
 		IncludeGH:     true,
 		IncludeZellij: true,
 	}
@@ -48,7 +50,7 @@ func TestGenerateConfigWithSelections_AgentNone(t *testing.T) {
 	content := readMiseConfig(t, dir)
 
 	s := string(content)
-	assert.NotContains(t, s, "claude")
+	assert.Contains(t, s, "claude = \"latest\"")
 	assert.NotContains(t, s, "pi-coding-agent")
 	assert.Contains(t, s, "gh = \"latest\"")
 	assert.Contains(t, s, "zellij = \"latest\"")
@@ -70,6 +72,26 @@ func TestGenerateConfigWithSelections_AgentPi(t *testing.T) {
 	s := string(content)
 	assert.Contains(t, s, "pi-coding-agent")
 	assert.NotContains(t, s, "claude")
+}
+
+func TestGenerateConfigWithSelections_NoAgentInMise(t *testing.T) {
+	dir := t.TempDir()
+	sel := ToolSelections{
+		AgentType:     "", // no agent in mise
+		IncludeGH:     true,
+		IncludeZellij: true,
+	}
+
+	err := GenerateConfigWithSelections(dir, sel)
+	require.NoError(t, err)
+
+	content := readMiseConfig(t, dir)
+
+	s := string(content)
+	assert.NotContains(t, s, "claude")
+	assert.NotContains(t, s, "pi-coding-agent")
+	assert.Contains(t, s, "gh = \"latest\"")
+	assert.Contains(t, s, "zellij = \"latest\"")
 }
 
 func TestGenerateConfigWithSelections_NoGH(t *testing.T) {
@@ -113,7 +135,7 @@ func TestGenerateConfigWithSelections_NoZellij(t *testing.T) {
 func TestGenerateConfigWithSelections_AllToolsDisabled(t *testing.T) {
 	dir := t.TempDir()
 	sel := ToolSelections{
-		AgentType:     "none",
+		AgentType:     "",
 		IncludeGH:     false,
 		IncludeZellij: false,
 	}
@@ -149,25 +171,9 @@ func TestGenerateConfigWithSelections_SkipsExistingConfig(t *testing.T) {
 	assert.Equal(t, existingContent, content)
 }
 
-func TestGenerateConfigWithSelections_DefaultsEmptyAgentToClaude(t *testing.T) {
-	dir := t.TempDir()
-	sel := ToolSelections{
-		AgentType:     "", // empty
-		IncludeGH:     true,
-		IncludeZellij: true,
-	}
-
-	err := GenerateConfigWithSelections(dir, sel)
-	require.NoError(t, err)
-
-	content := readMiseConfig(t, dir)
-
-	assert.Contains(t, string(content), "claude = \"latest\"")
-}
-
 func TestDefaultToolSelections(t *testing.T) {
 	sel := DefaultToolSelections()
-	assert.Equal(t, "claude", sel.AgentType)
+	assert.Equal(t, "", sel.AgentType)
 	assert.True(t, sel.IncludeGH)
 	assert.True(t, sel.IncludeZellij)
 }

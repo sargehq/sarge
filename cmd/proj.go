@@ -76,9 +76,9 @@ func runProjCreate(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Creating project at %s from %s...\n", dir, repo)
 
 	// Interactive tool selection
-	selections := promptToolSelections()
+	agentType, selections := promptToolSelections()
 
-	proj, err := project.CreateWithSelections(ctx, dir, repo, selections)
+	proj, err := project.CreateWithSelections(ctx, dir, repo, agentType, selections)
 	if err != nil {
 		return fmt.Errorf("failed to create project: %w", err)
 	}
@@ -102,8 +102,9 @@ func isCommandAvailable(name string) bool {
 // promptToolSelections interactively asks the user which tools to include.
 // It uses charmbracelet/huh for a polished interactive UI.
 // It detects already-installed tools and adjusts defaults accordingly.
-func promptToolSelections() mise.ToolSelections {
-	selections := mise.DefaultToolSelections()
+// Returns the agent type (for project config) and mise tool selections separately.
+func promptToolSelections() (agentType string, selections mise.ToolSelections) {
+	selections = mise.DefaultToolSelections()
 
 	// Styled header
 	headerStyle := lipgloss.NewStyle().
@@ -112,8 +113,8 @@ func promptToolSelections() mise.ToolSelections {
 
 	fmt.Println()
 	fmt.Println(headerStyle.Render("🔧 Tool Configuration"))
-	fmt.Println("Configure which tools mise should manage for this project.")
-	fmt.Println(lipgloss.NewStyle().Faint(true).Render("(beads is always included — required for sarge)"))
+	fmt.Println("Configure which tools to use for this project.")
+	fmt.Println(lipgloss.NewStyle().Faint(true).Render("(beads is always included in mise — required for sarge)"))
 	fmt.Println()
 
 	// Detect installed tools and report
@@ -144,9 +145,9 @@ func promptToolSelections() mise.ToolSelections {
 	}
 
 	// Agent type selection - default to what's detected
-	defaultAgent := "claude"
+	agentType = "claude"
 	if hasPi && !hasClaude {
-		defaultAgent = "pi"
+		agentType = "pi"
 	}
 
 	agentOptions := []huh.Option[string]{
@@ -154,6 +155,10 @@ func promptToolSelections() mise.ToolSelections {
 		huh.NewOption("Pi — pi coding agent", "pi"),
 		huh.NewOption("None — no coding agent", "none"),
 	}
+
+	// Agent mise inclusion - default to no if already on PATH
+	var includeAgentInMise bool
+	agentMiseDefault := (!hasClaude || agentType != "claude") && (!hasPi || agentType != "pi")
 
 	// GitHub CLI description varies based on detection
 	ghDescription := "Include gh (GitHub CLI) in mise?"
@@ -179,7 +184,14 @@ func promptToolSelections() mise.ToolSelections {
 				Title("Coding Agent").
 				Description("Which coding agent would you like to use?").
 				Options(agentOptions...).
-				Value(&selections.AgentType),
+				Value(&agentType),
+
+			huh.NewConfirm().
+				Title("Include coding agent in mise?").
+				Description("Let mise manage the agent installation for this project.").
+				Value(&includeAgentInMise).
+				Affirmative("Yes").
+				Negative("No"),
 
 			huh.NewConfirm().
 				Title(ghDescription).
@@ -196,7 +208,7 @@ func promptToolSelections() mise.ToolSelections {
 	).WithTheme(huh.ThemeCharm())
 
 	// Set defaults
-	selections.AgentType = defaultAgent
+	includeAgentInMise = agentMiseDefault
 	includeGH = ghDefault
 	includeZellij = zellijDefault
 
@@ -204,15 +216,17 @@ func promptToolSelections() mise.ToolSelections {
 	if err != nil {
 		// If user cancelled (ctrl+c), use defaults
 		fmt.Println("\nUsing default selections.")
-		selections = mise.DefaultToolSelections()
-		return selections
+		return "claude", mise.DefaultToolSelections()
 	}
 
+	if includeAgentInMise && agentType != "none" {
+		selections.AgentType = agentType
+	}
 	selections.IncludeGH = includeGH
 	selections.IncludeZellij = includeZellij
 
 	fmt.Println()
-	return selections
+	return agentType, selections
 }
 
 func runProjDestroy(cmd *cobra.Command, args []string) error {

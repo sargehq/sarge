@@ -10,15 +10,17 @@
 # Used for tracking issues, dependencies, and persistent memory
 # Pinned to ensure schema compatibility with sarge's database queries
 "aqua:steveyegge/beads" = "v0.49.2"
-{{if eq .AgentType "pi"}}
+{{- if eq .AgentType "pi"}}
+
 # Pi - AI coding agent
 # Used to run AI-powered coding sessions
 "npm:@mariozechner/pi-coding-agent" = "latest"
-{{else if eq .AgentType "claude"}}
+{{- else if eq .AgentType "claude"}}
+
 # Claude Code - Anthropic's CLI for Claude
 # Used to run AI-powered coding sessions
 claude = "latest"
-{{end}}
+{{- end}}
 {{- if .IncludeGH}}
 # GitHub CLI - Official GitHub command-line tool
 # Used for PR creation, merging, and GitHub API access

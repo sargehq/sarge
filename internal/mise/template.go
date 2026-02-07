@@ -16,35 +16,33 @@ var miseTemplate = template.Must(template.New("mise").Parse(miseTemplateText))
 
 // miseTemplateData holds the data used to render the mise config template.
 type miseTemplateData struct {
-	AgentType      string // "claude", "pi", or "none"
-	IncludeGH      bool   // whether to include GitHub CLI
-	IncludeZellij  bool   // whether to include zellij
+	AgentType     string // "claude", "pi", or "" (none)
+	IncludeGH     bool   // whether to include GitHub CLI
+	IncludeZellij bool   // whether to include zellij
 }
 
 // ToolSelections holds user choices about which tools to include in mise config.
 type ToolSelections struct {
-	AgentType     string // "claude", "pi", or "none"
+	AgentType     string // "claude", "pi", or "" (empty = don't include agent in mise)
 	IncludeGH     bool
 	IncludeZellij bool
 }
 
-// DefaultToolSelections returns the default tool selections (all tools included, claude agent).
+// DefaultToolSelections returns the default tool selections (gh and zellij included, no agent in mise).
 func DefaultToolSelections() ToolSelections {
 	return ToolSelections{
-		AgentType:     "claude",
+		AgentType:     "",
 		IncludeGH:     true,
 		IncludeZellij: true,
 	}
 }
 
 // GenerateConfig creates a .mise.toml file in the given directory with sarge's required tools.
-// The agentType parameter selects which coding agent tool to include ("claude" or "pi").
+// The agentType parameter selects which coding agent tool to include ("claude", "pi", or "" for none).
 // Returns nil if a mise config already exists (doesn't overwrite).
 func GenerateConfig(dir string, agentType string) error {
 	selections := DefaultToolSelections()
-	if agentType != "" {
-		selections.AgentType = agentType
-	}
+	selections.AgentType = agentType
 	return GenerateConfigWithSelections(dir, selections)
 }
 
@@ -54,11 +52,6 @@ func GenerateConfigWithSelections(dir string, selections ToolSelections) error {
 	// Check if any mise config already exists
 	if existingConfig := findConfigFile(dir); existingConfig != "" {
 		return nil // Skip generation - config already exists
-	}
-
-	// Default to claude if not specified
-	if selections.AgentType == "" {
-		selections.AgentType = "claude"
 	}
 
 	data := miseTemplateData(selections)

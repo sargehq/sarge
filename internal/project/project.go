@@ -135,12 +135,14 @@ func load(ctx context.Context, root string) (*Project, error) {
 // Create initializes a new project at the given directory with default tool selections.
 // repoSource can be a local path (symlinked) or GitHub URL (cloned).
 func Create(ctx context.Context, dir, repoSource string) (*Project, error) {
-	return CreateWithSelections(ctx, dir, repoSource, mise.DefaultToolSelections())
+	return CreateWithSelections(ctx, dir, repoSource, "claude", mise.DefaultToolSelections())
 }
 
 // CreateWithSelections initializes a new project at the given directory with specific tool selections.
+// agentType is stored in project config ("claude", "pi", or "none").
+// toolSelections controls which tools are added to .mise.toml (agent may or may not be included).
 // repoSource can be a local path (symlinked) or GitHub URL (cloned).
-func CreateWithSelections(ctx context.Context, dir, repoSource string, toolSelections mise.ToolSelections) (*Project, error) {
+func CreateWithSelections(ctx context.Context, dir, repoSource string, agentType string, toolSelections mise.ToolSelections) (*Project, error) {
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve path: %w", err)
@@ -167,10 +169,6 @@ func CreateWithSelections(ctx context.Context, dir, repoSource string, toolSelec
 	}
 
 	// 3. Generate mise config and run mise install
-	// Check if the cloned repo has a sarge config with an agent type preference
-	if existingCfg, err := LoadConfig(filepath.Join(absDir, ConfigDir, ConfigFile)); err == nil && existingCfg.Agent.Type != "" {
-		toolSelections.AgentType = existingCfg.Agent.Type
-	}
 	setupMise(absDir, mainPath, toolSelections)
 
 	// 4. Create config (before beads init, so config exists)
@@ -183,6 +181,9 @@ func CreateWithSelections(ctx context.Context, dir, repoSource string, toolSelec
 			Type:   repoType,
 			Source: repoSource,
 			Path:   MainDir,
+		},
+		Agent: AgentConfig{
+			Type: agentType,
 		},
 		// Beads path will be set after setupBeads
 	}
