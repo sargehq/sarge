@@ -108,12 +108,8 @@ func (w *Watcher) loop() {
 				continue
 			}
 
-			// Only care about writes, creates (atomic rename), or removes
-			if event.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Remove) == 0 {
-				continue
-			}
-
-			// Verify the mtime actually changed (filters out spurious events)
+			// Any event on the binary is worth checking (macOS/kqueue reports
+			// CHMOD for atomic replaces like `go build -o`, not Write/Create).
 			info, err := os.Stat(w.path)
 			if err != nil {
 				if os.IsNotExist(err) {

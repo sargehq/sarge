@@ -101,6 +101,41 @@ func TestChanged_SignalsOnAtomicReplace(t *testing.T) {
 	}
 }
 
+func TestChanged_SignalsOnGoBuildReplace(t *testing.T) {
+	// Simulate what `go build -o` does: write to a temp file in the same
+	// directory, then rename over the target. On macOS/kqueue this produces
+	// only a CHMOD event on the target, not Write or Create.
+	dir := t.TempDir()
+	binPath := filepath.Join(dir, "fake-binary")
+	if err := os.WriteFile(binPath, []byte("v1-content"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	w, err := execwatch.NewFromPath(binPath)
+	if err != nil {
+		t.Fatalf("NewFromPath() error: %v", err)
+	}
+	defer w.Stop()
+
+	time.Sleep(100 * time.Millisecond)
+
+	// go build -o writes a temp file then renames it over the target
+	tmpPath := filepath.Join(dir, "fake-binary.tmp")
+	if err := os.WriteFile(tmpPath, []byte("v2-content-longer"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(tmpPath, binPath); err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case <-w.Changed():
+		// Expected
+	case <-time.After(2 * time.Second):
+		t.Fatal("Changed() did not signal after go-build-style atomic replace")
+	}
+}
+
 func TestStop_UnblocksChanged(t *testing.T) {
 	w, err := execwatch.New()
 	if err != nil {
