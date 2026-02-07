@@ -160,8 +160,8 @@ type Querier interface {
 	StartBead(ctx context.Context, arg StartBeadParams) error
 	StartTask(ctx context.Context, arg StartTaskParams) (int64, error)
 	StartWork(ctx context.Context, arg StartWorkParams) (int64, error)
-	UpdateHeartbeat(ctx context.Context, id string) error
-	UpdateHeartbeatWithTime(ctx context.Context, arg UpdateHeartbeatWithTimeParams) error
+	UpdateHeartbeat(ctx context.Context, id string) (sql.Result, error)
+	UpdateHeartbeatWithTime(ctx context.Context, arg UpdateHeartbeatWithTimeParams) (sql.Result, error)
 	UpdateMigrationDownSQL(ctx context.Context, arg UpdateMigrationDownSQLParams) error
 	UpdatePprofPort(ctx context.Context, arg UpdatePprofPortParams) error
 	UpdateScheduledTaskTime(ctx context.Context, arg UpdateScheduledTaskTimeParams) error

@@ -271,18 +271,17 @@ func (q *Queries) RegisterProcess(ctx context.Context, arg RegisterProcessParams
 	return err
 }
 
-const updateHeartbeat = `-- name: UpdateHeartbeat :exec
+const updateHeartbeat = `-- name: UpdateHeartbeat :execresult
 UPDATE processes
 SET heartbeat = CURRENT_TIMESTAMP
 WHERE id = ?
 `
 
-func (q *Queries) UpdateHeartbeat(ctx context.Context, id string) error {
-	_, err := q.db.ExecContext(ctx, updateHeartbeat, id)
-	return err
+func (q *Queries) UpdateHeartbeat(ctx context.Context, id string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, updateHeartbeat, id)
 }
 
-const updateHeartbeatWithTime = `-- name: UpdateHeartbeatWithTime :exec
+const updateHeartbeatWithTime = `-- name: UpdateHeartbeatWithTime :execresult
 UPDATE processes
 SET heartbeat = ?
 WHERE id = ?
@@ -293,9 +292,8 @@ type UpdateHeartbeatWithTimeParams struct {
 	ID        string    `json:"id"`
 }
 
-func (q *Queries) UpdateHeartbeatWithTime(ctx context.Context, arg UpdateHeartbeatWithTimeParams) error {
-	_, err := q.db.ExecContext(ctx, updateHeartbeatWithTime, arg.Heartbeat, arg.ID)
-	return err
+func (q *Queries) UpdateHeartbeatWithTime(ctx context.Context, arg UpdateHeartbeatWithTimeParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, updateHeartbeatWithTime, arg.Heartbeat, arg.ID)
 }
 
 const updatePprofPort = `-- name: UpdatePprofPort :exec

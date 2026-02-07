@@ -6,12 +6,12 @@ ON CONFLICT (id) DO UPDATE SET
     hostname = excluded.hostname,
     heartbeat = CURRENT_TIMESTAMP;
 
--- name: UpdateHeartbeat :exec
+-- name: UpdateHeartbeat :execresult
 UPDATE processes
 SET heartbeat = CURRENT_TIMESTAMP
 WHERE id = ?;
 
--- name: UpdateHeartbeatWithTime :exec
+-- name: UpdateHeartbeatWithTime :execresult
 UPDATE processes
 SET heartbeat = ?
 WHERE id = ?;
