@@ -66,11 +66,7 @@ func (p *FeedbackProcessor) ProcessPRFeedback(ctx context.Context, prURL string)
 
 	var items []github.FeedbackItem
 
-	// Process status checks
-	checkItems := p.processStatusChecks(status)
-	items = append(items, checkItems...)
-
-	// Process workflow runs
+	// Process workflow runs (the richest source of CI failure info)
 	workflowItems := p.processWorkflowRuns(ctx, repo, status)
 	items = append(items, workflowItems...)
 
@@ -87,44 +83,6 @@ func (p *FeedbackProcessor) ProcessPRFeedback(ctx context.Context, prURL string)
 	items = append(items, conflictItems...)
 
 	return items, nil
-}
-
-// processStatusChecks processes status check failures.
-func (p *FeedbackProcessor) processStatusChecks(status *github.PRStatus) []github.FeedbackItem {
-	var items []github.FeedbackItem
-
-	for _, check := range status.StatusChecks {
-		if check.State == "FAILURE" || check.State == "ERROR" {
-			feedbackType := p.categorizeCheckFailure(check.Context)
-
-			// Use check description if available, otherwise provide a default
-			description := check.Description
-			if description == "" {
-				description = fmt.Sprintf("CI check '%s' failed with state: %s", check.Context, check.State)
-			}
-
-			item := github.FeedbackItem{
-				Type:        feedbackType,
-				Title:       fmt.Sprintf("Fix %s failure", check.Context),
-				Description: description,
-				Source: github.SourceInfo{
-					Type: github.SourceTypeCI,
-					ID:   check.Context, // Use check name as ID for status checks
-					Name: check.Context,
-					URL:  check.TargetURL,
-				},
-				Priority: p.getPriorityForType(feedbackType),
-				CICheck: &github.CICheckContext{
-					CheckName: check.Context,
-					State:     check.State,
-				},
-			}
-
-			items = append(items, item)
-		}
-	}
-
-	return items
 }
 
 // processWorkflowRuns processes workflow run failures.
@@ -577,22 +535,6 @@ func (p *FeedbackProcessor) processConflicts(status *github.PRStatus) []github.F
 }
 
 // Helper functions
-
-func (p *FeedbackProcessor) categorizeCheckFailure(checkName string) github.FeedbackType {
-	lower := strings.ToLower(checkName)
-
-	if strings.Contains(lower, "test") {
-		return github.FeedbackTypeTest
-	} else if strings.Contains(lower, "lint") || strings.Contains(lower, "style") {
-		return github.FeedbackTypeLint
-	} else if strings.Contains(lower, "build") || strings.Contains(lower, "compile") {
-		return github.FeedbackTypeBuild
-	} else if strings.Contains(lower, "security") || strings.Contains(lower, "vulnerability") {
-		return github.FeedbackTypeSecurity
-	}
-
-	return github.FeedbackTypeCI
-}
 
 func (p *FeedbackProcessor) categorizeWorkflowFailure(workflowName, failureDetail string) github.FeedbackType {
 	lower := strings.ToLower(workflowName + " " + failureDetail)

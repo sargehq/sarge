@@ -18,33 +18,7 @@ func TestNewFeedbackProcessor(t *testing.T) {
 	require.Equal(t, client, processor.client, "Expected client to be set")
 }
 
-func TestCategorizeCheckFailure(t *testing.T) {
-	processor := &FeedbackProcessor{}
 
-	tests := []struct {
-		name     string
-		check    string
-		expected github.FeedbackType
-	}{
-		{"Test check", "unit-tests", github.FeedbackTypeTest},
-		{"Test check uppercase", "Unit-Tests", github.FeedbackTypeTest},
-		{"Lint check", "eslint", github.FeedbackTypeLint},
-		{"Style check", "code-style", github.FeedbackTypeLint},
-		{"Build check", "build-project", github.FeedbackTypeBuild},
-		{"Compile check", "compile", github.FeedbackTypeBuild},
-		{"Security check", "security-scan", github.FeedbackTypeSecurity},
-		{"Vulnerability check", "vulnerability-scan", github.FeedbackTypeSecurity},
-		{"Generic CI", "ci-check", github.FeedbackTypeCI},
-		{"Unknown check", "something-else", github.FeedbackTypeCI},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := processor.categorizeCheckFailure(tt.check)
-			require.Equal(t, tt.expected, result)
-		})
-	}
-}
 
 func TestCategorizeWorkflowFailure(t *testing.T) {
 	processor := &FeedbackProcessor{}
@@ -126,46 +100,6 @@ func TestIsActionableComment(t *testing.T) {
 			require.Equal(t, tt.actionable, result)
 		})
 	}
-}
-
-func TestProcessStatusChecks(t *testing.T) {
-	processor := &FeedbackProcessor{}
-
-	status := &github.PRStatus{
-		StatusChecks: []github.StatusCheck{
-			{
-				Context:     "unit-tests",
-				State:       "FAILURE",
-				Description: "Unit tests failed",
-				TargetURL:   "https://example.com/checks/1",
-			},
-			{
-				Context:     "lint",
-				State:       "ERROR",
-				Description: "Linting errors found",
-				TargetURL:   "https://example.com/checks/2",
-			},
-			{
-				Context:     "build",
-				State:       "SUCCESS",
-				Description: "Build passed",
-				TargetURL:   "https://example.com/checks/3",
-			},
-		},
-	}
-
-	items := processor.processStatusChecks(status)
-
-	// Should have 2 items (the two failures)
-	require.Len(t, items, 2)
-
-	// Check first item (unit-tests failure)
-	require.Equal(t, github.FeedbackTypeTest, items[0].Type)
-	require.Equal(t, "Fix unit-tests failure", items[0].Title)
-
-	// Check second item (lint error)
-	require.Equal(t, github.FeedbackTypeLint, items[1].Type)
-	require.Equal(t, "Fix lint failure", items[1].Title)
 }
 
 func TestProcessWorkflowRuns(t *testing.T) {
@@ -926,3 +860,5 @@ func TestSourceIDStabilityAcrossCIRuns(t *testing.T) {
 			"Same workflow failure should have same source ID across CI runs")
 	})
 }
+
+
