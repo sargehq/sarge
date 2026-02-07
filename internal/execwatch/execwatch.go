@@ -1,118 +1,84 @@
 // Package execwatch detects when the running executable has been replaced on disk.
 //
-// On startup, it records the path and modification time of the current binary.
-// The Check method compares the current state against the recorded values to
-// detect when a new binary has been installed.
+// It uses fsnotify to watch the directory containing the binary for changes,
+// and signals via a channel when the executable has been modified or replaced.
 package execwatch
 
 import (
-	"crypto/sha256"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
+
+	"github.com/fsnotify/fsnotify"
 )
 
-// Watcher monitors the running executable for changes.
+// Watcher monitors the running executable for changes using filesystem events.
 type Watcher struct {
-	mu      sync.Mutex
 	path    string
 	modTime time.Time
-	hash    []byte // optional, computed only if WithHash is used
-}
-
-// Option configures a Watcher.
-type Option func(*Watcher) error
-
-// WithHash records an initial SHA-256 hash of the executable for more robust
-// change detection. This is more expensive at startup but handles edge cases
-// where mtime is not updated (e.g., some build tools).
-func WithHash() Option {
-	return func(w *Watcher) error {
-		h, err := hashFile(w.path)
-		if err != nil {
-			return fmt.Errorf("execwatch: hash executable: %w", err)
-		}
-		w.hash = h
-		return nil
-	}
+	changed chan struct{} // closed when a change is detected
+	done    chan struct{} // closed to stop the watcher
+	fsw     *fsnotify.Watcher
 }
 
 // New creates a Watcher that tracks the currently running executable.
-// It resolves the executable path via os.Executable and records its initial
-// modification time.
-func New(opts ...Option) (*Watcher, error) {
+// It resolves the executable path via os.Executable and begins watching
+// its parent directory for changes. When the binary is modified or replaced,
+// the channel returned by Changed() is closed.
+func New() (*Watcher, error) {
 	exePath, err := os.Executable()
 	if err != nil {
 		return nil, fmt.Errorf("execwatch: resolve executable: %w", err)
 	}
+	return NewFromPath(exePath)
+}
 
-	info, err := os.Stat(exePath)
+// NewFromPath creates a Watcher that tracks the file at the given path.
+// This is useful for testing with a specific file path.
+func NewFromPath(path string) (*Watcher, error) {
+	// Resolve symlinks so we watch the real file's directory
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return nil, fmt.Errorf("execwatch: eval symlinks: %w", err)
+	}
+
+	info, err := os.Stat(resolved)
 	if err != nil {
 		return nil, fmt.Errorf("execwatch: stat executable: %w", err)
 	}
 
-	w := &Watcher{
-		path:    exePath,
-		modTime: info.ModTime(),
+	fsw, err := fsnotify.NewWatcher()
+	if err != nil {
+		return nil, fmt.Errorf("execwatch: create fsnotify watcher: %w", err)
 	}
 
-	for _, opt := range opts {
-		if err := opt(w); err != nil {
-			return nil, err
-		}
+	// Watch the directory (not the file directly) because installers often
+	// do an atomic rename, which replaces the inode. Watching the directory
+	// catches both in-place writes and atomic replacements.
+	dir := filepath.Dir(resolved)
+	if err := fsw.Add(dir); err != nil {
+		fsw.Close()
+		return nil, fmt.Errorf("execwatch: watch directory %s: %w", dir, err)
 	}
+
+	w := &Watcher{
+		path:    resolved,
+		modTime: info.ModTime(),
+		changed: make(chan struct{}),
+		done:    make(chan struct{}),
+		fsw:     fsw,
+	}
+
+	go w.loop()
 
 	return w, nil
 }
 
-// Result describes what changed about the executable.
-type Result struct {
-	Changed bool
-	// Reason describes why the binary is considered changed (e.g., "mtime changed",
-	// "hash changed", "binary missing").
-	Reason string
-}
-
-// Check tests whether the executable on disk has changed since the Watcher was
-// created. It is safe to call from multiple goroutines.
-//
-// The check is stat-based by default (cheap). If the Watcher was created with
-// WithHash and the mtime has changed, a hash comparison is also performed.
-func (w *Watcher) Check() (Result, error) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
-	info, err := os.Stat(w.path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return Result{Changed: true, Reason: "binary missing"}, nil
-		}
-		return Result{}, fmt.Errorf("execwatch: stat executable: %w", err)
-	}
-
-	if !info.ModTime().Equal(w.modTime) {
-		// If we have a hash, do a deeper comparison — the mtime change may be
-		// cosmetic (e.g., touch without content change).
-		if w.hash != nil {
-			h, err := hashFile(w.path)
-			if err != nil {
-				return Result{}, fmt.Errorf("execwatch: hash executable: %w", err)
-			}
-			if !equalBytes(w.hash, h) {
-				return Result{Changed: true, Reason: "hash changed"}, nil
-			}
-			// mtime changed but hash is the same — update stored mtime so we
-			// don't keep re-hashing.
-			w.modTime = info.ModTime()
-			return Result{Changed: false}, nil
-		}
-		return Result{Changed: true, Reason: "mtime changed"}, nil
-	}
-
-	return Result{Changed: false}, nil
+// Changed returns a channel that is closed when the executable has been
+// modified or replaced on disk. This is safe to use in a select statement.
+func (w *Watcher) Changed() <-chan struct{} {
+	return w.changed
 }
 
 // Path returns the resolved path to the watched executable.
@@ -120,28 +86,64 @@ func (w *Watcher) Path() string {
 	return w.path
 }
 
-func hashFile(path string) ([]byte, error) {
-	f, err := os.Open(filepath.Clean(path))
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return nil, err
-	}
-	return h.Sum(nil), nil
+// Stop terminates the watcher and releases resources.
+func (w *Watcher) Stop() {
+	close(w.done)
+	w.fsw.Close()
 }
 
-func equalBytes(a, b []byte) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
+// loop processes fsnotify events and signals when the binary changes.
+func (w *Watcher) loop() {
+	baseName := filepath.Base(w.path)
+
+	for {
+		select {
+		case event, ok := <-w.fsw.Events:
+			if !ok {
+				return
+			}
+
+			// Only care about our binary
+			if filepath.Base(event.Name) != baseName {
+				continue
+			}
+
+			// Only care about writes, creates (atomic rename), or removes
+			if event.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Remove) == 0 {
+				continue
+			}
+
+			// Verify the mtime actually changed (filters out spurious events)
+			info, err := os.Stat(w.path)
+			if err != nil {
+				if os.IsNotExist(err) {
+					// Binary was removed (possibly mid atomic-replace) — wait
+					// briefly for the new file to appear
+					time.Sleep(200 * time.Millisecond)
+					info, err = os.Stat(w.path)
+					if err != nil {
+						// Still gone — signal change
+						close(w.changed)
+						return
+					}
+				} else {
+					continue
+				}
+			}
+
+			if !info.ModTime().Equal(w.modTime) {
+				close(w.changed)
+				return
+			}
+
+		case _, ok := <-w.fsw.Errors:
+			if !ok {
+				return
+			}
+			// Ignore errors — the watcher will keep trying
+
+		case <-w.done:
+			return
 		}
 	}
-	return true
 }
