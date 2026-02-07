@@ -263,19 +263,19 @@ func (p *LinearImportPanel) Render() string {
 	maxDepthLabel := "Max Dependency Depth:"
 
 	if p.focusIdx == 0 {
-		issueIDsLabel = tuiValueStyle.Render("Issue IDs/URLs:") + " (one per line, Ctrl+Enter to submit)"
+		issueIDsLabel = tuiValueStyle().Render("Issue IDs/URLs:") + " (one per line, Ctrl+Enter to submit)"
 	}
 	if p.focusIdx == 1 {
-		createDepsLabel = tuiValueStyle.Render("Create Dependencies:") + " (space to toggle)"
+		createDepsLabel = tuiValueStyle().Render("Create Dependencies:") + " (space to toggle)"
 	}
 	if p.focusIdx == 2 {
-		updateLabel = tuiValueStyle.Render("Update Existing:") + " (space to toggle)"
+		updateLabel = tuiValueStyle().Render("Update Existing:") + " (space to toggle)"
 	}
 	if p.focusIdx == 3 {
-		dryRunLabel = tuiValueStyle.Render("Dry Run:") + " (space to toggle)"
+		dryRunLabel = tuiValueStyle().Render("Dry Run:") + " (space to toggle)"
 	}
 	if p.focusIdx == 4 {
-		maxDepthLabel = tuiValueStyle.Render("Max Dependency Depth:") + " (+/- adjust)"
+		maxDepthLabel = tuiValueStyle().Render("Max Dependency Depth:") + " (+/- adjust)"
 	}
 
 	// Checkbox display
@@ -292,7 +292,7 @@ func (p *LinearImportPanel) Render() string {
 		dryRunCheck = "x"
 	}
 
-	content.WriteString(tuiLabelStyle.Render("Import from Linear (Bulk)"))
+	content.WriteString(tuiLabelStyle().Render("Import from Linear (Bulk)"))
 	content.WriteString("\n\n")
 	content.WriteString(issueIDsLabel)
 	content.WriteString("\n")
@@ -304,7 +304,7 @@ func (p *LinearImportPanel) Render() string {
 	content.WriteString("\n")
 	content.WriteString(dryRunLabel + " [" + dryRunCheck + "]")
 	content.WriteString("\n\n")
-	content.WriteString(maxDepthLabel + " " + tuiValueStyle.Render(fmt.Sprintf("%d", p.maxDepth)))
+	content.WriteString(maxDepthLabel + " " + tuiValueStyle().Render(fmt.Sprintf("%d", p.maxDepth)))
 	content.WriteString("\n\n")
 
 	// Render Ok and Cancel buttons
@@ -313,15 +313,15 @@ func (p *LinearImportPanel) Render() string {
 	focusHint := ""
 
 	if p.focusIdx == 5 {
-		okLabel = tuiValueStyle.Render("[ Ok ]")
-		focusHint = tuiDimStyle.Render(" (press Enter to import)")
+		okLabel = tuiValueStyle().Render("[ Ok ]")
+		focusHint = tuiDimStyle().Render(" (press Enter to import)")
 	} else {
 		okLabel = styleButtonWithHover("  Ok  ", p.hoveredButton == "ok")
 	}
 
 	if p.focusIdx == 6 {
-		cancelLabel = tuiValueStyle.Render("[Cancel]")
-		focusHint = tuiDimStyle.Render(" (press Enter to cancel)")
+		cancelLabel = tuiValueStyle().Render("[Cancel]")
+		focusHint = tuiDimStyle().Render(" (press Enter to cancel)")
 	} else {
 		cancelLabel = styleButtonWithHover("Cancel", p.hoveredButton == "cancel")
 	}
@@ -330,9 +330,9 @@ func (p *LinearImportPanel) Render() string {
 	content.WriteString("\n")
 
 	if p.importing {
-		content.WriteString(tuiDimStyle.Render("Importing..."))
+		content.WriteString(tuiDimStyle().Render("Importing..."))
 	} else {
-		content.WriteString(tuiDimStyle.Render("[Tab] Next field  [Enter] Activate"))
+		content.WriteString(tuiDimStyle().Render("[Tab] Next field  [Enter] Activate"))
 	}
 
 	return content.String()
@@ -342,12 +342,12 @@ func (p *LinearImportPanel) Render() string {
 func (p *LinearImportPanel) RenderWithPanel(contentHeight int) string {
 	panelContent := p.Render()
 
-	panelStyle := tuiPanelStyle.Width(p.width).Height(contentHeight - 2)
+	panelStyle := tuiPanelStyle().Width(p.width).Height(contentHeight - 2)
 	if p.focused {
 		panelStyle = panelStyle.BorderForeground(lipgloss.Color("214"))
 	}
 
-	result := panelStyle.Render(tuiTitleStyle.Render("Linear Import") + "\n" + panelContent)
+	result := panelStyle.Render(tuiTitleStyle().Render("Linear Import") + "\n" + panelContent)
 
 	// If the result is taller than expected (due to lipgloss wrapping), fix it
 	// by removing extra lines from the INNER content while preserving borders and title

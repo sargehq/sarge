@@ -273,7 +273,7 @@ func (m *planModel) renderHelp() string {
 
   Press any key to close...
 `
-	return tuiHelpStyle.Width(m.width).Height(m.height).Render(help)
+	return tuiHelpStyle().Width(m.width).Height(m.height).Render(help)
 }
 
 // handleMouseWheel handles mouse wheel events by routing them to the appropriate panel

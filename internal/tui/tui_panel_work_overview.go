@@ -414,7 +414,7 @@ func (p *WorkOverviewPanel) Render(panelHeight, panelWidth int) string {
 	// Scroll indicator
 	if totalItems > availableLines && availableLines > 0 {
 		scrollInfo := fmt.Sprintf("(%d-%d of %d)", startIdx+1, endIdx, totalItems)
-		content.WriteString(tuiDimStyle.Render(scrollInfo))
+		content.WriteString(tuiDimStyle().Render(scrollInfo))
 	}
 
 	return content.String()
@@ -464,7 +464,7 @@ func (p *WorkOverviewPanel) renderRootIssueLine(panelWidth int) string {
 	content.WriteString(prefix)
 	if isSelected {
 		// Full selected style on icon + text
-		content.WriteString(tuiSelectedStyle.Render(issueIcon + " " + textPortion))
+		content.WriteString(tuiSelectedStyle().Render(issueIcon + " " + textPortion))
 	} else if isHovered {
 		// Orange text for hover on icon + text
 		hoverStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
@@ -472,7 +472,7 @@ func (p *WorkOverviewPanel) renderRootIssueLine(panelWidth int) string {
 	} else {
 		// Normal: styled icon + dim text
 		content.WriteString(issueIcon + " ")
-		content.WriteString(tuiDimStyle.Render(textPortion))
+		content.WriteString(tuiDimStyle().Render(textPortion))
 	}
 	content.WriteString("\n")
 	return content.String()
@@ -524,7 +524,7 @@ func (p *WorkOverviewPanel) renderTaskLine(taskIdx int, _ int) string {
 	if isSelected {
 		// Full selected style on entire line
 		textContent := fmt.Sprintf("%s %s [%s]", statusStr, task.Task.ID, taskType)
-		content.WriteString(tuiSelectedStyle.Render(textContent))
+		content.WriteString(tuiSelectedStyle().Render(textContent))
 	} else if isHovered {
 		// Orange text for hover on entire line
 		hoverStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
@@ -545,7 +545,7 @@ func (p *WorkOverviewPanel) renderTaskLine(taskIdx int, _ int) string {
 		}
 		content.WriteString(statusStyle.Render(statusStr))
 		content.WriteString(" ")
-		content.WriteString(tuiDimStyle.Render(fmt.Sprintf("%s [%s]", task.Task.ID, taskType)))
+		content.WriteString(tuiDimStyle().Render(fmt.Sprintf("%s [%s]", task.Task.ID, taskType)))
 	}
 	content.WriteString("\n")
 	return content.String()
@@ -583,7 +583,7 @@ func (p *WorkOverviewPanel) renderUnassignedBeadLine(beadIdx, panelWidth int) st
 	content.WriteString(prefix)
 	if isSelected {
 		// Full selected style on icon + text
-		content.WriteString(tuiSelectedStyle.Render("○ " + textPortion))
+		content.WriteString(tuiSelectedStyle().Render("○ " + textPortion))
 	} else if isHovered {
 		// Orange text for hover on icon + text
 		hoverStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
@@ -592,7 +592,7 @@ func (p *WorkOverviewPanel) renderUnassignedBeadLine(beadIdx, panelWidth int) st
 		// Normal: orange icon for unassigned + dim text
 		beadIcon := lipgloss.NewStyle().Foreground(lipgloss.Color("214")).Render("○")
 		content.WriteString(beadIcon + " ")
-		content.WriteString(tuiDimStyle.Render(textPortion))
+		content.WriteString(tuiDimStyle().Render(textPortion))
 	}
 	content.WriteString("\n")
 	return content.String()

@@ -1720,6 +1720,14 @@ func (m *planModel) View() string {
 		return m.renderHelp()
 	}
 
+	// Show splash screen when project is empty
+	if m.shouldShowSplash() {
+		m.syncPanels()
+		statusBar := m.statusBar.Render()
+		splash := renderSplash(m.width, m.height-lipgloss.Height(statusBar))
+		return lipgloss.JoinVertical(lipgloss.Left, splash, statusBar)
+	}
+
 	// Render work tabs bar (always visible)
 	workTabsBar := m.workTabsBar.Render()
 	tabsBarHeight := m.workTabsBar.Height()

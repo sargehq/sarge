@@ -111,7 +111,7 @@ func (p *WorkSummaryPanel) renderFullContent(panelWidth int) string {
 	var content strings.Builder
 
 	if p.focusedWork == nil {
-		content.WriteString(tuiDimStyle.Render("Loading..."))
+		content.WriteString(tuiDimStyle().Render("Loading..."))
 		return content.String()
 	}
 
@@ -351,13 +351,13 @@ func (p *WorkSummaryPanel) renderFullContent(panelWidth int) string {
 			// Keep multiline but truncate to reasonable length
 			desc := rootBead.Description
 			desc = ansi.Truncate(desc, 300, "...")
-			content.WriteString(tuiDimStyle.Render(desc))
+			content.WriteString(tuiDimStyle().Render(desc))
 			content.WriteString("\n")
 		}
 	} else {
 		// Fallback if bead not found
 		fmt.Fprintf(&content, "Issue: %s\n", rootID)
-		content.WriteString(tuiDimStyle.Render("(Issue details not loaded)"))
+		content.WriteString(tuiDimStyle().Render("(Issue details not loaded)"))
 		content.WriteString("\n")
 	}
 

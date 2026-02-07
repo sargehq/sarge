@@ -139,8 +139,8 @@ func (s *StatusBar) Render() string {
 		if s.getTextInput != nil {
 			searchInput = s.getTextInput()
 		}
-		hint := tuiDimStyle.Render("  [Enter]Search  [Esc]Cancel")
-		return tuiStatusBarStyle.Width(s.width).Render(searchPrompt + searchInput + hint)
+		hint := tuiDimStyle().Render("  [Enter]Search  [Esc]Cancel")
+		return tuiStatusBarStyle().Width(s.width).Render(searchPrompt + searchInput + hint)
 	}
 
 	var commands string
@@ -161,16 +161,16 @@ func (s *StatusBar) Render() string {
 	if s.statusMessage != "" {
 		statusPlain = s.statusMessage
 		if s.statusIsError {
-			status = tuiErrorStyle.Render(s.statusMessage)
+			status = tuiErrorStyle().Render(s.statusMessage)
 		} else {
-			status = tuiSuccessStyle.Render(s.statusMessage)
+			status = tuiSuccessStyle().Render(s.statusMessage)
 		}
 	} else if s.loading {
 		statusPlain = "Loading..."
 		status = s.spinner.View() + " Loading..."
 	} else {
 		statusPlain = fmt.Sprintf("Updated: %s", s.lastUpdate.Format("15:04:05"))
-		status = tuiDimStyle.Render(statusPlain)
+		status = tuiDimStyle().Render(statusPlain)
 	}
 
 	// Calculate available space for status message and truncate if needed
@@ -196,13 +196,13 @@ func (s *StatusBar) Render() string {
 			statusPlain = truncatedPlain
 			statusWidth = ansi.StringWidth(statusPlain)
 			if s.statusIsError {
-				status = tuiErrorStyle.Render(truncatedPlain)
+				status = tuiErrorStyle().Render(truncatedPlain)
 			} else if s.loading {
 				status = s.spinner.View() + " Loading..."
 			} else if s.statusMessage != "" {
-				status = tuiSuccessStyle.Render(truncatedPlain)
+				status = tuiSuccessStyle().Render(truncatedPlain)
 			} else {
-				status = tuiDimStyle.Render(truncatedPlain)
+				status = tuiDimStyle().Render(truncatedPlain)
 			}
 		}
 	}
@@ -210,7 +210,7 @@ func (s *StatusBar) Render() string {
 	// Build bar with commands left, status right
 	// Padding fills the remaining space
 	padding := max(innerWidth-commandsWidth-statusWidth, minPadding)
-	return tuiStatusBarStyle.Width(s.width).Render(commands + strings.Repeat(" ", padding) + status)
+	return tuiStatusBarStyle().Width(s.width).Render(commands + strings.Repeat(" ", padding) + status)
 }
 
 // renderIssuesCommands returns commands for the issues panel

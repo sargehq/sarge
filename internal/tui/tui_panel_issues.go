@@ -128,11 +128,11 @@ func (p *IssuesPanel) Render(visibleLines int) string {
 	}
 
 	var content strings.Builder
-	content.WriteString(tuiDimStyle.Render(filterInfo))
+	content.WriteString(tuiDimStyle().Render(filterInfo))
 	content.WriteString("\n")
 
 	if len(p.beadItems) == 0 {
-		content.WriteString(tuiDimStyle.Render("No issues found"))
+		content.WriteString(tuiDimStyle().Render("No issues found"))
 	} else {
 		visibleItems := max(visibleLines-1, 1) // -1 for filter line
 
@@ -163,12 +163,12 @@ func (p *IssuesPanel) RenderWithPanel(contentHeight int) string {
 	// Ensure content is exactly the right number of lines to prevent layout overflow
 	issuesContent = padOrTruncateLinesIssues(issuesContent, issuesContentLines)
 
-	panelStyle := tuiPanelStyle.Width(p.width).Height(contentHeight - 2)
+	panelStyle := tuiPanelStyle().Width(p.width).Height(contentHeight - 2)
 	if p.focused {
 		panelStyle = panelStyle.BorderForeground(lipgloss.Color("214"))
 	}
 
-	result := panelStyle.Render(tuiTitleStyle.Render("Issues") + "\n" + issuesContent)
+	result := panelStyle.Render(tuiTitleStyle().Render("Issues") + "\n" + issuesContent)
 
 	// If the result is taller than expected (due to lipgloss wrapping), fix it
 	// by removing extra lines from the INNER content while preserving borders and title
@@ -235,61 +235,61 @@ func (p *IssuesPanel) renderBeadLine(i int, bead beadItem) string {
 	// Selection indicator for multi-select
 	var selectionIndicator string
 	if p.selectedBeads[bead.ID] {
-		selectionIndicator = tuiSelectedCheckStyle.Render("●") + " "
+		selectionIndicator = tuiSelectedCheckStyle().Render("●") + " "
 	}
 
 	// Session indicator - compact "P" (processing) shown after status icon
 	var sessionIndicator string
 	if p.activeSessions[bead.ID] {
-		sessionIndicator = tuiSuccessStyle.Render("P")
+		sessionIndicator = tuiSuccessStyle().Render("P")
 	}
 
 	// Work assignment indicator
 	var workIndicator string
 	if bead.assignedWorkID != "" {
-		workIndicator = tuiDimStyle.Render("["+bead.assignedWorkID+"]") + " "
+		workIndicator = tuiDimStyle().Render("["+bead.assignedWorkID+"]") + " "
 	}
 
 	// Tree indentation with connector lines (styled dim)
 	var treePrefix string
 	if bead.treeDepth > 0 && bead.treePrefixPattern != "" {
-		treePrefix = issueTreeStyle.Render(bead.treePrefixPattern)
+		treePrefix = issueTreeStyle().Render(bead.treePrefixPattern)
 	}
 
 	// Styled issue ID
-	styledID := issueIDStyle.Render(bead.ID)
+	styledID := issueIDStyle().Render(bead.ID)
 
 	// Short type indicator with color
 	var styledType string
 	switch bead.Type {
 	case "task":
-		styledType = typeTaskStyle.Render("T")
+		styledType = typeTaskStyle().Render("T")
 	case "bug":
-		styledType = typeBugStyle.Render("B")
+		styledType = typeBugStyle().Render("B")
 	case "feature":
-		styledType = typeFeatureStyle.Render("F")
+		styledType = typeFeatureStyle().Render("F")
 	case "epic":
-		styledType = typeEpicStyle.Render("E")
+		styledType = typeEpicStyle().Render("E")
 	case "chore":
-		styledType = typeChoreStyle.Render("C")
+		styledType = typeChoreStyle().Render("C")
 	case "merge-request":
-		styledType = typeDefaultStyle.Render("M")
+		styledType = typeDefaultStyle().Render("M")
 	case "molecule":
-		styledType = typeDefaultStyle.Render("m")
+		styledType = typeDefaultStyle().Render("m")
 	case "gate":
-		styledType = typeDefaultStyle.Render("G")
+		styledType = typeDefaultStyle().Render("G")
 	case "agent":
-		styledType = typeDefaultStyle.Render("A")
+		styledType = typeDefaultStyle().Render("A")
 	case "role":
-		styledType = typeDefaultStyle.Render("R")
+		styledType = typeDefaultStyle().Render("R")
 	case "rig":
-		styledType = typeDefaultStyle.Render("r")
+		styledType = typeDefaultStyle().Render("r")
 	case "convoy":
-		styledType = typeDefaultStyle.Render("c")
+		styledType = typeDefaultStyle().Render("c")
 	case "event":
-		styledType = typeDefaultStyle.Render("v")
+		styledType = typeDefaultStyle().Render("v")
 	default:
-		styledType = typeDefaultStyle.Render("?")
+		styledType = typeDefaultStyle().Render("?")
 	}
 
 	// Calculate available width and truncate title if needed
@@ -391,7 +391,7 @@ func (p *IssuesPanel) renderBeadLine(i int, bead beadItem) string {
 					Background(lipgloss.Color("226"))
 				return newSelectedStyle.Render(plainLine)
 			}
-			return tuiSelectedStyle.Render(plainLine)
+			return tuiSelectedStyle().Render(plainLine)
 		}
 
 		// Hover style
@@ -411,12 +411,12 @@ func (p *IssuesPanel) renderBeadLine(i int, bead beadItem) string {
 
 	// Style closed parent beads with dim style
 	if bead.isClosedParent {
-		return tuiDimStyle.Render(line)
+		return tuiDimStyle().Render(line)
 	}
 
 	// Style new beads - apply yellow only to the title
 	if _, isNew := p.newBeads[bead.ID]; isNew {
-		yellowTitle := tuiNewBeadStyle.Render(title)
+		yellowTitle := tuiNewBeadStyle().Render(title)
 
 		var newLine string
 		if p.expanded {
