@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/sargehq/sarge/internal/db"
@@ -67,7 +68,7 @@ func (p *FeedbackProcessor) ProcessPRFeedback(ctx context.Context, prURL string)
 	var items []github.FeedbackItem
 
 	// Process status checks
-	checkItems := p.processStatusChecks(status)
+	checkItems := p.processStatusChecks(ctx, repo, status)
 	items = append(items, checkItems...)
 
 	// Process workflow runs
@@ -90,11 +91,28 @@ func (p *FeedbackProcessor) ProcessPRFeedback(ctx context.Context, prURL string)
 }
 
 // processStatusChecks processes status check failures.
-func (p *FeedbackProcessor) processStatusChecks(status *github.PRStatus) []github.FeedbackItem {
+// It deduplicates against workflow runs (which provide richer feedback) and
+// attempts to enrich remaining status checks with log details from their TargetURL.
+func (p *FeedbackProcessor) processStatusChecks(ctx context.Context, repo string, status *github.PRStatus) []github.FeedbackItem {
 	var items []github.FeedbackItem
 
 	for _, check := range status.StatusChecks {
 		if check.State == "FAILURE" || check.State == "ERROR" {
+			// Deduplicate: skip status checks that have a matching workflow run,
+			// since processWorkflowRuns produces richer feedback with parsed logs.
+			if p.hasMatchingWorkflowRun(check.Context, status.Workflows) {
+				logging.Debug("skipping status check with matching workflow run",
+					"check", check.Context)
+				continue
+			}
+
+			// Try to enrich with log details from TargetURL
+			if enrichedItems := p.enrichStatusCheckFromTargetURL(ctx, repo, check); len(enrichedItems) > 0 {
+				items = append(items, enrichedItems...)
+				continue
+			}
+
+			// Fall back to generic handling
 			feedbackType := p.categorizeCheckFailure(check.Context)
 
 			// Use check description if available, otherwise provide a default
@@ -122,6 +140,118 @@ func (p *FeedbackProcessor) processStatusChecks(status *github.PRStatus) []githu
 
 			items = append(items, item)
 		}
+	}
+
+	return items
+}
+
+// hasMatchingWorkflowRun checks if a status check has a corresponding workflow run.
+// GitHub Actions report results as both status checks and workflow runs;
+// we prefer the workflow run path which produces richer feedback.
+func (p *FeedbackProcessor) hasMatchingWorkflowRun(checkName string, workflows []github.WorkflowRun) bool {
+	checkLower := strings.ToLower(checkName)
+	for _, wf := range workflows {
+		// Match by workflow name or job name
+		if strings.ToLower(wf.Name) == checkLower {
+			return true
+		}
+		for _, job := range wf.Jobs {
+			if strings.ToLower(job.Name) == checkLower {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// parseGitHubActionsURL extracts repo, run ID, and job ID from a GitHub Actions URL.
+// Expected format: https://github.com/owner/repo/actions/runs/RUNID/job/JOBID
+// Returns empty strings if the URL doesn't match the expected format.
+func parseGitHubActionsURL(targetURL string) (repo string, runID int64, jobID int64, ok bool) {
+	if targetURL == "" {
+		return "", 0, 0, false
+	}
+
+	// Match GitHub Actions job URLs
+	re := regexp.MustCompile(`https://github\.com/([^/]+/[^/]+)/actions/runs/(\d+)/job/(\d+)`)
+	matches := re.FindStringSubmatch(targetURL)
+	if matches == nil {
+		return "", 0, 0, false
+	}
+
+	repo = matches[1]
+	runID, err1 := strconv.ParseInt(matches[2], 10, 64)
+	jobID, err2 := strconv.ParseInt(matches[3], 10, 64)
+	if err1 != nil || err2 != nil {
+		return "", 0, 0, false
+	}
+
+	return repo, runID, jobID, true
+}
+
+// enrichStatusCheckFromTargetURL attempts to fetch logs from a GitHub Actions
+// TargetURL and parse them into detailed FeedbackItems.
+func (p *FeedbackProcessor) enrichStatusCheckFromTargetURL(ctx context.Context, repo string, check github.StatusCheck) []github.FeedbackItem {
+	targetRepo, _, jobID, ok := parseGitHubActionsURL(check.TargetURL)
+	if !ok {
+		return nil
+	}
+
+	// Use the repo from the URL if available, otherwise fall back to the PR repo
+	if targetRepo != "" {
+		repo = targetRepo
+	}
+
+	logs, err := p.client.GetJobLogs(ctx, repo, jobID)
+	if err != nil {
+		logging.Debug("failed to fetch logs for status check", "check", check.Context, "error", err)
+		return nil
+	}
+
+	failures, _ := logparser.ParseFailures(logs)
+	if len(failures) == 0 {
+		return nil
+	}
+
+	feedbackType := p.categorizeCheckFailure(check.Context)
+
+	var items []github.FeedbackItem
+	for _, f := range failures {
+		shortCtx := lastPathComponent(f.Context)
+
+		var title string
+		if f.File != "" {
+			if f.Column > 0 {
+				title = fmt.Sprintf("Fix %s at %s:%d:%d", f.Name, f.File, f.Line, f.Column)
+			} else {
+				title = fmt.Sprintf("Fix %s at %s:%d", f.Name, f.File, f.Line)
+			}
+		} else if shortCtx != "" {
+			title = fmt.Sprintf("Fix %s in %s", f.Name, shortCtx)
+		} else {
+			title = fmt.Sprintf("Fix %s", f.Name)
+		}
+
+		sourceID := generateFailureSourceID(f.Name, f.File, f.Line, f.Message)
+
+		item := github.FeedbackItem{
+			Type:        feedbackType,
+			Title:       title,
+			Description: formatFailure(f),
+			Source: github.SourceInfo{
+				Type: github.SourceTypeCI,
+				ID:   sourceID,
+				Name: check.Context,
+				URL:  check.TargetURL,
+			},
+			Priority: p.getPriorityForType(feedbackType),
+			CICheck: &github.CICheckContext{
+				CheckName: check.Context,
+				State:     check.State,
+			},
+		}
+
+		items = append(items, item)
 	}
 
 	return items

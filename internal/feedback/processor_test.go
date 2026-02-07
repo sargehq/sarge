@@ -129,7 +129,9 @@ func TestIsActionableComment(t *testing.T) {
 }
 
 func TestProcessStatusChecks(t *testing.T) {
-	processor := &FeedbackProcessor{}
+	processor := &FeedbackProcessor{
+		client: &github.GitHubClientMock{},
+	}
 
 	status := &github.PRStatus{
 		StatusChecks: []github.StatusCheck{
@@ -154,7 +156,7 @@ func TestProcessStatusChecks(t *testing.T) {
 		},
 	}
 
-	items := processor.processStatusChecks(status)
+	items := processor.processStatusChecks(context.Background(), "owner/repo", status)
 
 	// Should have 2 items (the two failures)
 	require.Len(t, items, 2)
@@ -925,4 +927,212 @@ func TestSourceIDStabilityAcrossCIRuns(t *testing.T) {
 		require.Equal(t, item1.Source.ID, item2.Source.ID,
 			"Same workflow failure should have same source ID across CI runs")
 	})
+}
+
+func TestParseGitHubActionsURL(t *testing.T) {
+	tests := []struct {
+		name      string
+		url       string
+		wantRepo  string
+		wantRunID int64
+		wantJobID int64
+		wantOk    bool
+	}{
+		{
+			name:      "valid GitHub Actions URL",
+			url:       "https://github.com/sargehq/sarge/actions/runs/21783874747/job/62852104893",
+			wantRepo:  "sargehq/sarge",
+			wantRunID: 21783874747,
+			wantJobID: 62852104893,
+			wantOk:    true,
+		},
+		{
+			name:   "non-GitHub Actions URL",
+			url:    "https://example.com/checks/1",
+			wantOk: false,
+		},
+		{
+			name:   "empty URL",
+			url:    "",
+			wantOk: false,
+		},
+		{
+			name:   "GitHub URL but not actions",
+			url:    "https://github.com/sargehq/sarge/pull/22",
+			wantOk: false,
+		},
+		{
+			name:   "GitHub Actions run URL without job",
+			url:    "https://github.com/sargehq/sarge/actions/runs/21783874747",
+			wantOk: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo, runID, jobID, ok := parseGitHubActionsURL(tt.url)
+			require.Equal(t, tt.wantOk, ok)
+			if ok {
+				require.Equal(t, tt.wantRepo, repo)
+				require.Equal(t, tt.wantRunID, runID)
+				require.Equal(t, tt.wantJobID, jobID)
+			}
+		})
+	}
+}
+
+func TestHasMatchingWorkflowRun(t *testing.T) {
+	processor := &FeedbackProcessor{}
+
+	workflows := []github.WorkflowRun{
+		{
+			Name: "CI",
+			Jobs: []github.Job{
+				{Name: "lint"},
+				{Name: "test"},
+			},
+		},
+		{
+			Name: "Build",
+			Jobs: []github.Job{
+				{Name: "compile"},
+			},
+		},
+	}
+
+	tests := []struct {
+		name      string
+		checkName string
+		want      bool
+	}{
+		{"matches workflow name", "CI", true},
+		{"matches workflow name case-insensitive", "ci", true},
+		{"matches job name", "lint", true},
+		{"matches job name case-insensitive", "Lint", true},
+		{"matches another job", "test", true},
+		{"matches another workflow", "Build", true},
+		{"no match", "security-scan", false},
+		{"partial match is not a match", "lin", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := processor.hasMatchingWorkflowRun(tt.checkName, workflows)
+			require.Equal(t, tt.want, result)
+		})
+	}
+}
+
+func TestProcessStatusChecks_DeduplicatesAgainstWorkflowRuns(t *testing.T) {
+	processor := &FeedbackProcessor{
+		client: &github.GitHubClientMock{},
+	}
+
+	status := &github.PRStatus{
+		StatusChecks: []github.StatusCheck{
+			{
+				Context: "lint",
+				State:   "FAILURE",
+			},
+			{
+				Context: "security-scan",
+				State:   "FAILURE",
+			},
+		},
+		Workflows: []github.WorkflowRun{
+			{
+				Name:       "CI",
+				Conclusion: "failure",
+				Jobs: []github.Job{
+					{Name: "lint", Conclusion: "failure"},
+				},
+			},
+		},
+	}
+
+	items := processor.processStatusChecks(context.Background(), "owner/repo", status)
+
+	// Only security-scan should appear; lint is deduplicated against the workflow run
+	require.Len(t, items, 1)
+	require.Equal(t, "Fix security-scan failure", items[0].Title)
+}
+
+func TestProcessStatusChecks_EnrichesFromGitHubActionsURL(t *testing.T) {
+	mockClient := &github.GitHubClientMock{
+		GetJobLogsFunc: func(ctx context.Context, repo string, jobID int64) (string, error) {
+			require.Equal(t, "sargehq/sarge", repo)
+			require.Equal(t, int64(62852104893), jobID)
+			// Return logs that the parser can extract failures from
+			return "=== RUN   TestFoo\n--- FAIL: TestFoo (0.00s)\n    foo_test.go:10: expected true, got false\nFAIL\n", nil
+		},
+	}
+
+	processor := &FeedbackProcessor{
+		client: mockClient,
+	}
+
+	status := &github.PRStatus{
+		StatusChecks: []github.StatusCheck{
+			{
+				Context:   "unit-tests",
+				State:     "FAILURE",
+				TargetURL: "https://github.com/sargehq/sarge/actions/runs/21783874747/job/62852104893",
+			},
+		},
+	}
+
+	items := processor.processStatusChecks(context.Background(), "sargehq/sarge", status)
+
+	// Should have enriched items from parsed logs
+	require.Greater(t, len(items), 0)
+	// The items should have detailed info, not just "Fix unit-tests failure"
+	for _, item := range items {
+		require.NotEqual(t, "Fix unit-tests failure", item.Title, "Should have enriched title from log parsing")
+		require.Equal(t, github.SourceTypeCI, item.Source.Type)
+		require.Equal(t, "unit-tests", item.Source.Name)
+	}
+}
+
+func TestProcessStatusChecks_FallsBackForNonGHActionsURL(t *testing.T) {
+	processor := &FeedbackProcessor{
+		client: &github.GitHubClientMock{},
+	}
+
+	status := &github.PRStatus{
+		StatusChecks: []github.StatusCheck{
+			{
+				Context:     "external-ci",
+				State:       "FAILURE",
+				Description: "External CI failed",
+				TargetURL:   "https://jenkins.example.com/job/123",
+			},
+		},
+	}
+
+	items := processor.processStatusChecks(context.Background(), "owner/repo", status)
+
+	require.Len(t, items, 1)
+	require.Equal(t, "Fix external-ci failure", items[0].Title)
+	require.Equal(t, "External CI failed", items[0].Description)
+}
+
+func TestProcessStatusChecks_FallsBackForNoTargetURL(t *testing.T) {
+	processor := &FeedbackProcessor{
+		client: &github.GitHubClientMock{},
+	}
+
+	status := &github.PRStatus{
+		StatusChecks: []github.StatusCheck{
+			{
+				Context: "some-check",
+				State:   "FAILURE",
+			},
+		},
+	}
+
+	items := processor.processStatusChecks(context.Background(), "owner/repo", status)
+
+	require.Len(t, items, 1)
+	require.Equal(t, "Fix some-check failure", items[0].Title)
+	require.Contains(t, items[0].Description, "CI check 'some-check' failed with state: FAILURE")
 }
