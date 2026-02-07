@@ -1017,8 +1017,8 @@ func TestHasMatchingWorkflowRun(t *testing.T) {
 		{"matches composite for Build workflow", "Build / compile", true},
 		{"no match", "security-scan", false},
 		{"partial match is not a match", "lin", false},
-		{"composite with matching workflow part", "CI / deploy", true}, // CI workflow exists
-		{"composite with non-matching workflow", "Deploy / lint", true}, // lint job exists
+		{"composite with matching workflow part only", "CI / deploy", false},   // CI workflow exists but no deploy job in CI
+		{"composite with matching job part only", "Deploy / lint", false},    // lint job exists but no Deploy workflow
 	}
 
 	for _, tt := range tests {

@@ -182,17 +182,8 @@ func (p *FeedbackProcessor) hasMatchingWorkflowRun(checkName string, workflows [
 
 			// Match composite format: "workflow / job" in check name
 			// e.g., check "CI / lint" matches workflow "CI" with job "lint"
-			if len(checkParts) >= 2 {
-				for _, part := range checkParts {
-					if part == jobNameLower || part == wfNameLower {
-						return true
-					}
-				}
-			}
-
-			// Match if check name contains "workflow / job" pattern
-			composite := wfNameLower + " / " + jobNameLower
-			if checkLower == composite {
+			// Both parts must match the SAME workflow: workflow name AND job name
+			if len(checkParts) == 2 && checkParts[0] == wfNameLower && checkParts[1] == jobNameLower {
 				return true
 			}
 		}
