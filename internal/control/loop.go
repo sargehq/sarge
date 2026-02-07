@@ -2,6 +2,7 @@ package control
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"time"
@@ -13,6 +14,10 @@ import (
 	"github.com/sargehq/sarge/internal/project"
 	trackingwatcher "github.com/sargehq/sarge/internal/tracking/watcher"
 )
+
+// ErrBinaryChanged is returned when the executable has been replaced on disk.
+// Callers should handle this by re-execing the new binary via syscall.Exec.
+var ErrBinaryChanged = errors.New("executable binary changed")
 
 // RunControlPlaneLoop runs the main control plane event loop with default dependencies.
 func RunControlPlaneLoop(ctx context.Context, proj *project.Project, procManager *procmon.Manager) error {
@@ -138,11 +143,11 @@ func RunControlPlaneLoopWithControlPlane(ctx context.Context, proj *project.Proj
 				} else if result.Changed {
 					logging.Info("Executable has changed, initiating graceful shutdown",
 						"reason", result.Reason, "path", exeWatcher.Path())
-					fmt.Printf("\nDetected new sarge binary (%s). Shutting down for restart...\n", result.Reason)
+					fmt.Printf("\nDetected new sarge binary (%s). Restarting...\n", result.Reason)
 					if runningCount := asyncExecutor.RunningCount(); runningCount > 0 {
 						fmt.Printf("Waiting for %d async task(s) to complete...\n", runningCount)
 					}
-					return nil
+					return ErrBinaryChanged
 				}
 			}
 			exeCheckTimer.Reset(exeCheckInterval)

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"syscall"
 	"time"
 
 	"github.com/sargehq/sarge/internal/agents"
@@ -163,8 +164,17 @@ func runOrchestrate(cmd *cobra.Command, args []string) error {
 			if checkErr != nil {
 				fmt.Printf("Warning: failed to check executable for changes: %v\n", checkErr)
 			} else if result.Changed {
-				fmt.Printf("\nDetected new sarge binary (%s). Shutting down for restart...\n", result.Reason)
-				return nil
+				fmt.Printf("\nDetected new sarge binary (%s). Restarting...\n", result.Reason)
+				// Re-exec the new binary to pick up the update.
+				exePath, execErr := os.Executable()
+				if execErr != nil {
+					return fmt.Errorf("failed to resolve executable for restart: %w", execErr)
+				}
+				fmt.Printf("Re-executing: %s\n", exePath)
+				// Close resources before exec
+				proj.Close()
+				procManager.Stop()
+				return syscall.Exec(exePath, os.Args, os.Environ())
 			}
 		}
 

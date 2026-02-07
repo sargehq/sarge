@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"syscall"
 
 	"github.com/sargehq/sarge/internal/control"
 	"github.com/sargehq/sarge/internal/db"
@@ -72,5 +74,19 @@ func runControlPlane(cmd *cobra.Command, args []string) error {
 	fmt.Println("Watching for scheduled tasks across all works...")
 
 	// Start the control plane loop
-	return control.RunControlPlaneLoop(ctx, proj, procManager)
+	err = control.RunControlPlaneLoop(ctx, proj, procManager)
+	if errors.Is(err, control.ErrBinaryChanged) {
+		// Re-exec the new binary to pick up the update.
+		// Resolve the path fresh — the binary on disk is the new one.
+		exePath, execErr := os.Executable()
+		if execErr != nil {
+			return fmt.Errorf("failed to resolve executable for restart: %w", execErr)
+		}
+		fmt.Printf("Re-executing: %s\n", exePath)
+		// Close project DB before exec so the new process gets a clean connection
+		proj.Close()
+		procManager.Stop()
+		return syscall.Exec(exePath, os.Args, os.Environ())
+	}
+	return err
 }
