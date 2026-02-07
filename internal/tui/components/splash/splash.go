@@ -1,11 +1,15 @@
 package splash
 
 import (
+	_ "embed"
 	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 )
+
+//go:embed logo.txt
+var splashArt string
 
 // Config holds all parameters the splash screen needs from its caller.
 // The caller fills this from the theme and tool availability checks.
@@ -26,18 +30,6 @@ type Config struct {
 	// Platform for install instructions
 	Platform Platform
 }
-
-// DOS Rebel font ASCII art for "sarge"
-const splashArt = `
-  █████   ██████   ████████   ███████  ██████ 
- ███░░   ░░░░░███ ░░███░░███ ███░░███ ███░░███
-░░█████   ███████  ░███ ░░░ ░███ ░███░███████ 
- ░░░░███ ███░░███  ░███     ░███ ░███░███░░░  
- ██████ ░░████████ █████    ░░███████░░██████ 
-░░░░░░   ░░░░░░░░ ░░░░░      ░░░░░███ ░░░░░░  
-                             ███ ░███         
-                            ░░██████          
-                             ░░░░░░           `
 
 // hintItem represents a single hint on the splash screen.
 type hintItem struct {
