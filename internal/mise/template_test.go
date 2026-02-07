@@ -9,6 +9,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// readMiseConfig reads the .mise.toml file from the given directory.
+// This helper avoids gosec G304 warnings in tests since the path is constructed from t.TempDir().
+func readMiseConfig(t *testing.T, dir string) []byte {
+	t.Helper()
+	content, err := os.ReadFile(filepath.Join(dir, ".mise.toml")) //nolint:gosec // path constructed from t.TempDir()
+	require.NoError(t, err)
+	return content
+}
+
 func TestGenerateConfigWithSelections_DefaultSelections(t *testing.T) {
 	dir := t.TempDir()
 	sel := DefaultToolSelections()
@@ -16,8 +25,7 @@ func TestGenerateConfigWithSelections_DefaultSelections(t *testing.T) {
 	err := GenerateConfigWithSelections(dir, sel)
 	require.NoError(t, err)
 
-	content, err := os.ReadFile(filepath.Join(dir, ".mise.toml"))
-	require.NoError(t, err)
+	content := readMiseConfig(t, dir)
 
 	s := string(content)
 	assert.Contains(t, s, "claude = \"latest\"")
@@ -37,8 +45,7 @@ func TestGenerateConfigWithSelections_AgentNone(t *testing.T) {
 	err := GenerateConfigWithSelections(dir, sel)
 	require.NoError(t, err)
 
-	content, err := os.ReadFile(filepath.Join(dir, ".mise.toml"))
-	require.NoError(t, err)
+	content := readMiseConfig(t, dir)
 
 	s := string(content)
 	assert.NotContains(t, s, "claude")
@@ -58,8 +65,7 @@ func TestGenerateConfigWithSelections_AgentPi(t *testing.T) {
 	err := GenerateConfigWithSelections(dir, sel)
 	require.NoError(t, err)
 
-	content, err := os.ReadFile(filepath.Join(dir, ".mise.toml"))
-	require.NoError(t, err)
+	content := readMiseConfig(t, dir)
 
 	s := string(content)
 	assert.Contains(t, s, "pi-coding-agent")
@@ -77,8 +83,7 @@ func TestGenerateConfigWithSelections_NoGH(t *testing.T) {
 	err := GenerateConfigWithSelections(dir, sel)
 	require.NoError(t, err)
 
-	content, err := os.ReadFile(filepath.Join(dir, ".mise.toml"))
-	require.NoError(t, err)
+	content := readMiseConfig(t, dir)
 
 	s := string(content)
 	assert.Contains(t, s, "claude = \"latest\"")
@@ -97,8 +102,7 @@ func TestGenerateConfigWithSelections_NoZellij(t *testing.T) {
 	err := GenerateConfigWithSelections(dir, sel)
 	require.NoError(t, err)
 
-	content, err := os.ReadFile(filepath.Join(dir, ".mise.toml"))
-	require.NoError(t, err)
+	content := readMiseConfig(t, dir)
 
 	s := string(content)
 	assert.Contains(t, s, "claude = \"latest\"")
@@ -117,8 +121,7 @@ func TestGenerateConfigWithSelections_AllToolsDisabled(t *testing.T) {
 	err := GenerateConfigWithSelections(dir, sel)
 	require.NoError(t, err)
 
-	content, err := os.ReadFile(filepath.Join(dir, ".mise.toml"))
-	require.NoError(t, err)
+	content := readMiseConfig(t, dir)
 
 	s := string(content)
 	// Only beads should remain
@@ -142,8 +145,7 @@ func TestGenerateConfigWithSelections_SkipsExistingConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	// Should not have overwritten
-	content, err := os.ReadFile(filepath.Join(dir, ".mise.toml"))
-	require.NoError(t, err)
+	content := readMiseConfig(t, dir)
 	assert.Equal(t, existingContent, content)
 }
 
@@ -158,8 +160,7 @@ func TestGenerateConfigWithSelections_DefaultsEmptyAgentToClaude(t *testing.T) {
 	err := GenerateConfigWithSelections(dir, sel)
 	require.NoError(t, err)
 
-	content, err := os.ReadFile(filepath.Join(dir, ".mise.toml"))
-	require.NoError(t, err)
+	content := readMiseConfig(t, dir)
 
 	assert.Contains(t, string(content), "claude = \"latest\"")
 }

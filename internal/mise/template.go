@@ -61,11 +61,7 @@ func GenerateConfigWithSelections(dir string, selections ToolSelections) error {
 		selections.AgentType = "claude"
 	}
 
-	data := miseTemplateData{
-		AgentType:     selections.AgentType,
-		IncludeGH:     selections.IncludeGH,
-		IncludeZellij: selections.IncludeZellij,
-	}
+	data := miseTemplateData(selections)
 
 	var buf bytes.Buffer
 	if err := miseTemplate.Execute(&buf, data); err != nil {
