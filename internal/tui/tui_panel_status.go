@@ -42,6 +42,9 @@ type StatusBar struct {
 	// Zone prefix for unique zone IDs
 	zonePrefix string
 
+	// Version string
+	version string
+
 	// Data providers (set by coordinator)
 	getBeadItems            func() []beadItem
 	getBeadsCursor          func() int
@@ -55,7 +58,7 @@ type StatusBar struct {
 func NewStatusBar() *StatusBar {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
+	s.Style = lipgloss.NewStyle().Foreground(CurrentTheme().Accent)
 
 	return &StatusBar{
 		width:      80,
@@ -111,6 +114,11 @@ func (s *StatusBar) SetLastUpdate(t time.Time) {
 // SetHoveredButton updates which button is hovered
 func (s *StatusBar) SetHoveredButton(button string) {
 	s.hoveredButton = button
+}
+
+// SetVersion sets the version string to display
+func (s *StatusBar) SetVersion(v string) {
+	s.version = v
 }
 
 // SetContext updates the status bar context (which panel's commands to show)
@@ -169,7 +177,11 @@ func (s *StatusBar) Render() string {
 		statusPlain = "Loading..."
 		status = s.spinner.View() + " Loading..."
 	} else {
-		statusPlain = fmt.Sprintf("Updated: %s", s.lastUpdate.Format("15:04:05"))
+		if s.version != "" {
+			statusPlain = fmt.Sprintf("%s · Updated: %s", s.version, s.lastUpdate.Format("15:04:05"))
+		} else {
+			statusPlain = fmt.Sprintf("Updated: %s", s.lastUpdate.Format("15:04:05"))
+		}
 		status = tuiDimStyle().Render(statusPlain)
 	}
 

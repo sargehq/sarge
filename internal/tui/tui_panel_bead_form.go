@@ -546,7 +546,7 @@ func (p *BeadFormPanel) RenderWithPanel(contentHeight int) string {
 
 	panelStyle := tuiPanelStyle().Width(p.width).Height(contentHeight - 2)
 	if p.focused {
-		panelStyle = panelStyle.BorderForeground(lipgloss.Color("214"))
+		panelStyle = panelStyle.BorderForeground(CurrentTheme().Accent)
 	}
 
 	// Determine title based on mode

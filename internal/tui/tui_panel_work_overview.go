@@ -251,7 +251,7 @@ func (p *WorkOverviewPanel) Render(panelHeight, panelWidth int) string {
 	// Work header (1 line)
 	workHeader := fmt.Sprintf("%s %s", statusIcon(p.focusedWork.Work.Status), p.focusedWork.Work.ID)
 	if p.focusedWork.Work.Name != "" {
-		nameStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("81"))
+		nameStyle := lipgloss.NewStyle().Foreground(CurrentTheme().Cyan)
 		// Calculate available space for name
 		maxNameLen := contentWidth - 4 - len(p.focusedWork.Work.ID)
 
@@ -276,7 +276,7 @@ func (p *WorkOverviewPanel) Render(panelHeight, panelWidth int) string {
 
 		// Add time string at the end
 		if timeStr != "" {
-			timeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+			timeStyle := lipgloss.NewStyle().Foreground(CurrentTheme().HoverBg)
 			workHeader += timeStyle.Render(timeStr)
 		}
 	} else {
@@ -292,7 +292,7 @@ func (p *WorkOverviewPanel) Render(panelHeight, panelWidth int) string {
 				days := int(timeAgo.Hours() / 24)
 				timeStr = fmt.Sprintf(" (%dd ago)", days)
 			}
-			timeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+			timeStyle := lipgloss.NewStyle().Foreground(CurrentTheme().HoverBg)
 			workHeader += timeStyle.Render(timeStr)
 		}
 	}
@@ -318,13 +318,13 @@ func (p *WorkOverviewPanel) Render(panelHeight, panelWidth int) string {
 	// Progress percentage
 	progressStyle := lipgloss.NewStyle().Bold(true)
 	if percentage == 100 {
-		progressStyle = progressStyle.Foreground(lipgloss.Color("82"))
+		progressStyle = progressStyle.Foreground(CurrentTheme().ProgressFull)
 	} else if percentage >= 75 {
-		progressStyle = progressStyle.Foreground(lipgloss.Color("226"))
+		progressStyle = progressStyle.Foreground(CurrentTheme().ProgressHigh)
 	} else if percentage >= 50 {
-		progressStyle = progressStyle.Foreground(lipgloss.Color("214"))
+		progressStyle = progressStyle.Foreground(CurrentTheme().ProgressMedium)
 	} else {
-		progressStyle = progressStyle.Foreground(lipgloss.Color("247"))
+		progressStyle = progressStyle.Foreground(CurrentTheme().ProgressLow)
 	}
 	progressLine.WriteString("Progress: ")
 	progressLine.WriteString(progressStyle.Render(fmt.Sprintf("%d%%", percentage)))
@@ -332,12 +332,12 @@ func (p *WorkOverviewPanel) Render(panelHeight, panelWidth int) string {
 
 	// Warning badges
 	if p.focusedWork.UnassignedBeadCount > 0 {
-		warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
+		warningStyle := lipgloss.NewStyle().Foreground(CurrentTheme().Warning)
 		progressLine.WriteString("  ")
 		progressLine.WriteString(warningStyle.Render(fmt.Sprintf("⚠ %d unassigned", p.focusedWork.UnassignedBeadCount)))
 	}
 	if p.focusedWork.FeedbackCount > 0 {
-		alertStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
+		alertStyle := lipgloss.NewStyle().Foreground(CurrentTheme().Error)
 		progressLine.WriteString("  ")
 		progressLine.WriteString(alertStyle.Render("feedback"))
 	}
@@ -356,10 +356,10 @@ func (p *WorkOverviewPanel) Render(panelHeight, panelWidth int) string {
 	headerLines := 4
 	if p.focusedWork.Work.Status == db.StatusProcessing || hasActiveTask {
 		if p.orchestratorHealthy {
-			healthStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
+			healthStyle := lipgloss.NewStyle().Foreground(CurrentTheme().HealthGood)
 			content.WriteString(healthStyle.Render("✓ Orchestrator running"))
 		} else {
-			healthStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
+			healthStyle := lipgloss.NewStyle().Foreground(CurrentTheme().HealthBad)
 			content.WriteString(healthStyle.Render("✗ Orchestrator dead [o] restart"))
 		}
 		content.WriteString("\n")
@@ -448,7 +448,7 @@ func (p *WorkOverviewPanel) renderRootIssueLine(panelWidth int) string {
 		issueIcon = "◆"
 	} else {
 		// Styled icon for normal display
-		issueIcon = lipgloss.NewStyle().Foreground(lipgloss.Color("81")).Render("◆")
+		issueIcon = lipgloss.NewStyle().Foreground(CurrentTheme().Cyan).Render("◆")
 	}
 
 	// Build text portion (ID and title)
@@ -467,7 +467,7 @@ func (p *WorkOverviewPanel) renderRootIssueLine(panelWidth int) string {
 		content.WriteString(tuiSelectedStyle().Render(issueIcon + " " + textPortion))
 	} else if isHovered {
 		// Orange text for hover on icon + text
-		hoverStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
+		hoverStyle := lipgloss.NewStyle().Foreground(CurrentTheme().Accent)
 		content.WriteString(hoverStyle.Render(issueIcon + " " + textPortion))
 	} else {
 		// Normal: styled icon + dim text
@@ -527,7 +527,7 @@ func (p *WorkOverviewPanel) renderTaskLine(taskIdx int, _ int) string {
 		content.WriteString(tuiSelectedStyle().Render(textContent))
 	} else if isHovered {
 		// Orange text for hover on entire line
-		hoverStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
+		hoverStyle := lipgloss.NewStyle().Foreground(CurrentTheme().Accent)
 		textContent := fmt.Sprintf("%s %s [%s]", statusStr, task.Task.ID, taskType)
 		content.WriteString(hoverStyle.Render(textContent))
 	} else {
@@ -535,13 +535,13 @@ func (p *WorkOverviewPanel) renderTaskLine(taskIdx int, _ int) string {
 		var statusStyle lipgloss.Style
 		switch task.Task.Status {
 		case db.StatusCompleted:
-			statusStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("82"))
+			statusStyle = lipgloss.NewStyle().Foreground(CurrentTheme().StatusCompleted)
 		case db.StatusProcessing:
-			statusStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
+			statusStyle = lipgloss.NewStyle().Foreground(CurrentTheme().StatusProcessing)
 		case db.StatusFailed:
-			statusStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
+			statusStyle = lipgloss.NewStyle().Foreground(CurrentTheme().StatusFailed)
 		default:
-			statusStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("247"))
+			statusStyle = lipgloss.NewStyle().Foreground(CurrentTheme().StatusIdle)
 		}
 		content.WriteString(statusStyle.Render(statusStr))
 		content.WriteString(" ")
@@ -586,11 +586,11 @@ func (p *WorkOverviewPanel) renderUnassignedBeadLine(beadIdx, panelWidth int) st
 		content.WriteString(tuiSelectedStyle().Render("○ " + textPortion))
 	} else if isHovered {
 		// Orange text for hover on icon + text
-		hoverStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
+		hoverStyle := lipgloss.NewStyle().Foreground(CurrentTheme().Accent)
 		content.WriteString(hoverStyle.Render("○ " + textPortion))
 	} else {
 		// Normal: orange icon for unassigned + dim text
-		beadIcon := lipgloss.NewStyle().Foreground(lipgloss.Color("214")).Render("○")
+		beadIcon := lipgloss.NewStyle().Foreground(CurrentTheme().Warning).Render("○")
 		content.WriteString(beadIcon + " ")
 		content.WriteString(tuiDimStyle().Render(textPortion))
 	}

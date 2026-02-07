@@ -18,19 +18,6 @@ const splashArt = `
                             ░░██████          
                              ░░░░░░           `
 
-// Warm gradient palette for the splash art
-var splashGradient = []lipgloss.Color{
-	lipgloss.Color("#FF6B6B"),
-	lipgloss.Color("#FF8E53"),
-	lipgloss.Color("#FFA07A"),
-	lipgloss.Color("#FFB347"),
-	lipgloss.Color("#FFC93C"),
-	lipgloss.Color("#FFD700"),
-	lipgloss.Color("#FFDF00"),
-	lipgloss.Color("#FFE44D"),
-	lipgloss.Color("#FFEC80"),
-}
-
 // renderGradientText applies a gradient color to each line of text
 func renderGradientText(text string, colors []lipgloss.Color) string {
 	lines := strings.Split(text, "\n")
@@ -52,8 +39,8 @@ func renderGradientText(text string, colors []lipgloss.Color) string {
 
 // renderSplash renders the splash/welcome screen centered in the given dimensions
 func renderSplash(width, height int) string {
-	// Render the gradient ASCII art
-	art := renderGradientText(strings.TrimLeft(splashArt, "\n"), splashGradient)
+	// Render the gradient ASCII art using theme colors
+	art := renderGradientText(strings.TrimLeft(splashArt, "\n"), CurrentTheme().SplashGradient)
 
 	// Getting-started hints
 	hints := "\n\n" + styleHotkeys("[n] Create issue  [i] Import from Linear  [I] Import from PR  [?] Help")
@@ -67,7 +54,8 @@ func renderSplash(width, height int) string {
 // shouldShowSplash returns true when the splash screen should be shown:
 // no issues, no works, not loading, and initial data fetch completed
 func (m *planModel) shouldShowSplash() bool {
-	return len(m.beadItems) == 0 &&
+	return m.viewMode == ViewNormal &&
+		len(m.beadItems) == 0 &&
 		len(m.workTiles) == 0 &&
 		!m.loading &&
 		!m.lastUpdate.IsZero()

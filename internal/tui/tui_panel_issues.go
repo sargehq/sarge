@@ -165,7 +165,7 @@ func (p *IssuesPanel) RenderWithPanel(contentHeight int) string {
 
 	panelStyle := tuiPanelStyle().Width(p.width).Height(contentHeight - 2)
 	if p.focused {
-		panelStyle = panelStyle.BorderForeground(lipgloss.Color("214"))
+		panelStyle = panelStyle.BorderForeground(CurrentTheme().Accent)
 	}
 
 	result := panelStyle.Render(tuiTitleStyle().Render("Issues") + "\n" + issuesContent)
@@ -387,8 +387,8 @@ func (p *IssuesPanel) renderBeadLine(i int, bead beadItem) string {
 			if _, isNew := p.newBeads[bead.ID]; isNew {
 				newSelectedStyle := lipgloss.NewStyle().
 					Bold(true).
-					Foreground(lipgloss.Color("0")).
-					Background(lipgloss.Color("226"))
+					Foreground(CurrentTheme().Black).
+					Background(CurrentTheme().NewBeadSelectedBg)
 				return newSelectedStyle.Render(plainLine)
 			}
 			return tuiSelectedStyle().Render(plainLine)
@@ -397,14 +397,14 @@ func (p *IssuesPanel) renderBeadLine(i int, bead beadItem) string {
 		// Hover style
 		if _, isNew := p.newBeads[bead.ID]; isNew {
 			newHoverStyle := lipgloss.NewStyle().
-				Foreground(lipgloss.Color("0")).
-				Background(lipgloss.Color("228")).
+				Foreground(CurrentTheme().Black).
+				Background(CurrentTheme().NewBeadHoverBg).
 				Bold(true)
 			return newHoverStyle.Render(plainLine)
 		}
 		hoverStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color("255")).
-			Background(lipgloss.Color("240")).
+			Foreground(CurrentTheme().Text).
+			Background(CurrentTheme().HoverBg).
 			Bold(true)
 		return hoverStyle.Render(plainLine)
 	}

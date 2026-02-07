@@ -108,10 +108,10 @@ type planModel struct {
 }
 
 // newPlanModel creates a new Plan Mode model
-func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
+func newPlanModel(ctx context.Context, proj *project.Project, version string) *planModel {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
+	s.Style = lipgloss.NewStyle().Foreground(CurrentTheme().Accent)
 
 	ti := textinput.New()
 	ti.Placeholder = "Search..."
@@ -184,6 +184,8 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 	m.prImportPanel = NewPRImportPanel()
 	m.beadFormPanel = NewBeadFormPanel()
 	m.createWorkPanel = NewCreateWorkPanel()
+
+	m.statusBar.SetVersion(version)
 
 	// Set up status bar data providers
 	m.statusBar.SetDataProviders(
@@ -1720,12 +1722,9 @@ func (m *planModel) View() string {
 		return m.renderHelp()
 	}
 
-	// Show splash screen when project is empty
+	// Show splash screen when project is empty (no status bar — splash has its own hints)
 	if m.shouldShowSplash() {
-		m.syncPanels()
-		statusBar := m.statusBar.Render()
-		splash := renderSplash(m.width, m.height-lipgloss.Height(statusBar))
-		return lipgloss.JoinVertical(lipgloss.Left, splash, statusBar)
+		return renderSplash(m.width, m.height)
 	}
 
 	// Render work tabs bar (always visible)

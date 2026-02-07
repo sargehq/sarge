@@ -51,7 +51,7 @@ type WorkTabsBar struct {
 func NewWorkTabsBar() *WorkTabsBar {
 	s := spinner.New()
 	s.Spinner = spinner.MiniDot
-	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
+	s.Style = lipgloss.NewStyle().Foreground(CurrentTheme().Accent)
 
 	return &WorkTabsBar{
 		width:              80,
@@ -144,13 +144,13 @@ func (b *WorkTabsBar) getWorkState(work *progress.WorkProgress) WorkState {
 // Render renders the tab bar with zellij-like styling
 func (b *WorkTabsBar) Render() string {
 	// Colors
-	barBg := lipgloss.Color("235")      // Dark background
-	ribbonBg := lipgloss.Color("29")    // Teal for ribbon
-	ribbonFg := lipgloss.Color("15")    // White text
-	inactiveBg := lipgloss.Color("240") // Gray for inactive
-	inactiveFg := lipgloss.Color("255") // Light text
-	activeBg := lipgloss.Color("214")   // Orange for active
-	activeFg := lipgloss.Color("232")   // Dark text
+	barBg := CurrentTheme().SurfaceTabBar
+	ribbonBg := CurrentTheme().Ribbon
+	ribbonFg := CurrentTheme().RibbonText
+	inactiveBg := CurrentTheme().TabInactiveBg
+	inactiveFg := CurrentTheme().TabInactiveFg
+	activeBg := CurrentTheme().TabActiveBg
+	activeFg := CurrentTheme().TabActiveFg
 
 	// Zellij-style: uses right-pointing triangle on both sides
 	triangle := "\ue0b0" // U+E0B0 - right-pointing solid triangle
@@ -240,7 +240,7 @@ func (b *WorkTabsBar) Render() string {
 		// Add pending work indicator (orange warning for feedback or unassigned beads)
 		if work.FeedbackCount > 0 || work.UnassignedBeadCount > 0 {
 			badgeStyle := lipgloss.NewStyle().
-				Foreground(lipgloss.Color("214")). // Orange for pending work
+				Foreground(CurrentTheme().Warning). // Orange for pending work
 				Background(tabBg)
 			tabBuilder += badgeStyle.Render(" \uf071") // nf-fa-exclamation_triangle
 		}
@@ -248,7 +248,7 @@ func (b *WorkTabsBar) Render() string {
 		// Add unseen PR changes indicator (colored dot)
 		if work.HasUnseenPRChanges {
 			badgeStyle := lipgloss.NewStyle().
-				Foreground(lipgloss.Color("81")). // Cyan dot for new changes
+				Foreground(CurrentTheme().Cyan). // Cyan dot for new changes
 				Background(tabBg)
 			tabBuilder += badgeStyle.Render(" ●")
 		}

@@ -69,6 +69,9 @@ type Theme struct {
 	ProgressMedium lipgloss.Color
 	ProgressLow    lipgloss.Color
 
+	// Splash gradient (top to bottom)
+	SplashGradient []lipgloss.Color
+
 	// Utility
 	Black lipgloss.Color // Black text for inverted backgrounds
 }
@@ -128,6 +131,18 @@ var defaultTheme = Theme{
 	ProgressHigh:   lipgloss.Color("226"),
 	ProgressMedium: lipgloss.Color("214"),
 	ProgressLow:    lipgloss.Color("247"),
+
+	SplashGradient: []lipgloss.Color{
+		lipgloss.Color("#FF6B6B"),
+		lipgloss.Color("#FF8E53"),
+		lipgloss.Color("#FFA07A"),
+		lipgloss.Color("#FFB347"),
+		lipgloss.Color("#FFC93C"),
+		lipgloss.Color("#FFD700"),
+		lipgloss.Color("#FFDF00"),
+		lipgloss.Color("#FFE44D"),
+		lipgloss.Color("#FFEC80"),
+	},
 
 	Black: lipgloss.Color("0"),
 }

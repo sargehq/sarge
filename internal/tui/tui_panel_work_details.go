@@ -309,7 +309,7 @@ func (p *WorkDetailsPanel) RenderWithPanel(contentHeight int) string {
 	// IssuesPanel uses: Height(contentHeight - 2)
 	leftPanelStyle := tuiPanelStyle().Width(leftWidth).Height(contentHeight - 2)
 	if p.leftPanelFocused {
-		leftPanelStyle = leftPanelStyle.BorderForeground(lipgloss.Color("214"))
+		leftPanelStyle = leftPanelStyle.BorderForeground(CurrentTheme().Accent)
 	}
 
 	leftPanel := leftPanelStyle.Render(tuiTitleStyle().Render("Work") + "\n" + leftContent)
@@ -317,7 +317,7 @@ func (p *WorkDetailsPanel) RenderWithPanel(contentHeight int) string {
 	// Right panel uses its own height setting
 	rightPanelStyle := tuiPanelStyle().Width(rightWidth).Height(contentHeight - 2)
 	if p.rightPanelFocused {
-		rightPanelStyle = rightPanelStyle.BorderForeground(lipgloss.Color("214"))
+		rightPanelStyle = rightPanelStyle.BorderForeground(CurrentTheme().Accent)
 	}
 
 	rightPanel := rightPanelStyle.Render(tuiTitleStyle().Render("Details") + "\n" + rightContent)

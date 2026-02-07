@@ -176,7 +176,7 @@ func (p *WorkTaskPanel) renderTaskDetails(panelWidth int) string {
 
 	// Show error if failed
 	if task.Task.Status == db.StatusFailed && task.Task.ErrorMessage != "" {
-		errorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
+		errorStyle := lipgloss.NewStyle().Foreground(CurrentTheme().Error)
 		content.WriteString("\n")
 		content.WriteString(errorStyle.Render("Error:"))
 		content.WriteString("\n")
@@ -199,7 +199,7 @@ func (p *WorkTaskPanel) renderUnassignedBeadDetails(panelWidth int) string {
 	contentWidth := panelWidth - 2
 
 	// Header with warning style and action hint
-	warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
+	warningStyle := lipgloss.NewStyle().Foreground(CurrentTheme().Warning)
 	content.WriteString(warningStyle.Render("Unassigned Issue"))
 	content.WriteString(" ")
 	content.WriteString(tuiDimStyle().Render("[p] plan [r] run"))

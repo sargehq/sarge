@@ -129,7 +129,7 @@ func (p *IssueDetailsPanel) RenderWithPanel(contentHeight int) string {
 
 	panelStyle := tuiPanelStyle().Width(p.width).Height(contentHeight - 2)
 	if p.focused {
-		panelStyle = panelStyle.BorderForeground(lipgloss.Color("214"))
+		panelStyle = panelStyle.BorderForeground(CurrentTheme().Accent)
 	}
 
 	return panelStyle.Render(tuiTitleStyle().Render("Details") + "\n" + detailsContent)

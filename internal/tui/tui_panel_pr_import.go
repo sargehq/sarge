@@ -290,7 +290,7 @@ func formatPRState(state string) string {
 	case "CLOSED":
 		return tuiErrorStyle().Render("CLOSED")
 	case "MERGED":
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("141")).Render("MERGED")
+		return lipgloss.NewStyle().Foreground(CurrentTheme().Merged).Render("MERGED")
 	default:
 		return state
 	}
@@ -302,7 +302,7 @@ func (p *PRImportPanel) RenderWithPanel(contentHeight int) string {
 
 	panelStyle := tuiPanelStyle().Width(p.width).Height(contentHeight - 2)
 	if p.focused {
-		panelStyle = panelStyle.BorderForeground(lipgloss.Color("214"))
+		panelStyle = panelStyle.BorderForeground(CurrentTheme().Accent)
 	}
 
 	result := panelStyle.Render(tuiTitleStyle().Render("Import PR") + "\n" + panelContent)
