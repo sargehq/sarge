@@ -4,8 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 
+	"github.com/charmbracelet/huh"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/sargehq/sarge/internal/mise"
 	"github.com/sargehq/sarge/internal/project"
 	"github.com/sargehq/sarge/internal/worktree"
 	"github.com/spf13/cobra"
@@ -71,7 +75,10 @@ func runProjCreate(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Creating project at %s from %s...\n", dir, repo)
 
-	proj, err := project.Create(ctx, dir, repo)
+	// Interactive tool selection
+	agentType, selections := promptToolSelections()
+
+	proj, err := project.CreateWithSelections(ctx, dir, repo, agentType, selections)
 	if err != nil {
 		return fmt.Errorf("failed to create project: %w", err)
 	}
@@ -84,6 +91,141 @@ func runProjCreate(cmd *cobra.Command, args []string) error {
 	fmt.Printf("  Main repo: %s\n", proj.MainRepoPath())
 
 	return nil
+}
+
+// isCommandAvailable checks if a command is available on the system PATH.
+func isCommandAvailable(name string) bool {
+	_, err := exec.LookPath(name)
+	return err == nil
+}
+
+// promptToolSelections interactively asks the user which tools to include.
+// It uses charmbracelet/huh for a polished interactive UI.
+// It detects already-installed tools and adjusts defaults accordingly.
+// Returns the agent type (for project config) and mise tool selections separately.
+func promptToolSelections() (agentType string, selections mise.ToolSelections) {
+	selections = mise.DefaultToolSelections()
+
+	// Styled header
+	headerStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("212"))
+
+	fmt.Println()
+	fmt.Println(headerStyle.Render("🔧 Tool Configuration"))
+	fmt.Println("Configure which tools to use for this project.")
+	fmt.Println(lipgloss.NewStyle().Faint(true).Render("(beads is always included in mise — required for sarge)"))
+	fmt.Println()
+
+	// Detect installed tools and report
+	hasClaude := isCommandAvailable("claude")
+	hasPi := isCommandAvailable("pi")
+	hasGH := isCommandAvailable("gh")
+	hasZellij := isCommandAvailable("zellij")
+
+	detected := []string{}
+	if hasClaude {
+		detected = append(detected, "claude")
+	}
+	if hasPi {
+		detected = append(detected, "pi")
+	}
+	if hasGH {
+		detected = append(detected, "gh")
+	}
+	if hasZellij {
+		detected = append(detected, "zellij")
+	}
+	if len(detected) > 0 {
+		detectedStyle := lipgloss.NewStyle().
+			Faint(true).
+			Italic(true)
+		fmt.Println(detectedStyle.Render(fmt.Sprintf("Detected on PATH: %s", strings.Join(detected, ", "))))
+		fmt.Println()
+	}
+
+	// Agent type selection - default to what's detected
+	agentType = "claude"
+	if hasPi && !hasClaude {
+		agentType = "pi"
+	}
+
+	agentOptions := []huh.Option[string]{
+		huh.NewOption("Claude — Anthropic's coding agent", "claude"),
+		huh.NewOption("Pi — pi coding agent", "pi"),
+		huh.NewOption("None — no coding agent", "none"),
+	}
+
+	// Agent mise inclusion - default to no if already on PATH
+	var includeAgentInMise bool
+	agentMiseDefault := (!hasClaude || agentType != "claude") && (!hasPi || agentType != "pi")
+
+	// GitHub CLI description varies based on detection
+	ghDescription := "Include gh (GitHub CLI) in mise?"
+	ghDefault := true
+	if hasGH {
+		ghDescription = "gh (GitHub CLI) is already installed. Include in mise anyway?"
+		ghDefault = false
+	}
+
+	// Zellij description varies based on detection
+	zellijDescription := "Include zellij (terminal multiplexer) in mise?"
+	zellijDefault := true
+	if hasZellij {
+		zellijDescription = "zellij is already installed. Include in mise anyway?"
+		zellijDefault = false
+	}
+
+	var includeGH, includeZellij bool
+
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("Coding Agent").
+				Description("Which coding agent would you like to use?").
+				Options(agentOptions...).
+				Value(&agentType),
+
+			huh.NewConfirm().
+				Title("Include coding agent in mise?").
+				Description("Let mise manage the agent installation for this project.").
+				Value(&includeAgentInMise).
+				Affirmative("Yes").
+				Negative("No"),
+
+			huh.NewConfirm().
+				Title(ghDescription).
+				Value(&includeGH).
+				Affirmative("Yes").
+				Negative("No"),
+
+			huh.NewConfirm().
+				Title(zellijDescription).
+				Value(&includeZellij).
+				Affirmative("Yes").
+				Negative("No"),
+		),
+	).WithTheme(huh.ThemeCharm())
+
+	// Set defaults
+	includeAgentInMise = agentMiseDefault
+	includeGH = ghDefault
+	includeZellij = zellijDefault
+
+	err := form.Run()
+	if err != nil {
+		// If user cancelled (ctrl+c), use defaults
+		fmt.Println("\nUsing default selections.")
+		return "claude", mise.DefaultToolSelections()
+	}
+
+	selections.AgentType = agentType
+	selections.AgentInMise = includeAgentInMise && agentType != "none"
+	selections.IncludeGH = includeGH
+	selections.IncludeZellij = includeZellij
+
+	fmt.Println()
+	return agentType, selections
 }
 
 func runProjDestroy(cmd *cobra.Command, args []string) error {
