@@ -1011,8 +1011,14 @@ func TestHasMatchingWorkflowRun(t *testing.T) {
 		{"matches job name case-insensitive", "Lint", true},
 		{"matches another job", "test", true},
 		{"matches another workflow", "Build", true},
+		{"matches composite workflow/job format", "CI / lint", true},
+		{"matches composite format case-insensitive", "ci / LINT", true},
+		{"matches composite with different job", "CI / test", true},
+		{"matches composite for Build workflow", "Build / compile", true},
 		{"no match", "security-scan", false},
 		{"partial match is not a match", "lin", false},
+		{"composite with matching workflow part", "CI / deploy", true}, // CI workflow exists
+		{"composite with non-matching workflow", "Deploy / lint", true}, // lint job exists
 	}
 
 	for _, tt := range tests {
@@ -1053,6 +1059,41 @@ func TestProcessStatusChecks_DeduplicatesAgainstWorkflowRuns(t *testing.T) {
 	items := processor.processStatusChecks(context.Background(), "owner/repo", status)
 
 	// Only security-scan should appear; lint is deduplicated against the workflow run
+	require.Len(t, items, 1)
+	require.Equal(t, "Fix security-scan failure", items[0].Title)
+}
+
+func TestProcessStatusChecks_DeduplicatesCompositeCheckNames(t *testing.T) {
+	processor := &FeedbackProcessor{
+		client: &github.GitHubClientMock{},
+	}
+
+	// GitHub Actions often reports status checks as "Workflow / Job" format
+	status := &github.PRStatus{
+		StatusChecks: []github.StatusCheck{
+			{
+				Context: "CI / lint",
+				State:   "FAILURE",
+			},
+			{
+				Context: "security-scan",
+				State:   "FAILURE",
+			},
+		},
+		Workflows: []github.WorkflowRun{
+			{
+				Name:       "CI",
+				Conclusion: "failure",
+				Jobs: []github.Job{
+					{Name: "lint", Conclusion: "failure"},
+				},
+			},
+		},
+	}
+
+	items := processor.processStatusChecks(context.Background(), "owner/repo", status)
+
+	// Only security-scan should appear; "CI / lint" is deduplicated against workflow CI job lint
 	require.Len(t, items, 1)
 	require.Equal(t, "Fix security-scan failure", items[0].Title)
 }

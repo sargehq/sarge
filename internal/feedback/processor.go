@@ -148,15 +148,51 @@ func (p *FeedbackProcessor) processStatusChecks(ctx context.Context, repo string
 // hasMatchingWorkflowRun checks if a status check has a corresponding workflow run.
 // GitHub Actions report results as both status checks and workflow runs;
 // we prefer the workflow run path which produces richer feedback.
+//
+// GitHub Actions status checks use the Context format "Workflow Name / Job Name"
+// (e.g., "CI / lint"), so we match against:
+// 1. Exact workflow or job name
+// 2. The "workflow / job" composite format
+// 3. The check name containing the job name as a component (split on " / ")
 func (p *FeedbackProcessor) hasMatchingWorkflowRun(checkName string, workflows []github.WorkflowRun) bool {
-	checkLower := strings.ToLower(checkName)
+	checkLower := strings.ToLower(strings.TrimSpace(checkName))
+
+	// Split on " / " to handle GitHub Actions composite check names like "CI / lint"
+	checkParts := strings.Split(checkLower, " / ")
+	// Trim whitespace from each part
+	for i, part := range checkParts {
+		checkParts[i] = strings.TrimSpace(part)
+	}
+
 	for _, wf := range workflows {
-		// Match by workflow name or job name
-		if strings.ToLower(wf.Name) == checkLower {
+		wfNameLower := strings.ToLower(wf.Name)
+
+		// Exact match on workflow name
+		if wfNameLower == checkLower {
 			return true
 		}
+
 		for _, job := range wf.Jobs {
-			if strings.ToLower(job.Name) == checkLower {
+			jobNameLower := strings.ToLower(job.Name)
+
+			// Exact match on job name
+			if jobNameLower == checkLower {
+				return true
+			}
+
+			// Match composite format: "workflow / job" in check name
+			// e.g., check "CI / lint" matches workflow "CI" with job "lint"
+			if len(checkParts) >= 2 {
+				for _, part := range checkParts {
+					if part == jobNameLower || part == wfNameLower {
+						return true
+					}
+				}
+			}
+
+			// Match if check name contains "workflow / job" pattern
+			composite := wfNameLower + " / " + jobNameLower
+			if checkLower == composite {
 				return true
 			}
 		}
