@@ -16,25 +16,55 @@ var miseTemplate = template.Must(template.New("mise").Parse(miseTemplateText))
 
 // miseTemplateData holds the data used to render the mise config template.
 type miseTemplateData struct {
-	AgentType string
+	AgentType      string // "claude", "pi", or "none"
+	IncludeGH      bool   // whether to include GitHub CLI
+	IncludeZellij  bool   // whether to include zellij
+}
+
+// ToolSelections holds user choices about which tools to include in mise config.
+type ToolSelections struct {
+	AgentType     string // "claude", "pi", or "none"
+	IncludeGH     bool
+	IncludeZellij bool
+}
+
+// DefaultToolSelections returns the default tool selections (all tools included, claude agent).
+func DefaultToolSelections() ToolSelections {
+	return ToolSelections{
+		AgentType:     "claude",
+		IncludeGH:     true,
+		IncludeZellij: true,
+	}
 }
 
 // GenerateConfig creates a .mise.toml file in the given directory with sarge's required tools.
 // The agentType parameter selects which coding agent tool to include ("claude" or "pi").
 // Returns nil if a mise config already exists (doesn't overwrite).
 func GenerateConfig(dir string, agentType string) error {
+	selections := DefaultToolSelections()
+	if agentType != "" {
+		selections.AgentType = agentType
+	}
+	return GenerateConfigWithSelections(dir, selections)
+}
+
+// GenerateConfigWithSelections creates a .mise.toml file with the specified tool selections.
+// Returns nil if a mise config already exists (doesn't overwrite).
+func GenerateConfigWithSelections(dir string, selections ToolSelections) error {
 	// Check if any mise config already exists
 	if existingConfig := findConfigFile(dir); existingConfig != "" {
 		return nil // Skip generation - config already exists
 	}
 
 	// Default to claude if not specified
-	if agentType == "" {
-		agentType = "claude"
+	if selections.AgentType == "" {
+		selections.AgentType = "claude"
 	}
 
 	data := miseTemplateData{
-		AgentType: agentType,
+		AgentType:     selections.AgentType,
+		IncludeGH:     selections.IncludeGH,
+		IncludeZellij: selections.IncludeZellij,
 	}
 
 	var buf bytes.Buffer
