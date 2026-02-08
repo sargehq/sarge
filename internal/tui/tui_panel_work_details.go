@@ -12,7 +12,7 @@ type WorkDetailAction int
 const (
 	WorkDetailActionNone                WorkDetailAction = iota
 	WorkDetailActionOpenTerminal                         // Open terminal/console (t)
-	WorkDetailActionOpenClaude                           // Open Claude session (c)
+	WorkDetailActionOpenAgent                            // Open agent session (c)
 	WorkDetailActionOpenIDE                              // Open worktree in IDE (i)
 	WorkDetailActionRun                                  // Run work (r)
 	WorkDetailActionReview                               // Create review task (v)
@@ -378,7 +378,7 @@ func (p *WorkDetailsPanel) Update(msg tea.KeyMsg) (tea.Cmd, WorkDetailAction) {
 		case "t":
 			return cmd, WorkDetailActionOpenTerminal
 		case "c":
-			return cmd, WorkDetailActionOpenClaude
+			return cmd, WorkDetailActionOpenAgent
 		case "i":
 			return cmd, WorkDetailActionOpenIDE
 		case "r":
@@ -427,7 +427,7 @@ func (p *WorkDetailsPanel) Update(msg tea.KeyMsg) (tea.Cmd, WorkDetailAction) {
 	case "t":
 		return nil, WorkDetailActionOpenTerminal
 	case "c":
-		return nil, WorkDetailActionOpenClaude
+		return nil, WorkDetailActionOpenAgent
 	case "i":
 		return nil, WorkDetailActionOpenIDE
 	case "r":

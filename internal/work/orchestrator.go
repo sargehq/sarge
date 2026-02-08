@@ -35,8 +35,8 @@ type OrchestratorManager interface {
 	// OpenConsole creates a zellij tab with a shell in the work's worktree.
 	OpenConsole(ctx context.Context, workID, projName, workDir, friendlyName string, hooksEnv []string, w io.Writer) error
 
-	// OpenClaudeSession creates a zellij tab with an interactive Claude Code session.
-	OpenClaudeSession(ctx context.Context, workID, projName, workDir, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) error
+	// OpenAgentSession creates a zellij tab with an interactive agent session.
+	OpenAgentSession(ctx context.Context, workID, projName, workDir, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) error
 }
 
 // DefaultOrchestratorManager is the default implementation of OrchestratorManager.

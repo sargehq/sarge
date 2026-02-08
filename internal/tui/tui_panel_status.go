@@ -251,7 +251,7 @@ func (s *StatusBar) renderIssuesCommands() (string, string) {
 func (s *StatusBar) renderWorkDetailCommands() (string, string) {
 	// Work detail specific commands - wrap each with zone.Mark
 	tButton := zone.Mark(s.zonePrefix+"t", styleButtonWithHover("[t]erminal", s.hoveredButton == "t"))
-	cButton := zone.Mark(s.zonePrefix+"c", styleButtonWithHover("[c]laude", s.hoveredButton == "c"))
+	cButton := zone.Mark(s.zonePrefix+"c", styleButtonWithHover("[c]hat", s.hoveredButton == "c"))
 	iButton := zone.Mark(s.zonePrefix+"i", styleButtonWithHover("[i]DE", s.hoveredButton == "i"))
 	rButton := zone.Mark(s.zonePrefix+"r", styleButtonWithHover("[r]un", s.hoveredButton == "r"))
 	oButton := zone.Mark(s.zonePrefix+"o", styleButtonWithHover("[o]rch", s.hoveredButton == "o"))
@@ -269,10 +269,10 @@ func (s *StatusBar) renderWorkDetailCommands() (string, string) {
 	if showReset {
 		xButton := zone.Mark(s.zonePrefix+"x", styleButtonWithHover("[x]Reset", s.hoveredButton == "x"))
 		commands = tButton + " " + cButton + " " + iButton + " " + rButton + " " + oButton + " " + vButton + " " + pButton + " " + fButton + " " + xButton + " " + dButton + " " + escButton + " " + helpButton
-		commandsPlain = "[t]erminal [c]laude [i]DE [r]un [o]rch [v]review [p]r [f]eedback [x]Reset [d]estroy [Esc]Deselect [?]Help"
+		commandsPlain = "[t]erminal [c]hat [i]DE [r]un [o]rch [v]review [p]r [f]eedback [x]Reset [d]estroy [Esc]Deselect [?]Help"
 	} else {
 		commands = tButton + " " + cButton + " " + iButton + " " + rButton + " " + oButton + " " + vButton + " " + pButton + " " + fButton + " " + dButton + " " + escButton + " " + helpButton
-		commandsPlain = "[t]erminal [c]laude [i]DE [r]un [o]rch [v]review [p]r [f]eedback [d]estroy [Esc]Deselect [?]Help"
+		commandsPlain = "[t]erminal [c]hat [i]DE [r]un [o]rch [v]review [p]r [f]eedback [d]estroy [Esc]Deselect [?]Help"
 	}
 
 	return commands, commandsPlain
