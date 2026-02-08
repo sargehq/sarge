@@ -105,7 +105,7 @@ func TestUpdateBeadsVersion(t *testing.T) {
 			assert.Equal(t, tt.wantMod, modified)
 
 			if tt.wantMod {
-				data, err := os.ReadFile(path)
+				data, err := os.ReadFile(path) //nolint:gosec // G304: path is a test temp file we created
 				require.NoError(t, err)
 				assert.Contains(t, string(data), tt.wantLine)
 				// Ensure other lines are preserved
