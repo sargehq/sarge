@@ -144,7 +144,7 @@ func TestGeneratedConfigWithUTF8(t *testing.T) {
 	require.Equal(t, cfg.Project.Name, parsed.Project.Name)
 }
 
-func TestLogParserConfig_ShouldUseClaude(t *testing.T) {
+func TestLogParserConfig_ShouldUseAgent(t *testing.T) {
 	tests := []struct {
 		name     string
 		config   LogParserConfig
@@ -157,24 +157,24 @@ func TestLogParserConfig_ShouldUseClaude(t *testing.T) {
 		},
 		{
 			name:     "Explicitly enabled",
-			config:   LogParserConfig{UseClaude: true},
+			config:   LogParserConfig{UseAgent: true},
 			expected: true,
 		},
 		{
 			name:     "Explicitly disabled",
-			config:   LogParserConfig{UseClaude: false},
+			config:   LogParserConfig{UseAgent: false},
 			expected: false,
 		},
 		{
 			name:     "Enabled with model",
-			config:   LogParserConfig{UseClaude: true, Model: "sonnet"},
+			config:   LogParserConfig{UseAgent: true, Model: "sonnet"},
 			expected: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.config.ShouldUseClaude()
+			result := tt.config.ShouldUseAgent()
 			require.Equal(t, tt.expected, result)
 		})
 	}
@@ -187,9 +187,9 @@ func TestLogParserConfig_GetModel(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "Default (empty) returns haiku",
+			name:     "Default (empty) returns empty",
 			config:   LogParserConfig{},
-			expected: "haiku",
+			expected: "",
 		},
 		{
 			name:     "Haiku model",
@@ -206,6 +206,11 @@ func TestLogParserConfig_GetModel(t *testing.T) {
 			config:   LogParserConfig{Model: "opus"},
 			expected: "opus",
 		},
+		{
+			name:     "Custom model passed through",
+			config:   LogParserConfig{Model: "gpt-4o-mini"},
+			expected: "gpt-4o-mini",
+		},
 	}
 
 	for _, tt := range tests {
@@ -218,10 +223,10 @@ func TestLogParserConfig_GetModel(t *testing.T) {
 
 func TestLogParserConfigFromTOML(t *testing.T) {
 	tests := []struct {
-		name          string
-		tomlContent   string
-		wantUseClaude bool
-		wantModel     string
+		name         string
+		tomlContent  string
+		wantUseAgent bool
+		wantModel    string
 	}{
 		{
 			name: "Not specified defaults",
@@ -229,8 +234,8 @@ func TestLogParserConfigFromTOML(t *testing.T) {
 [project]
 name = "test"
 `,
-			wantUseClaude: false,
-			wantModel:     "haiku",
+			wantUseAgent: false,
+			wantModel:    "",
 		},
 		{
 			name: "Enabled with haiku",
@@ -239,11 +244,11 @@ name = "test"
 name = "test"
 
 [log_parser]
-use_claude = true
+use_agent = true
 model = "haiku"
 `,
-			wantUseClaude: true,
-			wantModel:     "haiku",
+			wantUseAgent: true,
+			wantModel:    "haiku",
 		},
 		{
 			name: "Enabled with sonnet",
@@ -252,23 +257,23 @@ model = "haiku"
 name = "test"
 
 [log_parser]
-use_claude = true
+use_agent = true
 model = "sonnet"
 `,
-			wantUseClaude: true,
-			wantModel:     "sonnet",
+			wantUseAgent: true,
+			wantModel:    "sonnet",
 		},
 		{
-			name: "Enabled without model (defaults to haiku)",
+			name: "Enabled without model (defaults to empty)",
 			tomlContent: `
 [project]
 name = "test"
 
 [log_parser]
-use_claude = true
+use_agent = true
 `,
-			wantUseClaude: true,
-			wantModel:     "haiku",
+			wantUseAgent: true,
+			wantModel:    "",
 		},
 	}
 
@@ -278,7 +283,7 @@ use_claude = true
 			_, err := toml.Decode(tt.tomlContent, &cfg)
 			require.NoError(t, err)
 
-			require.Equal(t, tt.wantUseClaude, cfg.LogParser.ShouldUseClaude())
+			require.Equal(t, tt.wantUseAgent, cfg.LogParser.ShouldUseAgent())
 			require.Equal(t, tt.wantModel, cfg.LogParser.GetModel())
 		})
 	}

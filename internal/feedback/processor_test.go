@@ -500,17 +500,17 @@ func TestNewFeedbackProcessorWithProject(t *testing.T) {
 	})
 }
 
-func TestShouldUseClaude(t *testing.T) {
+func TestShouldUseAgent(t *testing.T) {
 	client := &github.Client{}
 
 	t.Run("returns false when project is nil", func(t *testing.T) {
 		processor := NewFeedbackProcessorWithProject(client, nil, "work-123")
-		require.False(t, processor.shouldUseClaude(), "Expected shouldUseClaude() to return false when project is nil")
+		require.False(t, processor.shouldUseAgent(), "Expected shouldUseAgent() to return false when project is nil")
 	})
 
 	t.Run("returns false with basic processor", func(t *testing.T) {
 		processor := NewFeedbackProcessor(client)
-		require.False(t, processor.shouldUseClaude(), "Expected shouldUseClaude() to return false for basic processor")
+		require.False(t, processor.shouldUseAgent(), "Expected shouldUseAgent() to return false for basic processor")
 	})
 }
 

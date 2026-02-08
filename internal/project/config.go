@@ -62,36 +62,26 @@ type DebugConfig struct {
 
 // LogParserConfig contains log parser configuration.
 type LogParserConfig struct {
-	// UseClaude controls whether to use Claude for log analysis instead of the Go parser.
+	// UseAgent controls whether to use the configured agent for log analysis instead of the Go parser.
 	// Defaults to false when not specified.
-	UseClaude bool `toml:"use_claude"`
+	UseAgent bool `toml:"use_agent"`
 
-	// Model specifies which Claude model to use for log analysis.
-	// Valid values: "haiku", "sonnet", "opus"
-	// Defaults to "haiku" when not specified.
+	// Model specifies which model to use for log analysis.
+	// The value is passed through to the agent without validation.
+	// Defaults to empty string when not specified, letting the agent use its own default.
 	Model string `toml:"model"`
 }
 
-// ShouldUseClaude returns true if Claude should be used for log analysis.
-func (l *LogParserConfig) ShouldUseClaude() bool {
-	return l.UseClaude
+// ShouldUseAgent returns true if the configured agent should be used for log analysis.
+func (l *LogParserConfig) ShouldUseAgent() bool {
+	return l.UseAgent
 }
 
-// GetModel returns the configured Claude model for log analysis.
-// Defaults to "haiku" when not specified or when an invalid model is configured.
-// Valid models are: "haiku", "sonnet", "opus".
+// GetModel returns the configured model for log analysis.
+// Returns empty string when not specified, letting the agent use its own default.
+// The model string is passed through without validation — the agent handles invalid values.
 func (l *LogParserConfig) GetModel() string {
-	if l.Model == "" {
-		return "haiku"
-	}
-	// Validate the model is one of the allowed values
-	switch l.Model {
-	case "haiku", "sonnet", "opus":
-		return l.Model
-	default:
-		// Return default for invalid values
-		return "haiku"
-	}
+	return l.Model
 }
 
 // AgentConfig contains coding agent configuration.

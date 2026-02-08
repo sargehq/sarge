@@ -83,6 +83,12 @@ func baseArgs(cfg *project.Config) []string {
 }
 
 func taskArgs(taskType string, cfg *project.Config) []string {
+	if taskType == "log_analysis" && cfg != nil {
+		model := cfg.LogParser.GetModel()
+		if model != "" {
+			return []string{"--model", model}
+		}
+	}
 	return nil
 }
 

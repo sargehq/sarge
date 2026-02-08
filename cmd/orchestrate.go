@@ -339,7 +339,7 @@ func executeTask(proj *project.Project, t *db.Task, work *db.Work, agent agents.
 		return err
 	}
 
-	// Defensive: auto-complete log_analysis tasks if Claude exited without calling sarge complete.
+	// Defensive: auto-complete log_analysis tasks if the agent exited without calling sarge complete.
 	// Log analysis tasks are observational (they create beads but don't modify code), so it's
 	// safe to auto-complete them. This prevents the orchestrator from spinning forever.
 	if t.TaskType == "log_analysis" {
@@ -347,9 +347,9 @@ func executeTask(proj *project.Project, t *db.Task, work *db.Work, agent agents.
 		if err != nil {
 			fmt.Printf("Warning: failed to re-read task %s status: %v\n", t.ID, err)
 		} else if updatedTask != nil && updatedTask.Status == db.StatusProcessing {
-			logging.Warn("auto-completing log_analysis task that Claude did not mark complete",
+			logging.Warn("auto-completing log_analysis task that the agent did not mark complete",
 				"task_id", t.ID)
-			fmt.Printf("Warning: Claude exited without completing log_analysis task %s, auto-completing\n", t.ID)
+			fmt.Printf("Warning: agent exited without completing log_analysis task %s, auto-completing\n", t.ID)
 			if err := proj.DB.CompleteTask(ctx, t.ID, ""); err != nil {
 				fmt.Printf("Warning: failed to auto-complete task %s: %v\n", t.ID, err)
 			}
