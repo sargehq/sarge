@@ -66,9 +66,9 @@ type LogParserConfig struct {
 	// Defaults to false when not specified.
 	UseAgent bool `toml:"use_agent"`
 
-	// Model specifies which Claude model to use for log analysis.
-	// Valid values: "haiku", "sonnet", "opus"
-	// Defaults to "haiku" when not specified.
+	// Model specifies which model to use for log analysis.
+	// The value is passed through to the agent without validation.
+	// Defaults to empty string when not specified, letting the agent use its own default.
 	Model string `toml:"model"`
 }
 
