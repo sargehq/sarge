@@ -1,0 +1,18 @@
+{
+  "private": true,
+  "name": "sarge",
+  "description": "Go CLI tool that orchestrates Claude Code to process issues, creating PRs for each",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.0.0",
+    "@commitlint/config-conventional": "^19.0.0",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/exec": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "conventional-changelog-conventionalcommits": "^7.0.2",
+    "husky": "^9.0.0",
+    "semantic-release": "^24.0.0"
+  }
+}
