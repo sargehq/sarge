@@ -138,9 +138,10 @@ CI log analysis settings.
 
 **Cost/Performance:**
 - Native parser: Zero cost, ~1ms per log
-- Claude haiku: ~$0.01 per log, ~2-5s
-- Claude sonnet: ~$0.03 per log, ~5-10s
-- Claude opus: ~$0.15 per log, ~10-20s
+- Agent-based: Costs vary by provider and model. Typical ranges:
+  - Small/fast models: ~$0.01 per log, ~2-5s
+  - Mid-tier models: ~$0.03 per log, ~5-10s
+  - Large/capable models: ~$0.15 per log, ~10-20s
 
 ## Mise Setup Task
 
