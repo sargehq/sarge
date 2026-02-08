@@ -55,6 +55,11 @@ var configFiles = []string{
 	".tool-versions",
 }
 
+// FindConfigFile returns the first mise config file found in dir, or empty string if none.
+func FindConfigFile(dir string) string {
+	return findConfigFile(dir)
+}
+
 // findConfigFile returns the first mise config file found in dir, or empty string if none.
 func findConfigFile(dir string) string {
 	for _, file := range configFiles {
