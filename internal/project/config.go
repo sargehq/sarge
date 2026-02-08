@@ -510,6 +510,46 @@ func UpdateConfig(existingPath string, cfg *Config) ([]string, error) {
 	return newSections, nil
 }
 
+// DryRunUpdateConfig checks what sections would be added by UpdateConfig without writing anything.
+// Returns the list of section names that would be added, or nil if no changes are needed.
+func DryRunUpdateConfig(existingPath string, cfg *Config) ([]string, error) {
+	existingBytes, err := os.ReadFile(existingPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read existing config: %w", err)
+	}
+	existingContent := string(existingBytes)
+
+	templateContent := cfg.GenerateDocumentedConfig()
+	templateSections := parseConfigSections(templateContent)
+	existingSections := findExistingSections(existingContent)
+
+	// Also check for commented-out section headers
+	for _, line := range strings.Split(existingContent, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "# [") && strings.Contains(trimmed, "]") {
+			name := extractSectionName(strings.TrimPrefix(trimmed, "# "))
+			if name != "" {
+				existingSections[name] = true
+			}
+		}
+	}
+
+	var newSections []string
+	for _, section := range templateSections {
+		if section.name == "" {
+			continue
+		}
+		if !existingSections[section.name] {
+			newSections = append(newSections, section.name)
+		}
+	}
+
+	if len(newSections) == 0 {
+		return nil, nil
+	}
+	return newSections, nil
+}
+
 // GenerateDocumentedConfig generates a documented config.toml string with comments.
 // This includes the actual project values plus commented-out examples for optional sections.
 func (c *Config) GenerateDocumentedConfig() string {
