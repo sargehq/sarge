@@ -1,19 +1,19 @@
 # Sarge
 
-Orchestrate Claude Code to process issues and create PRs. Includes a TUI for interactive management and CLI for scripting.
+Orchestrate code agents to process issues and create PRs. Includes a TUI for interactive management and CLI for scripting.
 
 ## Philosophy
 
-Sarge is designed to manage an army of Claude agents, turning your issue tracker into a PR factory.
+Sarge is designed to manage an army of coding agents, turning your issue tracker into a PR factory.
 
 ### The Workflow
 
 1. **Create or import issues** - Define work in your issue tracker (beads), or import from Linear
-2. **Plan the implementation** - Use Claude Code interactively to break down complex issues into actionable tasks
+2. **Plan the implementation** - Use agents interactively to break down complex issues into actionable tasks
 3. **Execute with a Work** - Create a work unit that represents a git worktree and feature branch
-4. **Automatic execution** - Sarge orchestrates Claude to solve all issues, commit changes, and push continuously
-5. **Code review** - Claude automatically reviews its own work, creating fix issues for any problems found
-6. **PR creation** - Once implementation and review pass, Claude creates a comprehensive PR
+4. **Automatic execution** - Sarge orchestrates agents to solve all issues, commit changes, and push continuously
+5. **Code review** - The agent automatically reviews work, creating fix issues for any problems found
+6. **PR creation** - Once implementation and review pass, the agent creates a comprehensive PR
 7. **Handle feedback** - CI failures and review comments automatically become new issues, which can be planned or added to the existing work
 8. **Merge and cleanup** - After approval, merge the PR and destroy the work
 
@@ -27,18 +27,18 @@ Sarge is designed to manage an army of Claude agents, turning your issue tracker
 
 ### Agent Support
 
-Sarge currently supports Claude Code as its agent backend. The architecture is designed to be agent-agnostic, and other agentic coding tools could be supported in the future.
+Sarge currently supports Claude Code & pi as its agent backend. The architecture is designed to be agent-agnostic, and other agentic coding tools could be supported in the future.
 
 ## Prerequisites
 
 ### Tools (installed via mise)
 
-The following CLI tools are required but are **automatically installed by mise** when you run `mise install`:
+The following CLI tools are required but are **automatically installed by mise** when you run `mise install`. During project creation, sarge generates a `.mise.toml` based on your chosen agent:
 
 | Tool | Purpose |
 |------|---------|
 | `bd` | Beads issue tracking |
-| `claude` | Claude Code CLI |
+| `claude` or `pi` | Coding agent (selected during project setup) |
 | `gh` | GitHub CLI |
 | `zellij` | Terminal multiplexer |
 
@@ -50,11 +50,11 @@ curl https://mise.run | sh
 
 ### Claude Beads Skill
 
-After mise installs the tools, you must install the beads skill for Claude Code:
+If using Claude Code, after mise installs the tools, you must install the beads skill. Open Claude Code and run these prompt commands:
 
-```bash
-claude /plugin marketplace add steveyegge/beads
-claude /plugin install beads
+```
+/plugin marketplace add steveyegge/beads
+/plugin install beads
 ```
 
 This enables Claude to interact with the beads issue tracker.
@@ -104,83 +104,39 @@ For more information, visit [sargehq.dev](https://sargehq.dev).
 
 ## Quick Start
 
-### 1. Create a Project
-
 ```bash
-# From a GitHub repository
+# Create a project from a GitHub repo (or local path)
 sarge proj create ~/myproject https://github.com/user/repo
 
-# From a local repository
-sarge proj create ~/myproject ~/path/to/repo
-
+# Enter the project directory and launch the TUI
 cd ~/myproject
+sarge
 ```
 
-This clones the repo (or symlinks a local one), installs tools via mise, and initializes the beads issue tracker.
+The TUI provides a lazygit-style interface for managing your entire workflow:
 
-### 2. Create Issues
+- **Create issues** or import from Linear
+- **Create works** from issues (worktree + feature branch)
+- **Run tasks** and monitor agent progress
+- **Review, create PRs, and merge** when ready
+- Press `?` for keyboard shortcuts
 
-Create issues in the beads tracker for sarge to work on:
+### CLI Alternative
+
+All TUI actions are also available as CLI commands for scripting:
 
 ```bash
 cd main
 bd create --title "Add user authentication" --type feature
-bd create --title "Fix login page crash" --type bug --priority 1
-bd ready   # See what's available
+sarge linear import ENG-123       # Or import from Linear
 cd ..
-```
 
-Or import from Linear: `sarge linear import ENG-123`
-
-### 3. Choose Your Interface
-
-Sarge provides two ways to interact with your project:
-
-#### Option A: TUI (Recommended)
-
-The interactive terminal UI provides a lazygit-style interface:
-
-```bash
-sarge
-```
-
-Features:
-- Three-panel drill-down: Beads → Works → Tasks
-- Create/destroy works, run tasks, monitor progress
-- Bead filtering, search, multi-select
-- Press `?` for keyboard shortcuts
-
-#### Option B: CLI
-
-Use individual commands for scripting or when you prefer the command line:
-
-```bash
-# Create a work unit from a bead (creates worktree + feature branch)
-sarge work create bead-1
-
-# Navigate to the work directory
-cd w-abc
-
-# Execute tasks
-sarge run
-
-# Or skip the manual steps - full automation in one command
-sarge work create bead-1 --auto
-```
-
-### 4. Monitor and Merge
-
-```bash
-# Check on progress
-sarge poll
-
-# Once work is idle (all tasks finished), review the PR
-sarge work pr          # Creates PR via Claude
-sarge run              # Executes the PR task
-
-# After PR approval
-sarge work complete    # Mark work as done
-sarge work destroy w-abc
+sarge work create bead-1          # Create work from a bead
+sarge work create bead-1 --auto   # Full automated workflow
+sarge poll                        # Monitor progress
+sarge work pr                     # Create PR
+sarge work complete               # Mark done
+sarge work destroy w-abc          # Clean up
 ```
 
 ## Project Commands
@@ -218,12 +174,12 @@ Sarge uses [Beads](https://github.com/steveyegge/beads), a distributed git-backe
 - **Collision-free IDs** - Hash-based IDs eliminate merge conflicts in multi-branch scenarios
 - **Semantic compaction** - Completed tasks are summarized to conserve AI context windows
 
-**You rarely need to use beads directly.** Claude Code (with the beads skill) and the TUI handle all issue management. The `bd` CLI is available if you need it, but most users interact with beads through `sarge` or let Claude manage issues automatically.
+**You rarely need to use beads directly.** The coding agent and the TUI handle all issue management. The `bd` CLI is available if you need it, but most users interact with beads through `sarge` or let the agent manage issues automatically.
 
 ### Three-Tier Hierarchy
 
 - **Work**: A feature branch with its own worktree, groups related tasks (ID: `w-8xa`)
-- **Tasks**: Units of Claude execution within a work (ID: `w-8xa.1`, `w-8xa.2`)
+- **Tasks**: Units of agent execution within a work (ID: `w-8xa.1`, `w-8xa.2`)
 - **Beads**: Individual issues from the beads tracker (ID: `ac-pjw`)
 
 ### Automated Workflow
@@ -231,15 +187,16 @@ Sarge uses [Beads](https://github.com/steveyegge/beads), a distributed git-backe
 Use `--auto` for a fully automated workflow:
 
 ```bash
-sarge work create bead-1 bead-2 --auto
+sarge work create bead-1 --auto
 ```
 
 This mode:
-1. Creates work unit and tasks from beads
+1. Creates work unit and tasks from the bead
 2. Executes all implementation tasks
 3. Runs review/fix loop until code is clean
 4. Creates PR automatically
-5. Returns PR URL when complete
+
+Monitor progress by switching to the zellij session. To include additional beads, use `sarge work add`.
 
 ## Documentation
 
