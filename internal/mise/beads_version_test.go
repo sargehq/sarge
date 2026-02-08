@@ -25,8 +25,8 @@ func TestReadBeadsVersion(t *testing.T) {
 	}{
 		{
 			name:      "active beads line",
-			content:   "[tools]\n\"aqua:steveyegge/beads\" = \"v0.49.2\"\ngh = \"latest\"\n",
-			wantVer:   "v0.49.2",
+			content:   "[tools]\n\"aqua:steveyegge/beads\" = \"v0.49.6\"\ngh = \"latest\"\n",
+			wantVer:   "v0.49.6",
 			wantCom:   false,
 			wantFound: true,
 		},
@@ -76,20 +76,20 @@ func TestUpdateBeadsVersion(t *testing.T) {
 		{
 			name:       "update version",
 			content:    "[tools]\n\"aqua:steveyegge/beads\" = \"v0.48.0\"\ngh = \"latest\"\n",
-			newVersion: "v0.49.2",
+			newVersion: "v0.49.6",
 			wantMod:    true,
-			wantLine:   "\"aqua:steveyegge/beads\" = \"v0.49.2\"",
+			wantLine:   "\"aqua:steveyegge/beads\" = \"v0.49.6\"",
 		},
 		{
 			name:       "already correct",
-			content:    "[tools]\n\"aqua:steveyegge/beads\" = \"v0.49.2\"\n",
-			newVersion: "v0.49.2",
+			content:    "[tools]\n\"aqua:steveyegge/beads\" = \"v0.49.6\"\n",
+			newVersion: "v0.49.6",
 			wantMod:    false,
 		},
 		{
 			name:       "no beads line",
 			content:    "[tools]\ngh = \"latest\"\n",
-			newVersion: "v0.49.2",
+			newVersion: "v0.49.6",
 			wantMod:    false,
 		},
 	}
