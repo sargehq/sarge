@@ -81,16 +81,16 @@ func (m *DefaultOrchestratorManager) OpenConsole(ctx context.Context, workID str
 	return nil
 }
 
-// OpenClaudeSession creates a zellij tab with an interactive Claude Code session in the work's worktree.
+// OpenAgentSession creates a zellij tab with an interactive agent session in the work's worktree.
 // The tab is named "claude-<work-id>" or "claude-<work-id> (friendlyName)" for easy identification.
 // The hooksEnv parameter contains environment variables to export (format: "KEY=value").
-// The config parameter controls Claude settings like --dangerously-skip-permissions.
+// The config parameter controls agent settings like --dangerously-skip-permissions.
 // Progress messages are written to the provided writer. Pass io.Discard to suppress output.
 //
 // IMPORTANT: The zellij session must already exist before calling this function.
 // Callers should use control.EnsureControlPlane to ensure
 // the session exists with the control plane running.
-func (m *DefaultOrchestratorManager) OpenClaudeSession(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) error {
+func (m *DefaultOrchestratorManager) OpenAgentSession(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) error {
 	sessionName := project.SessionNameForProject(projectName)
 	tabName := project.FormatTabName("claude", workID, friendlyName)
 

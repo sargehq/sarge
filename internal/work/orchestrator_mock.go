@@ -23,8 +23,8 @@ var _ OrchestratorManager = &OrchestratorManagerMock{}
 //			EnsureWorkOrchestratorFunc: func(ctx context.Context, workID string, projName string, workDir string, friendlyName string, w io.Writer) (bool, error) {
 //				panic("mock out the EnsureWorkOrchestrator method")
 //			},
-//			OpenClaudeSessionFunc: func(ctx context.Context, workID string, projName string, workDir string, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) error {
-//				panic("mock out the OpenClaudeSession method")
+//			OpenAgentSessionFunc: func(ctx context.Context, workID string, projName string, workDir string, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) error {
+//				panic("mock out the OpenAgentSession method")
 //			},
 //			OpenConsoleFunc: func(ctx context.Context, workID string, projName string, workDir string, friendlyName string, hooksEnv []string, w io.Writer) error {
 //				panic("mock out the OpenConsole method")
@@ -48,8 +48,8 @@ type OrchestratorManagerMock struct {
 	// EnsureWorkOrchestratorFunc mocks the EnsureWorkOrchestrator method.
 	EnsureWorkOrchestratorFunc func(ctx context.Context, workID string, projName string, workDir string, friendlyName string, w io.Writer) (bool, error)
 
-	// OpenClaudeSessionFunc mocks the OpenClaudeSession method.
-	OpenClaudeSessionFunc func(ctx context.Context, workID string, projName string, workDir string, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) error
+	// OpenAgentSessionFunc mocks the OpenAgentSession method.
+	OpenAgentSessionFunc func(ctx context.Context, workID string, projName string, workDir string, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) error
 
 	// OpenConsoleFunc mocks the OpenConsole method.
 	OpenConsoleFunc func(ctx context.Context, workID string, projName string, workDir string, friendlyName string, hooksEnv []string, w io.Writer) error
@@ -80,8 +80,8 @@ type OrchestratorManagerMock struct {
 			// W is the w argument value.
 			W io.Writer
 		}
-		// OpenClaudeSession holds details about calls to the OpenClaudeSession method.
-		OpenClaudeSession []struct {
+		// OpenAgentSession holds details about calls to the OpenAgentSession method.
+		OpenAgentSession []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// WorkID is the workID argument value.
@@ -157,7 +157,7 @@ type OrchestratorManagerMock struct {
 		}
 	}
 	lockEnsureWorkOrchestrator sync.RWMutex
-	lockOpenClaudeSession      sync.RWMutex
+	lockOpenAgentSession      sync.RWMutex
 	lockOpenConsole            sync.RWMutex
 	lockSpawnPlanSession       sync.RWMutex
 	lockSpawnWorkOrchestrator  sync.RWMutex
@@ -220,8 +220,8 @@ func (mock *OrchestratorManagerMock) EnsureWorkOrchestratorCalls() []struct {
 	return calls
 }
 
-// OpenClaudeSession calls OpenClaudeSessionFunc.
-func (mock *OrchestratorManagerMock) OpenClaudeSession(ctx context.Context, workID string, projName string, workDir string, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) error {
+// OpenAgentSession calls OpenAgentSessionFunc.
+func (mock *OrchestratorManagerMock) OpenAgentSession(ctx context.Context, workID string, projName string, workDir string, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) error {
 	callInfo := struct {
 		Ctx          context.Context
 		WorkID       string
@@ -241,23 +241,23 @@ func (mock *OrchestratorManagerMock) OpenClaudeSession(ctx context.Context, work
 		Cfg:          cfg,
 		W:            w,
 	}
-	mock.lockOpenClaudeSession.Lock()
-	mock.calls.OpenClaudeSession = append(mock.calls.OpenClaudeSession, callInfo)
-	mock.lockOpenClaudeSession.Unlock()
-	if mock.OpenClaudeSessionFunc == nil {
+	mock.lockOpenAgentSession.Lock()
+	mock.calls.OpenAgentSession = append(mock.calls.OpenAgentSession, callInfo)
+	mock.lockOpenAgentSession.Unlock()
+	if mock.OpenAgentSessionFunc == nil {
 		var (
 			errOut error
 		)
 		return errOut
 	}
-	return mock.OpenClaudeSessionFunc(ctx, workID, projName, workDir, friendlyName, hooksEnv, cfg, w)
+	return mock.OpenAgentSessionFunc(ctx, workID, projName, workDir, friendlyName, hooksEnv, cfg, w)
 }
 
-// OpenClaudeSessionCalls gets all the calls that were made to OpenClaudeSession.
+// OpenAgentSessionCalls gets all the calls that were made to OpenAgentSession.
 // Check the length with:
 //
-//	len(mockedOrchestratorManager.OpenClaudeSessionCalls())
-func (mock *OrchestratorManagerMock) OpenClaudeSessionCalls() []struct {
+//	len(mockedOrchestratorManager.OpenAgentSessionCalls())
+func (mock *OrchestratorManagerMock) OpenAgentSessionCalls() []struct {
 	Ctx          context.Context
 	WorkID       string
 	ProjName     string
@@ -277,9 +277,9 @@ func (mock *OrchestratorManagerMock) OpenClaudeSessionCalls() []struct {
 		Cfg          *project.Config
 		W            io.Writer
 	}
-	mock.lockOpenClaudeSession.RLock()
-	calls = mock.calls.OpenClaudeSession
-	mock.lockOpenClaudeSession.RUnlock()
+	mock.lockOpenAgentSession.RLock()
+	calls = mock.calls.OpenAgentSession
+	mock.lockOpenAgentSession.RUnlock()
 	return calls
 }
 
