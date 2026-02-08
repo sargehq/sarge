@@ -459,6 +459,214 @@ provider = "openai"
 	}
 }
 
+func TestUpdateConfig_AddsNewSection(t *testing.T) {
+	// Create a minimal existing config (only project and repo sections)
+	existingContent := `# Sarge Project Configuration
+
+# =============================================================================
+# Project Metadata
+# =============================================================================
+[project]
+name = "test-project"
+created_at = 2026-01-26T10:30:00Z
+
+# =============================================================================
+# Repository Configuration
+# =============================================================================
+[repo]
+type = "github"
+source = "https://github.com/example/repo"
+path = "main"
+
+# =============================================================================
+# Beads Configuration
+# =============================================================================
+[beads]
+path = "main/.beads"
+`
+
+	// Create temp file
+	tmpDir := t.TempDir()
+	configPath := tmpDir + "/config.toml"
+	require.NoError(t, os.WriteFile(configPath, []byte(existingContent), 0600))
+
+	cfg := &Config{
+		Project: ProjectConfig{
+			Name:      "test-project",
+			CreatedAt: time.Date(2026, 1, 26, 10, 30, 0, 0, time.UTC),
+		},
+		Repo: RepoConfig{
+			Type:   "github",
+			Source: "https://github.com/example/repo",
+			Path:   "main",
+		},
+		Beads: BeadsConfig{
+			Path: "main/.beads",
+		},
+	}
+
+	added, err := UpdateConfig(configPath, cfg)
+	require.NoError(t, err)
+
+	// Should have added new sections
+	require.NotEmpty(t, added, "Expected new sections to be added")
+	require.Contains(t, added, "hooks")
+	require.Contains(t, added, "claude")
+
+	// Read back the merged config
+	mergedBytes, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+	merged := string(mergedBytes)
+
+	// Original values should be preserved
+	require.Contains(t, merged, `name = "test-project"`)
+	require.Contains(t, merged, `type = "github"`)
+
+	// New sections should be present (check for commented section headers)
+	require.Contains(t, merged, "# [hooks]")
+	require.Contains(t, merged, "# [claude]")
+
+	// Backup should exist
+	backupBytes, err := os.ReadFile(configPath + ".bak")
+	require.NoError(t, err)
+	require.Equal(t, existingContent, string(backupBytes))
+
+	// Merged config should be valid TOML
+	var parsed map[string]interface{}
+	_, err = toml.Decode(merged, &parsed)
+	require.NoError(t, err, "Merged config is not valid TOML:\n%s", merged)
+}
+
+func TestUpdateConfig_ExistingSectionsNotModified(t *testing.T) {
+	// Config with user-configured claude section
+	existingContent := `# =============================================================================
+# Project Metadata
+# =============================================================================
+[project]
+name = "my-project"
+created_at = 2026-01-26T10:30:00Z
+
+# =============================================================================
+# Repository Configuration
+# =============================================================================
+[repo]
+type = "local"
+source = "/home/user/repo"
+path = "main"
+
+# =============================================================================
+# Beads Configuration
+# =============================================================================
+[beads]
+path = ".co/.beads"
+
+# =============================================================================
+# Claude Configuration
+# =============================================================================
+[claude]
+skip_permissions = false
+time_limit = 45
+`
+
+	tmpDir := t.TempDir()
+	configPath := tmpDir + "/config.toml"
+	require.NoError(t, os.WriteFile(configPath, []byte(existingContent), 0600))
+
+	cfg := &Config{
+		Project: ProjectConfig{
+			Name:      "my-project",
+			CreatedAt: time.Date(2026, 1, 26, 10, 30, 0, 0, time.UTC),
+		},
+		Repo: RepoConfig{
+			Type:   "local",
+			Source: "/home/user/repo",
+			Path:   "main",
+		},
+		Beads: BeadsConfig{
+			Path: ".co/.beads",
+		},
+	}
+
+	added, err := UpdateConfig(configPath, cfg)
+	require.NoError(t, err)
+
+	// Claude section already existed, so it should NOT be in the added list
+	for _, name := range added {
+		require.NotEqual(t, "claude", name, "claude section should not be re-added")
+	}
+
+	// Read merged config and verify claude values preserved
+	mergedBytes, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+	merged := string(mergedBytes)
+
+	require.Contains(t, merged, "skip_permissions = false")
+	require.Contains(t, merged, "time_limit = 45")
+}
+
+func TestUpdateConfig_Idempotent(t *testing.T) {
+	// Start with a minimal config
+	existingContent := `# =============================================================================
+# Project Metadata
+# =============================================================================
+[project]
+name = "test"
+created_at = 2026-01-26T10:30:00Z
+
+# =============================================================================
+# Repository Configuration
+# =============================================================================
+[repo]
+type = "github"
+source = "https://github.com/example/repo"
+path = "main"
+
+# =============================================================================
+# Beads Configuration
+# =============================================================================
+[beads]
+path = "main/.beads"
+`
+
+	tmpDir := t.TempDir()
+	configPath := tmpDir + "/config.toml"
+	require.NoError(t, os.WriteFile(configPath, []byte(existingContent), 0600))
+
+	cfg := &Config{
+		Project: ProjectConfig{
+			Name:      "test",
+			CreatedAt: time.Date(2026, 1, 26, 10, 30, 0, 0, time.UTC),
+		},
+		Repo: RepoConfig{
+			Type:   "github",
+			Source: "https://github.com/example/repo",
+			Path:   "main",
+		},
+		Beads: BeadsConfig{
+			Path: "main/.beads",
+		},
+	}
+
+	// First update
+	added1, err := UpdateConfig(configPath, cfg)
+	require.NoError(t, err)
+	require.NotEmpty(t, added1)
+
+	// Read result of first update
+	firstResult, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+
+	// Second update - should be idempotent
+	added2, err := UpdateConfig(configPath, cfg)
+	require.NoError(t, err)
+	require.Empty(t, added2, "Second update should add nothing")
+
+	// Content should be identical after second run
+	secondResult, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+	require.Equal(t, string(firstResult), string(secondResult))
+}
+
 func TestAgentConfigFromTOML(t *testing.T) {
 	tests := []struct {
 		name     string

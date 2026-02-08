@@ -1062,9 +1062,9 @@ func runWorkClaude(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to ensure control plane: %w", err)
 	}
 
-	// Open Claude Code session in the work's worktree
+	// Open agent session in the work's worktree
 	orchestratorMgr := workpkg.NewOrchestratorManager(proj.DB)
-	return orchestratorMgr.OpenClaudeSession(ctx, workID, proj.Config.Project.Name, work.WorktreePath, work.Name, proj.Config.Hooks.Env, proj.Config, os.Stdout)
+	return orchestratorMgr.OpenAgentSession(ctx, workID, proj.Config.Project.Name, work.WorktreePath, work.Name, proj.Config.Hooks.Env, proj.Config, os.Stdout)
 }
 
 func runWorkRestart(cmd *cobra.Command, args []string) error {

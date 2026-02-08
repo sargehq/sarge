@@ -69,6 +69,16 @@ Uses CLI tools: `bd`, `claude`, `gh`, `git`, `mise` (optional), `zellij`
 
 **Important**: The beads (`bd`) version in `mise.toml` must stay aligned with the version in `internal/mise/template/mise.tmpl`. Sarge queries the beads database directly via sqlc and expects specific schema columns. Version mismatches cause errors like "no such column: owner".
 
+### Updating the Beads Version
+
+When upgrading beads, update **all three** of these files:
+
+1. **`mise.toml`** — the project's mise tool version (used locally)
+2. **`internal/mise/template/mise.tmpl`** — the embedded template (used by `sarge doctor` and new project setup)
+3. **`internal/mise/beads_version_test.go`** — test expectations for version parsing
+
+Then run `mise install` to install the new version and `go test ./internal/mise/` to verify.
+
 ## Context Usage
 
 Functions that execute external commands or perform I/O should accept `context.Context` as their first parameter:
