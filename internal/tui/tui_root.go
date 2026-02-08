@@ -95,8 +95,18 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		// Check if plan model is in modal state - if so, route directly to it
-		if m.planModel != nil && m.planModel.InModal() {
+		// Quit keys always work, even when capturing input
+		switch msg.Type {
+		case tea.KeyCtrlC, tea.KeyCtrlQ:
+			m.quitting = true
+			if m.planModel != nil {
+				m.planModel.cleanup()
+			}
+			return m, tea.Quit
+		}
+
+		// Check if plan model is capturing input (modal, splash prompt, etc.)
+		if m.planModel != nil && m.planModel.IsCapturingInput() {
 			var cmd tea.Cmd
 			var newModel tea.Model
 			newModel, cmd = m.planModel.Update(msg)
@@ -104,7 +114,7 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 
-		// Global keys (only when not in modal)
+		// Global keys (only when not capturing input)
 		switch msg.String() {
 		case "q":
 			m.quitting = true

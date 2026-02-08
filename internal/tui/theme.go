@@ -72,6 +72,12 @@ type Theme struct {
 	// Splash gradient (top to bottom)
 	SplashGradient []lipgloss.Color
 
+	// Chat bubble colors
+	ChatUserBg     lipgloss.Color // Solid fill for user messages
+	ChatUserFg     lipgloss.Color // Text on user message background
+	ChatSystemBrd  lipgloss.Color // Border for system messages
+	ChatSystemFg   lipgloss.Color // Text for system messages
+
 	// Utility
 	Black lipgloss.Color // Black text for inverted backgrounds
 }
@@ -131,6 +137,11 @@ var defaultTheme = Theme{
 	ProgressHigh:   lipgloss.Color("226"),
 	ProgressMedium: lipgloss.Color("214"),
 	ProgressLow:    lipgloss.Color("247"),
+
+	ChatUserBg:    lipgloss.Color("62"),  // Purple-ish solid fill
+	ChatUserFg:    lipgloss.Color("255"), // White text on user bg
+	ChatSystemBrd: lipgloss.Color("241"), // Subtle border for system
+	ChatSystemFg:  lipgloss.Color("252"), // Slightly bright text for system
 
 	SplashGradient: []lipgloss.Color{
 		lipgloss.Color("#FF6B6B"),

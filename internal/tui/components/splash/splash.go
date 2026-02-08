@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/sargehq/sarge/internal/tui/ui"
 )
 
 //go:embed logo.txt
@@ -29,6 +30,13 @@ type Config struct {
 
 	// Platform for install instructions
 	Platform Platform
+}
+
+// PromptConfig holds parameters for rendering the splash screen with a prompt.
+type PromptConfig struct {
+	Config    Config
+	InputView string           // Pre-rendered textinput view from bubbletea
+	Timeline  *ui.ChatTimeline // Scrollable chat timeline component
 }
 
 // hintItem represents a single hint on the splash screen.
@@ -108,4 +116,96 @@ func renderHint(item hintItem, cfg Config) string {
 	// Accent-colored key in brackets, normal label
 	accentStyle := lipgloss.NewStyle().Foreground(cfg.Accent)
 	return "[" + accentStyle.Render(item.key) + "] " + item.label
+}
+
+// RenderWithPrompt renders the splash screen with a chat timeline and prompt input.
+// Layout: vPad | art | gap | flex messages | gap | input | hints | vPad
+func RenderWithPrompt(width, height int, pcfg PromptConfig) string {
+	cfg := pcfg.Config
+	tl := pcfg.Timeline
+
+	// Gradient ASCII art
+	art := renderGradientText(strings.TrimLeft(splashArt, "\n"), cfg.Gradient)
+	artHeight := strings.Count(art, "\n") + 1
+
+	// Vertical padding: max(10, 25% of viewport height) on top and bottom
+	vPad := height / 4
+	if vPad < 10 {
+		vPad = 10
+	}
+
+	// Content width for messages and input (centered with padding)
+	contentWidth := width - 4
+	if contentWidth > 100 {
+		contentWidth = 100
+	}
+	if contentWidth < 40 {
+		contentWidth = 40
+	}
+
+	// Render the input box
+	promptBorder := cfg.Accent
+	if tl != nil && tl.SelectedIdx() >= 0 {
+		promptBorder = cfg.Dim
+	}
+	inputStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(promptBorder).
+		Padding(0, 1).
+		Width(contentWidth)
+	inputBox := inputStyle.Render(pcfg.InputView)
+	inputHeight := lipgloss.Height(inputBox)
+
+	// Hints below the input: shortcut bar + prompt-specific hints
+	dimStyle := lipgloss.NewStyle().Foreground(cfg.Dim)
+	shortcutBar := renderHints(cfg)
+	hasMessages := tl != nil && tl.MessageCount() > 0
+	var promptHintText string
+	if tl != nil && tl.SelectedIdx() >= 0 {
+		promptHintText = dimStyle.Render("[o] open  [↓] input  [esc] deselect")
+	} else if hasMessages {
+		promptHintText = dimStyle.Render("[enter] send  [↑] messages  [q] quit")
+	} else {
+		promptHintText = dimStyle.Render("[enter] send  [q] quit")
+	}
+	hintsContent := shortcutBar + "\n" + promptHintText
+	hintsLine := lipgloss.NewStyle().Width(contentWidth).Align(lipgloss.Center).Render(hintsContent)
+	hintsHeight := 2
+
+	// Message area flexes to fill remaining space
+	fixedHeight := vPad + artHeight + inputHeight + hintsHeight + vPad + 2 // 2 gaps
+	msgAreaHeight := height - fixedHeight
+	if msgAreaHeight < 0 {
+		msgAreaHeight = 0
+	}
+
+	// Render messages via the timeline component
+	var messagesView string
+	if tl != nil && tl.MessageCount() > 0 {
+		tl.SetSize(contentWidth, msgAreaHeight)
+		messagesView = tl.Render()
+	} else {
+		// Empty state: centered hint with breathing room below
+		emptyHint := dimStyle.Render("Ask sarge anything...") + "\n"
+		messagesView = lipgloss.Place(contentWidth, msgAreaHeight, lipgloss.Center, lipgloss.Center, emptyHint)
+	}
+
+	// Center helper
+	center := func(s string) string {
+		return lipgloss.NewStyle().Width(width).Align(lipgloss.Center).Render(s)
+	}
+
+	// Assemble layout
+	totalContent := lipgloss.JoinVertical(lipgloss.Left,
+		strings.Repeat("\n", vPad-1),
+		center(art),
+		"",
+		center(messagesView),
+		"",
+		center(inputBox),
+		center(hintsLine),
+		strings.Repeat("\n", vPad-1),
+	)
+
+	return totalContent
 }

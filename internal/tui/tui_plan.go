@@ -115,6 +115,10 @@ type planModel struct {
 	linearConfigPanel  *linearconfig.Panel
 	uiColors           ui.Colors
 
+	// Prompt (splash screen chat)
+	promptInput    textinput.Model    // Text input for the prompt
+	promptTimeline *ui.ChatTimeline   // Scrollable chat message timeline
+
 	// Info box state (for ViewToolMissing / ViewLinearNotConfigured overlays)
 	infoBoxTitle string
 	infoBoxBody  string
@@ -180,6 +184,7 @@ func newPlanModel(ctx context.Context, proj *project.Project, version string) *p
 		pendingWorkSelectIndex: -1,   // No pending work selection
 		workDetailsFocusLeft:   true,              // Start with left panel focused
 		splashConfig:           buildSplashConfig(), // Tool checks run once at startup
+		promptTimeline:         ui.NewChatTimeline(buildChatBubbleColors()),
 		beadsWatcher:           beadsWatcher,
 		trackingWatcher:        trackingWatcher,
 		filters: beadFilters{
@@ -199,6 +204,14 @@ func newPlanModel(ctx context.Context, proj *project.Project, version string) *p
 		Black:  t.Black,
 	}
 	m.linearConfigPanel = linearconfig.New(m.uiColors)
+
+	// Initialize prompt input for splash screen
+	promptTI := textinput.New()
+	promptTI.Placeholder = "Ask sarge anything..."
+	promptTI.CharLimit = 500
+	promptTI.Width = 60
+	promptTI.Focus()
+	m.promptInput = promptTI
 
 	// Initialize panels
 	m.statusBar = NewStatusBar()
@@ -234,6 +247,17 @@ func newPlanModel(ctx context.Context, proj *project.Project, version string) *p
 func (m *planModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
+
+	// Update prompt input and timeline widths
+	contentWidth := width - 4
+	if contentWidth > 100 {
+		contentWidth = 100
+	}
+	if contentWidth < 40 {
+		contentWidth = 40
+	}
+	m.promptInput.Width = contentWidth - 6 // account for border + padding
+	m.promptTimeline.SetSize(contentWidth, 0) // height set at render time by splash
 }
 
 // FocusChanged implements SubModel
@@ -256,11 +280,25 @@ func (m *planModel) InModal() bool {
 	return m.viewMode != ViewNormal
 }
 
+// IsCapturingInput returns true when the model is capturing text input
+// (splash prompt, search, etc.) and single-key shortcuts should be suppressed.
+func (m *planModel) IsCapturingInput() bool {
+	if m.InModal() {
+		return true
+	}
+	// Splash prompt captures input when user is typing or navigating messages
+	if m.shouldShowSplash() && (m.promptInput.Value() != "" || m.promptTimeline.SelectedIdx() >= 0) {
+		return true
+	}
+	return false
+}
+
 // Init implements tea.Model
 func (m *planModel) Init() tea.Cmd {
 	cmds := []tea.Cmd{
 		m.spinner.Tick,
 		m.workTabsBar.GetSpinner().Tick, // Tick the tabs bar spinner
+		m.promptInput.Cursor.BlinkCmd(),  // Start cursor blinking for prompt
 		m.refreshData(),
 		m.loadWorkTiles(), // Load work tiles for the tabs bar
 	}
@@ -881,6 +919,15 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmd1, cmd2)
 
 	default:
+		// Route cursor blink messages to prompt input when splash is visible
+		if m.shouldShowSplash() && m.promptTimeline.SelectedIdx() < 0 {
+			var cmd tea.Cmd
+			m.promptInput, cmd = m.promptInput.Update(msg)
+			if cmd != nil {
+				return m, cmd
+			}
+		}
+
 		// Handle Kitty keyboard protocol escape sequences
 		// Kitty/Ghostty send keys as CSI <keycode> ; <modifiers> u
 		typeName := fmt.Sprintf("%T", msg)
@@ -1004,6 +1051,21 @@ func scheduleNewBeadExpire(beadID string) tea.Cmd {
 }
 
 func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Route to splash prompt handler when splash is visible
+	if m.shouldShowSplash() {
+		// When input is empty, let known shortcuts fall through to normal handling
+		if m.promptInput.Value() == "" && msg.Type == tea.KeyRunes && len(msg.Runes) == 1 {
+			switch string(msg.Runes) {
+			case "n", "i", "I", "?":
+				// Fall through to normal key handling below
+			default:
+				return m.handleSplashPromptKey(msg)
+			}
+		} else {
+			return m.handleSplashPromptKey(msg)
+		}
+	}
+
 	// Handle escape key globally for deselecting focused work
 	if msg.Type == tea.KeyEsc && m.viewMode == ViewNormal && m.focusedWorkID != "" {
 		m.focusedWorkID = ""
@@ -1776,9 +1838,13 @@ func (m *planModel) View() string {
 		return splash.RenderInfoBox(m.width, m.height, m.infoBoxTitle, m.infoBoxBody, m.splashConfig)
 	}
 
-	// Show splash screen when project is empty (no status bar — splash has its own hints)
+	// Show splash screen with prompt when project is empty
 	if m.shouldShowSplash() {
-		return splash.Render(m.width, m.height, m.splashConfig)
+		return splash.RenderWithPrompt(m.width, m.height, splash.PromptConfig{
+			Config:    m.splashConfig,
+			InputView: m.promptInput.View(),
+			Timeline:  m.promptTimeline,
+		})
 	}
 
 	// Render work tabs bar (always visible)
@@ -1982,4 +2048,116 @@ func (m *planModel) shouldShowSplash() bool {
 		len(m.workTiles) == 0 &&
 		!m.loading &&
 		!m.lastUpdate.IsZero()
+}
+
+// handleSplashPromptKey handles keyboard input when the splash screen with prompt is visible.
+func (m *planModel) handleSplashPromptKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	tl := m.promptTimeline
+
+	if tl.SelectedIdx() >= 0 {
+		// A message is selected — navigate messages or return to input
+		switch msg.Type {
+		case tea.KeyUp:
+			tl.SelectUp()
+			return m, nil
+		case tea.KeyDown:
+			if tl.SelectDown() {
+				// Past last message — move back to input
+				tl.ClearSelection()
+				m.promptInput.Focus()
+			}
+			return m, nil
+		case tea.KeyTab:
+			// Suspend selection and focus prompt (remembers position)
+			tl.SuspendSelection()
+			m.promptInput.Focus()
+			return m, nil
+		case tea.KeyEsc:
+			tl.ClearSelection()
+			m.promptInput.Focus()
+			return m, nil
+		case tea.KeyEnter:
+			return m, nil
+		case tea.KeyRunes:
+			if msg.String() == "o" {
+				// Open — navigate to the linked work/task/bead
+				// TODO: Wire up navigation when messages have links
+				if selected := tl.SelectedMessage(); selected != nil {
+					if selected.WorkID != "" || selected.TaskID != "" {
+						// Will call m.navigateToWork(selected.WorkID, selected.TaskID) once implemented
+						_ = selected
+					}
+				}
+				return m, nil
+			}
+		}
+		// Other keys ignored when message is selected
+		return m, nil
+	}
+
+	// Input is focused — handle text input
+	switch msg.Type {
+	case tea.KeyUp:
+		if tl.MessageCount() > 0 {
+			tl.SelectUp()
+			m.promptInput.Blur()
+		}
+		return m, nil
+	case tea.KeyShiftTab:
+		// Resume previously suspended selection (if any)
+		if tl.ResumeSelection() {
+			m.promptInput.Blur()
+		}
+		return m, nil
+	case tea.KeyEnter:
+		text := strings.TrimSpace(m.promptInput.Value())
+		if text == "" {
+			return m, nil
+		}
+		m.promptInput.SetValue("")
+
+		// Submitting clears any remembered scroll position
+		tl.ResetSuspended()
+
+		// Add user message to timeline
+		tl.AppendMessage(ui.ChatMessage{
+			Source: ui.MessageFromUser,
+			Text:   text,
+			Time:   "just now",
+		})
+
+		// Add a placeholder response for now
+		// TODO: This will be replaced with actual agent invocation
+		tl.AppendMessage(ui.ChatMessage{
+			Source: ui.MessageFromSystem,
+			Text:   "Got it! (Agent invocation not wired up yet)",
+			Time:   "just now",
+		})
+
+		return m, nil
+	case tea.KeyEsc:
+		if m.promptInput.Value() == "" {
+			return m, nil
+		}
+		m.promptInput.SetValue("")
+		return m, nil
+	}
+
+	// Delegate to textinput for character input
+	var cmd tea.Cmd
+	m.promptInput, cmd = m.promptInput.Update(msg)
+	return m, cmd
+}
+
+// buildChatBubbleColors creates ChatBubbleColors from the current theme.
+func buildChatBubbleColors() ui.ChatBubbleColors {
+	t := CurrentTheme()
+	return ui.ChatBubbleColors{
+		UserBg:       t.ChatUserBg,
+		UserFg:       t.ChatUserFg,
+		SystemBorder: t.ChatSystemBrd,
+		SystemFg:     t.ChatSystemFg,
+		TimeDim:      t.Dim,
+		SelectedBg:   t.Accent,
+	}
 }
