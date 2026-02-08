@@ -358,6 +358,158 @@ var configTemplate = template.Must(template.New("config").Funcs(template.FuncMap
 	"tomlString": tomlString,
 }).Parse(configTemplateText))
 
+// configSection represents a section block from the config template.
+type configSection struct {
+	// name is the TOML section name (e.g., "project", "hooks")
+	name string
+	// text is the full text of the section block including separator and comments
+	text string
+}
+
+// parseConfigSections splits a config file into sections based on "# ====..." separator lines.
+// Each section includes the separator, comments, and TOML content up to the next separator.
+func parseConfigSections(content string) []configSection {
+	lines := strings.Split(content, "\n")
+	var sections []configSection
+	var currentLines []string
+	var currentName string
+
+	for _, line := range lines {
+		if strings.HasPrefix(line, "# ====") {
+			// Save previous section if any
+			if len(currentLines) > 0 {
+				sections = append(sections, configSection{
+					name: currentName,
+					text: strings.Join(currentLines, "\n"),
+				})
+			}
+			currentLines = []string{line}
+			currentName = ""
+		} else {
+			currentLines = append(currentLines, line)
+			// Detect section name from [section] or # [section] lines
+			if currentName == "" {
+				trimmed := strings.TrimSpace(line)
+				// Match uncommented [section] or commented # [section]
+				if strings.HasPrefix(trimmed, "[") && strings.Contains(trimmed, "]") {
+					currentName = extractSectionName(trimmed)
+				} else if strings.HasPrefix(trimmed, "# [") && strings.Contains(trimmed, "]") {
+					currentName = extractSectionName(strings.TrimPrefix(trimmed, "# "))
+				}
+			}
+		}
+	}
+	// Save last section
+	if len(currentLines) > 0 {
+		sections = append(sections, configSection{
+			name: currentName,
+			text: strings.Join(currentLines, "\n"),
+		})
+	}
+
+	return sections
+}
+
+// extractSectionName extracts the section name from a TOML header like "[section_name]".
+func extractSectionName(s string) string {
+	s = strings.TrimSpace(s)
+	if !strings.HasPrefix(s, "[") {
+		return ""
+	}
+	end := strings.Index(s, "]")
+	if end < 0 {
+		return ""
+	}
+	return s[1:end]
+}
+
+// findExistingSections returns a set of section names that exist (uncommented) in the config text.
+func findExistingSections(content string) map[string]bool {
+	sections := make(map[string]bool)
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		// Only match uncommented section headers
+		if strings.HasPrefix(trimmed, "[") && strings.Contains(trimmed, "]") && !strings.HasPrefix(trimmed, "#") {
+			name := extractSectionName(trimmed)
+			if name != "" {
+				sections[name] = true
+			}
+		}
+	}
+	return sections
+}
+
+// UpdateConfig merges new config template sections into an existing config file.
+// It preserves all existing user values and comments. New sections from the template
+// that are not present in the existing file are appended (commented out).
+// A backup of the original file is created at path + ".bak".
+// Returns a list of section names that were added, or nil if no changes were needed.
+func UpdateConfig(existingPath string, cfg *Config) ([]string, error) {
+	// Read existing config
+	existingBytes, err := os.ReadFile(existingPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read existing config: %w", err)
+	}
+	existingContent := string(existingBytes)
+
+	// Generate the latest template
+	templateContent := cfg.GenerateDocumentedConfig()
+
+	// Parse template into sections
+	templateSections := parseConfigSections(templateContent)
+
+	// Find which sections already exist in the user's config
+	existingSections := findExistingSections(existingContent)
+
+	// Also check for commented-out section headers in existing config
+	// to avoid re-adding sections that user already has (even if commented)
+	for _, line := range strings.Split(existingContent, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "# [") && strings.Contains(trimmed, "]") {
+			name := extractSectionName(strings.TrimPrefix(trimmed, "# "))
+			if name != "" {
+				existingSections[name] = true
+			}
+		}
+	}
+
+	// Collect new sections to add
+	var newSections []string
+	var toAppend []string
+	for _, section := range templateSections {
+		if section.name == "" {
+			continue
+		}
+		if !existingSections[section.name] {
+			newSections = append(newSections, section.name)
+			toAppend = append(toAppend, section.text)
+		}
+	}
+
+	if len(toAppend) == 0 {
+		return nil, nil // nothing to update
+	}
+
+	// Create backup
+	backupPath := existingPath + ".bak"
+	if err := os.WriteFile(backupPath, existingBytes, 0600); err != nil {
+		return nil, fmt.Errorf("failed to create backup: %w", err)
+	}
+
+	// Build merged content
+	merged := strings.TrimRight(existingContent, "\n") + "\n"
+	for _, section := range toAppend {
+		merged += "\n" + section + "\n"
+	}
+
+	// Write merged config
+	if err := os.WriteFile(existingPath, []byte(merged), 0600); err != nil {
+		return nil, fmt.Errorf("failed to write updated config: %w", err)
+	}
+
+	return newSections, nil
+}
+
 // GenerateDocumentedConfig generates a documented config.toml string with comments.
 // This includes the actual project values plus commented-out examples for optional sections.
 func (c *Config) GenerateDocumentedConfig() string {
