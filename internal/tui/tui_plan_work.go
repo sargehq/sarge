@@ -305,17 +305,17 @@ func (m *planModel) openConsole() tea.Cmd {
 	}
 }
 
-// openClaude opens a Claude Code session tab for the focused work
-func (m *planModel) openClaude() tea.Cmd {
+// openAgent opens an agent session tab for the focused work
+func (m *planModel) openAgent() tea.Cmd {
 	workID := m.focusedWorkID
 	return func() tea.Msg {
 		// Get work details
 		work, err := m.proj.DB.GetWork(m.ctx, workID)
 		if err != nil {
-			return workCommandMsg{action: "Open Claude", workID: workID, err: fmt.Errorf("failed to get work: %w", err)}
+			return workCommandMsg{action: "Open Agent", workID: workID, err: fmt.Errorf("failed to get work: %w", err)}
 		}
 		if work == nil {
-			return workCommandMsg{action: "Open Claude", workID: workID, err: fmt.Errorf("work %s not found", workID)}
+			return workCommandMsg{action: "Open Agent", workID: workID, err: fmt.Errorf("work %s not found", workID)}
 		}
 
 		// Ensure control plane is running (creates session if needed)
@@ -326,10 +326,10 @@ func (m *planModel) openClaude() tea.Cmd {
 
 		err = m.workService.OrchestratorManager.OpenAgentSession(m.ctx, workID, m.proj.Config.Project.Name, work.WorktreePath, work.Name, m.proj.Config.Hooks.Env, m.proj.Config, io.Discard)
 		if err != nil {
-			return workCommandMsg{action: "Open Claude", workID: workID, err: err}
+			return workCommandMsg{action: "Open Agent", workID: workID, err: err}
 		}
 
-		return workCommandMsg{action: "Open Claude", workID: workID}
+		return workCommandMsg{action: "Open Agent", workID: workID}
 	}
 }
 

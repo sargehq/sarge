@@ -82,7 +82,8 @@ func (m *DefaultOrchestratorManager) OpenConsole(ctx context.Context, workID str
 }
 
 // OpenAgentSession creates a zellij tab with an interactive agent session in the work's worktree.
-// The tab is named "claude-<work-id>" or "claude-<work-id> (friendlyName)" for easy identification.
+// The tab is named "<agent>-<work-id>" or "<agent>-<work-id> (friendlyName)" for easy identification.
+// The agent type is determined by cfg.Agent.Type (defaults to "claude").
 // The hooksEnv parameter contains environment variables to export (format: "KEY=value").
 // The config parameter controls agent settings like --dangerously-skip-permissions.
 // Progress messages are written to the provided writer. Pass io.Discard to suppress output.
@@ -91,8 +92,14 @@ func (m *DefaultOrchestratorManager) OpenConsole(ctx context.Context, workID str
 // Callers should use control.EnsureControlPlane to ensure
 // the session exists with the control plane running.
 func (m *DefaultOrchestratorManager) OpenAgentSession(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) error {
+	// Determine agent type from config (default to "claude")
+	agentType := "claude"
+	if cfg != nil && cfg.Agent.Type != "" {
+		agentType = cfg.Agent.Type
+	}
+
 	sessionName := project.SessionNameForProject(projectName)
-	tabName := project.FormatTabName("claude", workID, friendlyName)
+	tabName := project.FormatTabName(agentType, workID, friendlyName)
 
 	// Verify session exists - callers must initialize it with control plane
 	exists, err := m.zellij.SessionExists(ctx, sessionName)
@@ -107,14 +114,32 @@ func (m *DefaultOrchestratorManager) OpenAgentSession(ctx context.Context, workI
 	session := m.zellij.Session(sessionName)
 	tabExists, _ := session.TabExists(ctx, tabName)
 	if tabExists {
-		fmt.Fprintf(w, "Claude session tab %s already exists\n", tabName)
+		fmt.Fprintf(w, "Agent session tab %s already exists\n", tabName)
 		return nil
 	}
 
-	// Build the claude command with exports if needed
-	var claudeArgs []string
-	if cfg != nil && cfg.Claude.ShouldSkipPermissions() {
-		claudeArgs = []string{"--dangerously-skip-permissions"}
+	// Build agent command and args based on agent type
+	var agentBinary string
+	var agentArgs []string
+	switch agentType {
+	case "pi":
+		agentBinary = "pi"
+		if cfg != nil {
+			if cfg.Pi.Provider != "" {
+				agentArgs = append(agentArgs, "--provider", cfg.Pi.Provider)
+			}
+			if cfg.Pi.Model != "" {
+				agentArgs = append(agentArgs, "--model", cfg.Pi.Model)
+			}
+			if cfg.Pi.Thinking != "" {
+				agentArgs = append(agentArgs, "--thinking", cfg.Pi.Thinking)
+			}
+		}
+	default: // "claude"
+		agentBinary = "claude"
+		if cfg != nil && cfg.Claude.ShouldSkipPermissions() {
+			agentArgs = []string{"--dangerously-skip-permissions"}
+		}
 	}
 
 	// If we have environment variables, use bash -c to export them
@@ -125,25 +150,25 @@ func (m *DefaultOrchestratorManager) OpenAgentSession(ctx context.Context, workI
 		for _, env := range hooksEnv {
 			exports = append(exports, fmt.Sprintf("export %s", env))
 		}
-		claudeCmd := "claude"
-		if len(claudeArgs) > 0 {
-			claudeCmd = "claude " + strings.Join(claudeArgs, " ")
+		agentCmd := agentBinary
+		if len(agentArgs) > 0 {
+			agentCmd = agentBinary + " " + strings.Join(agentArgs, " ")
 		}
-		shellCmd := fmt.Sprintf("%s && %s", strings.Join(exports, " && "), claudeCmd)
+		shellCmd := fmt.Sprintf("%s && %s", strings.Join(exports, " && "), agentCmd)
 		command = "bash"
 		args = []string{"-c", shellCmd}
 	} else {
-		command = "claude"
-		args = claudeArgs
+		command = agentBinary
+		args = agentArgs
 	}
 
 	// Create tab with command using layout approach
-	fmt.Fprintf(w, "Creating Claude session tab: %s in session %s\n", tabName, sessionName)
-	if err := session.CreateTabWithCommand(ctx, tabName, workDir, command, args, "claude"); err != nil {
+	fmt.Fprintf(w, "Creating %s session tab: %s in session %s\n", agentType, tabName, sessionName)
+	if err := session.CreateTabWithCommand(ctx, tabName, workDir, command, args, agentBinary); err != nil {
 		return fmt.Errorf("failed to create tab: %w", err)
 	}
 
-	fmt.Fprintf(w, "Claude session opened in zellij session %s, tab %s\n", sessionName, tabName)
+	fmt.Fprintf(w, "%s session opened in zellij session %s, tab %s\n", agentType, sessionName, tabName)
 	return nil
 }
 

@@ -225,7 +225,7 @@ func (m *planModel) renderHelp() string {
 	help := `
   Plan Mode - Help
 
-  Each issue gets its own dedicated Claude session in a separate tab.
+  Each issue gets its own dedicated agent session in a separate tab.
   Use 'p' to start or resume a planning session for an issue.
 
   Layout
@@ -268,7 +268,7 @@ func (m *planModel) renderHelp() string {
   Indicators
   ────────────────────────────
   ●             Issue is selected for multi-select
-  P             Issue is processing (active Claude session)
+  P             Issue is processing (active agent session)
   [w-xxx]       Issue is assigned to work w-xxx
 
   Press any key to close...

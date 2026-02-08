@@ -1183,8 +1183,8 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, m.updateWorkSelectionFilter()
 		case WorkDetailActionOpenTerminal:
 			return m, m.openConsole()
-		case WorkDetailActionOpenClaude:
-			return m, m.openClaude()
+		case WorkDetailActionOpenAgent:
+			return m, m.openAgent()
 		case WorkDetailActionOpenIDE:
 			return m, m.openIDE()
 		case WorkDetailActionRun:
@@ -1387,7 +1387,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.refreshData()
 
 	case "c":
-		// Filter to closed issues (work details panel handles 'c' for Claude)
+		// Filter to closed issues (work details panel handles 'c' for agent)
 		m.filters.status = beads.StatusClosed
 		return m, m.refreshData()
 
