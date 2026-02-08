@@ -16,14 +16,14 @@ import (
 
 // maxLogContentSize is the maximum size in bytes for log content stored in task metadata.
 // Logs exceeding this size are truncated, keeping the last portion (most relevant for errors).
-// Since logs are written to a temp file for Claude to read (not embedded in prompt),
+// Since logs are written to a temp file for the agent to read (not embedded in prompt),
 // this can be quite large.
 const maxLogContentSize = 500 * 1024 // 500KB
 
 // FeedbackProcessor processes PR feedback and generates actionable items.
 type FeedbackProcessor struct {
 	client github.ClientInterface
-	// Optional fields for Claude log analysis integration
+	// Optional fields for agent log analysis integration
 	proj   *project.Project
 	workID string
 }
@@ -36,7 +36,7 @@ func NewFeedbackProcessor(client github.ClientInterface) *FeedbackProcessor {
 }
 
 // NewFeedbackProcessorWithProject creates a feedback processor with project context.
-// This enables Claude-based log analysis when configured.
+// This enables agent-based log analysis when configured.
 func NewFeedbackProcessorWithProject(client github.ClientInterface, proj *project.Project, workID string) *FeedbackProcessor {
 	return &FeedbackProcessor{
 		client: client,
@@ -95,8 +95,8 @@ func (p *FeedbackProcessor) processWorkflowRuns(ctx context.Context, repo string
 				if job.Conclusion == "failure" {
 					// Try to get detailed failures for test or lint jobs
 					if isTestJob(job.Name) || isLintJob(job.Name) {
-						// Check if Claude-based log analysis is enabled
-						if p.shouldUseClaude() {
+						// Check if agent-based log analysis is enabled
+						if p.shouldUseAgent() {
 							// Check if we've already created a task for this specific job
 							// Job IDs are unique per CI run, so this prevents duplicate analysis
 							existingTaskID, err := p.findExistingLogAnalysisTaskByJobID(ctx, job.ID)
@@ -115,11 +115,11 @@ func (p *FeedbackProcessor) processWorkflowRuns(ctx context.Context, repo string
 
 						logs, err := p.client.GetJobLogs(ctx, repo, job.ID)
 						if err == nil {
-							// Check if Claude-based log analysis is enabled
-							if p.shouldUseClaude() {
+							// Check if agent-based log analysis is enabled
+							if p.shouldUseAgent() {
 								// Create a log_analysis task instead of parsing inline
 								if taskID, err := p.createLogAnalysisTask(ctx, workflow, job, logs); err == nil {
-									logging.Debug("scheduled log_analysis task for Claude",
+									logging.Debug("scheduled log_analysis task for the agent",
 										"task_id", taskID,
 										"workflow", workflow.Name,
 										"job", job.Name,
@@ -148,15 +148,15 @@ func (p *FeedbackProcessor) processWorkflowRuns(ctx context.Context, repo string
 	return items
 }
 
-// shouldUseClaude returns true if Claude-based log analysis is enabled and configured.
-func (p *FeedbackProcessor) shouldUseClaude() bool {
+// shouldUseAgent returns true if agent-based log analysis is enabled and configured.
+func (p *FeedbackProcessor) shouldUseAgent() bool {
 	if p.proj == nil {
 		return false
 	}
-	return p.proj.Config.LogParser.ShouldUseClaude()
+	return p.proj.Config.LogParser.ShouldUseAgent()
 }
 
-// createLogAnalysisTask creates a log_analysis task for Claude to process.
+// createLogAnalysisTask creates a log_analysis task for the agent to process.
 // Returns the task ID on success.
 // Note: Caller should check for existing tasks via findExistingLogAnalysisTaskByJobID before calling.
 func (p *FeedbackProcessor) createLogAnalysisTask(ctx context.Context, workflow github.WorkflowRun, job github.Job, logs string) (string, error) {
@@ -180,7 +180,7 @@ func (p *FeedbackProcessor) createLogAnalysisTask(ctx context.Context, workflow 
 	}
 	taskID := fmt.Sprintf("%s.%d", p.workID, taskNum)
 
-	// Create the task (no beads - Claude will create them)
+	// Create the task (no beads - the agent will create them)
 	if err := p.proj.DB.CreateTask(ctx, taskID, "log_analysis", nil, 0, p.workID); err != nil {
 		return "", fmt.Errorf("failed to create log_analysis task: %w", err)
 	}

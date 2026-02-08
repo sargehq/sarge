@@ -399,7 +399,7 @@ Enable in `.co/config.toml`:
 ```toml
 [log_parser]
 # Use Claude for log analysis instead of the Go-based parser
-use_claude = true
+use_agent = true
 
 # Model for log analysis: "haiku", "sonnet", or "opus"
 # - haiku: Fastest and cheapest, good for most logs

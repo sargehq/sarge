@@ -40,7 +40,7 @@ Project configuration is stored in `.co/config.toml`.
   activity_update_seconds = 30
 
 [log_parser]
-  use_claude = false
+  use_agent = false
   model = "haiku"
 ```
 
@@ -127,10 +127,10 @@ CI log analysis settings.
 
 | Key | Description | Default |
 |-----|-------------|---------|
-| `use_claude` | Use Claude for log analysis instead of Go parser | `false` |
-| `model` | Claude model: `haiku`, `sonnet`, or `opus` | `haiku` |
+| `use_agent` | Use the configured agent for log analysis instead of Go parser | `false` |
+| `model` | Model to use for log analysis (passed through to agent) | (agent default) |
 
-**When to use Claude for log parsing:**
+**When to use agent-based log parsing:**
 - Polyglot projects with multiple languages
 - Complex test frameworks (Jest, pytest, RSpec)
 - Custom CI output formats
