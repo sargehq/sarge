@@ -85,17 +85,17 @@ type Theme struct {
 // defaultTheme matches the current hardcoded colors exactly.
 var defaultTheme = Theme{
 	Title:   lipgloss.Color("205"),
-	Accent:  lipgloss.Color("214"),
+	Accent:  lipgloss.Color("179"), // Muted gold (was 214 bright orange)
 	Border:  lipgloss.Color("62"),
 	Text:    lipgloss.Color("255"),
 	Label:   lipgloss.Color("247"),
 	Dim:     lipgloss.Color("241"),
 	Success: lipgloss.Color("42"),
 	Error:   lipgloss.Color("196"),
-	Warning: lipgloss.Color("214"),
+	Warning: lipgloss.Color("208"), // Softer orange (was 214)
 
 	StatusPending:    lipgloss.Color("241"),
-	StatusProcessing: lipgloss.Color("214"),
+	StatusProcessing: lipgloss.Color("75"),  // Sky blue (was 214 — processing is distinct from accent)
 	StatusCompleted:  lipgloss.Color("42"),
 	StatusFailed:     lipgloss.Color("196"),
 	StatusIdle:       lipgloss.Color("247"),
@@ -115,7 +115,7 @@ var defaultTheme = Theme{
 	RibbonText:    lipgloss.Color("15"),
 	TabInactiveBg: lipgloss.Color("240"),
 	TabInactiveFg: lipgloss.Color("255"),
-	TabActiveBg:   lipgloss.Color("214"),
+	TabActiveBg:   lipgloss.Color("179"), // Match accent (was 214)
 	TabActiveFg:   lipgloss.Color("232"),
 
 	DialogBorder: lipgloss.Color("99"),
@@ -135,7 +135,7 @@ var defaultTheme = Theme{
 
 	ProgressFull:   lipgloss.Color("82"),
 	ProgressHigh:   lipgloss.Color("226"),
-	ProgressMedium: lipgloss.Color("214"),
+	ProgressMedium: lipgloss.Color("179"), // Match accent (was 214)
 	ProgressLow:    lipgloss.Color("247"),
 
 	ChatUserBg:    lipgloss.Color("62"),  // Purple-ish solid fill

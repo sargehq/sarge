@@ -155,8 +155,9 @@ func (p *IssuesPanel) Render(visibleLines int) string {
 	return content.String()
 }
 
-// RenderWithPanel returns the issues panel with border styling
-func (p *IssuesPanel) RenderWithPanel(contentHeight int) string {
+// RenderWithPanel returns the issues panel with border styling.
+// When dimmed is true, the panel border is gray and all content is rendered in dim color.
+func (p *IssuesPanel) RenderWithPanel(contentHeight int, dimmed bool) string {
 	issuesContentLines := contentHeight - 3 // -3 for border (2) + title (1)
 	issuesContent := p.Render(issuesContentLines)
 
@@ -166,9 +167,16 @@ func (p *IssuesPanel) RenderWithPanel(contentHeight int) string {
 	panelStyle := tuiPanelStyle().Width(p.width).Height(contentHeight - 2)
 	if p.focused {
 		panelStyle = panelStyle.BorderForeground(CurrentTheme().Accent)
+	} else if dimmed {
+		panelStyle = panelStyle.BorderForeground(CurrentTheme().Dim)
 	}
 
-	result := panelStyle.Render(tuiTitleStyle().Render("Issues") + "\n" + issuesContent)
+	titleStr := tuiTitleStyle().Render("Issues")
+	innerContent := titleStr + "\n" + issuesContent
+	if dimmed {
+		innerContent = dimContent(titleStr+"\n"+issuesContent)
+	}
+	result := panelStyle.Render(innerContent)
 
 	// If the result is taller than expected (due to lipgloss wrapping), fix it
 	// by removing extra lines from the INNER content while preserving borders and title

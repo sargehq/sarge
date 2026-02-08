@@ -52,6 +52,7 @@ type StatusBar struct {
 	getViewMode             func() ViewMode
 	getTextInput            func() string
 	isFailedTaskSelected    func() bool
+	getFocusedWorkID        func() string
 }
 
 // NewStatusBar creates a new StatusBar panel
@@ -90,6 +91,11 @@ func (s *StatusBar) SetDataProviders(
 // SetFailedTaskSelectedProvider sets the provider for checking if a failed task is selected
 func (s *StatusBar) SetFailedTaskSelectedProvider(isFailedTaskSelected func() bool) {
 	s.isFailedTaskSelected = isFailedTaskSelected
+}
+
+// SetFocusedWorkIDProvider sets the provider for the focused work ID
+func (s *StatusBar) SetFocusedWorkIDProvider(getFocusedWorkID func() string) {
+	s.getFocusedWorkID = getFocusedWorkID
 }
 
 // SetStatus updates the status message
@@ -225,38 +231,73 @@ func (s *StatusBar) Render() string {
 	return tuiStatusBarStyle().Width(s.width).Render(commands + strings.Repeat(" ", padding) + status)
 }
 
-// renderIssuesCommands returns commands for the issues panel
+// renderIssuesCommands returns commands for the issues panel.
+// Commands that don't apply to the current state are dimmed.
 func (s *StatusBar) renderIssuesCommands() (string, string) {
-	// Show p action based on session state
-	pAction := "[p]Plan"
-	if s.getBeadItems != nil && s.getBeadsCursor != nil && s.getActiveSessions != nil {
-		beadItems := s.getBeadItems()
+	dim := tuiDimStyle()
+
+	// Gather state
+	var beadItems []beadItem
+	hasIssues := false
+	hasCursorBead := false
+	cursorBeadAssigned := false
+	hasWorkSelected := false
+
+	if s.getBeadItems != nil {
+		beadItems = s.getBeadItems()
+		hasIssues = len(beadItems) > 0
+	}
+	if s.getBeadsCursor != nil && hasIssues {
 		cursor := s.getBeadsCursor()
-		activeSessions := s.getActiveSessions()
-		if len(beadItems) > 0 && cursor < len(beadItems) {
-			beadID := beadItems[cursor].ID
-			if activeSessions[beadID] {
-				pAction = "[p]Resume"
-			}
+		if cursor < len(beadItems) {
+			hasCursorBead = true
+			cursorBeadAssigned = beadItems[cursor].assignedWorkID != ""
+		}
+	}
+	if s.getFocusedWorkID != nil {
+		hasWorkSelected = s.getFocusedWorkID() != ""
+	}
+
+	// Determine p action text
+	pAction := "[p]Plan"
+	if hasCursorBead && s.getActiveSessions != nil {
+		beadID := beadItems[s.getBeadsCursor()].ID
+		if s.getActiveSessions()[beadID] {
+			pAction = "[p]Resume"
 		}
 	}
 
-	// Commands on the left with hover effects - wrap each with zone.Mark
-	nButton := zone.Mark(s.zonePrefix+"n", styleButtonWithHover("[n]New", s.hoveredButton == "n"))
-	eButton := zone.Mark(s.zonePrefix+"e", styleButtonWithHover("[e]Edit", s.hoveredButton == "e"))
-	aButton := zone.Mark(s.zonePrefix+"a", styleButtonWithHover("[a]Child", s.hoveredButton == "a"))
-	xButton := zone.Mark(s.zonePrefix+"x", styleButtonWithHover("[x]Close", s.hoveredButton == "x"))
-	dButton := zone.Mark(s.zonePrefix+"d", styleButtonWithHover("[d]Del", s.hoveredButton == "d"))
-	wButton := zone.Mark(s.zonePrefix+"w", styleButtonWithHover("[w]Work", s.hoveredButton == "w"))
-	AButton := zone.Mark(s.zonePrefix+"A", styleButtonWithHover("[A]dd", s.hoveredButton == "A"))
-	iButton := zone.Mark(s.zonePrefix+"i", styleButtonWithHover("[i]Import", s.hoveredButton == "i"))
-	pButton := zone.Mark(s.zonePrefix+"p", styleButtonWithHover(pAction, s.hoveredButton == "p"))
-	helpButton := zone.Mark(s.zonePrefix+"?", styleButtonWithHover("[?]Help", s.hoveredButton == "?"))
+	type btn struct {
+		id      string
+		label   string
+		active  bool
+	}
 
-	commands := nButton + " " + eButton + " " + aButton + " " + xButton + " " + dButton + " " + wButton + " " + AButton + " " + iButton + " " + pButton + " " + helpButton
-	commandsPlain := fmt.Sprintf("[n]New [e]Edit [a]Child [x]Close [d]Del [w]Work [A]dd [i]Import %s [?]Help", pAction)
+	buttons := []btn{
+		{"n", "[n]New", true},                                          // always available
+		{"e", "[e]Edit", hasCursorBead},                                // need a selected issue
+		{"a", "[a]Child", hasCursorBead},                               // need a selected issue
+		{"x", "[x]Close", hasCursorBead},                               // need a selected issue
+		{"d", "[d]Del", hasCursorBead},                                 // need a selected issue
+		{"w", "[w]Work", hasCursorBead && !cursorBeadAssigned},         // need unassigned issue
+		{"A", "[A]dd", hasCursorBead && hasWorkSelected},               // need issue + work filter
+		{"i", "[i]Import", true},                                       // always available
+		{"p", pAction, hasCursorBead},                                  // need a selected issue
+		{"?", "[?]Help", true},                                         // always available
+	}
 
-	return commands, commandsPlain
+	var rendered []string
+	var plain []string
+	for _, b := range buttons {
+		if b.active {
+			rendered = append(rendered, zone.Mark(s.zonePrefix+b.id, styleButtonWithHover(b.label, s.hoveredButton == b.id)))
+		} else {
+			rendered = append(rendered, dim.Render(b.label))
+		}
+		plain = append(plain, b.label)
+	}
+
+	return strings.Join(rendered, " "), strings.Join(plain, " ")
 }
 
 // renderWorkDetailCommands returns commands for the work detail panel

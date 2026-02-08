@@ -123,16 +123,24 @@ func (p *IssueDetailsPanel) Render() string {
 	return p.viewport.View()
 }
 
-// RenderWithPanel returns the details panel with border styling
-func (p *IssueDetailsPanel) RenderWithPanel(contentHeight int) string {
+// RenderWithPanel returns the details panel with border styling.
+// When dimmed is true, the panel border is gray and all content is rendered in dim color.
+func (p *IssueDetailsPanel) RenderWithPanel(contentHeight int, dimmed bool) string {
 	detailsContent := p.Render()
 
 	panelStyle := tuiPanelStyle().Width(p.width).Height(contentHeight - 2)
 	if p.focused {
 		panelStyle = panelStyle.BorderForeground(CurrentTheme().Accent)
+	} else if dimmed {
+		panelStyle = panelStyle.BorderForeground(CurrentTheme().Dim)
 	}
 
-	return panelStyle.Render(tuiTitleStyle().Render("Details") + "\n" + detailsContent)
+	titleStr := tuiTitleStyle().Render("Details")
+	innerContent := titleStr + "\n" + detailsContent
+	if dimmed {
+		innerContent = dimContent(titleStr + "\n" + detailsContent)
+	}
+	return panelStyle.Render(innerContent)
 }
 
 // renderFullIssueContent renders all content without line limits

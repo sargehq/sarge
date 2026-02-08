@@ -258,8 +258,8 @@ func (m *planModel) renderDestroyConfirmContent() string {
 	workID := m.focusedWorkID
 	workName := workID
 
-	// Try to get work name from focused work
-	if focusedWork := m.workDetails.GetFocusedWork(); focusedWork != nil && focusedWork.Work.Name != "" {
+	// Try to get work name from cached tiles
+	if focusedWork := m.findWorkByID(m.focusedWorkID); focusedWork != nil && focusedWork.Work.Name != "" {
 		workName = focusedWork.Work.Name
 	}
 

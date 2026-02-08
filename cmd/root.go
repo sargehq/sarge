@@ -90,4 +90,5 @@ func init() {
 	rootCmd.AddCommand(workCmd)
 	rootCmd.AddCommand(syncCmd)
 	rootCmd.AddCommand(orchestrateCmd)
+	rootCmd.AddCommand(messageCmd)
 }

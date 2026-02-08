@@ -408,24 +408,10 @@ func (m *planModel) checkPRFeedback() tea.Cmd {
 	}
 }
 
-// resetSelectedTask resets a failed task to pending status
+// resetSelectedTask resets a failed task to pending status.
+// Currently a no-op since the work details split view was removed.
 func (m *planModel) resetSelectedTask() tea.Cmd {
-	taskID := m.workDetails.GetSelectedTaskID()
-	if taskID == "" {
-		return nil
-	}
-	workID := m.focusedWorkID
-	return func() tea.Msg {
-		// Reset task status to pending
-		if err := m.proj.DB.ResetTaskStatus(m.ctx, taskID); err != nil {
-			return workCommandMsg{action: "Reset task", workID: workID, err: err}
-		}
-		// Reset all bead statuses for this task
-		if err := m.proj.DB.ResetTaskBeadStatuses(m.ctx, taskID); err != nil {
-			return workCommandMsg{action: "Reset task", workID: workID, err: err}
-		}
-		return workCommandMsg{action: "Reset task " + taskID, workID: workID}
-	}
+	return nil
 }
 
 // openIDE opens the worktree in the configured IDE

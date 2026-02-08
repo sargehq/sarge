@@ -119,14 +119,17 @@ type Querier interface {
 	IdleWorkWithPR(ctx context.Context, arg IdleWorkWithPRParams) (int64, error)
 	IncrementAttemptAndReschedule(ctx context.Context, arg IncrementAttemptAndRescheduleParams) error
 	InitializeTaskCounter(ctx context.Context, workID string) error
+	InsertMessage(ctx context.Context, arg InsertMessageParams) (sql.Result, error)
 	IsBeadInTask(ctx context.Context, arg IsBeadInTaskParams) (bool, error)
 	IsControlPlaneAlive(ctx context.Context, dollar_1 sql.NullString) (int64, error)
 	IsOrchestratorAlive(ctx context.Context, arg IsOrchestratorAliveParams) (int64, error)
 	ListBeads(ctx context.Context) ([]Bead, error)
 	ListBeadsByStatus(ctx context.Context, status string) ([]Bead, error)
+	ListMessages(ctx context.Context, limit int64) ([]Message, error)
 	ListMigrationVersions(ctx context.Context) ([]string, error)
 	ListMigrationsWithDetails(ctx context.Context) ([]ListMigrationsWithDetailsRow, error)
 	ListPRFeedback(ctx context.Context, workID string) ([]PrFeedback, error)
+	ListRecentMessages(ctx context.Context, limit int64) ([]Message, error)
 	ListTasks(ctx context.Context) ([]ListTasksRow, error)
 	ListTasksByStatus(ctx context.Context, status string) ([]ListTasksByStatusRow, error)
 	ListUnprocessedPRFeedback(ctx context.Context, workID string) ([]PrFeedback, error)

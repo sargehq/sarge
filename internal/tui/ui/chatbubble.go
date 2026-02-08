@@ -18,11 +18,13 @@ const (
 
 // ChatMessage represents a single message in the chat timeline.
 type ChatMessage struct {
-	Source  MessageSource
-	Text    string
-	Time    string // e.g. "2m ago", "just now"
-	WorkID  string // optional, for (o) navigation
-	TaskID  string // optional, for (o) navigation
+	Source    MessageSource
+	Text      string
+	Time      string // e.g. "2m ago", "just now"
+	WorkID    string // optional, for (o) navigation
+	TaskID    string // optional, for (o) navigation
+	BeadID    string // optional, for (o) navigation
+	EventType string // for icons later
 }
 
 // ChatBubbleColors holds the color scheme for chat bubbles.

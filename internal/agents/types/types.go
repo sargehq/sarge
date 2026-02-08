@@ -11,6 +11,7 @@ const (
 	TaskTypeUpdatePRDescription TaskType = "update_pr_description"
 	TaskTypePlan                TaskType = "plan"
 	TaskTypeLogAnalysis         TaskType = "log_analysis"
+	TaskTypePrompt              TaskType = "prompt"
 )
 
 // TaskParams is the single input struct for agent Run/RunInteractive.
@@ -25,6 +26,9 @@ type TaskParams struct {
 	RootIssueID   string        // review, log_analysis
 	PRURL         string        // update_pr_description
 	BeadID        string        // plan
+	UserPrompt     string        // prompt
+	ProjectDir     string        // prompt
+	RecentMessages string        // prompt (pre-formatted conversation history)
 	WorkflowName  string        // log_analysis
 	JobName       string        // log_analysis
 	LogFilePath   string        // log_analysis

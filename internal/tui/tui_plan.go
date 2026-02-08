@@ -14,7 +14,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
+	zone "github.com/lrstanley/bubblezone"
+	"github.com/sargehq/sarge/internal/agents/claude"
+	"github.com/sargehq/sarge/internal/agents/types"
 	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/messages"
 	"github.com/sargehq/sarge/internal/tui/components/linearconfig"
 	"github.com/sargehq/sarge/internal/tui/components/splash"
 	"github.com/sargehq/sarge/internal/tui/ui"
@@ -45,7 +49,6 @@ type planModel struct {
 	statusBar         *StatusBar
 	issuesPanel       *IssuesPanel
 	detailsPanel      *IssueDetailsPanel
-	workDetails       *WorkDetailsPanel
 	workTabsBar       *WorkTabsBar
 	linearImportPanel *LinearImportPanel
 	prImportPanel     *PRImportPanel
@@ -74,7 +77,6 @@ type planModel struct {
 	workSelectionCleared   bool            // User manually cleared work selection filter (don't auto-restore)
 	pendingWorkSelectIndex int             // Index of work to select after tiles load (-1 = none)
 	workTiles              []*progress.WorkProgress // Cached work tiles for the tabs bar
-	workDetailsFocusLeft   bool            // Whether left panel has focus in work details (true=left, false=right)
 	addChildToWorkID       string          // Work ID to add newly created child bead to (for add-child-and-run flow)
 
 	// Multi-select state
@@ -99,9 +101,7 @@ type planModel struct {
 	hoveredButton       string    // which button is hovered ("n", "e", "w", "p", etc.)
 	hoveredIssue        int       // index of hovered issue, -1 if none
 	lastWheelScroll     time.Time // For debouncing rapid wheel events
-	hoveredWorkItem     int       // index of hovered work detail item, -1 if none
 	hoveredDialogButton string    // which dialog button is hovered ("ok", "cancel")
-	hoveredTabID        string    // which work tab is hovered
 
 	// Database watcher for cache invalidation
 	beadsWatcher    *beadswatcher.Watcher
@@ -115,9 +115,14 @@ type planModel struct {
 	linearConfigPanel  *linearconfig.Panel
 	uiColors           ui.Colors
 
+	// Top-level view tabs
+	topView              string // "prompt" or "issues" — which top-level tab is active
+	breadcrumbZonePrefix string // zone prefix for breadcrumb click detection
+
 	// Prompt (splash screen chat)
-	promptInput    textinput.Model    // Text input for the prompt
-	promptTimeline *ui.ChatTimeline   // Scrollable chat message timeline
+	promptInput        textinput.Model    // Text input for the prompt
+	promptTimeline     *ui.ChatTimeline   // Scrollable chat message timeline
+	promptAgentRunning bool               // True while headless prompt agent is executing
 
 	// Info box state (for ViewToolMissing / ViewLinearNotConfigured overlays)
 	infoBoxTitle string
@@ -180,9 +185,9 @@ func newPlanModel(ctx context.Context, proj *project.Project, version string) *p
 		zj:                     zellij.New(),
 		columnRatio:            0.4,  // Default 40/60 split (issues/details)
 		hoveredIssue:           -1,   // No issue hovered initially
-		hoveredWorkItem:        -1,   // No work item hovered initially
 		pendingWorkSelectIndex: -1,   // No pending work selection
-		workDetailsFocusLeft:   true,              // Start with left panel focused
+		topView:                "prompt", // Start on prompt tab
+		breadcrumbZonePrefix:   zone.NewPrefix(),
 		splashConfig:           buildSplashConfig(), // Tool checks run once at startup
 		promptTimeline:         ui.NewChatTimeline(buildChatBubbleColors()),
 		beadsWatcher:           beadsWatcher,
@@ -207,7 +212,7 @@ func newPlanModel(ctx context.Context, proj *project.Project, version string) *p
 
 	// Initialize prompt input for splash screen
 	promptTI := textinput.New()
-	promptTI.Placeholder = "Ask sarge anything..."
+	promptTI.Placeholder = "What do you want Sarge to work on next?"
 	promptTI.CharLimit = 500
 	promptTI.Width = 60
 	promptTI.Focus()
@@ -217,7 +222,6 @@ func newPlanModel(ctx context.Context, proj *project.Project, version string) *p
 	m.statusBar = NewStatusBar()
 	m.issuesPanel = NewIssuesPanel()
 	m.detailsPanel = NewIssueDetailsPanel()
-	m.workDetails = NewWorkDetailsPanel()
 	m.workTabsBar = NewWorkTabsBar()
 	m.linearImportPanel = NewLinearImportPanel()
 	m.prImportPanel = NewPRImportPanel()
@@ -225,6 +229,7 @@ func newPlanModel(ctx context.Context, proj *project.Project, version string) *p
 	m.createWorkPanel = NewCreateWorkPanel()
 
 	m.statusBar.SetVersion(version)
+	m.workTabsBar.SetVersion(version)
 
 	// Set up status bar data providers
 	m.statusBar.SetDataProviders(
@@ -235,9 +240,12 @@ func newPlanModel(ctx context.Context, proj *project.Project, version string) *p
 		func() string { return m.textInput.View() },
 	)
 
-	// Set up the failed task selected provider for work detail context
+	// No failed task selection (split view removed)
 	m.statusBar.SetFailedTaskSelectedProvider(func() bool {
-		return m.workDetails.IsSelectedTaskFailed()
+		return false
+	})
+	m.statusBar.SetFocusedWorkIDProvider(func() string {
+		return m.focusedWorkID
 	})
 
 	return m
@@ -301,6 +309,7 @@ func (m *planModel) Init() tea.Cmd {
 		m.promptInput.Cursor.BlinkCmd(),  // Start cursor blinking for prompt
 		m.refreshData(),
 		m.loadWorkTiles(), // Load work tiles for the tabs bar
+		m.loadMessages(),  // Load messages for chat timeline
 	}
 
 	// Subscribe to watcher events if watcher is available
@@ -374,9 +383,12 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case trackingWatcherEventMsg:
 		// Handle tracking database watcher events
 		if msg.Type == trackingwatcher.DBChanged {
-			// Tracking database changed - reload work tiles and work details
-			// This is more targeted than a full refresh
-			return m, tea.Batch(m.loadWorkTiles(), m.waitForTrackingWatcherEvent())
+			// Tracking database changed - reload work tiles, work details, and messages
+			cmds := []tea.Cmd{m.loadWorkTiles(), m.waitForTrackingWatcherEvent()}
+			if m.shouldShowSplash() || m.topView == "prompt" || m.promptTimeline.MessageCount() > 0 {
+				cmds = append(cmds, m.loadMessages())
+			}
+			return m, tea.Batch(cmds...)
 		} else if msg.Type == trackingwatcher.WatcherError {
 			// Log error and continue waiting for events
 			return m, m.waitForTrackingWatcherEvent()
@@ -398,28 +410,9 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Handle hover detection for motion events
 		if msg.Action == tea.MouseActionMotion {
-			// Calculate tabs bar position (at top, if there are works)
-			tabsBarHeight := m.workTabsBar.Height()
-
-			// Check if hovering over tabs bar
-			if tabsBarHeight > 0 && msg.Y < tabsBarHeight {
-				m.hoveredTabID = m.workTabsBar.DetectHoveredTab(msg)
-				m.workTabsBar.SetHoveredTabID(m.hoveredTabID)
-				m.hoveredButton = ""
-				m.hoveredIssue = -1
-				m.hoveredWorkItem = -1
-				m.hoveredDialogButton = ""
-				return m, nil
-			}
-
-			// Clear tab hover when not over tabs bar
-			m.hoveredTabID = ""
-			m.workTabsBar.SetHoveredTabID("")
-
 			if msg.Y == statusBarY {
 				m.hoveredButton = m.detectCommandsBarButton(msg)
 				m.hoveredIssue = -1
-				m.hoveredWorkItem = -1
 				m.hoveredDialogButton = ""
 			} else {
 				m.hoveredButton = ""
@@ -427,20 +420,7 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.hoveredDialogButton = m.detectDialogButton(msg)
 				if m.hoveredDialogButton != "" {
 					m.hoveredIssue = -1
-					m.hoveredWorkItem = -1
-				} else if m.focusedWorkID != "" {
-					// Focused work mode: work details panel at top, issues panel at bottom
-					// Mouse could be in work details or issues - detect with bubblezone
-					m.hoveredWorkItem = m.workDetails.DetectHoveredItem(msg)
-					if m.hoveredWorkItem >= 0 {
-						m.hoveredIssue = -1
-					} else {
-						// Check issues panel
-						m.hoveredIssue = m.detectHoveredIssueWithOffset(msg)
-					}
 				} else {
-					// Normal mode - detect hover over issue lines
-					m.hoveredWorkItem = -1
 					m.hoveredIssue = m.detectHoveredIssue(msg)
 				}
 			}
@@ -455,45 +435,57 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Handle clicks on status bar buttons
 		if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft {
-			// Check for clicks on tabs bar
-			tabsBarHeight := m.workTabsBar.Height()
-			if tabsBarHeight > 0 && msg.Y < tabsBarHeight {
-				// Set focus to work tabs panel when clicking on it
-				m.activePanel = PanelWorkTabs
-
-				clickedWorkID := m.workTabsBar.HandleClick(msg)
-				if clickedWorkID != "" {
-					// Focus the clicked work
-					if m.focusedWorkID == clickedWorkID {
-						// Already focused - unfocus
-						m.focusedWorkID = ""
-						m.filters.task = "" // Clear work selection filter
-						m.filters.children = ""
-						m.activePanel = PanelLeft
-						m.statusMessage = "Work deselected"
-						m.statusIsError = false
-						return m, m.refreshData()
+			// Check for clicks on view tabs bar (Prompt | Issues)
+			if clickedView := m.detectViewTabClick(msg); clickedView != "" {
+				m.topView = clickedView
+				if clickedView == "prompt" {
+					if !m.promptAgentRunning {
+						m.promptInput.Focus()
 					}
-					// Focus the new work
-					m.focusedWorkID = clickedWorkID
-					m.viewMode = ViewNormal
-					// Focus the work details panel
-					m.activePanel = PanelWorkDetails
-					m.statusMessage = fmt.Sprintf("Focused on work %s", m.focusedWorkID)
-					m.statusIsError = false
-
-					// Clear unseen PR changes flag for this work
-					_ = m.proj.DB.MarkWorkPRSeen(m.ctx, clickedWorkID)
-
-					// Set up the work details panel
-					focusedWork := m.findWorkByID(m.focusedWorkID)
-					m.workDetails.SetFocusedWork(focusedWork)
-					m.workDetails.SetSelectedIndex(0)
-					m.workDetails.SetOrchestratorHealth(checkOrchestratorHealth(m.ctx, m.proj.DB, m.focusedWorkID))
-
-					return m, m.updateWorkSelectionFilter()
+					return m, m.loadMessages()
 				}
+				m.promptInput.Blur()
 				return m, nil
+			}
+
+			// Check for breadcrumb clicks
+			if clicked := m.detectBreadcrumbClick(msg); clicked != "" {
+				if clicked == "all" {
+					// Clear work filter
+					m.focusedWorkID = ""
+					m.filters.task = ""
+					m.filters.children = ""
+					m.filters.rootIssue = ""
+					m.workSelectionCleared = false
+					m.activePanel = PanelLeft
+					m.statusMessage = "Showing all issues"
+					m.statusIsError = false
+					return m, m.refreshData()
+				}
+				// Toggle: click same work again to deselect
+				if m.focusedWorkID == clicked {
+					m.focusedWorkID = ""
+					m.filters.task = ""
+					m.filters.children = ""
+					m.filters.rootIssue = ""
+					m.workSelectionCleared = false
+					m.activePanel = PanelLeft
+					m.statusMessage = "Showing all issues"
+					m.statusIsError = false
+					return m, m.refreshData()
+				}
+				// Select a work filter
+				m.focusedWorkID = clicked
+				m.workSelectionCleared = false
+				m.viewMode = ViewNormal
+				m.activePanel = PanelLeft
+				m.statusMessage = fmt.Sprintf("Filtered to work %s", clicked)
+				m.statusIsError = false
+
+				// Clear unseen PR changes flag
+				_ = m.proj.DB.MarkWorkPRSeen(m.ctx, clicked)
+
+				return m, m.updateWorkSelectionFilter()
 			}
 
 			if msg.Y == statusBarY {
@@ -589,46 +581,14 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 
-				// Handle panel clicking in focused work mode
-				if m.focusedWorkID != "" {
-					clickedPanel := m.detectClickedPanel(msg)
-					switch clickedPanel {
-					case "work-left":
-						// Check if clicking on a task or root issue using bubblezone
-						clickedItem := m.workDetails.DetectClickedItem(msg)
-						if clickedItem >= 0 {
-							m.workDetails.SetSelectedIndex(clickedItem)
-							m.activePanel = PanelWorkDetails
-							// Update filter to show beads for clicked item
-							return m, m.updateWorkSelectionFilter()
-						}
-						m.activePanel = PanelWorkDetails
-						return m, nil
-					case "work-right":
-						m.activePanel = PanelWorkDetails
-						return m, nil
-					case "issues-left":
-						// Check if clicking on an issue
-						clickedIssue := m.detectHoveredIssue(msg)
-						if clickedIssue >= 0 && clickedIssue < len(m.beadItems) {
-							m.beadsCursor = clickedIssue
-						}
-						m.activePanel = PanelLeft
-						return m, nil
-					case "issues-right":
-						m.activePanel = PanelRight
-						return m, nil
-					}
-				} else {
-					// Normal mode - just check for issue clicks
-					clickedIssue := m.detectHoveredIssue(msg)
-					if clickedIssue >= 0 && clickedIssue < len(m.beadItems) {
-						m.beadsCursor = clickedIssue
-						m.activePanel = PanelLeft
-					} else if msg.X > m.width/2 {
-						// Clicked on right side - switch to details panel
-						m.activePanel = PanelRight
-					}
+				// Check for issue clicks in the two-column layout
+				clickedIssue := m.detectHoveredIssue(msg)
+				if clickedIssue >= 0 && clickedIssue < len(m.beadItems) {
+					m.beadsCursor = clickedIssue
+					m.activePanel = PanelLeft
+				} else if msg.X > m.width/2 {
+					// Clicked on right side - switch to details panel
+					m.activePanel = PanelRight
 				}
 			}
 		}
@@ -658,7 +618,13 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// Auto-switch to issues tab when beads appear (e.g., prompt agent created a bead)
+		hadNoBeads := len(m.beadItems) == 0
 		m.beadItems = msg.beads
+		if hadNoBeads && len(m.beadItems) > 0 && m.topView == "prompt" {
+			m.topView = "issues"
+			m.promptInput.Blur()
+		}
 		if msg.activeSessions != nil {
 			m.activeBeadSessions = msg.activeSessions
 		}
@@ -790,19 +756,9 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.doSelectWorkAtIndex(pendingIndex)
 		}
 
-		// Update work details panel and filter if a work is focused
-		if m.focusedWorkID != "" {
-			focusedWork := m.findWorkByID(m.focusedWorkID)
-			m.workDetails.SetFocusedWork(focusedWork)
-			// Use pre-computed orchestrator health
-			if health, ok := msg.orchestratorHealth[m.focusedWorkID]; ok {
-				m.workDetails.SetOrchestratorHealth(health)
-			}
-			// Rebuild the filter to reflect any changes in work beads
-			// BUT skip if user manually cleared the filter (e.g., pressed '*')
-			if !m.workSelectionCleared {
-				return m, m.updateWorkSelectionFilter()
-			}
+		// Rebuild the filter if a work filter is active
+		if m.focusedWorkID != "" && !m.workSelectionCleared {
+			return m, m.updateWorkSelectionFilter()
 		}
 		return m, nil
 
@@ -895,6 +851,29 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.statusIsError = false
 		}
 		return m, tea.Batch(m.refreshData(), m.loadWorkTiles(), clearStatusAfter(7*time.Second))
+
+	case promptAgentDoneMsg:
+		// Agent finished — clear thinking state, re-enable input, reload messages
+		m.promptAgentRunning = false
+		m.promptInput.Focus()
+		return m, m.loadMessages()
+
+	case messagesLoadedMsg:
+		if msg.err == nil {
+			msgs := msg.messages
+			// If the prompt agent is still running, append a thinking indicator
+			if m.promptAgentRunning {
+				msgs = append(msgs, ui.ChatMessage{
+					Source: ui.MessageFromSystem,
+					Text:   "Thinking...",
+					Time:   "now",
+				})
+			}
+			if len(msgs) > 0 {
+				m.promptTimeline.SetMessages(msgs)
+			}
+		}
+		return m, nil
 
 	case statusClearMsg:
 		m.statusMessage = ""
@@ -1033,6 +1012,17 @@ type newBeadExpireMsg struct {
 	beadID string
 }
 
+// promptAgentDoneMsg indicates the prompt agent finished
+type promptAgentDoneMsg struct {
+	err error
+}
+
+// messagesLoadedMsg indicates messages were loaded from the DB
+type messagesLoadedMsg struct {
+	messages []ui.ChatMessage
+	err      error
+}
+
 // workCommandMsg indicates a work command completed
 type workCommandMsg struct {
 	action string
@@ -1051,13 +1041,23 @@ func scheduleNewBeadExpire(beadID string) tea.Cmd {
 }
 
 func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	// Route to splash prompt handler when splash is visible
-	if m.shouldShowSplash() {
+	// Route to splash prompt handler when splash is visible OR prompt tab is active
+	if m.shouldShowSplash() || m.topView == "prompt" {
 		// When input is empty, let known shortcuts fall through to normal handling
 		if m.promptInput.Value() == "" && msg.Type == tea.KeyRunes && len(msg.Runes) == 1 {
 			switch string(msg.Runes) {
 			case "n", "i", "I", "?":
 				// Fall through to normal key handling below
+			case "q":
+				if m.shouldShowSplash() {
+					// On splash screen: quit
+					m.cleanup()
+					return m, tea.Quit
+				}
+				// On prompt tab: switch to issues
+				m.topView = "issues"
+				m.promptInput.Blur()
+				return m, nil
 			default:
 				return m.handleSplashPromptKey(msg)
 			}
@@ -1066,15 +1066,16 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Handle escape key globally for deselecting focused work
+	// Handle escape key globally for clearing work filter
 	if msg.Type == tea.KeyEsc && m.viewMode == ViewNormal && m.focusedWorkID != "" {
 		m.focusedWorkID = ""
-		m.filters.task = "" // Clear work selection filter
+		m.filters.task = ""
 		m.filters.children = ""
-		m.activePanel = PanelLeft // Reset focus to issues panel
-		m.statusMessage = "Work deselected"
+		m.filters.rootIssue = ""
+		m.workSelectionCleared = false
+		m.activePanel = PanelLeft
+		m.statusMessage = "Showing all issues"
 		m.statusIsError = false
-		// Refresh to show all issues again
 		return m, m.refreshData()
 	}
 
@@ -1237,110 +1238,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Normal mode key handling
 
-	// Delegate to work tabs panel when it's active
-	if m.activePanel == PanelWorkTabs && len(m.workTiles) > 0 {
-		// Handle navigation in work tabs
-		switch msg.String() {
-		case "h", "left":
-			// Move to previous work tab
-			currentIndex := -1
-			for i, work := range m.workTiles {
-				if work != nil && work.Work.ID == m.focusedWorkID {
-					currentIndex = i
-					break
-				}
-			}
-			if currentIndex > 0 {
-				// Select previous work
-				return m.doSelectWorkAtIndex(currentIndex - 1)
-			}
-			return m, nil
-
-		case "l", "right":
-			// Move to next work tab
-			currentIndex := -1
-			for i, work := range m.workTiles {
-				if work != nil && work.Work.ID == m.focusedWorkID {
-					currentIndex = i
-					break
-				}
-			}
-			if currentIndex >= 0 && currentIndex < len(m.workTiles)-1 {
-				// Select next work
-				return m.doSelectWorkAtIndex(currentIndex + 1)
-			}
-			return m, nil
-
-		case "enter":
-			// If a work is focused but we're on the tabs bar, ensure we switch to work details
-			if m.focusedWorkID != "" {
-				m.activePanel = PanelWorkDetails
-			}
-			return m, nil
-		}
-	}
-
-	// Delegate to work details panel when it's active
-	if m.activePanel == PanelWorkDetails && m.focusedWorkID != "" {
-		cmd, action := m.workDetails.Update(msg)
-		switch action {
-		case WorkDetailActionNavigateUp, WorkDetailActionNavigateDown:
-			// Navigation actions - check if selection changed and update filter
-			return m, m.updateWorkSelectionFilter()
-		case WorkDetailActionOpenTerminal:
-			return m, m.openConsole()
-		case WorkDetailActionOpenAgent:
-			return m, m.openAgent()
-		case WorkDetailActionOpenIDE:
-			return m, m.openIDE()
-		case WorkDetailActionRun:
-			// Run work - use auto-group if multiple unassigned beads
-			focusedWork := m.workDetails.GetFocusedWork()
-			useAutoGroup := focusedWork != nil && len(focusedWork.UnassignedBeads) > 1
-			return m, m.runFocusedWork(useAutoGroup)
-		case WorkDetailActionReview:
-			return m, m.createReviewTask()
-		case WorkDetailActionPR:
-			return m, m.createPRTask()
-		case WorkDetailActionRestartOrchestrator:
-			return m, m.restartOrchestrator()
-		case WorkDetailActionCheckFeedback:
-			return m, m.checkPRFeedback()
-		case WorkDetailActionDestroy:
-			// Show confirmation dialog for work destruction
-			// Check if work is currently processing
-			focusedWork := m.workDetails.GetFocusedWork()
-			if focusedWork != nil && focusedWork.Work.Status == "processing" {
-				m.statusMessage = "Cannot destroy work that is currently processing"
-				m.statusIsError = true
-				return m, nil
-			}
-			m.viewMode = ViewDestroyConfirm
-			return m, cmd
-		case WorkDetailActionAddChildIssue:
-			// Add child issue to root issue, then add to work and run
-			focusedWork := m.workDetails.GetFocusedWork()
-			if focusedWork != nil && focusedWork.Work.RootIssueID != "" {
-				m.addChildToWorkID = focusedWork.Work.ID
-				m.beadFormPanel.SetAddChildMode(focusedWork.Work.RootIssueID)
-				m.viewMode = ViewAddChildBead
-				return m, m.beadFormPanel.Init()
-			}
-			return m, nil
-		case WorkDetailActionResetTask:
-			return m, m.resetSelectedTask()
-		case WorkDetailActionPlan:
-			// Start planning session for selected unassigned bead
-			beadID := m.workDetails.GetSelectedUnassignedBeadID()
-			if beadID != "" {
-				return m, m.spawnPlanSession(beadID)
-			}
-			return m, nil
-		}
-		// WorkDetailActionNone - fall through to normal handling
-	}
-
-	// Handle [1-9] keys to select work by index (works from issues panel and work details panel)
+	// Handle [1-9] keys to select work filter by index
 	if key := msg.String(); len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
 		digit := int(key[0] - '0')
 		return m.selectWorkByIndex(digit)
@@ -1348,49 +1246,20 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	switch msg.String() {
 	case "tab":
-		// In focused work mode: cycle between work details (left panel only) and issues
-		// Tab does NOT navigate to work tabs bar or the right panel of work details
-		if m.focusedWorkID != "" {
-			switch m.activePanel {
-			case PanelWorkDetails, PanelWorkTabs:
-				// Move from work details (or tabs) to issues panel
-				m.activePanel = PanelLeft
-			case PanelLeft:
-				// Move from issues to work details
-				m.activePanel = PanelWorkDetails
-				m.workDetailsFocusLeft = true // Always focus left panel
-				// Reset the cleared flag and restore work selection filter when entering work details
-				if m.workSelectionCleared {
-					m.workSelectionCleared = false
-					return m, m.updateWorkSelectionFilter()
-				}
-			default:
-				m.activePanel = PanelWorkDetails
-				m.workDetailsFocusLeft = true
-			}
+		// Cycle between issues (left) and details (right) panels
+		if m.activePanel == PanelLeft {
+			m.activePanel = PanelRight
+		} else {
+			m.activePanel = PanelLeft
 		}
 		return m, nil
 
 	case "shift+tab":
-		// In focused work mode: cycle backward between issues and work details (left panel only)
-		// Shift+Tab does NOT navigate to work tabs bar or the right panel of work details
-		if m.focusedWorkID != "" {
-			switch m.activePanel {
-			case PanelLeft:
-				// Move from issues to work details
-				m.activePanel = PanelWorkDetails
-				m.workDetailsFocusLeft = true // Always focus left panel
-				// Reset the cleared flag and restore work selection filter when entering work details
-				if m.workSelectionCleared {
-					m.workSelectionCleared = false
-					return m, m.updateWorkSelectionFilter()
-				}
-			case PanelWorkDetails, PanelWorkTabs:
-				// Move from work details (or tabs) to issues panel
-				m.activePanel = PanelLeft
-			default:
-				m.activePanel = PanelLeft
-			}
+		// Cycle backward between panels
+		if m.activePanel == PanelRight {
+			m.activePanel = PanelLeft
+		} else {
+			m.activePanel = PanelRight
 		}
 		return m, nil
 
@@ -1430,6 +1299,11 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				"See https://github.com/beads-project/beads"
 			m.viewMode = ViewToolMissing
 			return m, nil
+		}
+		// Switch to issues view if on prompt tab (form renders in issues layout)
+		if m.topView == "prompt" {
+			m.topView = "issues"
+			m.promptInput.Blur()
 		}
 		m.viewMode = ViewCreateBeadInline
 		m.beadFormPanel.Reset()
@@ -1680,6 +1554,56 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	// Work commands (Shift keys, available when a work filter is active)
+	case "T":
+		if m.focusedWorkID != "" {
+			return m, m.openConsole()
+		}
+		return m, nil
+
+	case "C":
+		if m.focusedWorkID != "" {
+			return m, m.openAgent()
+		}
+		return m, nil
+
+	case "R":
+		if m.focusedWorkID != "" {
+			return m, m.runFocusedWork(false)
+		}
+		return m, nil
+
+	case "V":
+		if m.focusedWorkID != "" {
+			return m, m.createReviewTask()
+		}
+		return m, nil
+
+	case "P":
+		if m.focusedWorkID != "" {
+			return m, m.createPRTask()
+		}
+		return m, nil
+
+	case "F":
+		if m.focusedWorkID != "" {
+			return m, m.checkPRFeedback()
+		}
+		return m, nil
+
+	case "D":
+		if m.focusedWorkID != "" {
+			m.viewMode = ViewDestroyConfirm
+			return m, nil
+		}
+		return m, nil
+
+	case "O":
+		if m.focusedWorkID != "" {
+			return m, m.restartOrchestrator()
+		}
+		return m, nil
+
 	case "?":
 		m.viewMode = ViewHelp
 		return m, nil
@@ -1710,14 +1634,8 @@ func (m *planModel) syncPanels() {
 	issuesWidth := int(float64(totalContentWidth) * m.columnRatio)
 	detailsWidth := totalContentWidth - issuesWidth
 
-	// Determine status bar context based on focused panel
-	var statusBarCtx StatusBarContext
-	switch m.activePanel {
-	case PanelWorkDetails:
-		statusBarCtx = StatusBarContextWorkDetail
-	default:
-		statusBarCtx = StatusBarContextIssues
-	}
+	// Status bar always uses issues context (no split view)
+	statusBarCtx := StatusBarContextIssues
 
 	// Sync status bar
 	m.statusBar.SetSize(m.width)
@@ -1761,25 +1679,9 @@ func (m *planModel) syncPanels() {
 
 	// Sync work tabs bar
 	m.workTabsBar.SetSize(m.width)
-	m.workTabsBar.SetActivePanel(m.activePanel)
 	// Note: Work tiles are set asynchronously when work tiles are loaded
 	m.workTabsBar.SetFocusedWorkID(m.focusedWorkID)
 	// Note: Orchestrator health is set asynchronously when work tiles are loaded
-
-	// Sync work details (for focused work split view)
-	if m.focusedWorkID != "" {
-		// Calculate the correct work panel height (same formula as renderFocusedWorkSplitView)
-		workPanelHeight := m.calculateWorkPanelHeight() + 2 // +2 for border
-		m.workDetails.SetSize(m.width, workPanelHeight)
-		m.workDetails.SetColumnRatio(m.columnRatio) // Use same ratio as issues panel
-		// Pass focus state based on whether work details panel is active and which sub-panel has focus
-		leftFocused := m.activePanel == PanelWorkDetails && m.workDetailsFocusLeft
-		rightFocused := m.activePanel == PanelWorkDetails && !m.workDetailsFocusLeft
-		m.workDetails.SetFocus(leftFocused, rightFocused)
-		focusedWork := m.findWorkByID(m.focusedWorkID)
-		m.workDetails.SetFocusedWork(focusedWork)
-		m.workDetails.SetHoveredItem(m.hoveredWorkItem)
-	}
 
 	// Sync Linear import panel
 	m.linearImportPanel.SetSize(detailsWidth, m.height)
@@ -1838,12 +1740,13 @@ func (m *planModel) View() string {
 		return splash.RenderInfoBox(m.width, m.height, m.infoBoxTitle, m.infoBoxBody, m.splashConfig)
 	}
 
-	// Show splash screen with prompt when project is empty
+	// Show splash screen (full-screen, no tabs) when project is truly empty
 	if m.shouldShowSplash() {
 		return splash.RenderWithPrompt(m.width, m.height, splash.PromptConfig{
 			Config:    m.splashConfig,
 			InputView: m.promptInput.View(),
 			Timeline:  m.promptTimeline,
+			Busy:      m.promptAgentRunning,
 		})
 	}
 
@@ -1851,9 +1754,39 @@ func (m *planModel) View() string {
 	workTabsBar := m.workTabsBar.Render()
 	tabsBarHeight := m.workTabsBar.Height()
 
-	// Adjust content height for tabs bar
+	// Render view tabs bar (Prompt | Issues) — bubbletea tabs pattern (3 lines)
+	viewTabsBar := m.renderViewTabs()
+	viewTabsHeight := lipgloss.Height(viewTabsBar)
+
+	// Total chrome height above content
+	chromeHeight := tabsBarHeight + viewTabsHeight
+
+	if m.topView == "prompt" {
+		// Prompt view: render chat UI in the content area
+		promptHeight := m.height - chromeHeight
+		promptContent := splash.RenderWithPrompt(m.width, promptHeight, splash.PromptConfig{
+			Config:    m.splashConfig,
+			InputView: m.promptInput.View(),
+			Timeline:  m.promptTimeline,
+			Busy:      m.promptAgentRunning,
+		})
+		return lipgloss.JoinVertical(lipgloss.Left, workTabsBar, viewTabsBar, promptContent)
+	}
+
+	// Issues view: render normal two-column layout
 	originalHeight := m.height
-	m.height = m.height - tabsBarHeight
+
+	// Work context panel (shown above issues when a work filter is active)
+	var workContextPanel string
+	workContextHeight := 0
+	if m.focusedWorkID != "" {
+		workContextPanel = m.renderWorkContextPanel()
+		if workContextPanel != "" {
+			workContextHeight = lipgloss.Height(workContextPanel)
+		}
+	}
+
+	m.height = m.height - chromeHeight - workContextHeight
 	m.syncPanels() // Sync all panels including status bar before rendering
 	content := m.renderTwoColumnLayout()
 	m.height = originalHeight
@@ -1861,8 +1794,10 @@ func (m *planModel) View() string {
 	// Render status bar AFTER syncPanels to ensure status message is set
 	statusBar := m.statusBar.Render()
 
-	// Always include tab bar at top
-	return lipgloss.JoinVertical(lipgloss.Left, workTabsBar, content, statusBar)
+	if workContextPanel != "" {
+		return lipgloss.JoinVertical(lipgloss.Left, workTabsBar, viewTabsBar, workContextPanel, content, statusBar)
+	}
+	return lipgloss.JoinVertical(lipgloss.Left, workTabsBar, viewTabsBar, content, statusBar)
 }
 
 // beadsForBranch is a minimal struct for branch name generation
@@ -1904,7 +1839,6 @@ func generateBranchNameFromBeadsForBranch(beads []*beadsForBranch) string {
 // and triggers a data refresh
 func (m *planModel) updateWorkSelectionFilter() tea.Cmd {
 	// Save old filter values to detect actual changes
-	oldTask := m.filters.task
 	oldChildren := m.filters.children
 	oldRootIssue := m.filters.rootIssue
 
@@ -1917,31 +1851,19 @@ func (m *planModel) updateWorkSelectionFilter() tea.Cmd {
 		return nil
 	}
 
-	focusedWork := m.workDetails.GetFocusedWork()
+	focusedWork := m.findWorkByID(m.focusedWorkID)
 	if focusedWork == nil {
 		return nil
 	}
 
-	// Always set root issue when work panel is present so it's always visible
+	// Set children filter to show the root issue and its dependents
 	if focusedWork.Work.RootIssueID != "" {
 		m.filters.rootIssue = focusedWork.Work.RootIssueID
-	}
-
-	if m.workDetails.IsTaskSelected() {
-		// Task selected - set task filter to show beads assigned to that task
-		selectedTaskID := m.workDetails.GetSelectedTaskID()
-		if selectedTaskID != "" {
-			m.filters.task = selectedTaskID
-		}
-	} else {
-		// Root issue selected - set children filter to show dependents
-		if focusedWork.Work.RootIssueID != "" {
-			m.filters.children = focusedWork.Work.RootIssueID
-		}
+		m.filters.children = focusedWork.Work.RootIssueID
 	}
 
 	// Only reset cursor when filter actually changes (not on every refresh)
-	if m.filters.task != oldTask || m.filters.children != oldChildren || m.filters.rootIssue != oldRootIssue {
+	if m.filters.children != oldChildren || m.filters.rootIssue != oldRootIssue {
 		m.beadsCursor = 0
 	}
 
@@ -1984,23 +1906,29 @@ func (m *planModel) doSelectWorkAtIndex(index int) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Select the work
-	m.focusedWorkID = work.Work.ID
-	m.viewMode = ViewNormal
-	// If we're already on work tabs, stay there, otherwise go to work details
-	if m.activePanel != PanelWorkTabs {
-		m.activePanel = PanelWorkDetails
+	// Toggle: pressing same number clears the filter
+	if m.focusedWorkID == work.Work.ID {
+		m.focusedWorkID = ""
+		m.filters.task = ""
+		m.filters.children = ""
+		m.filters.rootIssue = ""
+		m.workSelectionCleared = false
+		m.activePanel = PanelLeft
+		m.statusMessage = "Showing all issues"
+		m.statusIsError = false
+		return m, m.refreshData()
 	}
-	m.statusMessage = fmt.Sprintf("Focused on work %s", m.focusedWorkID)
+
+	// Select the work as a filter
+	m.focusedWorkID = work.Work.ID
+	m.workSelectionCleared = false
+	m.viewMode = ViewNormal
+	m.activePanel = PanelLeft
+	m.statusMessage = fmt.Sprintf("Filtered to work %s", m.focusedWorkID)
 	m.statusIsError = false
 
 	// Clear unseen PR changes flag for this work
 	_ = m.proj.DB.MarkWorkPRSeen(m.ctx, m.focusedWorkID)
-
-	// Set up the work details panel
-	m.workDetails.SetFocusedWork(work)
-	m.workDetails.SetSelectedIndex(0)
-	m.workDetails.SetOrchestratorHealth(checkOrchestratorHealth(m.ctx, m.proj.DB, m.focusedWorkID))
 
 	// Update the filter and refresh
 	return m, m.updateWorkSelectionFilter()
@@ -2054,6 +1982,29 @@ func (m *planModel) shouldShowSplash() bool {
 func (m *planModel) handleSplashPromptKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	tl := m.promptTimeline
 
+	// Block all input while the prompt agent is running
+	if m.promptAgentRunning {
+		// Only allow browsing existing messages and quitting
+		switch msg.Type {
+		case tea.KeyUp:
+			if tl.MessageCount() > 0 {
+				tl.SelectUp()
+			}
+			return m, nil
+		case tea.KeyDown:
+			if tl.SelectedIdx() >= 0 {
+				tl.SelectDown()
+			}
+			return m, nil
+		case tea.KeyEsc:
+			if tl.SelectedIdx() >= 0 {
+				tl.ClearSelection()
+			}
+			return m, nil
+		}
+		return m, nil
+	}
+
 	if tl.SelectedIdx() >= 0 {
 		// A message is selected — navigate messages or return to input
 		switch msg.Type {
@@ -2077,15 +2028,19 @@ func (m *planModel) handleSplashPromptKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.promptInput.Focus()
 			return m, nil
 		case tea.KeyEnter:
+			// Enter on a selected message — navigate to linked entity (same as 'o')
+			if selected := tl.SelectedMessage(); selected != nil {
+				if cmd := m.navigateToLinkedEntity(selected); cmd != nil {
+					return m, cmd
+				}
+			}
 			return m, nil
 		case tea.KeyRunes:
 			if msg.String() == "o" {
 				// Open — navigate to the linked work/task/bead
-				// TODO: Wire up navigation when messages have links
 				if selected := tl.SelectedMessage(); selected != nil {
-					if selected.WorkID != "" || selected.TaskID != "" {
-						// Will call m.navigateToWork(selected.WorkID, selected.TaskID) once implemented
-						_ = selected
+					if cmd := m.navigateToLinkedEntity(selected); cmd != nil {
+						return m, cmd
 					}
 				}
 				return m, nil
@@ -2119,22 +2074,24 @@ func (m *planModel) handleSplashPromptKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Submitting clears any remembered scroll position
 		tl.ResetSuspended()
 
-		// Add user message to timeline
+		// Write user message to DB and show it immediately
+		_ = messages.Write(m.ctx, m.proj.DB, messages.WriteParams{
+			Source:    messages.SourceUser,
+			Text:      text,
+			EventType: messages.EventPrompt,
+		})
 		tl.AppendMessage(ui.ChatMessage{
 			Source: ui.MessageFromUser,
 			Text:   text,
 			Time:   "just now",
 		})
 
-		// Add a placeholder response for now
-		// TODO: This will be replaced with actual agent invocation
-		tl.AppendMessage(ui.ChatMessage{
-			Source: ui.MessageFromSystem,
-			Text:   "Got it! (Agent invocation not wired up yet)",
-			Time:   "just now",
-		})
+		// Block input and show thinking state
+		m.promptAgentRunning = true
+		m.promptInput.Blur()
 
-		return m, nil
+		// Spawn headless Claude agent (non-blocking)
+		return m, m.runPromptAgent(text)
 	case tea.KeyEsc:
 		if m.promptInput.Value() == "" {
 			return m, nil
@@ -2147,6 +2104,182 @@ func (m *planModel) handleSplashPromptKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.promptInput, cmd = m.promptInput.Update(msg)
 	return m, cmd
+}
+
+// loadMessages reads messages from the DB and returns them as ChatMessages.
+func (m *planModel) loadMessages() tea.Cmd {
+	return func() tea.Msg {
+		msgs, err := messages.List(m.ctx, m.proj.DB, 50)
+		if err != nil {
+			return messagesLoadedMsg{err: err}
+		}
+		chatMsgs := make([]ui.ChatMessage, len(msgs))
+		now := time.Now()
+		for i, msg := range msgs {
+			source := ui.MessageFromSystem
+			if msg.Source == messages.SourceUser {
+				source = ui.MessageFromUser
+			}
+			chatMsgs[i] = ui.ChatMessage{
+				Source:    source,
+				Text:      msg.Text,
+				Time:      relativeTime(now, msg.CreatedAt),
+				WorkID:    msg.WorkID,
+				TaskID:    msg.TaskID,
+				BeadID:    msg.BeadID,
+				EventType: msg.EventType,
+			}
+		}
+		return messagesLoadedMsg{messages: chatMsgs}
+	}
+}
+
+// relativeTime returns a human-readable relative timestamp.
+func relativeTime(now, t time.Time) string {
+	d := now.Sub(t)
+	switch {
+	case d < time.Minute:
+		return "just now"
+	case d < time.Hour:
+		m := int(d.Minutes())
+		if m == 1 {
+			return "1m ago"
+		}
+		return fmt.Sprintf("%dm ago", m)
+	case d < 24*time.Hour:
+		h := int(d.Hours())
+		if h == 1 {
+			return "1h ago"
+		}
+		return fmt.Sprintf("%dh ago", h)
+	default:
+		days := int(d.Hours() / 24)
+		if days == 1 {
+			return "1d ago"
+		}
+		return fmt.Sprintf("%dd ago", days)
+	}
+}
+
+// navigateToLinkedEntity navigates to the work/bead referenced by a chat message.
+// Returns a tea.Cmd if navigation happened, nil otherwise.
+func (m *planModel) navigateToLinkedEntity(msg *ui.ChatMessage) tea.Cmd {
+	// Switch to issues view when navigating from prompt
+	m.topView = "issues"
+	m.promptInput.Blur()
+
+	if msg.WorkID != "" {
+		// Find work in tiles and focus it
+		for i, w := range m.workTiles {
+			if w != nil && w.Work.ID == msg.WorkID {
+				_, cmd := m.doSelectWorkAtIndex(i)
+				m.promptTimeline.ClearSelection()
+				return cmd
+			}
+		}
+		// Work not loaded yet — try loading tiles then selecting
+		m.statusMessage = fmt.Sprintf("Navigating to work %s...", msg.WorkID)
+		m.statusIsError = false
+		return nil
+	}
+
+	if msg.BeadID != "" {
+		// Find bead in beadItems and focus it
+		for i, b := range m.beadItems {
+			if b.ID == msg.BeadID {
+				m.beadsCursor = i
+				m.activePanel = PanelLeft
+				m.promptTimeline.ClearSelection()
+				return nil
+			}
+		}
+		// Bead not in current view — clear filters and reload
+		m.filters.status = "all"
+		m.promptTimeline.ClearSelection()
+		m.statusMessage = fmt.Sprintf("Looking for %s...", msg.BeadID)
+		m.statusIsError = false
+		return m.refreshData()
+	}
+
+	return nil
+}
+
+// runPromptAgent spawns a headless Claude agent to process the user's prompt.
+func (m *planModel) runPromptAgent(text string) tea.Cmd {
+	return func() tea.Msg {
+		// Fetch recent messages for conversation context
+		recentMsgs, _ := messages.List(m.ctx, m.proj.DB, 50)
+		var historyLines []string
+		// Take the last 10 prompt-context messages (skip the one we just wrote)
+		start := 0
+		if len(recentMsgs) > 10 {
+			start = len(recentMsgs) - 10
+		}
+		for _, msg := range recentMsgs[start:] {
+			// Only include prompt-context messages (user prompts and system responses)
+			if msg.EventType != "" && msg.EventType != messages.EventPrompt &&
+				msg.EventType != messages.EventError && msg.EventType != messages.EventInfo {
+				continue
+			}
+			role := "sarge"
+			if msg.Source == messages.SourceUser {
+				role = "user"
+			}
+			historyLines = append(historyLines, fmt.Sprintf("%s: %s", role, msg.Text))
+		}
+		recentHistory := strings.Join(historyLines, "\n")
+
+		agent := claude.New()
+		prompt, err := agent.BuildPrompt(types.TaskParams{
+			Type:           types.TaskTypePrompt,
+			UserPrompt:     text,
+			ProjectDir:     m.proj.Root,
+			RecentMessages: recentHistory,
+		})
+		if err != nil {
+			// Write fallback error message
+			_ = messages.Write(m.ctx, m.proj.DB, messages.WriteParams{
+				Source:    messages.SourceSystem,
+				Text:      fmt.Sprintf("Failed to build prompt: %v", err),
+				EventType: messages.EventError,
+			})
+			return promptAgentDoneMsg{err: err}
+		}
+
+		args := []string{"--print"}
+		if m.proj.Config != nil && m.proj.Config.Claude.ShouldSkipPermissions() {
+			args = append([]string{"--dangerously-skip-permissions"}, args...)
+		}
+		args = append(args, prompt)
+
+		cmd := exec.CommandContext(m.ctx, "claude", args...)
+		cmd.Dir = m.proj.MainRepoPath()
+
+		// Set BEADS_DIR so bd commands work
+		cmd.Env = append(os.Environ(), "BEADS_DIR="+m.proj.BeadsPath())
+
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			// Write fallback error message if claude failed
+			errText := fmt.Sprintf("Agent error: %v", err)
+			if len(output) > 0 {
+				// Trim to reasonable length for chat bubble
+				outStr := strings.TrimSpace(string(output))
+				if len(outStr) > 200 {
+					outStr = outStr[:200] + "..."
+				}
+				errText = outStr
+			}
+			_ = messages.Write(m.ctx, m.proj.DB, messages.WriteParams{
+				Source:    messages.SourceSystem,
+				Text:      errText,
+				EventType: messages.EventError,
+			})
+			return promptAgentDoneMsg{err: err}
+		}
+
+		return promptAgentDoneMsg{}
+	}
 }
 
 // buildChatBubbleColors creates ChatBubbleColors from the current theme.

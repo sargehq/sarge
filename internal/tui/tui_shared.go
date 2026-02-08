@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -125,6 +126,17 @@ func tuiNewBeadStyle() lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(CurrentTheme().NewBead).Bold(true)
 }
 
+// ansiRegexp matches ANSI SGR escape sequences (colors, bold, etc.)
+var ansiRegexp = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+// dimContent strips all ANSI color/style sequences from rendered content
+// and re-renders everything in the Dim color, creating a "washed out" effect
+// for unfocused panels.
+func dimContent(s string) string {
+	plain := ansiRegexp.ReplaceAllString(s, "")
+	return lipgloss.NewStyle().Foreground(CurrentTheme().Dim).Render(plain)
+}
+
 // Panel represents which panel is currently focused
 type Panel int
 
@@ -132,8 +144,6 @@ const (
 	PanelLeft        Panel = iota // Left panel (issues)
 	PanelMiddle                   // Middle panel at current depth (used by tui.go)
 	PanelRight                    // Right panel (details/forms)
-	PanelWorkDetails              // Work details in split view
-	PanelWorkTabs                 // Work tabs bar for work selection
 )
 
 // ViewMode represents the current view mode

@@ -37,6 +37,7 @@ type PromptConfig struct {
 	Config    Config
 	InputView string           // Pre-rendered textinput view from bubbletea
 	Timeline  *ui.ChatTimeline // Scrollable chat timeline component
+	Busy      bool             // True when agent is processing (blocks input, dims prompt)
 }
 
 // hintItem represents a single hint on the splash screen.
@@ -145,7 +146,7 @@ func RenderWithPrompt(width, height int, pcfg PromptConfig) string {
 
 	// Render the input box
 	promptBorder := cfg.Accent
-	if tl != nil && tl.SelectedIdx() >= 0 {
+	if pcfg.Busy || (tl != nil && tl.SelectedIdx() >= 0) {
 		promptBorder = cfg.Dim
 	}
 	inputStyle := lipgloss.NewStyle().
@@ -161,7 +162,9 @@ func RenderWithPrompt(width, height int, pcfg PromptConfig) string {
 	shortcutBar := renderHints(cfg)
 	hasMessages := tl != nil && tl.MessageCount() > 0
 	var promptHintText string
-	if tl != nil && tl.SelectedIdx() >= 0 {
+	if pcfg.Busy {
+		promptHintText = dimStyle.Render("[↑] messages  [q] quit")
+	} else if tl != nil && tl.SelectedIdx() >= 0 {
 		promptHintText = dimStyle.Render("[o] open  [↓] input  [esc] deselect")
 	} else if hasMessages {
 		promptHintText = dimStyle.Render("[enter] send  [↑] messages  [q] quit")
@@ -186,7 +189,7 @@ func RenderWithPrompt(width, height int, pcfg PromptConfig) string {
 		messagesView = tl.Render()
 	} else {
 		// Empty state: centered hint with breathing room below
-		emptyHint := dimStyle.Render("Ask sarge anything...") + "\n"
+		emptyHint := dimStyle.Render("What do you want Sarge to work on next?") + "\n"
 		messagesView = lipgloss.Place(contentWidth, msgAreaHeight, lipgloss.Center, lipgloss.Center, emptyHint)
 	}
 
