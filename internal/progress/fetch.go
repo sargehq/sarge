@@ -175,6 +175,11 @@ func FetchWorkProgress(ctx context.Context, proj *project.Project, work *db.Work
 		wp.Tasks = append(wp.Tasks, tp)
 	}
 
+	// Reverse tasks so newest (most recent) appear first
+	for i, j := 0, len(wp.Tasks)-1; i < j; i, j = i+1, j-1 {
+		wp.Tasks[i], wp.Tasks[j] = wp.Tasks[j], wp.Tasks[i]
+	}
+
 	// Populate work beads
 	for _, wb := range allWorkBeads {
 		bp := BeadProgress{ID: wb.BeadID}
