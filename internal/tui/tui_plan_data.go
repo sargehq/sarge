@@ -66,6 +66,24 @@ func (m *planModel) loadBeadsWithFilters(filters beadFilters) ([]beadItem, error
 		return nil, err
 	}
 
+	// Ensure root issue is included in results when set (e.g., when work panel is showing
+	// but user pressed '*' to clear task/children filter)
+	if filters.rootIssue != "" {
+		found := false
+		for _, item := range items {
+			if item.ID == filters.rootIssue {
+				found = true
+				break
+			}
+		}
+		if !found {
+			rootBead, err := m.proj.Beads.GetBead(m.ctx, filters.rootIssue)
+			if err == nil && rootBead != nil {
+				items = append([]beadItem{{BeadWithDeps: rootBead}}, items...)
+			}
+		}
+	}
+
 	// Fetch assigned beads from database and populate assignedWorkID
 	assignedBeads, err := m.proj.DB.GetAllAssignedBeads(m.ctx)
 	if err == nil {
