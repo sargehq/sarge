@@ -1792,6 +1792,11 @@ func (m *planModel) updateWorkSelectionFilter() tea.Cmd {
 
 	focusedWork := m.workDetails.GetFocusedWork()
 	if focusedWork == nil {
+		// Work data is still loading - restore old filters to avoid
+		// clearing the issues panel while async data loads
+		m.filters.task = oldTask
+		m.filters.children = oldChildren
+		m.filters.rootIssue = oldRootIssue
 		return nil
 	}
 
