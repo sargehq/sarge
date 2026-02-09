@@ -186,7 +186,7 @@ func (m *planModel) loadBeadsForTask(filters beadFilters) ([]beadItem, error) {
 }
 
 // loadBeadsForChildren loads children (dependents) of a specific bead.
-// This fetches all dependents regardless of status filter.
+// This recursively fetches all descendants regardless of status filter.
 func (m *planModel) loadBeadsForChildren(filters beadFilters) ([]beadItem, error) {
 	// Get the parent bead to find its dependents
 	parentBead, err := m.proj.Beads.GetBead(m.ctx, filters.children)
@@ -199,16 +199,34 @@ func (m *planModel) loadBeadsForChildren(filters beadFilters) ([]beadItem, error
 
 	// Also include the parent bead itself
 	items := []beadItem{{BeadWithDeps: parentBead}}
+	seen := map[string]bool{parentBead.ID: true}
 
-	// Fetch each dependent bead
-	for _, dep := range parentBead.Dependents {
-		bead, err := m.proj.Beads.GetBead(m.ctx, dep.IssueID)
-		if err != nil || bead == nil {
-			continue
+	// Recursively fetch all descendants using BFS
+	queue := make([]*beads.BeadWithDeps, 0, len(parentBead.Dependents))
+	queue = append(queue, parentBead)
+
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+
+		for _, dep := range current.Dependents {
+			if seen[dep.IssueID] {
+				continue
+			}
+			seen[dep.IssueID] = true
+
+			bead, err := m.proj.Beads.GetBead(m.ctx, dep.IssueID)
+			if err != nil || bead == nil {
+				continue
+			}
+			items = append(items, beadItem{
+				BeadWithDeps: bead,
+			})
+			// Queue this bead to fetch its children too
+			if len(bead.Dependents) > 0 {
+				queue = append(queue, bead)
+			}
 		}
-		items = append(items, beadItem{
-			BeadWithDeps: bead,
-		})
 	}
 
 	// Apply search text filter if set
