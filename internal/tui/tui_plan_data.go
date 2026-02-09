@@ -95,7 +95,8 @@ func (m *planModel) loadBeadsWithFilters(filters beadFilters) ([]beadItem, error
 	}
 
 	// Build tree structure from dependencies
-	items = buildBeadTree(m.ctx, items, m.proj.Beads)
+	// Preserve root issue so it's never filtered out by the closed-item visibility filter
+	items = buildBeadTree(m.ctx, items, m.proj.Beads, filters.rootIssue)
 
 	// If no tree structure, apply regular sorting
 	hasTree := false
@@ -180,7 +181,8 @@ func (m *planModel) loadBeadsForTask(filters beadFilters) ([]beadItem, error) {
 	}
 
 	// Build tree structure from dependencies
-	items = buildBeadTree(m.ctx, items, m.proj.Beads)
+	// Preserve root issue so it's never filtered out by the closed-item visibility filter
+	items = buildBeadTree(m.ctx, items, m.proj.Beads, filters.rootIssue)
 
 	return items, nil
 }
@@ -244,7 +246,8 @@ func (m *planModel) loadBeadsForChildren(filters beadFilters) ([]beadItem, error
 	}
 
 	// Build tree structure from dependencies
-	items = buildBeadTree(m.ctx, items, m.proj.Beads)
+	// Preserve the parent (root issue) so it's never filtered out by the closed-item visibility filter
+	items = buildBeadTree(m.ctx, items, m.proj.Beads, filters.children)
 
 	return items, nil
 }

@@ -235,3 +235,35 @@ func TestBuildBeadTree_DeepClosedHierarchyWithOpenLeaf(t *testing.T) {
 	// All should be visible because the open leaf makes its ancestors visible
 	require.Len(t, result, 3, "expected all visible due to open leaf")
 }
+
+// TestBuildBeadTree_PreserveIDsKeepsClosedRootIssue tests that preserveIDs prevents
+// the visibility filter from removing a closed root issue
+func TestBuildBeadTree_PreserveIDsKeepsClosedRootIssue(t *testing.T) {
+	items := []beadItem{
+		testBeadItem("root-issue", "Root Issue", "closed", 1, "epic"),
+		testBeadItem("child-1", "Child 1", "closed", 2, "task", "root-issue"),
+	}
+
+	// Without preserveIDs, both closed items should be filtered out
+	result := buildBeadTree(context.Background(), items, nil)
+	require.Len(t, result, 0, "expected all filtered out without preserveIDs")
+
+	// With preserveIDs, the root issue should be kept
+	result = buildBeadTree(context.Background(), items, nil, "root-issue")
+	ids := make([]string, len(result))
+	for i, item := range result {
+		ids[i] = item.ID
+	}
+	require.Contains(t, ids, "root-issue", "expected preserved root issue to be visible")
+}
+
+// TestBuildBeadTree_PreserveIDsEmptyStringIgnored tests that empty preserveIDs are ignored
+func TestBuildBeadTree_PreserveIDsEmptyStringIgnored(t *testing.T) {
+	items := []beadItem{
+		testBeadItem("closed-item", "Closed", "closed", 1, "task"),
+	}
+
+	// Empty string should be ignored, closed item should still be filtered
+	result := buildBeadTree(context.Background(), items, nil, "")
+	require.Len(t, result, 0, "expected empty preserveID to be ignored")
+}
