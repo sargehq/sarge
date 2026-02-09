@@ -18,6 +18,7 @@ const (
 
 // ChatMessage represents a single message in the chat timeline.
 type ChatMessage struct {
+	ID        int64         // DB row ID (0 for unsaved messages)
 	Source    MessageSource
 	Text      string
 	Time      string // e.g. "2m ago", "just now"

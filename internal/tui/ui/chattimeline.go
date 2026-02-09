@@ -160,6 +160,26 @@ func (t *ChatTimeline) SelectedMessage() *ChatMessage {
 	return nil
 }
 
+// DeleteSelected removes the currently selected message and adjusts selection.
+// Returns the deleted message's ID (0 if nothing was selected).
+func (t *ChatTimeline) DeleteSelected() int64 {
+	if t.selectedIdx < 0 || t.selectedIdx >= len(t.messages) {
+		return 0
+	}
+	id := t.messages[t.selectedIdx].ID
+	t.messages = append(t.messages[:t.selectedIdx], t.messages[t.selectedIdx+1:]...)
+	t.dirty = true
+
+	// Adjust selection
+	if len(t.messages) == 0 {
+		t.selectedIdx = -1
+	} else if t.selectedIdx >= len(t.messages) {
+		t.selectedIdx = len(t.messages) - 1
+	}
+	t.ensureSelectedVisible()
+	return id
+}
+
 // MessageCount returns the number of messages.
 func (t *ChatTimeline) MessageCount() int {
 	return len(t.messages)

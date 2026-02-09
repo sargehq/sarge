@@ -49,6 +49,11 @@ func Write(ctx context.Context, database *db.DB, params WriteParams) error {
 	return err
 }
 
+// Delete removes a message by ID.
+func Delete(ctx context.Context, database *db.DB, id int64) error {
+	return database.DeleteMessage(ctx, id)
+}
+
 // List returns messages in chronological order, up to limit.
 func List(ctx context.Context, database *db.DB, limit int64) ([]Message, error) {
 	rows, err := database.ListMessages(ctx, limit)

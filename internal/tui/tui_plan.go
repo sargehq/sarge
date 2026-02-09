@@ -2232,11 +2232,23 @@ func (m *planModel) handleSplashPromptKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		case tea.KeyRunes:
-			if msg.String() == "o" {
+			switch msg.String() {
+			case "o":
 				// Open — navigate to the linked work/task/bead
 				if selected := tl.SelectedMessage(); selected != nil {
 					if cmd := m.navigateToLinkedEntity(selected); cmd != nil {
 						return m, cmd
+					}
+				}
+				return m, nil
+			case "d":
+				// Delete selected message
+				if id := tl.DeleteSelected(); id > 0 {
+					ctx := m.ctx
+					db := m.proj.DB
+					return m, func() tea.Msg {
+						_ = messages.Delete(ctx, db, id)
+						return nil
 					}
 				}
 				return m, nil
@@ -2317,6 +2329,7 @@ func (m *planModel) loadMessages() tea.Cmd {
 				source = ui.MessageFromUser
 			}
 			chatMsgs[i] = ui.ChatMessage{
+				ID:        msg.ID,
 				Source:    source,
 				Text:      msg.Text,
 				Time:      relativeTime(now, msg.CreatedAt),

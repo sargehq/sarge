@@ -10,6 +10,14 @@ import (
 	"database/sql"
 )
 
+const deleteMessage = `-- name: DeleteMessage :execresult
+DELETE FROM messages WHERE id = ?
+`
+
+func (q *Queries) DeleteMessage(ctx context.Context, id int64) (sql.Result, error) {
+	return q.db.ExecContext(ctx, deleteMessage, id)
+}
+
 const insertMessage = `-- name: InsertMessage :execresult
 INSERT INTO messages (source, text, work_id, task_id, bead_id, event_type)
 VALUES (?, ?, ?, ?, ?, ?)

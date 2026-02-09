@@ -36,6 +36,12 @@ func (db *DB) InsertMessage(ctx context.Context, source, text, workID, taskID, b
 	return result.LastInsertId()
 }
 
+// DeleteMessage deletes a message by ID.
+func (db *DB) DeleteMessage(ctx context.Context, id int64) error {
+	_, err := db.queries.DeleteMessage(ctx, id)
+	return err
+}
+
 // ListMessages returns messages in chronological order, up to limit.
 func (db *DB) ListMessages(ctx context.Context, limit int64) ([]Message, error) {
 	rows, err := db.queries.ListMessages(ctx, limit)

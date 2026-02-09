@@ -86,16 +86,6 @@ func (m *planModel) detectDialogButton(msg tea.MouseMsg) string {
 	return ""
 }
 
-// viewTabsHeight returns the height of the view tabs bar.
-// Returns 0 when on splash screen (no tabs shown), 3 otherwise
-// (top border + label + bottom border from bubbletea tabs pattern).
-func (m *planModel) viewTabsHeight() int {
-	if m.shouldShowSplash() {
-		return 0
-	}
-	return 3
-}
-
 // renderViewTabs renders the Prompt/Issues tab bar using the bubbletea tabs pattern
 // with connected borders (active tab bottom opens into the content below).
 func (m *planModel) renderViewTabs() string {
