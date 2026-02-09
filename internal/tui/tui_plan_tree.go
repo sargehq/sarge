@@ -10,7 +10,9 @@ import (
 // buildBeadTree takes a flat list of beads and organizes them into a tree
 // based on dependency relationships. Returns the items in tree order with
 // treeDepth set for each item.
-func buildBeadTree(ctx context.Context, items []beadItem, client *beads.Client) []beadItem {
+// Optional preserveIDs specifies bead IDs that should always be kept in results
+// regardless of the closed-item visibility filter (e.g., root issues).
+func buildBeadTree(ctx context.Context, items []beadItem, client *beads.Client, preserveIDs ...string) []beadItem {
 	if len(items) == 0 {
 		return items
 	}
@@ -228,9 +230,18 @@ func buildBeadTree(ctx context.Context, items []beadItem, client *beads.Client) 
 		resultMap[result[i].ID] = &result[i]
 	}
 
+	// Build set of preserved IDs that should always be visible
+	preserveSet := make(map[string]bool, len(preserveIDs))
+	for _, id := range preserveIDs {
+		if id != "" {
+			preserveSet[id] = true
+		}
+	}
+
 	// Compute visibility recursively: an item is visible if:
 	// 1. It's not closed, OR
-	// 2. It's closed but has at least one visible descendant
+	// 2. It's closed but has at least one visible descendant, OR
+	// 3. It's in the preserveSet (e.g., root issue that should always be shown)
 	// We use memoization to avoid recomputing visibility for the same item.
 	visibilityCache := make(map[string]bool)
 	var isVisible func(id string) bool
@@ -244,6 +255,12 @@ func buildBeadTree(ctx context.Context, items []beadItem, client *beads.Client) 
 		if !exists {
 			visibilityCache[id] = false
 			return false
+		}
+
+		// Preserved items are always visible (e.g., root issue)
+		if preserveSet[id] {
+			visibilityCache[id] = true
+			return true
 		}
 
 		// Non-closed items are always visible
