@@ -228,7 +228,8 @@ func (s *StatusBar) Render() string {
 	// Build bar with commands left, status right
 	// Padding fills the remaining space
 	padding := max(innerWidth-commandsWidth-statusWidth, minPadding)
-	return tuiStatusBarStyle().Width(s.width).Render(commands + strings.Repeat(" ", padding) + status)
+	bar := tuiStatusBarStyle().Width(s.width).Render(commands + strings.Repeat(" ", padding) + status)
+	return "\n" + bar
 }
 
 // renderIssuesCommands returns commands for the issues panel.

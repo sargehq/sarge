@@ -144,6 +144,8 @@ const (
 	PanelLeft        Panel = iota // Left panel (issues)
 	PanelMiddle                   // Middle panel at current depth (used by tui.go)
 	PanelRight                    // Right panel (details/forms)
+	PanelWorkHeader               // Work context panel (above content)
+	PanelViewTabs                 // View tabs + breadcrumbs bar
 )
 
 // ViewMode represents the current view mode

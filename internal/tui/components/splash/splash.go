@@ -38,6 +38,8 @@ type PromptConfig struct {
 	InputView string           // Pre-rendered textinput view from bubbletea
 	Timeline  *ui.ChatTimeline // Scrollable chat timeline component
 	Busy      bool             // True when agent is processing (blocks input, dims prompt)
+	Compact   bool             // True when rendered inside tab (not splash) — halves top margin
+	Focused   bool             // True when the prompt area has focus (accent border), false dims it
 }
 
 // hintItem represents a single hint on the splash screen.
@@ -130,9 +132,16 @@ func RenderWithPrompt(width, height int, pcfg PromptConfig) string {
 	artHeight := strings.Count(art, "\n") + 1
 
 	// Vertical padding: max(10, 25% of viewport height) on top and bottom
+	// Compact mode (inside tab, not splash): halve the top margin
 	vPad := height / 4
 	if vPad < 10 {
 		vPad = 10
+	}
+	if pcfg.Compact {
+		vPad = vPad / 2
+		if vPad < 2 {
+			vPad = 2
+		}
 	}
 
 	// Content width for messages and input (centered with padding)
@@ -146,7 +155,7 @@ func RenderWithPrompt(width, height int, pcfg PromptConfig) string {
 
 	// Render the input box
 	promptBorder := cfg.Accent
-	if pcfg.Busy || (tl != nil && tl.SelectedIdx() >= 0) {
+	if pcfg.Busy || !pcfg.Focused || (tl != nil && tl.SelectedIdx() >= 0) {
 		promptBorder = cfg.Dim
 	}
 	inputStyle := lipgloss.NewStyle().

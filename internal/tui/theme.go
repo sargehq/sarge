@@ -78,6 +78,9 @@ type Theme struct {
 	ChatSystemBrd  lipgloss.Color // Border for system messages
 	ChatSystemFg   lipgloss.Color // Text for system messages
 
+	// Navigation
+	AccentNav lipgloss.Color // Top nav accent (selected tabs, active breadcrumbs)
+
 	// Utility
 	Black lipgloss.Color // Black text for inverted backgrounds
 }
@@ -154,6 +157,8 @@ var defaultTheme = Theme{
 		lipgloss.Color("#FFE44D"),
 		lipgloss.Color("#FFEC80"),
 	},
+
+	AccentNav: lipgloss.Color("255"), // White — clean top nav highlight
 
 	Black: lipgloss.Color("0"),
 }

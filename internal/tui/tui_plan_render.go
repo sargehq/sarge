@@ -21,8 +21,13 @@ func (m *planModel) renderTwoColumnLayout() string {
 	contentHeight := m.height - 1 // -1 for status bar
 
 	// Dimming: unfocused panels get gray borders + gray content
+	// When focus is on work header or view tabs, both content panels are dimmed
 	issuesDimmed := m.activePanel != PanelLeft
 	rightDimmed := m.activePanel != PanelRight
+	if m.activePanel == PanelWorkHeader || m.activePanel == PanelViewTabs {
+		issuesDimmed = true
+		rightDimmed = true
+	}
 
 	// Use panels for rendering (they're already synced with correct sizes and data)
 	issuesPanel := m.issuesPanel.RenderWithPanel(contentHeight, issuesDimmed)
@@ -132,16 +137,27 @@ func (m *planModel) renderViewTabs() string {
 	}
 
 	var renderedTabs []string
-	for _, tb := range tabs {
+	for i, tb := range tabs {
 		style := inactiveTabStyle
 		if tb.active {
 			style = activeTabStyle
+		}
+		// When keyboard-focused, white border + white bold text
+		if m.activePanel == PanelViewTabs && m.viewTabsCursor == i {
+			border := activeTabBorder
+			if !tb.active {
+				border = inactiveTabBorder
+			}
+			style = style.Border(border, true).BorderForeground(t.AccentNav).Foreground(t.AccentNav).Bold(true)
 		}
 		rendered := style.Render(tb.label)
 		renderedTabs = append(renderedTabs, zone.Mark("viewtab-"+tb.id, rendered))
 	}
 
-	row := lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...)
+	// Add a 1-cell left margin before the first tab (matching tab height: 3 lines)
+	lineStyle := lipgloss.NewStyle().Foreground(borderColor)
+	leftPad := " \n \n" + lineStyle.Render("─")
+	row := lipgloss.JoinHorizontal(lipgloss.Top, append([]string{leftPad}, renderedTabs...)...)
 
 	// Fill remaining width: extend the bottom border line across the full width.
 	// Build a 3-line gap element matching tab height so the border line aligns
@@ -186,30 +202,40 @@ func (m *planModel) renderBreadcrumbs(maxWidth int) string {
 		return ""
 	}
 
-	dimStyle := lipgloss.NewStyle().Foreground(CurrentTheme().Dim)
-	selectedStyle := lipgloss.NewStyle().
-		Background(lipgloss.Color("255")).
-		Foreground(lipgloss.Color("241"))
-	unselectedStyle := lipgloss.NewStyle().
-		Background(lipgloss.Color("240")).
-		Foreground(lipgloss.Color("255"))
+	t := CurrentTheme()
+	dimStyle := lipgloss.NewStyle().Foreground(t.Dim)
 
-	sep := dimStyle.Render(" › ")
-	labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("255"))
-	label := "    " + labelStyle.Render("Filter by")
+	// Button states:
+	// - Inactive: dim text, no decoration
+	// - Active (current filter): white text, bold
+	// - Keyboard focused: underline added on top of whichever state
+	inactiveStyle := lipgloss.NewStyle().Foreground(t.Dim)
+	activeStyle := lipgloss.NewStyle().Foreground(t.AccentNav).Bold(true)
+
+	// Helper to pick style and add underline if keyboard-focused
+	buttonStyle := func(isActive bool, cursorIdx int) lipgloss.Style {
+		style := inactiveStyle
+		if isActive {
+			style = activeStyle
+		}
+		if m.activePanel == PanelViewTabs && m.viewTabsCursor == cursorIdx {
+			style = style.Underline(true)
+		}
+		return style
+	}
+
+	sep := dimStyle.Render("  ")
+	labelStyle := lipgloss.NewStyle().Foreground(t.Label)
+	label := "    " + labelStyle.Render("Filter by") + "  "
 
 	var crumbs []string
 
-	// "All" breadcrumb
+	// "All" button — cursor index 2
 	allID := m.breadcrumbZonePrefix + "workfilter-all"
-	if m.focusedWorkID == "" {
-		crumbs = append(crumbs, zone.Mark(allID, selectedStyle.Render(" All ")))
-	} else {
-		crumbs = append(crumbs, zone.Mark(allID, unselectedStyle.Render(" All ")))
-	}
+	crumbs = append(crumbs, zone.Mark(allID, buttonStyle(m.focusedWorkID == "", 2).Render("All")))
 
-	// One breadcrumb per work
-	for _, work := range workTiles {
+	// One button per work — cursor indices 3, 4, ...
+	for i, work := range workTiles {
 		if work == nil {
 			continue
 		}
@@ -222,13 +248,10 @@ func (m *planModel) renderBreadcrumbs(maxWidth int) string {
 		// Status icon
 		icon := m.workTabsBar.WorkStateIcon(work)
 
-		text := fmt.Sprintf(" %s %s ", icon, name)
+		text := fmt.Sprintf("%s %s", icon, name)
 		crumbID := m.breadcrumbZonePrefix + "workfilter-" + work.Work.ID
-		if m.focusedWorkID == work.Work.ID {
-			crumbs = append(crumbs, zone.Mark(crumbID, selectedStyle.Render(text)))
-		} else {
-			crumbs = append(crumbs, zone.Mark(crumbID, unselectedStyle.Render(text)))
-		}
+		isActive := m.focusedWorkID == work.Work.ID
+		crumbs = append(crumbs, zone.Mark(crumbID, buttonStyle(isActive, 3+i).Render(text)))
 	}
 
 	result := label + sep + strings.Join(crumbs, sep)
@@ -264,6 +287,17 @@ func (m *planModel) detectBreadcrumbClick(msg tea.MouseMsg) string {
 	return ""
 }
 
+// viewTabsElementCount returns the total number of navigable elements in the view tabs row.
+// Layout: [Prompt(0), Issues(1), All(2), work0(3), work1(4), ...]
+func (m *planModel) viewTabsElementCount() int {
+	workTiles := m.workTabsBar.GetWorkTiles()
+	if len(workTiles) == 0 {
+		return 2 // Just Prompt + Issues
+	}
+	// 2 tabs + "All" breadcrumb + one per work
+	return 3 + len(workTiles)
+}
+
 func (m *planModel) renderWithDialog(dialog string) string {
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, dialog)
 }
@@ -283,8 +317,8 @@ func (m *planModel) renderWorkContextPanel() string {
 
 	t := CurrentTheme()
 
-	// Panel inner width: total - border(2) - padding(2)
-	innerWidth := m.width - 4
+	// Panel inner width: total width - border(2) - horizontal padding(4) - outer margin(2)
+	innerWidth := m.width - 8
 
 	// Work name
 	name := work.Work.Name
@@ -394,14 +428,31 @@ func (m *planModel) renderWorkContextPanel() string {
 	// Last line: conditional command hints — only show applicable commands
 	lines = append(lines, m.renderWorkCommands(work))
 
+	// Insert a thin separator between status/progress line and commands line
+	if len(lines) >= 2 {
+		sepLine := lipgloss.NewStyle().Foreground(t.Dim).Render(strings.Repeat("─", innerWidth))
+		// Insert separator before the last line (commands)
+		newLines := make([]string, 0, len(lines)+1)
+		newLines = append(newLines, lines[:len(lines)-1]...)
+		newLines = append(newLines, sepLine)
+		newLines = append(newLines, "")
+		newLines = append(newLines, lines[len(lines)-1])
+		lines = newLines
+	}
+
 	content := strings.Join(lines, "\n")
 
-	// Bordered panel with accent-colored border
+	// White border by default, accent when focused
+	borderColor := lipgloss.Color("255")
+	if m.activePanel == PanelWorkHeader {
+		borderColor = t.Accent
+	}
+
 	panelStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(t.Accent).
-		Padding(0, 1).
-		Width(m.width)
+		BorderForeground(borderColor).
+		Padding(1, 2).
+		Width(m.width - 2)
 
 	return panelStyle.Render(content)
 }

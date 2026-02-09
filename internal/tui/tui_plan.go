@@ -118,6 +118,7 @@ type planModel struct {
 	// Top-level view tabs
 	topView              string // "prompt" or "issues" — which top-level tab is active
 	breadcrumbZonePrefix string // zone prefix for breadcrumb click detection
+	viewTabsCursor       int    // keyboard-focused element in view tabs row (-1 = no focus)
 
 	// Prompt (splash screen chat)
 	promptInput        textinput.Model    // Text input for the prompt
@@ -188,6 +189,7 @@ func newPlanModel(ctx context.Context, proj *project.Project, version string) *p
 		pendingWorkSelectIndex: -1,   // No pending work selection
 		topView:                "prompt", // Start on prompt tab
 		breadcrumbZonePrefix:   zone.NewPrefix(),
+		viewTabsCursor:         -1, // No tab bar focus initially
 		splashConfig:           buildSplashConfig(), // Tool checks run once at startup
 		promptTimeline:         ui.NewChatTimeline(buildChatBubbleColors()),
 		beadsWatcher:           beadsWatcher,
@@ -1042,7 +1044,8 @@ func scheduleNewBeadExpire(beadID string) tea.Cmd {
 
 func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Route to splash prompt handler when splash is visible OR prompt tab is active
-	if m.shouldShowSplash() || m.topView == "prompt" {
+	// But NOT when focus is on the view tabs or work header — those use normal navigation
+	if (m.shouldShowSplash() || m.topView == "prompt") && m.activePanel != PanelViewTabs && m.activePanel != PanelWorkHeader {
 		// When input is empty, let known shortcuts fall through to normal handling
 		if m.promptInput.Value() == "" && msg.Type == tea.KeyRunes && len(msg.Runes) == 1 {
 			switch string(msg.Runes) {
@@ -1066,17 +1069,26 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Handle escape key globally for clearing work filter
-	if msg.Type == tea.KeyEsc && m.viewMode == ViewNormal && m.focusedWorkID != "" {
-		m.focusedWorkID = ""
-		m.filters.task = ""
-		m.filters.children = ""
-		m.filters.rootIssue = ""
-		m.workSelectionCleared = false
-		m.activePanel = PanelLeft
-		m.statusMessage = "Showing all issues"
-		m.statusIsError = false
-		return m, m.refreshData()
+	// Handle escape key globally
+	if msg.Type == tea.KeyEsc && m.viewMode == ViewNormal {
+		// If in view tabs or work header, return to issues panel
+		if m.activePanel == PanelViewTabs || m.activePanel == PanelWorkHeader {
+			m.activePanel = PanelLeft
+			m.viewTabsCursor = -1
+			return m, nil
+		}
+		// If work filter is active, clear it
+		if m.focusedWorkID != "" {
+			m.focusedWorkID = ""
+			m.filters.task = ""
+			m.filters.children = ""
+			m.filters.rootIssue = ""
+			m.workSelectionCleared = false
+			m.activePanel = PanelLeft
+			m.statusMessage = "Showing all issues"
+			m.statusIsError = false
+			return m, m.refreshData()
+		}
 	}
 
 	// Handle dialog-specific input
@@ -1246,48 +1258,151 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	switch msg.String() {
 	case "tab":
-		// Cycle between issues (left) and details (right) panels
-		if m.activePanel == PanelLeft {
-			m.activePanel = PanelRight
-		} else {
+		// Cycle forward: ViewTabs → WorkHeader (if visible) → Left → Right → ViewTabs
+		hasWorkHeader := m.focusedWorkID != ""
+		switch m.activePanel {
+		case PanelViewTabs:
+			m.viewTabsCursor = -1
+			if hasWorkHeader {
+				m.activePanel = PanelWorkHeader
+			} else {
+				m.activePanel = PanelLeft
+			}
+		case PanelWorkHeader:
 			m.activePanel = PanelLeft
+		case PanelLeft:
+			m.activePanel = PanelRight
+		case PanelRight:
+			m.activePanel = PanelViewTabs
+			if m.topView == "prompt" {
+				m.viewTabsCursor = 0
+			} else {
+				m.viewTabsCursor = 1
+			}
 		}
 		return m, nil
 
 	case "shift+tab":
-		// Cycle backward between panels
-		if m.activePanel == PanelRight {
-			m.activePanel = PanelLeft
-		} else {
+		// Cycle backward: ViewTabs ← WorkHeader (if visible) ← Left ← Right ← ViewTabs
+		hasWorkHeader := m.focusedWorkID != ""
+		switch m.activePanel {
+		case PanelViewTabs:
+			m.viewTabsCursor = -1
 			m.activePanel = PanelRight
+		case PanelWorkHeader:
+			m.activePanel = PanelViewTabs
+			if m.topView == "prompt" {
+				m.viewTabsCursor = 0
+			} else {
+				m.viewTabsCursor = 1
+			}
+		case PanelLeft:
+			if hasWorkHeader {
+				m.activePanel = PanelWorkHeader
+			} else {
+				m.activePanel = PanelViewTabs
+				if m.topView == "prompt" {
+					m.viewTabsCursor = 0
+				} else {
+					m.viewTabsCursor = 1
+				}
+			}
+		case PanelRight:
+			m.activePanel = PanelLeft
 		}
 		return m, nil
 
 	case "h", "left":
-		// Simple left navigation in panels
+		if m.activePanel == PanelViewTabs {
+			// Move cursor left through view tabs elements
+			if m.viewTabsCursor > 0 {
+				m.viewTabsCursor--
+			}
+			return m, nil
+		}
+		// Simple left navigation in content panels
 		if m.activePanel == PanelRight {
 			m.activePanel = PanelLeft
 		}
 		return m, nil
 
 	case "l", "right":
-		// Simple right navigation in panels
+		if m.activePanel == PanelViewTabs {
+			// Move cursor right through view tabs elements
+			maxIdx := m.viewTabsElementCount() - 1
+			if m.viewTabsCursor < maxIdx {
+				m.viewTabsCursor++
+			}
+			return m, nil
+		}
+		// Simple right navigation in content panels
 		if m.activePanel == PanelLeft {
 			m.activePanel = PanelRight
 		}
 		return m, nil
 
 	case "j", "down":
-		// Navigate down in current list (work details is handled above)
-		if m.beadsCursor < len(m.beadItems)-1 {
-			m.beadsCursor++
+		switch m.activePanel {
+		case PanelViewTabs:
+			// Move down from view tabs → work header (if visible) or left panel
+			if m.focusedWorkID != "" {
+				m.activePanel = PanelWorkHeader
+			} else {
+				m.activePanel = PanelLeft
+			}
+			m.viewTabsCursor = -1
+		case PanelWorkHeader:
+			// Move down from work header → left panel
+			m.activePanel = PanelLeft
+		default:
+			// Navigate down within issues list
+			if m.beadsCursor < len(m.beadItems)-1 {
+				m.beadsCursor++
+			}
 		}
 		return m, nil
 
 	case "k", "up":
-		// Navigate up in current list (work details is handled above)
-		if m.beadsCursor > 0 {
-			m.beadsCursor--
+		switch m.activePanel {
+		case PanelViewTabs:
+			// Already at top — no-op
+		case PanelWorkHeader:
+			// Move up from work header → view tabs
+			m.activePanel = PanelViewTabs
+			// Set cursor to current active tab
+			if m.topView == "prompt" {
+				m.viewTabsCursor = 0
+			} else {
+				m.viewTabsCursor = 1
+			}
+		case PanelLeft, PanelRight:
+			if m.beadsCursor > 0 {
+				// Navigate up within list
+				m.beadsCursor--
+			} else {
+				// At top of list — move to work header (if visible) or view tabs
+				if m.focusedWorkID != "" {
+					m.activePanel = PanelWorkHeader
+				} else {
+					m.activePanel = PanelViewTabs
+					if m.topView == "prompt" {
+						m.viewTabsCursor = 0
+					} else {
+						m.viewTabsCursor = 1
+					}
+				}
+			}
+		default:
+			if m.beadsCursor > 0 {
+				m.beadsCursor--
+			}
+		}
+		return m, nil
+
+	case "enter":
+		// Activate element in view tabs when focused
+		if m.activePanel == PanelViewTabs {
+			return m.activateViewTabsCursor()
 		}
 		return m, nil
 
@@ -1617,6 +1732,71 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// activateViewTabsCursor activates the element at the current viewTabsCursor position.
+// Indices: 0=Prompt, 1=Issues, 2=All breadcrumb, 3+=work breadcrumbs.
+func (m *planModel) activateViewTabsCursor() (tea.Model, tea.Cmd) {
+	switch m.viewTabsCursor {
+	case 0:
+		// Switch to Prompt tab
+		m.topView = "prompt"
+		if !m.promptAgentRunning {
+			m.promptInput.Focus()
+		}
+		m.activePanel = PanelLeft
+		m.viewTabsCursor = -1
+		return m, m.loadMessages()
+	case 1:
+		// Switch to Issues tab
+		m.topView = "issues"
+		m.promptInput.Blur()
+		m.activePanel = PanelLeft
+		m.viewTabsCursor = -1
+		return m, nil
+	case 2:
+		// "All" breadcrumb — clear work filter
+		m.focusedWorkID = ""
+		m.filters.task = ""
+		m.filters.children = ""
+		m.filters.rootIssue = ""
+		m.workSelectionCleared = false
+		m.activePanel = PanelLeft
+		m.viewTabsCursor = -1
+		m.statusMessage = "Showing all issues"
+		m.statusIsError = false
+		return m, m.refreshData()
+	default:
+		// Work breadcrumb — index 3+ maps to workTiles[index-3]
+		workTiles := m.workTabsBar.GetWorkTiles()
+		workIdx := m.viewTabsCursor - 3
+		if workIdx >= 0 && workIdx < len(workTiles) && workTiles[workIdx] != nil {
+			workID := workTiles[workIdx].Work.ID
+			// Toggle: same work deselects
+			if m.focusedWorkID == workID {
+				m.focusedWorkID = ""
+				m.filters.task = ""
+				m.filters.children = ""
+				m.filters.rootIssue = ""
+				m.workSelectionCleared = false
+				m.activePanel = PanelLeft
+				m.viewTabsCursor = -1
+				m.statusMessage = "Showing all issues"
+				m.statusIsError = false
+				return m, m.refreshData()
+			}
+			m.focusedWorkID = workID
+			m.workSelectionCleared = false
+			m.viewMode = ViewNormal
+			m.activePanel = PanelLeft
+			m.viewTabsCursor = -1
+			m.statusMessage = fmt.Sprintf("Filtered to work %s", workID)
+			m.statusIsError = false
+			_ = m.proj.DB.MarkWorkPRSeen(m.ctx, workID)
+			return m, m.updateWorkSelectionFilter()
+		}
+	}
+	return m, nil
+}
+
 // cleanup releases resources when the TUI exits
 func (m *planModel) cleanup() {
 	// Stop the beads watcher if it's running
@@ -1747,6 +1927,7 @@ func (m *planModel) View() string {
 			InputView: m.promptInput.View(),
 			Timeline:  m.promptTimeline,
 			Busy:      m.promptAgentRunning,
+			Focused:   m.activePanel != PanelViewTabs && m.activePanel != PanelWorkHeader,
 		})
 	}
 
@@ -1769,6 +1950,8 @@ func (m *planModel) View() string {
 			InputView: m.promptInput.View(),
 			Timeline:  m.promptTimeline,
 			Busy:      m.promptAgentRunning,
+			Compact:   true, // Inside tab, not full splash — halve top margin
+			Focused:   m.activePanel != PanelViewTabs && m.activePanel != PanelWorkHeader,
 		})
 		return lipgloss.JoinVertical(lipgloss.Left, workTabsBar, viewTabsBar, promptContent)
 	}
@@ -2009,6 +2192,14 @@ func (m *planModel) handleSplashPromptKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// A message is selected — navigate messages or return to input
 		switch msg.Type {
 		case tea.KeyUp:
+			if tl.SelectedIdx() == 0 {
+				// Already at the top message — navigate to view tabs
+				tl.ClearSelection()
+				m.activePanel = PanelViewTabs
+				m.viewTabsCursor = 0 // Prompt tab
+				m.promptInput.Blur()
+				return m, nil
+			}
 			tl.SelectUp()
 			return m, nil
 		case tea.KeyDown:
@@ -2059,10 +2250,10 @@ func (m *planModel) handleSplashPromptKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case tea.KeyShiftTab:
-		// Resume previously suspended selection (if any)
-		if tl.ResumeSelection() {
-			m.promptInput.Blur()
-		}
+		// Navigate up to view tabs bar
+		m.activePanel = PanelViewTabs
+		m.viewTabsCursor = 0 // Prompt tab
+		m.promptInput.Blur()
 		return m, nil
 	case tea.KeyEnter:
 		text := strings.TrimSpace(m.promptInput.Value())

@@ -1,6 +1,10 @@
 package ui
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/charmbracelet/lipgloss"
+)
 
 // ChatTimeline is a scrollable, selectable chat message list.
 // It renders messages as bubbles and handles line-level scrolling
@@ -161,6 +165,12 @@ func (t *ChatTimeline) MessageCount() int {
 	return len(t.messages)
 }
 
+// HasHiddenAbove returns true when there are rendered lines scrolled above the viewport.
+func (t *ChatTimeline) HasHiddenAbove() bool {
+	t.rebuildIfDirty()
+	return t.scrollOffset > 0
+}
+
 // Render returns the visible portion of the timeline.
 func (t *ChatTimeline) Render() string {
 	if len(t.messages) == 0 || t.height <= 0 || t.width <= 0 {
@@ -187,15 +197,27 @@ func (t *ChatTimeline) Render() string {
 		start = totalLines
 	}
 
-	visible := t.renderedLines[start:end]
+	visible := make([]string, len(t.renderedLines[start:end]))
+	copy(visible, t.renderedLines[start:end])
 
 	// Pad to fill viewport height (push content to bottom when short)
+	padCount := 0
 	if len(visible) < t.height {
-		padding := make([]string, t.height-len(visible))
+		padCount = t.height - len(visible)
+		padding := make([]string, padCount)
 		for i := range padding {
 			padding[i] = ""
 		}
 		visible = append(padding, visible...)
+	}
+
+	// Show nav hint above topmost message when scrolled up with a message selected
+	if t.selectedIdx >= 0 && t.scrollOffset > 0 && padCount > 0 {
+		hintStyle := lipgloss.NewStyle().Foreground(t.colors.TimeDim)
+		hint := hintStyle.Render("Shift+Tab to switch to Nav")
+		// Place on the last padding line (right above first content), indented 2 cells
+		hintIdx := padCount - 1
+		visible[hintIdx] = "  " + hint
 	}
 
 	return strings.Join(visible, "\n")
