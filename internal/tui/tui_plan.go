@@ -1753,7 +1753,9 @@ func (m *planModel) activateViewTabsCursor() (tea.Model, tea.Cmd) {
 		m.viewTabsCursor = -1
 		return m, nil
 	case 2:
-		// "All" breadcrumb — clear work filter
+		// "All" breadcrumb — clear work filter and switch to Issues tab
+		m.topView = "issues"
+		m.promptInput.Blur()
 		m.focusedWorkID = ""
 		m.filters.task = ""
 		m.filters.children = ""
@@ -1770,6 +1772,9 @@ func (m *planModel) activateViewTabsCursor() (tea.Model, tea.Cmd) {
 		workIdx := m.viewTabsCursor - 3
 		if workIdx >= 0 && workIdx < len(workTiles) && workTiles[workIdx] != nil {
 			workID := workTiles[workIdx].Work.ID
+			// Always switch to Issues tab when activating a work breadcrumb
+			m.topView = "issues"
+			m.promptInput.Blur()
 			// Toggle: same work deselects
 			if m.focusedWorkID == workID {
 				m.focusedWorkID = ""
