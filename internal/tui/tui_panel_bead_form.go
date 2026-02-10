@@ -442,16 +442,16 @@ func (p *BeadFormPanel) Render(visibleLines int) string {
 	currentType := beadTypes[p.beadType]
 	var typeDisplay string
 	if typeFocused {
-		typeDisplay = fmt.Sprintf("< %s >", tuiValueStyle.Render(currentType))
+		typeDisplay = fmt.Sprintf("< %s >", tuiValueStyle().Render(currentType))
 	} else {
-		typeDisplay = typeFeatureStyle.Render(currentType)
+		typeDisplay = typeFeatureStyle().Render(currentType)
 	}
 
 	// Priority display
 	priorityLabels := []string{"P0 (critical)", "P1 (high)", "P2 (medium)", "P3 (low)", "P4 (backlog)"}
 	var priorityDisplay string
 	if priorityFocused {
-		priorityDisplay = fmt.Sprintf("< %s >", tuiValueStyle.Render(priorityLabels[p.priority]))
+		priorityDisplay = fmt.Sprintf("< %s >", tuiValueStyle().Render(priorityLabels[p.priority]))
 	} else {
 		priorityDisplay = priorityLabels[p.priority]
 	}
@@ -461,7 +461,7 @@ func (p *BeadFormPanel) Render(visibleLines int) string {
 	if p.mode == BeadFormModeEdit {
 		currentStatus := beadStatuses[p.status]
 		if statusFocused {
-			statusDisplay = fmt.Sprintf("< %s >", tuiValueStyle.Render(currentStatus))
+			statusDisplay = fmt.Sprintf("< %s >", tuiValueStyle().Render(currentStatus))
 		} else {
 			statusDisplay = currentStatus
 		}
@@ -474,34 +474,34 @@ func (p *BeadFormPanel) Render(visibleLines int) string {
 	statusLabel := "Status:"
 	descLabel := "Description:"
 	if p.focusIdx == 0 {
-		titleLabel = tuiValueStyle.Render("Title:") + " (editing)"
+		titleLabel = tuiValueStyle().Render("Title:") + " (editing)"
 	}
 	if typeFocused {
-		typeLabel = tuiValueStyle.Render("Type:") + " (j/k)"
+		typeLabel = tuiValueStyle().Render("Type:") + " (j/k)"
 	}
 	if priorityFocused {
-		priorityLabel = tuiValueStyle.Render("Priority:") + " (j/k)"
+		priorityLabel = tuiValueStyle().Render("Priority:") + " (j/k)"
 	}
 	if statusFocused {
-		statusLabel = tuiValueStyle.Render("Status:") + " (j/k)"
+		statusLabel = tuiValueStyle().Render("Status:") + " (j/k)"
 	}
 	if descFocused {
-		descLabel = tuiValueStyle.Render("Description:") + " (optional)"
+		descLabel = tuiValueStyle().Render("Description:") + " (optional)"
 	}
 
 	// Determine mode and render appropriate header
 	var header string
 	switch p.mode {
 	case BeadFormModeEdit:
-		header = "Edit Issue " + issueIDStyle.Render(p.editBeadID)
+		header = "Edit Issue " + issueIDStyle().Render(p.editBeadID)
 	case BeadFormModeAddChild:
 		// Include parent on same line to save vertical space
-		header = "Add Child to " + tuiValueStyle.Render(p.parentID)
+		header = "Add Child to " + tuiValueStyle().Render(p.parentID)
 	default:
 		header = "Create New Issue"
 	}
 
-	content.WriteString(tuiLabelStyle.Render(header))
+	content.WriteString(tuiLabelStyle().Render(header))
 	content.WriteString("\n")
 
 	// Render form fields
@@ -535,7 +535,7 @@ func (p *BeadFormPanel) Render(visibleLines int) string {
 
 	content.WriteString(okButton + "  " + cancelButton)
 	content.WriteString("\n")
-	content.WriteString(tuiDimStyle.Render("[Tab] Next  [Enter/Space] Select"))
+	content.WriteString(tuiDimStyle().Render("[Tab] Next  [Enter/Space] Select"))
 
 	return content.String()
 }
@@ -544,9 +544,9 @@ func (p *BeadFormPanel) Render(visibleLines int) string {
 func (p *BeadFormPanel) RenderWithPanel(contentHeight int) string {
 	panelContent := p.Render(contentHeight - 3)
 
-	panelStyle := tuiPanelStyle.Width(p.width).Height(contentHeight - 2)
+	panelStyle := tuiPanelStyle().Width(p.width).Height(contentHeight - 2)
 	if p.focused {
-		panelStyle = panelStyle.BorderForeground(lipgloss.Color("214"))
+		panelStyle = panelStyle.BorderForeground(CurrentTheme().Accent)
 	}
 
 	// Determine title based on mode
@@ -560,7 +560,7 @@ func (p *BeadFormPanel) RenderWithPanel(contentHeight int) string {
 		title = "Create Issue"
 	}
 
-	result := panelStyle.Render(tuiTitleStyle.Render(title) + "\n" + panelContent)
+	result := panelStyle.Render(tuiTitleStyle().Render(title) + "\n" + panelContent)
 
 	// If the result is taller than expected (due to lipgloss wrapping), fix it
 	// by removing extra lines from the INNER content while preserving borders and title

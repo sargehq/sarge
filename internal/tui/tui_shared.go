@@ -10,106 +10,120 @@ import (
 	"github.com/sargehq/sarge/internal/db"
 )
 
-// TUI-specific styles - shared across all TUI modes
-var (
-	tuiTitleStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("205"))
+// TUI-specific styles - theme-aware functions that read from CurrentTheme()
 
-	tuiHotkeyStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("214")) // Orange for hotkeys
+func tuiTitleStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Bold(true).Foreground(CurrentTheme().Title)
+}
 
-	tuiPanelStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("62")).
-			Padding(0, 1)
+func tuiHotkeyStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Bold(true).Foreground(CurrentTheme().Accent)
+}
 
-	tuiSelectedStyle = lipgloss.NewStyle().
-				Bold(true).
-				Foreground(lipgloss.Color("255")).
-				Background(lipgloss.Color("62"))
+func tuiPanelStyle() lipgloss.Style {
+	return lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(CurrentTheme().Border).
+		Padding(0, 1)
+}
 
-	tuiSelectedCheckStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("42"))
+func tuiSelectedStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Bold(true).
+		Foreground(CurrentTheme().Text).
+		Background(CurrentTheme().SurfaceSelected)
+}
 
-	tuiLabelStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("247"))
+func tuiSelectedCheckStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(CurrentTheme().Success)
+}
 
-	tuiValueStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("255"))
+func tuiLabelStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(CurrentTheme().Label)
+}
 
-	tuiDimStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("241"))
+func tuiValueStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(CurrentTheme().Text)
+}
 
-	tuiErrorStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("196"))
+func tuiDimStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(CurrentTheme().Dim)
+}
 
-	tuiSuccessStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("42"))
+func tuiErrorStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(CurrentTheme().Error)
+}
 
-	tuiStatusBarStyle = lipgloss.NewStyle().
-				Background(lipgloss.Color("236")).
-				Padding(0, 1)
+func tuiSuccessStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(CurrentTheme().Success)
+}
 
-	tuiDialogStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("99")).
-			Padding(1, 2).
-			Background(lipgloss.Color("235"))
+func tuiStatusBarStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Background(CurrentTheme().SurfaceBar).Padding(0, 1)
+}
 
-	tuiHelpStyle = lipgloss.NewStyle().
-			Padding(2, 4).
-			Background(lipgloss.Color("235"))
+func tuiDialogStyle() lipgloss.Style {
+	return lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(CurrentTheme().DialogBorder).
+		Padding(1, 2).
+		Background(CurrentTheme().SurfaceDialog)
+}
 
-	// Status indicator styles
-	statusPending = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("241"))
+func tuiHelpStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Padding(2, 4).Background(CurrentTheme().SurfaceDialog)
+}
 
-	statusProcessing = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("214")).
-				Bold(true)
+func statusPendingStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(CurrentTheme().StatusPending)
+}
 
-	statusCompleted = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("42")).
-			Bold(true)
+func statusProcessingStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(CurrentTheme().StatusProcessing).Bold(true)
+}
 
-	statusFailed = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("196")).
-			Bold(true)
+func statusCompletedStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(CurrentTheme().StatusCompleted).Bold(true)
+}
 
-	// Issue line styles
-	issueIDStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("214")) // Orange
+func statusFailedStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(CurrentTheme().StatusFailed).Bold(true)
+}
 
-	issueTreeStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("241")) // Dim gray for tree connectors
+func issueIDStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(CurrentTheme().Accent)
+}
 
-	// Type indicator styles
-	typeTaskStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("75")) // Blue
+func issueTreeStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(CurrentTheme().Dim)
+}
 
-	typeBugStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("196")) // Red
+func typeTaskStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(CurrentTheme().TypeTask)
+}
 
-	typeFeatureStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("42")) // Green
+func typeBugStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(CurrentTheme().TypeBug)
+}
 
-	typeEpicStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("213")). // Pink/magenta
-			Bold(true)
+func typeFeatureStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(CurrentTheme().TypeFeature)
+}
 
-	typeChoreStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("247")) // Gray
+func typeEpicStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(CurrentTheme().TypeEpic).Bold(true)
+}
 
-	typeDefaultStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("247")) // Gray for others
+func typeChoreStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(CurrentTheme().TypeDefault)
+}
 
-	// New bead animation style
-	tuiNewBeadStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFF00")). // Bright yellow for newly created beads
-			Bold(true)
-)
+func typeDefaultStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(CurrentTheme().TypeDefault)
+}
+
+func tuiNewBeadStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(CurrentTheme().NewBead).Bold(true)
+}
 
 // Panel represents which panel is currently focused
 type Panel int
@@ -142,6 +156,8 @@ const (
 	ViewLinearImportInline // Import from Linear (inline in details panel)
 	ViewPRImportInline     // Import from GitHub PR (inline in details panel)
 	ViewHelp
+	ViewLinearNotConfigured // Show Linear configuration instructions
+	ViewToolMissing         // Show tool missing info box
 )
 
 // beadItem represents a bead in the beads panel with TUI-specific display state.
@@ -196,24 +212,24 @@ func statusIcon(status string) string {
 	switch status {
 	// Internal db statuses
 	case db.StatusPending:
-		return statusPending.Render("○")
+		return statusPendingStyle().Render("○")
 	case db.StatusProcessing:
-		return statusProcessing.Render("●")
+		return statusProcessingStyle().Render("●")
 	case db.StatusCompleted:
-		return statusCompleted.Render("✓")
+		return statusCompletedStyle().Render("✓")
 	case db.StatusFailed:
-		return statusFailed.Render("✗")
+		return statusFailedStyle().Render("✗")
 	// Bead statuses from bd CLI
 	case "open":
-		return statusPending.Render("○")
+		return statusPendingStyle().Render("○")
 	case "in_progress":
-		return statusProcessing.Render("●")
+		return statusProcessingStyle().Render("●")
 	case "blocked":
-		return statusFailed.Render("◐")
+		return statusFailedStyle().Render("◐")
 	case "deferred":
-		return statusPending.Render("❄")
+		return statusPendingStyle().Render("❄")
 	case "closed":
-		return statusCompleted.Render("✓")
+		return statusCompletedStyle().Render("✓")
 	default:
 		return "?"
 	}
@@ -236,7 +252,7 @@ func styleHotkeys(text string) string {
 				// Found a complete [key] sequence
 				key := text[i+1 : end]
 				result.WriteString("[")
-				result.WriteString(tuiHotkeyStyle.Render(key))
+				result.WriteString(tuiHotkeyStyle().Render(key))
 				result.WriteString("]")
 				i = end + 1
 				continue
@@ -251,9 +267,10 @@ func styleHotkeys(text string) string {
 // styleButtonWithHover styles a button with hover effect if hovered is true
 // This is used for clickable buttons and mode tabs in the TUI
 func styleButtonWithHover(text string, hovered bool) string {
+	t := CurrentTheme()
 	hoverStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("0")).   // Black text
-		Background(lipgloss.Color("214")). // Orange background
+		Foreground(t.Black).
+		Background(t.Accent).
 		Bold(true)
 
 	if hovered {

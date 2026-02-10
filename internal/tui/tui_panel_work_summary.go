@@ -111,7 +111,7 @@ func (p *WorkSummaryPanel) renderFullContent(panelWidth int) string {
 	var content strings.Builder
 
 	if p.focusedWork == nil {
-		content.WriteString(tuiDimStyle.Render("Loading..."))
+		content.WriteString(tuiDimStyle().Render("Loading..."))
 		return content.String()
 	}
 
@@ -119,7 +119,7 @@ func (p *WorkSummaryPanel) renderFullContent(panelWidth int) string {
 	contentWidth := panelWidth - 2
 
 	// == Work Overview Section ==
-	overviewStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("214"))
+	overviewStyle := lipgloss.NewStyle().Bold(true).Foreground(CurrentTheme().Accent)
 	content.WriteString(overviewStyle.Render("Work Overview"))
 	content.WriteString("\n")
 	content.WriteString(strings.Repeat("─", contentWidth))
@@ -129,24 +129,24 @@ func (p *WorkSummaryPanel) renderFullContent(panelWidth int) string {
 	statusStyle := lipgloss.NewStyle()
 	switch p.focusedWork.Work.Status {
 	case db.StatusCompleted:
-		statusStyle = statusStyle.Foreground(lipgloss.Color("82"))
+		statusStyle = statusStyle.Foreground(CurrentTheme().StatusCompleted)
 	case db.StatusProcessing:
-		statusStyle = statusStyle.Foreground(lipgloss.Color("214"))
+		statusStyle = statusStyle.Foreground(CurrentTheme().StatusProcessing)
 	case db.StatusFailed:
-		statusStyle = statusStyle.Foreground(lipgloss.Color("196"))
+		statusStyle = statusStyle.Foreground(CurrentTheme().StatusFailed)
 	default:
-		statusStyle = statusStyle.Foreground(lipgloss.Color("247"))
+		statusStyle = statusStyle.Foreground(CurrentTheme().StatusIdle)
 	}
 	fmt.Fprintf(&content, "Status: %s\n", statusStyle.Render(p.focusedWork.Work.Status))
 
 	// PR URL (if available)
 	if p.focusedWork.Work.PRURL != "" {
-		prStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("81"))
+		prStyle := lipgloss.NewStyle().Foreground(CurrentTheme().Cyan)
 		fmt.Fprintf(&content, "PR: %s\n", prStyle.Render(p.focusedWork.Work.PRURL))
 
 		// PR Status section (only show if we have a PR)
 		content.WriteString("\n")
-		prStatusHeaderStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("141"))
+		prStatusHeaderStyle := lipgloss.NewStyle().Bold(true).Foreground(CurrentTheme().Merged)
 		content.WriteString(prStatusHeaderStyle.Render("PR Status"))
 		content.WriteString("\n")
 
@@ -157,16 +157,16 @@ func (p *WorkSummaryPanel) renderFullContent(panelWidth int) string {
 		}
 		ciIcon := "⏳"
 		ciText := "Pending"
-		ciColor := lipgloss.Color("226") // yellow
+		ciColor := CurrentTheme().CIPending
 		switch ciStatus {
 		case db.CIStatusSuccess:
 			ciIcon = "✓"
 			ciText = "Passing"
-			ciColor = lipgloss.Color("82") // green
+			ciColor = CurrentTheme().CISuccess
 		case db.CIStatusFailure:
 			ciIcon = "✗"
 			ciText = "Failing"
-			ciColor = lipgloss.Color("196") // red
+			ciColor = CurrentTheme().Error
 		}
 		ciStyle := lipgloss.NewStyle().Foreground(ciColor)
 		fmt.Fprintf(&content, "  CI: %s\n", ciStyle.Render(ciIcon+" "+ciText))
@@ -351,13 +351,13 @@ func (p *WorkSummaryPanel) renderFullContent(panelWidth int) string {
 			// Keep multiline but truncate to reasonable length
 			desc := rootBead.Description
 			desc = ansi.Truncate(desc, 300, "...")
-			content.WriteString(tuiDimStyle.Render(desc))
+			content.WriteString(tuiDimStyle().Render(desc))
 			content.WriteString("\n")
 		}
 	} else {
 		// Fallback if bead not found
 		fmt.Fprintf(&content, "Issue: %s\n", rootID)
-		content.WriteString(tuiDimStyle.Render("(Issue details not loaded)"))
+		content.WriteString(tuiDimStyle().Render("(Issue details not loaded)"))
 		content.WriteString("\n")
 	}
 

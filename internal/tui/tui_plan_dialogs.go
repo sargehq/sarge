@@ -151,7 +151,7 @@ func (m *planModel) renderLabelFilterDialogContent() string {
   [Enter] Apply  [Esc] Cancel
 `, currentLabel, m.textInput.View())
 
-	return tuiDialogStyle.Render(content)
+	return tuiDialogStyle().Render(content)
 }
 
 func (m *planModel) renderCloseBeadConfirmContent() string {
@@ -200,7 +200,7 @@ func (m *planModel) renderCloseBeadConfirmContent() string {
   [y] Yes  [n] No
 `, title, beadsList)
 
-	return tuiDialogStyle.Render(content)
+	return tuiDialogStyle().Render(content)
 }
 
 func (m *planModel) renderDeleteBeadConfirmContent() string {
@@ -251,7 +251,7 @@ func (m *planModel) renderDeleteBeadConfirmContent() string {
   [y] Yes  [n] No
 `, title, beadsList)
 
-	return tuiDialogStyle.Render(content)
+	return tuiDialogStyle().Render(content)
 }
 
 func (m *planModel) renderDestroyConfirmContent() string {
@@ -278,6 +278,6 @@ func (m *planModel) renderDestroyConfirmContent() string {
   [y] Yes  [n] No
 `, workID, workName)
 
-	return tuiDialogStyle.Render(content)
+	return tuiDialogStyle().Render(content)
 }
 

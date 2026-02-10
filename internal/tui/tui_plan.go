@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -14,6 +15,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/tui/components/linearconfig"
+	"github.com/sargehq/sarge/internal/tui/components/splash"
+	"github.com/sargehq/sarge/internal/tui/ui"
 	beadswatcher "github.com/sargehq/sarge/internal/beads/watcher"
 	"github.com/sargehq/sarge/internal/git"
 	"github.com/sargehq/sarge/internal/progress"
@@ -105,13 +109,22 @@ type planModel struct {
 
 	// New bead animation tracking
 	newBeads map[string]time.Time // beadID -> creation timestamp for animation
+
+	// Splash screen config (tool availability, platform, colors — computed once at startup)
+	splashConfig       splash.Config
+	linearConfigPanel  *linearconfig.Panel
+	uiColors           ui.Colors
+
+	// Info box state (for ViewToolMissing / ViewLinearNotConfigured overlays)
+	infoBoxTitle string
+	infoBoxBody  string
 }
 
 // newPlanModel creates a new Plan Mode model
-func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
+func newPlanModel(ctx context.Context, proj *project.Project, version string) *planModel {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
+	s.Style = lipgloss.NewStyle().Foreground(CurrentTheme().Accent)
 
 	ti := textinput.New()
 	ti.Placeholder = "Search..."
@@ -165,7 +178,8 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 		hoveredIssue:           -1,   // No issue hovered initially
 		hoveredWorkItem:        -1,   // No work item hovered initially
 		pendingWorkSelectIndex: -1,   // No pending work selection
-		workDetailsFocusLeft:   true, // Start with left panel focused
+		workDetailsFocusLeft:   true,              // Start with left panel focused
+		splashConfig:           buildSplashConfig(), // Tool checks run once at startup
 		beadsWatcher:           beadsWatcher,
 		trackingWatcher:        trackingWatcher,
 		filters: beadFilters{
@@ -173,6 +187,18 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 			sortBy: "default",
 		},
 	}
+
+	// Build shared UI colors from theme
+	t := CurrentTheme()
+	m.uiColors = ui.Colors{
+		Accent: t.Accent,
+		Text:   t.Text,
+		Dim:    t.Dim,
+		Border: t.DialogBorder,
+		Error:  t.Error,
+		Black:  t.Black,
+	}
+	m.linearConfigPanel = linearconfig.New(m.uiColors)
 
 	// Initialize panels
 	m.statusBar = NewStatusBar()
@@ -184,6 +210,8 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 	m.prImportPanel = NewPRImportPanel()
 	m.beadFormPanel = NewBeadFormPanel()
 	m.createWorkPanel = NewCreateWorkPanel()
+
+	m.statusBar.SetVersion(version)
 
 	// Set up status bar data providers
 	m.statusBar.SetDataProviders(
@@ -1127,6 +1155,22 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case ViewHelp:
 		m.viewMode = ViewNormal
 		return m, nil
+	case ViewLinearNotConfigured:
+		// Route to linear config panel
+		cmd, action := m.linearConfigPanel.Update(msg)
+		switch action {
+		case linearconfig.ActionCancel:
+			m.viewMode = ViewNormal
+			return m, nil
+		case linearconfig.ActionSubmit:
+			m.viewMode = ViewNormal
+			return m, m.saveLinearAPIKey(m.linearConfigPanel.Value())
+		}
+		return m, cmd
+	case ViewToolMissing:
+		// Any key dismisses the info box
+		m.viewMode = ViewNormal
+		return m, nil
 	}
 
 	// Normal mode key handling
@@ -1317,7 +1361,14 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "n":
-		// Create new bead inline
+		// Create new bead inline — requires bd
+		if !m.splashConfig.HasBd {
+			m.infoBoxTitle = "beads (bd) Not Installed"
+			m.infoBoxBody = "Creating issues requires the bd CLI.\n\n" +
+				"See https://github.com/beads-project/beads"
+			m.viewMode = ViewToolMissing
+			return m, nil
+		}
 		m.viewMode = ViewCreateBeadInline
 		m.beadFormPanel.Reset()
 		return m, m.beadFormPanel.Init()
@@ -1510,9 +1561,9 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			apiKey = m.proj.Config.Linear.APIKey
 		}
 		if apiKey == "" {
-			m.statusMessage = "Linear API key not configured (set [linear] api_key in config.toml)"
-			m.statusIsError = true
-			return m, nil
+			m.linearConfigPanel.SetSize(m.width, m.height)
+			m.viewMode = ViewLinearNotConfigured
+			return m, m.linearConfigPanel.Init()
 		}
 		m.viewMode = ViewLinearImportInline
 		m.linearImportPanel.Reset()
@@ -1718,6 +1769,16 @@ func (m *planModel) View() string {
 		// Fall through to normal rendering
 	case ViewHelp:
 		return m.renderHelp()
+	case ViewLinearNotConfigured:
+		m.linearConfigPanel.SetSize(m.width, m.height)
+		return m.linearConfigPanel.Render()
+	case ViewToolMissing:
+		return splash.RenderInfoBox(m.width, m.height, m.infoBoxTitle, m.infoBoxBody, m.splashConfig)
+	}
+
+	// Show splash screen when project is empty (no status bar — splash has its own hints)
+	if m.shouldShowSplash() {
+		return splash.Render(m.width, m.height, m.splashConfig)
 	}
 
 	// Render work tabs bar (always visible)
@@ -1893,4 +1954,37 @@ func (m *planModel) findWorkByID(id string) *progress.WorkProgress {
 		}
 	}
 	return nil
+}
+
+// buildSplashConfig creates a splash.Config from the current theme and tool checks.
+func buildSplashConfig() splash.Config {
+	t := CurrentTheme()
+	return splash.Config{
+		Gradient: t.SplashGradient,
+		Accent:   t.Accent,
+		Error:    t.Error,
+		Warning:  t.Warning,
+		Dim:      t.Dim,
+		Text:     t.Text,
+		Border:   t.DialogBorder,
+		HasBd:    isToolAvailable("bd"),
+		HasGh:    isToolAvailable("gh"),
+		Platform: splash.DetectPlatform(),
+	}
+}
+
+// isToolAvailable checks if a CLI tool is on PATH.
+func isToolAvailable(name string) bool {
+	_, err := exec.LookPath(name)
+	return err == nil
+}
+
+// shouldShowSplash returns true when the splash screen should be shown:
+// no issues, no works, not loading, and initial data fetch completed.
+func (m *planModel) shouldShowSplash() bool {
+	return m.viewMode == ViewNormal &&
+		len(m.beadItems) == 0 &&
+		len(m.workTiles) == 0 &&
+		!m.loading &&
+		!m.lastUpdate.IsZero()
 }

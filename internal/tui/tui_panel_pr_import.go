@@ -219,13 +219,13 @@ func (p *PRImportPanel) Render() string {
 	prURLLabel := "PR URL:"
 	if p.focusIdx == 0 {
 		if p.prMetadata != nil {
-			prURLLabel = tuiValueStyle.Render("PR URL:") + " (Enter to import)"
+			prURLLabel = tuiValueStyle().Render("PR URL:") + " (Enter to import)"
 		} else {
-			prURLLabel = tuiValueStyle.Render("PR URL:") + " (Enter to load preview)"
+			prURLLabel = tuiValueStyle().Render("PR URL:") + " (Enter to load preview)"
 		}
 	}
 
-	content.WriteString(tuiLabelStyle.Render("Import from GitHub PR"))
+	content.WriteString(tuiLabelStyle().Render("Import from GitHub PR"))
 	content.WriteString("\n\n")
 	content.WriteString(prURLLabel)
 	content.WriteString("\n")
@@ -234,15 +234,15 @@ func (p *PRImportPanel) Render() string {
 
 	// Show PR preview if available
 	if p.previewing {
-		content.WriteString(tuiDimStyle.Render("Loading PR details..."))
+		content.WriteString(tuiDimStyle().Render("Loading PR details..."))
 		content.WriteString("\n\n")
 	} else if p.previewErr != nil {
-		content.WriteString(tuiErrorStyle.Render(fmt.Sprintf("Error: %v", p.previewErr)))
+		content.WriteString(tuiErrorStyle().Render(fmt.Sprintf("Error: %v", p.previewErr)))
 		content.WriteString("\n\n")
 	} else if p.prMetadata != nil {
-		content.WriteString(tuiLabelStyle.Render("PR Preview:"))
+		content.WriteString(tuiLabelStyle().Render("PR Preview:"))
 		content.WriteString("\n")
-		content.WriteString(fmt.Sprintf("  #%d: %s\n", p.prMetadata.Number, tuiValueStyle.Render(p.prMetadata.Title)))
+		content.WriteString(fmt.Sprintf("  #%d: %s\n", p.prMetadata.Number, tuiValueStyle().Render(p.prMetadata.Title)))
 		content.WriteString(fmt.Sprintf("  Author: %s\n", p.prMetadata.Author))
 		content.WriteString(fmt.Sprintf("  State: %s\n", formatPRState(p.prMetadata.State)))
 		content.WriteString(fmt.Sprintf("  Branch: %s -> %s\n", p.prMetadata.HeadRefName, p.prMetadata.BaseRefName))
@@ -257,15 +257,15 @@ func (p *PRImportPanel) Render() string {
 	focusHint := ""
 
 	if p.focusIdx == 1 {
-		importLabel = tuiValueStyle.Render("[Import]")
-		focusHint = tuiDimStyle.Render(" (press Enter)")
+		importLabel = tuiValueStyle().Render("[Import]")
+		focusHint = tuiDimStyle().Render(" (press Enter)")
 	} else {
 		importLabel = styleButtonWithHover("Import", p.hoveredButton == "import")
 	}
 
 	if p.focusIdx == 2 {
-		cancelLabel = tuiValueStyle.Render("[Cancel]")
-		focusHint = tuiDimStyle.Render(" (press Enter)")
+		cancelLabel = tuiValueStyle().Render("[Cancel]")
+		focusHint = tuiDimStyle().Render(" (press Enter)")
 	} else {
 		cancelLabel = styleButtonWithHover("Cancel", p.hoveredButton == "cancel")
 	}
@@ -274,9 +274,9 @@ func (p *PRImportPanel) Render() string {
 	content.WriteString("\n")
 
 	if p.importing {
-		content.WriteString(tuiDimStyle.Render("Importing..."))
+		content.WriteString(tuiDimStyle().Render("Importing..."))
 	} else {
-		content.WriteString(tuiDimStyle.Render("[Tab] Next field  [Esc] Cancel"))
+		content.WriteString(tuiDimStyle().Render("[Tab] Next field  [Esc] Cancel"))
 	}
 
 	return content.String()
@@ -286,11 +286,11 @@ func (p *PRImportPanel) Render() string {
 func formatPRState(state string) string {
 	switch state {
 	case "OPEN":
-		return tuiSuccessStyle.Render("OPEN")
+		return tuiSuccessStyle().Render("OPEN")
 	case "CLOSED":
-		return tuiErrorStyle.Render("CLOSED")
+		return tuiErrorStyle().Render("CLOSED")
 	case "MERGED":
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("141")).Render("MERGED")
+		return lipgloss.NewStyle().Foreground(CurrentTheme().Merged).Render("MERGED")
 	default:
 		return state
 	}
@@ -300,12 +300,12 @@ func formatPRState(state string) string {
 func (p *PRImportPanel) RenderWithPanel(contentHeight int) string {
 	panelContent := p.Render()
 
-	panelStyle := tuiPanelStyle.Width(p.width).Height(contentHeight - 2)
+	panelStyle := tuiPanelStyle().Width(p.width).Height(contentHeight - 2)
 	if p.focused {
-		panelStyle = panelStyle.BorderForeground(lipgloss.Color("214"))
+		panelStyle = panelStyle.BorderForeground(CurrentTheme().Accent)
 	}
 
-	result := panelStyle.Render(tuiTitleStyle.Render("Import PR") + "\n" + panelContent)
+	result := panelStyle.Render(tuiTitleStyle().Render("Import PR") + "\n" + panelContent)
 
 	// If the result is taller than expected (due to lipgloss wrapping), fix it
 	if lipgloss.Height(result) > contentHeight {

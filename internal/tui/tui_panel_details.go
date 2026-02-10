@@ -127,18 +127,18 @@ func (p *IssueDetailsPanel) Render() string {
 func (p *IssueDetailsPanel) RenderWithPanel(contentHeight int) string {
 	detailsContent := p.Render()
 
-	panelStyle := tuiPanelStyle.Width(p.width).Height(contentHeight - 2)
+	panelStyle := tuiPanelStyle().Width(p.width).Height(contentHeight - 2)
 	if p.focused {
-		panelStyle = panelStyle.BorderForeground(lipgloss.Color("214"))
+		panelStyle = panelStyle.BorderForeground(CurrentTheme().Accent)
 	}
 
-	return panelStyle.Render(tuiTitleStyle.Render("Details") + "\n" + detailsContent)
+	return panelStyle.Render(tuiTitleStyle().Render("Details") + "\n" + detailsContent)
 }
 
 // renderFullIssueContent renders all content without line limits
 func (p *IssueDetailsPanel) renderFullIssueContent() string {
 	if p.focusedBead == nil {
-		return tuiDimStyle.Render("No issue selected")
+		return tuiDimStyle().Render("No issue selected")
 	}
 
 	var content strings.Builder
@@ -149,24 +149,24 @@ func (p *IssueDetailsPanel) renderFullIssueContent() string {
 
 	// Build header line - may need truncation to fit
 	var header strings.Builder
-	header.WriteString(tuiLabelStyle.Render("ID: "))
-	header.WriteString(tuiValueStyle.Render(bead.ID))
+	header.WriteString(tuiLabelStyle().Render("ID: "))
+	header.WriteString(tuiValueStyle().Render(bead.ID))
 	header.WriteString("  ")
-	header.WriteString(tuiLabelStyle.Render("Type: "))
-	header.WriteString(tuiValueStyle.Render(bead.Type))
+	header.WriteString(tuiLabelStyle().Render("Type: "))
+	header.WriteString(tuiValueStyle().Render(bead.Type))
 	header.WriteString("  ")
-	header.WriteString(tuiLabelStyle.Render("P"))
-	header.WriteString(tuiValueStyle.Render(fmt.Sprintf("%d", bead.Priority)))
+	header.WriteString(tuiLabelStyle().Render("P"))
+	header.WriteString(tuiValueStyle().Render(fmt.Sprintf("%d", bead.Priority)))
 	header.WriteString("  ")
-	header.WriteString(tuiLabelStyle.Render("Status: "))
-	header.WriteString(tuiValueStyle.Render(bead.Status))
+	header.WriteString(tuiLabelStyle().Render("Status: "))
+	header.WriteString(tuiValueStyle().Render(bead.Status))
 	if p.hasActiveSession {
 		header.WriteString("  ")
-		header.WriteString(tuiSuccessStyle.Render("[Session Active]"))
+		header.WriteString(tuiSuccessStyle().Render("[Session Active]"))
 	}
 	if bead.assignedWorkID != "" {
 		header.WriteString("  ")
-		header.WriteString(tuiDimStyle.Render("Work: " + bead.assignedWorkID))
+		header.WriteString(tuiDimStyle().Render("Work: " + bead.assignedWorkID))
 	}
 
 	// Truncate header to fit inner width
@@ -182,20 +182,20 @@ func (p *IssueDetailsPanel) renderFullIssueContent() string {
 	if lipgloss.Width(titleStr) > innerWidth {
 		titleStr = ansi.Truncate(titleStr, innerWidth, "...")
 	}
-	content.WriteString(tuiValueStyle.Render(titleStr))
+	content.WriteString(tuiValueStyle().Render(titleStr))
 
 	// Show full description
 	if bead.Description != "" {
 		content.WriteString("\n\n")
 		// Word wrap description to fit within inner width
 		wrapped := wordwrap.String(bead.Description, innerWidth)
-		content.WriteString(tuiDimStyle.Render(wrapped))
+		content.WriteString(tuiDimStyle().Render(wrapped))
 	}
 
 	// Show all children (issues blocked by this one)
 	if len(bead.children) > 0 {
 		content.WriteString("\n\n")
-		content.WriteString(tuiLabelStyle.Render("Blocks:"))
+		content.WriteString(tuiLabelStyle().Render("Blocks:"))
 
 		// Show all children with status
 		for _, childID := range bead.children {
@@ -203,10 +203,10 @@ func (p *IssueDetailsPanel) renderFullIssueContent() string {
 			if child, ok := p.childBeadMap[childID]; ok {
 				childLine = fmt.Sprintf("\n  %s %s %s",
 					statusIcon(child.Status),
-					issueIDStyle.Render(child.ID),
+					issueIDStyle().Render(child.ID),
 					child.Title)
 			} else {
-				childLine = fmt.Sprintf("\n  ? %s", issueIDStyle.Render(childID))
+				childLine = fmt.Sprintf("\n  ? %s", issueIDStyle().Render(childID))
 			}
 			// Truncate to fit inner width
 			if lipgloss.Width(childLine)-1 > innerWidth {

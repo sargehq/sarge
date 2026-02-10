@@ -38,13 +38,13 @@ type rootModel struct {
 }
 
 // newRootModel creates a new root TUI model
-func newRootModel(ctx context.Context, proj *project.Project) rootModel {
+func newRootModel(ctx context.Context, proj *project.Project, version string) rootModel {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
+	s.Style = lipgloss.NewStyle().Foreground(CurrentTheme().Accent)
 
 	// Create the plan model
-	planModel := newPlanModel(ctx, proj)
+	planModel := newPlanModel(ctx, proj, version)
 
 	return rootModel{
 		ctx:        ctx,
@@ -153,8 +153,8 @@ func (m rootModel) View() string {
 }
 
 // RunRootTUI starts the TUI with the new root model
-func RunRootTUI(ctx context.Context, proj *project.Project, enableMouse bool) error {
-	model := newRootModel(ctx, proj)
+func RunRootTUI(ctx context.Context, proj *project.Project, enableMouse bool, version string) error {
+	model := newRootModel(ctx, proj, version)
 
 	opts := []tea.ProgramOption{tea.WithAltScreen()}
 	if enableMouse {

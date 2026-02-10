@@ -2,15 +2,17 @@ package tui
 
 import (
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/control"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/github"
 	"github.com/sargehq/sarge/internal/linear"
-	"github.com/sargehq/sarge/internal/control"
+	"github.com/sargehq/sarge/internal/project"
 	"github.com/sargehq/sarge/internal/work"
 )
 
@@ -396,6 +398,23 @@ func (m *planModel) saveBeadEdit(beadID, title, description, beadType, status st
 		session := m.sessionName()
 		activeSessions, _ := m.proj.DB.GetBeadsWithActiveSessions(m.ctx, session)
 		return planDataMsg{beads: items, activeSessions: activeSessions, err: err}
+	}
+}
+
+// saveLinearAPIKey saves the Linear API key to the project config.
+func (m *planModel) saveLinearAPIKey(apiKey string) tea.Cmd {
+	return func() tea.Msg {
+		if m.proj.Config == nil {
+			return planStatusMsg{message: "No project config loaded", isError: true}
+		}
+
+		m.proj.Config.Linear.APIKey = apiKey
+		configPath := filepath.Join(m.proj.Root, project.ConfigDir, project.ConfigFile)
+		if err := m.proj.Config.SaveConfig(configPath); err != nil {
+			return planStatusMsg{message: fmt.Sprintf("Failed to save config: %v", err), isError: true}
+		}
+
+		return planStatusMsg{message: "Linear API key saved"}
 	}
 }
 

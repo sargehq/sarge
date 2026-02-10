@@ -307,20 +307,20 @@ func (p *WorkDetailsPanel) RenderWithPanel(contentHeight int) string {
 
 	// Create the two panels with fixed height (matching IssuesPanel pattern exactly)
 	// IssuesPanel uses: Height(contentHeight - 2)
-	leftPanelStyle := tuiPanelStyle.Width(leftWidth).Height(contentHeight - 2)
+	leftPanelStyle := tuiPanelStyle().Width(leftWidth).Height(contentHeight - 2)
 	if p.leftPanelFocused {
-		leftPanelStyle = leftPanelStyle.BorderForeground(lipgloss.Color("214"))
+		leftPanelStyle = leftPanelStyle.BorderForeground(CurrentTheme().Accent)
 	}
 
-	leftPanel := leftPanelStyle.Render(tuiTitleStyle.Render("Work") + "\n" + leftContent)
+	leftPanel := leftPanelStyle.Render(tuiTitleStyle().Render("Work") + "\n" + leftContent)
 
 	// Right panel uses its own height setting
-	rightPanelStyle := tuiPanelStyle.Width(rightWidth).Height(contentHeight - 2)
+	rightPanelStyle := tuiPanelStyle().Width(rightWidth).Height(contentHeight - 2)
 	if p.rightPanelFocused {
-		rightPanelStyle = rightPanelStyle.BorderForeground(lipgloss.Color("214"))
+		rightPanelStyle = rightPanelStyle.BorderForeground(CurrentTheme().Accent)
 	}
 
-	rightPanel := rightPanelStyle.Render(tuiTitleStyle.Render("Details") + "\n" + rightContent)
+	rightPanel := rightPanelStyle.Render(tuiTitleStyle().Render("Details") + "\n" + rightContent)
 
 	// Combine panels horizontally
 	result := lipgloss.JoinHorizontal(lipgloss.Top, leftPanel, rightPanel)
@@ -331,7 +331,7 @@ func (p *WorkDetailsPanel) RenderWithPanel(contentHeight int) string {
 // renderRightPanel renders the right panel with selected item details using the appropriate sub-panel
 func (p *WorkDetailsPanel) renderRightPanel(_, panelWidth int) string {
 	if p.focusedWork == nil {
-		return tuiDimStyle.Render("Loading...")
+		return tuiDimStyle().Render("Loading...")
 	}
 
 	selectedIndex := p.overviewPanel.GetSelectedIndex()
