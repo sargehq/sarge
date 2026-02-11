@@ -32,6 +32,17 @@ type ComplexityCache struct {
 	CreatedAt       time.Time `json:"created_at"`
 }
 
+type Message struct {
+	ID        int64          `json:"id"`
+	Source    string         `json:"source"`
+	Text      string         `json:"text"`
+	WorkID    sql.NullString `json:"work_id"`
+	TaskID    sql.NullString `json:"task_id"`
+	BeadID    sql.NullString `json:"bead_id"`
+	EventType sql.NullString `json:"event_type"`
+	CreatedAt time.Time      `json:"created_at"`
+}
+
 type PlanSession struct {
 	BeadID        string    `json:"bead_id"`
 	ZellijSession string    `json:"zellij_session"`

@@ -42,6 +42,9 @@ type StatusBar struct {
 	// Zone prefix for unique zone IDs
 	zonePrefix string
 
+	// Version string
+	version string
+
 	// Data providers (set by coordinator)
 	getBeadItems            func() []beadItem
 	getBeadsCursor          func() int
@@ -49,13 +52,14 @@ type StatusBar struct {
 	getViewMode             func() ViewMode
 	getTextInput            func() string
 	isFailedTaskSelected    func() bool
+	getFocusedWorkID        func() string
 }
 
 // NewStatusBar creates a new StatusBar panel
 func NewStatusBar() *StatusBar {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
+	s.Style = lipgloss.NewStyle().Foreground(CurrentTheme().Accent)
 
 	return &StatusBar{
 		width:      80,
@@ -89,6 +93,11 @@ func (s *StatusBar) SetFailedTaskSelectedProvider(isFailedTaskSelected func() bo
 	s.isFailedTaskSelected = isFailedTaskSelected
 }
 
+// SetFocusedWorkIDProvider sets the provider for the focused work ID
+func (s *StatusBar) SetFocusedWorkIDProvider(getFocusedWorkID func() string) {
+	s.getFocusedWorkID = getFocusedWorkID
+}
+
 // SetStatus updates the status message
 func (s *StatusBar) SetStatus(message string, isError bool) {
 	// Strip newlines - status bar is single line only
@@ -111,6 +120,11 @@ func (s *StatusBar) SetLastUpdate(t time.Time) {
 // SetHoveredButton updates which button is hovered
 func (s *StatusBar) SetHoveredButton(button string) {
 	s.hoveredButton = button
+}
+
+// SetVersion sets the version string to display
+func (s *StatusBar) SetVersion(v string) {
+	s.version = v
 }
 
 // SetContext updates the status bar context (which panel's commands to show)
@@ -139,8 +153,8 @@ func (s *StatusBar) Render() string {
 		if s.getTextInput != nil {
 			searchInput = s.getTextInput()
 		}
-		hint := tuiDimStyle.Render("  [Enter]Search  [Esc]Cancel")
-		return tuiStatusBarStyle.Width(s.width).Render(searchPrompt + searchInput + hint)
+		hint := tuiDimStyle().Render("  [Enter]Search  [Esc]Cancel")
+		return tuiStatusBarStyle().Width(s.width).Render(searchPrompt + searchInput + hint)
 	}
 
 	var commands string
@@ -161,16 +175,20 @@ func (s *StatusBar) Render() string {
 	if s.statusMessage != "" {
 		statusPlain = s.statusMessage
 		if s.statusIsError {
-			status = tuiErrorStyle.Render(s.statusMessage)
+			status = tuiErrorStyle().Render(s.statusMessage)
 		} else {
-			status = tuiSuccessStyle.Render(s.statusMessage)
+			status = tuiSuccessStyle().Render(s.statusMessage)
 		}
 	} else if s.loading {
 		statusPlain = "Loading..."
 		status = s.spinner.View() + " Loading..."
 	} else {
-		statusPlain = fmt.Sprintf("Updated: %s", s.lastUpdate.Format("15:04:05"))
-		status = tuiDimStyle.Render(statusPlain)
+		if s.version != "" {
+			statusPlain = fmt.Sprintf("%s · Updated: %s", s.version, s.lastUpdate.Format("15:04:05"))
+		} else {
+			statusPlain = fmt.Sprintf("Updated: %s", s.lastUpdate.Format("15:04:05"))
+		}
+		status = tuiDimStyle().Render(statusPlain)
 	}
 
 	// Calculate available space for status message and truncate if needed
@@ -196,13 +214,13 @@ func (s *StatusBar) Render() string {
 			statusPlain = truncatedPlain
 			statusWidth = ansi.StringWidth(statusPlain)
 			if s.statusIsError {
-				status = tuiErrorStyle.Render(truncatedPlain)
+				status = tuiErrorStyle().Render(truncatedPlain)
 			} else if s.loading {
 				status = s.spinner.View() + " Loading..."
 			} else if s.statusMessage != "" {
-				status = tuiSuccessStyle.Render(truncatedPlain)
+				status = tuiSuccessStyle().Render(truncatedPlain)
 			} else {
-				status = tuiDimStyle.Render(truncatedPlain)
+				status = tuiDimStyle().Render(truncatedPlain)
 			}
 		}
 	}
@@ -210,41 +228,77 @@ func (s *StatusBar) Render() string {
 	// Build bar with commands left, status right
 	// Padding fills the remaining space
 	padding := max(innerWidth-commandsWidth-statusWidth, minPadding)
-	return tuiStatusBarStyle.Width(s.width).Render(commands + strings.Repeat(" ", padding) + status)
+	bar := tuiStatusBarStyle().Width(s.width).Render(commands + strings.Repeat(" ", padding) + status)
+	return "\n" + bar
 }
 
-// renderIssuesCommands returns commands for the issues panel
+// renderIssuesCommands returns commands for the issues panel.
+// Commands that don't apply to the current state are dimmed.
 func (s *StatusBar) renderIssuesCommands() (string, string) {
-	// Show p action based on session state
-	pAction := "[p]Plan"
-	if s.getBeadItems != nil && s.getBeadsCursor != nil && s.getActiveSessions != nil {
-		beadItems := s.getBeadItems()
+	dim := tuiDimStyle()
+
+	// Gather state
+	var beadItems []beadItem
+	hasIssues := false
+	hasCursorBead := false
+	cursorBeadAssigned := false
+	hasWorkSelected := false
+
+	if s.getBeadItems != nil {
+		beadItems = s.getBeadItems()
+		hasIssues = len(beadItems) > 0
+	}
+	if s.getBeadsCursor != nil && hasIssues {
 		cursor := s.getBeadsCursor()
-		activeSessions := s.getActiveSessions()
-		if len(beadItems) > 0 && cursor < len(beadItems) {
-			beadID := beadItems[cursor].ID
-			if activeSessions[beadID] {
-				pAction = "[p]Resume"
-			}
+		if cursor < len(beadItems) {
+			hasCursorBead = true
+			cursorBeadAssigned = beadItems[cursor].assignedWorkID != ""
+		}
+	}
+	if s.getFocusedWorkID != nil {
+		hasWorkSelected = s.getFocusedWorkID() != ""
+	}
+
+	// Determine p action text
+	pAction := "[p]Plan"
+	if hasCursorBead && s.getActiveSessions != nil {
+		beadID := beadItems[s.getBeadsCursor()].ID
+		if s.getActiveSessions()[beadID] {
+			pAction = "[p]Resume"
 		}
 	}
 
-	// Commands on the left with hover effects - wrap each with zone.Mark
-	nButton := zone.Mark(s.zonePrefix+"n", styleButtonWithHover("[n]New", s.hoveredButton == "n"))
-	eButton := zone.Mark(s.zonePrefix+"e", styleButtonWithHover("[e]Edit", s.hoveredButton == "e"))
-	aButton := zone.Mark(s.zonePrefix+"a", styleButtonWithHover("[a]Child", s.hoveredButton == "a"))
-	xButton := zone.Mark(s.zonePrefix+"x", styleButtonWithHover("[x]Close", s.hoveredButton == "x"))
-	dButton := zone.Mark(s.zonePrefix+"d", styleButtonWithHover("[d]Del", s.hoveredButton == "d"))
-	wButton := zone.Mark(s.zonePrefix+"w", styleButtonWithHover("[w]Work", s.hoveredButton == "w"))
-	AButton := zone.Mark(s.zonePrefix+"A", styleButtonWithHover("[A]dd", s.hoveredButton == "A"))
-	iButton := zone.Mark(s.zonePrefix+"i", styleButtonWithHover("[i]Import", s.hoveredButton == "i"))
-	pButton := zone.Mark(s.zonePrefix+"p", styleButtonWithHover(pAction, s.hoveredButton == "p"))
-	helpButton := zone.Mark(s.zonePrefix+"?", styleButtonWithHover("[?]Help", s.hoveredButton == "?"))
+	type btn struct {
+		id      string
+		label   string
+		active  bool
+	}
 
-	commands := nButton + " " + eButton + " " + aButton + " " + xButton + " " + dButton + " " + wButton + " " + AButton + " " + iButton + " " + pButton + " " + helpButton
-	commandsPlain := fmt.Sprintf("[n]New [e]Edit [a]Child [x]Close [d]Del [w]Work [A]dd [i]Import %s [?]Help", pAction)
+	buttons := []btn{
+		{"n", "[n]New", true},                                          // always available
+		{"e", "[e]Edit", hasCursorBead},                                // need a selected issue
+		{"a", "[a]Child", hasCursorBead},                               // need a selected issue
+		{"x", "[x]Close", hasCursorBead},                               // need a selected issue
+		{"d", "[d]Del", hasCursorBead},                                 // need a selected issue
+		{"w", "[w]Work", hasCursorBead && !cursorBeadAssigned},         // need unassigned issue
+		{"A", "[A]dd", hasCursorBead && hasWorkSelected},               // need issue + work filter
+		{"i", "[i]Import", true},                                       // always available
+		{"p", pAction, hasCursorBead},                                  // need a selected issue
+		{"?", "[?]Help", true},                                         // always available
+	}
 
-	return commands, commandsPlain
+	var rendered []string
+	var plain []string
+	for _, b := range buttons {
+		if b.active {
+			rendered = append(rendered, zone.Mark(s.zonePrefix+b.id, styleButtonWithHover(b.label, s.hoveredButton == b.id)))
+		} else {
+			rendered = append(rendered, dim.Render(b.label))
+		}
+		plain = append(plain, b.label)
+	}
+
+	return strings.Join(rendered, " "), strings.Join(plain, " ")
 }
 
 // renderWorkDetailCommands returns commands for the work detail panel

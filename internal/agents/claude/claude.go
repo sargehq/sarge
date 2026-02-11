@@ -40,6 +40,9 @@ var planText string
 //go:embed templates/log_analysis.tmpl
 var logAnalysisText string
 
+//go:embed templates/prompt.tmpl
+var promptText string
+
 // Template index positions.
 const (
 	tmplImplement = iota
@@ -49,6 +52,7 @@ const (
 	tmplUpdatePRDescription
 	tmplPlan
 	tmplLogAnalysis
+	tmplPrompt
 )
 
 func templates() []*template.Template {
@@ -60,6 +64,7 @@ func templates() []*template.Template {
 		template.Must(template.New("update-pr-description").Parse(updatePRDescriptionText)),
 		template.Must(template.New("plan").Parse(planText)),
 		template.Must(template.New("log_analysis").Parse(logAnalysisText)),
+		template.Must(template.New("prompt").Parse(promptText)),
 	}
 }
 
@@ -209,6 +214,17 @@ func (a *Agent) resolveTemplate(params types.TaskParams) (*template.Template, an
 			JobName:       params.JobName,
 			LogFilePath:   params.LogFilePath,
 			ExistingBeads: params.ExistingBeads,
+		}, nil
+
+	case types.TaskTypePrompt:
+		return a.templates[tmplPrompt], struct {
+			UserPrompt     string
+			ProjectDir     string
+			RecentMessages string
+		}{
+			UserPrompt:     params.UserPrompt,
+			ProjectDir:     params.ProjectDir,
+			RecentMessages: params.RecentMessages,
 		}, nil
 
 	default:

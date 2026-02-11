@@ -39,12 +39,12 @@ func (m *DefaultOrchestratorManager) OpenConsole(ctx context.Context, workID str
 		return fmt.Errorf("zellij session %s does not exist - call control.EnsureControlPlane first", sessionName)
 	}
 
-	// Check if tab already exists
+	// Check if tab already exists — switch to it instead of silently returning
 	session := m.zellij.Session(sessionName)
 	tabExists, _ := session.TabExists(ctx, tabName)
 	if tabExists {
-		fmt.Fprintf(w, "Console tab %s already exists\n", tabName)
-		return nil
+		fmt.Fprintf(w, "Switching to existing console tab %s\n", tabName)
+		return session.SwitchToTab(ctx, tabName)
 	}
 
 	// Build shell command with exports if needed
@@ -110,12 +110,12 @@ func (m *DefaultOrchestratorManager) OpenAgentSession(ctx context.Context, workI
 		return fmt.Errorf("zellij session %s does not exist - call control.EnsureControlPlane first", sessionName)
 	}
 
-	// Check if tab already exists
+	// Check if tab already exists — switch to it instead of silently returning
 	session := m.zellij.Session(sessionName)
 	tabExists, _ := session.TabExists(ctx, tabName)
 	if tabExists {
-		fmt.Fprintf(w, "Agent session tab %s already exists\n", tabName)
-		return nil
+		fmt.Fprintf(w, "Switching to existing agent session tab %s\n", tabName)
+		return session.SwitchToTab(ctx, tabName)
 	}
 
 	// Build agent command and args based on agent type

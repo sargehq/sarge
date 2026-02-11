@@ -151,7 +151,7 @@ func (m *planModel) renderLabelFilterDialogContent() string {
   [Enter] Apply  [Esc] Cancel
 `, currentLabel, m.textInput.View())
 
-	return tuiDialogStyle.Render(content)
+	return tuiDialogStyle().Render(content)
 }
 
 func (m *planModel) renderCloseBeadConfirmContent() string {
@@ -200,7 +200,7 @@ func (m *planModel) renderCloseBeadConfirmContent() string {
   [y] Yes  [n] No
 `, title, beadsList)
 
-	return tuiDialogStyle.Render(content)
+	return tuiDialogStyle().Render(content)
 }
 
 func (m *planModel) renderDeleteBeadConfirmContent() string {
@@ -251,15 +251,15 @@ func (m *planModel) renderDeleteBeadConfirmContent() string {
   [y] Yes  [n] No
 `, title, beadsList)
 
-	return tuiDialogStyle.Render(content)
+	return tuiDialogStyle().Render(content)
 }
 
 func (m *planModel) renderDestroyConfirmContent() string {
 	workID := m.focusedWorkID
 	workName := workID
 
-	// Try to get work name from focused work
-	if focusedWork := m.workDetails.GetFocusedWork(); focusedWork != nil && focusedWork.Work.Name != "" {
+	// Try to get work name from cached tiles
+	if focusedWork := m.findWorkByID(m.focusedWorkID); focusedWork != nil && focusedWork.Work.Name != "" {
 		workName = focusedWork.Work.Name
 	}
 
@@ -278,6 +278,6 @@ func (m *planModel) renderDestroyConfirmContent() string {
   [y] Yes  [n] No
 `, workID, workName)
 
-	return tuiDialogStyle.Render(content)
+	return tuiDialogStyle().Render(content)
 }
 

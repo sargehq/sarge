@@ -122,7 +122,7 @@ func (p *WorkTaskPanel) Render(panelWidth int) string {
 	} else if p.selectedTask != nil {
 		fullContent = p.renderTaskDetails(panelWidth)
 	} else {
-		fullContent = tuiDimStyle.Render("Select an item to view details")
+		fullContent = tuiDimStyle().Render("Select an item to view details")
 	}
 
 	// Set the content in the viewport
@@ -135,7 +135,7 @@ func (p *WorkTaskPanel) Render(panelWidth int) string {
 // renderTaskDetails renders details for a task
 func (p *WorkTaskPanel) renderTaskDetails(panelWidth int) string {
 	if p.selectedTask == nil {
-		return tuiDimStyle.Render("No task selected")
+		return tuiDimStyle().Render("No task selected")
 	}
 
 	var content strings.Builder
@@ -176,7 +176,7 @@ func (p *WorkTaskPanel) renderTaskDetails(panelWidth int) string {
 
 	// Show error if failed
 	if task.Task.Status == db.StatusFailed && task.Task.ErrorMessage != "" {
-		errorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
+		errorStyle := lipgloss.NewStyle().Foreground(CurrentTheme().Error)
 		content.WriteString("\n")
 		content.WriteString(errorStyle.Render("Error:"))
 		content.WriteString("\n")
@@ -189,7 +189,7 @@ func (p *WorkTaskPanel) renderTaskDetails(panelWidth int) string {
 // renderUnassignedBeadDetails renders details for an unassigned bead
 func (p *WorkTaskPanel) renderUnassignedBeadDetails(panelWidth int) string {
 	if p.selectedBead == nil {
-		return tuiDimStyle.Render("No bead selected")
+		return tuiDimStyle().Render("No bead selected")
 	}
 
 	var content strings.Builder
@@ -199,10 +199,10 @@ func (p *WorkTaskPanel) renderUnassignedBeadDetails(panelWidth int) string {
 	contentWidth := panelWidth - 2
 
 	// Header with warning style and action hint
-	warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
+	warningStyle := lipgloss.NewStyle().Foreground(CurrentTheme().Warning)
 	content.WriteString(warningStyle.Render("Unassigned Issue"))
 	content.WriteString(" ")
-	content.WriteString(tuiDimStyle.Render("[p] plan [r] run"))
+	content.WriteString(tuiDimStyle().Render("[p] plan [r] run"))
 	content.WriteString("\n\n")
 
 	fmt.Fprintf(&content, "ID: %s\n", bead.ID)

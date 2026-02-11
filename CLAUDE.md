@@ -51,6 +51,18 @@ go test ./...
 - `internal/procmon/` - Database-backed process monitoring with heartbeats
 - `internal/testutil/` - Shared test utilities and moq-generated mocks
 
+## TUI Design System
+
+The TUI (`internal/tui/`) follows an atomic design pattern:
+
+- **`internal/tui/ui/`** — Atoms and molecules (reusable primitives): `Colors`, `FormField`, `ButtonRow`, `Dialog`
+- **`internal/tui/components/`** — Organisms (composed screens): `splash/`, `linearconfig/`
+- **`internal/tui/`** — App-level models, panels, and wiring
+
+**Rules:**
+- Components in `ui/` and `components/` must NEVER import the parent `tui` package (prevents circular imports). Pass `ui.Colors` as a parameter instead.
+- ALWAYS use themed colors from `theme.go` via `CurrentTheme()`. Never hardcode color values — it breaks theming.
+
 ## External Dependencies
 
 Uses CLI tools: `bd`, `claude`, `gh`, `git`, `mise` (optional), `zellij`

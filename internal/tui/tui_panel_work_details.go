@@ -283,11 +283,15 @@ func (p *WorkDetailsPanel) Render() string {
 
 // RenderWithPanel returns the work details split view with the given total height
 // This matches the IssuesPanel.RenderWithPanel pattern exactly
-func (p *WorkDetailsPanel) RenderWithPanel(contentHeight int) string {
+func (p *WorkDetailsPanel) RenderWithPanel(contentHeight int, dimmedPanels ...bool) string {
 	// Ensure minimum content height to prevent layout issues
 	if contentHeight < 6 {
 		contentHeight = 6
 	}
+
+	// dimmedPanels: [0] = left dimmed, [1] = right dimmed
+	leftDimmed := len(dimmedPanels) > 0 && dimmedPanels[0]
+	rightDimmed := len(dimmedPanels) > 1 && dimmedPanels[1]
 
 	// Calculate column widths using the same formula as issues panel
 	totalContentWidth := p.width - 4
@@ -307,20 +311,34 @@ func (p *WorkDetailsPanel) RenderWithPanel(contentHeight int) string {
 
 	// Create the two panels with fixed height (matching IssuesPanel pattern exactly)
 	// IssuesPanel uses: Height(contentHeight - 2)
-	leftPanelStyle := tuiPanelStyle.Width(leftWidth).Height(contentHeight - 2)
+	leftPanelStyle := tuiPanelStyle().Width(leftWidth).Height(contentHeight - 2)
 	if p.leftPanelFocused {
-		leftPanelStyle = leftPanelStyle.BorderForeground(lipgloss.Color("214"))
+		leftPanelStyle = leftPanelStyle.BorderForeground(CurrentTheme().Accent)
+	} else if leftDimmed {
+		leftPanelStyle = leftPanelStyle.BorderForeground(CurrentTheme().Dim)
 	}
 
-	leftPanel := leftPanelStyle.Render(tuiTitleStyle.Render("Work") + "\n" + leftContent)
+	leftTitle := tuiTitleStyle().Render("Work")
+	leftInner := leftTitle + "\n" + leftContent
+	if leftDimmed {
+		leftInner = dimContent(leftTitle + "\n" + leftContent)
+	}
+	leftPanel := leftPanelStyle.Render(leftInner)
 
 	// Right panel uses its own height setting
-	rightPanelStyle := tuiPanelStyle.Width(rightWidth).Height(contentHeight - 2)
+	rightPanelStyle := tuiPanelStyle().Width(rightWidth).Height(contentHeight - 2)
 	if p.rightPanelFocused {
-		rightPanelStyle = rightPanelStyle.BorderForeground(lipgloss.Color("214"))
+		rightPanelStyle = rightPanelStyle.BorderForeground(CurrentTheme().Accent)
+	} else if rightDimmed {
+		rightPanelStyle = rightPanelStyle.BorderForeground(CurrentTheme().Dim)
 	}
 
-	rightPanel := rightPanelStyle.Render(tuiTitleStyle.Render("Details") + "\n" + rightContent)
+	rightTitle := tuiTitleStyle().Render("Details")
+	rightInner := rightTitle + "\n" + rightContent
+	if rightDimmed {
+		rightInner = dimContent(rightTitle + "\n" + rightContent)
+	}
+	rightPanel := rightPanelStyle.Render(rightInner)
 
 	// Combine panels horizontally
 	result := lipgloss.JoinHorizontal(lipgloss.Top, leftPanel, rightPanel)
@@ -331,7 +349,7 @@ func (p *WorkDetailsPanel) RenderWithPanel(contentHeight int) string {
 // renderRightPanel renders the right panel with selected item details using the appropriate sub-panel
 func (p *WorkDetailsPanel) renderRightPanel(_, panelWidth int) string {
 	if p.focusedWork == nil {
-		return tuiDimStyle.Render("Loading...")
+		return tuiDimStyle().Render("Loading...")
 	}
 
 	selectedIndex := p.overviewPanel.GetSelectedIndex()

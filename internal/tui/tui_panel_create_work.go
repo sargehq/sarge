@@ -300,31 +300,31 @@ func (p *CreateWorkPanel) Render() string {
 	var content strings.Builder
 
 	// Panel header
-	content.WriteString(tuiSuccessStyle.Render("Create Work"))
+	content.WriteString(tuiSuccessStyle().Render("Create Work"))
 	content.WriteString("\n\n")
 
 	// Show bead info
-	beadInfo := fmt.Sprintf("Creating work from issue: %s", issueIDStyle.Render(p.beadID))
+	beadInfo := fmt.Sprintf("Creating work from issue: %s", issueIDStyle().Render(p.beadID))
 	content.WriteString(beadInfo)
 	content.WriteString("\n\n")
 
 	// Mode toggle
 	var modeLabel string
 	if p.fieldIdx == 0 {
-		modeLabel = tuiSuccessStyle.Render("Branch mode:") + " " + tuiDimStyle.Render("(press Enter/Space to toggle)")
+		modeLabel = tuiSuccessStyle().Render("Branch mode:") + " " + tuiDimStyle().Render("(press Enter/Space to toggle)")
 	} else {
-		modeLabel = tuiLabelStyle.Render("Branch mode:")
+		modeLabel = tuiLabelStyle().Render("Branch mode:")
 	}
 	content.WriteString(modeLabel)
 	content.WriteString("\n")
 
 	// Mode options
-	newBranchStyle := tuiDimStyle
-	existingBranchStyle := tuiDimStyle
+	newBranchStyle := tuiDimStyle()
+	existingBranchStyle := tuiDimStyle()
 	if !p.useExistingBranch {
-		newBranchStyle = tuiSelectedStyle
+		newBranchStyle = tuiSelectedStyle()
 	} else {
-		existingBranchStyle = tuiSelectedStyle
+		existingBranchStyle = tuiSelectedStyle()
 	}
 	content.WriteString("  " + newBranchStyle.Render("[New branch]") + "  " + existingBranchStyle.Render("[Existing branch]"))
 	content.WriteString("\n\n")
@@ -334,25 +334,25 @@ func (p *CreateWorkPanel) Render() string {
 		// Existing branch selector
 		var branchLabel string
 		if p.fieldIdx == 1 {
-			branchLabel = tuiSuccessStyle.Render("Select branch:") + " " + tuiDimStyle.Render("(type to filter, j/k to navigate)")
+			branchLabel = tuiSuccessStyle().Render("Select branch:") + " " + tuiDimStyle().Render("(type to filter, j/k to navigate)")
 		} else {
-			branchLabel = tuiLabelStyle.Render("Select branch:")
+			branchLabel = tuiLabelStyle().Render("Select branch:")
 		}
 		content.WriteString(branchLabel)
 		content.WriteString("\n")
 
 		// Show filter if active
 		if p.branchFilter != "" {
-			content.WriteString(tuiDimStyle.Render("Filter: ") + p.branchFilter + tuiDimStyle.Render("_"))
+			content.WriteString(tuiDimStyle().Render("Filter: ") + p.branchFilter + tuiDimStyle().Render("_"))
 			content.WriteString("\n")
 		}
 
 		// Show branches
 		if len(p.filteredBranches) == 0 {
 			if len(p.branches) == 0 {
-				content.WriteString(tuiDimStyle.Render("  (loading branches...)"))
+				content.WriteString(tuiDimStyle().Render("  (loading branches...)"))
 			} else {
-				content.WriteString(tuiDimStyle.Render("  (no matching branches)"))
+				content.WriteString(tuiDimStyle().Render("  (no matching branches)"))
 			}
 			content.WriteString("\n")
 		} else {
@@ -364,20 +364,20 @@ func (p *CreateWorkPanel) Render() string {
 
 			// Show scroll indicator if needed
 			if p.branchScrollOffset > 0 {
-				content.WriteString(tuiDimStyle.Render("  ↑ (more above)"))
+				content.WriteString(tuiDimStyle().Render("  ↑ (more above)"))
 				content.WriteString("\n")
 			}
 
 			for i := p.branchScrollOffset; i < endIdx; i++ {
 				branch := p.filteredBranches[i]
 				prefix := "  "
-				style := tuiDimStyle
+				style := tuiDimStyle()
 				if i == p.selectedBranchIdx {
 					prefix = "> "
 					if p.fieldIdx == 1 {
-						style = tuiSelectedStyle
+						style = tuiSelectedStyle()
 					} else {
-						style = tuiLabelStyle
+						style = tuiLabelStyle()
 					}
 				}
 				// Truncate long branch names
@@ -391,7 +391,7 @@ func (p *CreateWorkPanel) Render() string {
 
 			// Show scroll indicator if needed
 			if endIdx < len(p.filteredBranches) {
-				content.WriteString(tuiDimStyle.Render("  ↓ (more below)"))
+				content.WriteString(tuiDimStyle().Render("  ↓ (more below)"))
 				content.WriteString("\n")
 			}
 		}
@@ -400,9 +400,9 @@ func (p *CreateWorkPanel) Render() string {
 		// New branch name input
 		var branchLabel string
 		if p.fieldIdx == 1 {
-			branchLabel = tuiSuccessStyle.Render("Branch name:") + " " + tuiDimStyle.Render("(editing)")
+			branchLabel = tuiSuccessStyle().Render("Branch name:") + " " + tuiDimStyle().Render("(editing)")
 		} else {
-			branchLabel = tuiLabelStyle.Render("Branch name:")
+			branchLabel = tuiLabelStyle().Render("Branch name:")
 		}
 		content.WriteString(branchLabel)
 		content.WriteString("\n")
@@ -414,39 +414,39 @@ func (p *CreateWorkPanel) Render() string {
 	content.WriteString("Actions:\n")
 
 	// Execute button
-	executeStyle := tuiDimStyle
+	executeStyle := tuiDimStyle()
 	executePrefix := "  "
 	if p.fieldIdx == 2 && p.buttonIdx == 0 {
-		executeStyle = tuiSelectedStyle
+		executeStyle = tuiSelectedStyle()
 		executePrefix = "> "
 	} else if p.hoveredButton == "execute" {
-		executeStyle = tuiSuccessStyle
+		executeStyle = tuiSuccessStyle()
 	}
 	executeButtonText := executePrefix + "Execute"
 	content.WriteString("  " + zone.Mark("dialog-execute", executeStyle.Render(executeButtonText)))
 	content.WriteString(" - Create work and spawn orchestrator\n")
 
 	// Auto button
-	autoStyle := tuiDimStyle
+	autoStyle := tuiDimStyle()
 	autoPrefix := "  "
 	if p.fieldIdx == 2 && p.buttonIdx == 1 {
-		autoStyle = tuiSelectedStyle
+		autoStyle = tuiSelectedStyle()
 		autoPrefix = "> "
 	} else if p.hoveredButton == "auto" {
-		autoStyle = tuiSuccessStyle
+		autoStyle = tuiSuccessStyle()
 	}
 	autoButtonText := autoPrefix + "Auto"
 	content.WriteString("  " + zone.Mark("dialog-auto", autoStyle.Render(autoButtonText)))
 	content.WriteString(" - Create work with automated workflow\n")
 
 	// Cancel button
-	cancelStyle := tuiDimStyle
+	cancelStyle := tuiDimStyle()
 	cancelPrefix := "  "
 	if p.fieldIdx == 2 && p.buttonIdx == 2 {
-		cancelStyle = tuiSelectedStyle
+		cancelStyle = tuiSelectedStyle()
 		cancelPrefix = "> "
 	} else if p.hoveredButton == "cancel" {
-		cancelStyle = tuiSuccessStyle
+		cancelStyle = tuiSuccessStyle()
 	}
 	cancelButtonText := cancelPrefix + "Cancel"
 	content.WriteString("  " + zone.Mark("dialog-cancel", cancelStyle.Render(cancelButtonText)))
@@ -460,7 +460,7 @@ func (p *CreateWorkPanel) Render() string {
 	} else {
 		helpText = "Navigation: [Tab/Shift+Tab] Switch field  [j/k] Select button  [Enter] Confirm  [Esc] Cancel"
 	}
-	content.WriteString(tuiDimStyle.Render(helpText))
+	content.WriteString(tuiDimStyle().Render(helpText))
 
 	return content.String()
 }
@@ -469,12 +469,12 @@ func (p *CreateWorkPanel) Render() string {
 func (p *CreateWorkPanel) RenderWithPanel(contentHeight int) string {
 	panelContent := p.Render()
 
-	panelStyle := tuiPanelStyle.Width(p.width).Height(contentHeight - 2)
+	panelStyle := tuiPanelStyle().Width(p.width).Height(contentHeight - 2)
 	if p.focused {
-		panelStyle = panelStyle.BorderForeground(lipgloss.Color("214"))
+		panelStyle = panelStyle.BorderForeground(CurrentTheme().Accent)
 	}
 
-	result := panelStyle.Render(tuiTitleStyle.Render("Create Work") + "\n" + panelContent)
+	result := panelStyle.Render(tuiTitleStyle().Render("Create Work") + "\n" + panelContent)
 
 	// If the result is taller than expected (due to lipgloss wrapping), fix it
 	// by removing extra lines from the INNER content while preserving borders and title

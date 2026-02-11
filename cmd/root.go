@@ -56,7 +56,7 @@ var rootCmd = &cobra.Command{
 		}
 		defer proj.Close()
 
-		if err := tui.RunRootTUI(ctx, proj, !flagNoMouse); err != nil {
+		if err := tui.RunRootTUI(ctx, proj, !flagNoMouse, version); err != nil {
 			return fmt.Errorf("error running TUI: %w", err)
 		}
 		return nil
@@ -90,4 +90,5 @@ func init() {
 	rootCmd.AddCommand(workCmd)
 	rootCmd.AddCommand(syncCmd)
 	rootCmd.AddCommand(orchestrateCmd)
+	rootCmd.AddCommand(messageCmd)
 }

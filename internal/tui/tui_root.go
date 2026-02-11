@@ -38,13 +38,13 @@ type rootModel struct {
 }
 
 // newRootModel creates a new root TUI model
-func newRootModel(ctx context.Context, proj *project.Project) rootModel {
+func newRootModel(ctx context.Context, proj *project.Project, version string) rootModel {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
+	s.Style = lipgloss.NewStyle().Foreground(CurrentTheme().Accent)
 
 	// Create the plan model
-	planModel := newPlanModel(ctx, proj)
+	planModel := newPlanModel(ctx, proj, version)
 
 	return rootModel{
 		ctx:        ctx,
@@ -95,8 +95,18 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		// Check if plan model is in modal state - if so, route directly to it
-		if m.planModel != nil && m.planModel.InModal() {
+		// Quit keys always work, even when capturing input
+		switch msg.Type {
+		case tea.KeyCtrlC, tea.KeyCtrlQ:
+			m.quitting = true
+			if m.planModel != nil {
+				m.planModel.cleanup()
+			}
+			return m, tea.Quit
+		}
+
+		// Check if plan model is capturing input (modal, splash prompt, etc.)
+		if m.planModel != nil && m.planModel.IsCapturingInput() {
 			var cmd tea.Cmd
 			var newModel tea.Model
 			newModel, cmd = m.planModel.Update(msg)
@@ -104,7 +114,7 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 
-		// Global keys (only when not in modal)
+		// Global keys (only when not capturing input)
 		switch msg.String() {
 		case "q":
 			m.quitting = true
@@ -153,8 +163,8 @@ func (m rootModel) View() string {
 }
 
 // RunRootTUI starts the TUI with the new root model
-func RunRootTUI(ctx context.Context, proj *project.Project, enableMouse bool) error {
-	model := newRootModel(ctx, proj)
+func RunRootTUI(ctx context.Context, proj *project.Project, enableMouse bool, version string) error {
+	model := newRootModel(ctx, proj, version)
 
 	opts := []tea.ProgramOption{tea.WithAltScreen()}
 	if enableMouse {

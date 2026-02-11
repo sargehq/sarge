@@ -18,11 +18,6 @@ func TestZoneMarking(t *testing.T) {
 		assert.NotEmpty(t, ip.zonePrefix, "IssuesPanel should have a zone prefix")
 	})
 
-	t.Run("work tabs bar has zone prefix", func(t *testing.T) {
-		wtb := NewWorkTabsBar()
-		assert.NotEmpty(t, wtb.zonePrefix, "WorkTabsBar should have a zone prefix")
-	})
-
 	t.Run("work overview panel has zone prefix", func(t *testing.T) {
 		wop := NewWorkOverviewPanel()
 		assert.NotEmpty(t, wop.zonePrefix, "WorkOverviewPanel should have a zone prefix")
