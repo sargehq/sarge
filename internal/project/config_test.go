@@ -529,7 +529,8 @@ path = "main/.beads"
 
 	// New sections should be present (check for commented section headers)
 	require.Contains(t, merged, "# [hooks]")
-	require.Contains(t, merged, "# [claude]")
+	// When AgentType is empty (default), [claude] section is rendered uncommented
+	require.Contains(t, merged, "[claude]")
 
 	// Backup should exist
 	backupBytes, err := os.ReadFile(configPath + ".bak")
@@ -670,6 +671,123 @@ path = "main/.beads"
 	secondResult, err := os.ReadFile(configPath)
 	require.NoError(t, err)
 	require.Equal(t, string(firstResult), string(secondResult))
+}
+
+func TestGenerateDocumentedConfig_AgentType(t *testing.T) {
+	baseCfg := func(agentType string) *Config {
+		return &Config{
+			Project: ProjectConfig{
+				Name:      "test-project",
+				CreatedAt: time.Date(2026, 1, 26, 10, 30, 0, 0, time.UTC),
+			},
+			Repo: RepoConfig{
+				Type:   "github",
+				Source: "https://github.com/example/repo",
+				Path:   "main",
+			},
+			Beads: BeadsConfig{
+				Path: "main/.beads",
+			},
+			Agent: AgentConfig{
+				Type: agentType,
+			},
+		}
+	}
+
+	t.Run("default empty agent type renders claude section uncommented", func(t *testing.T) {
+		cfg := baseCfg("")
+		content := cfg.GenerateDocumentedConfig()
+
+		// Valid TOML
+		var parsed map[string]interface{}
+		_, err := toml.Decode(content, &parsed)
+		require.NoError(t, err, "Generated config is not valid TOML:\n%s", content)
+
+		// [agent] should be commented out (default = claude)
+		require.NotContains(t, content, "\n[agent]\n")
+		require.Contains(t, content, "# [agent]")
+
+		// [claude] should be uncommented
+		require.Contains(t, content, "\n[claude]\n")
+
+		// [pi] should be commented out
+		require.NotContains(t, content, "\n[pi]\n")
+		require.Contains(t, content, "# [pi]")
+	})
+
+	t.Run("claude agent type renders claude section uncommented", func(t *testing.T) {
+		cfg := baseCfg("claude")
+		content := cfg.GenerateDocumentedConfig()
+
+		var parsed map[string]interface{}
+		_, err := toml.Decode(content, &parsed)
+		require.NoError(t, err, "Generated config is not valid TOML:\n%s", content)
+
+		// [agent] should be commented out (claude is default)
+		require.NotContains(t, content, "\n[agent]\n")
+		require.Contains(t, content, "# [agent]")
+
+		// [claude] should be uncommented
+		require.Contains(t, content, "\n[claude]\n")
+
+		// [pi] should be commented out
+		require.NotContains(t, content, "\n[pi]\n")
+		require.Contains(t, content, "# [pi]")
+	})
+
+	t.Run("pi agent type renders agent and pi sections uncommented", func(t *testing.T) {
+		cfg := baseCfg("pi")
+		content := cfg.GenerateDocumentedConfig()
+
+		var parsed map[string]interface{}
+		_, err := toml.Decode(content, &parsed)
+		require.NoError(t, err, "Generated config is not valid TOML:\n%s", content)
+
+		// [agent] should be uncommented with type = "pi"
+		require.Contains(t, content, "\n[agent]\n")
+		require.Contains(t, content, `type = "pi"`)
+
+		// [pi] should be uncommented
+		require.Contains(t, content, "\n[pi]\n")
+
+		// [claude] should be commented out
+		require.NotContains(t, content, "\n[claude]\n")
+		require.Contains(t, content, "# [claude]")
+
+		// Verify round-trip: parse back and check Agent.Type
+		var loaded Config
+		_, err = toml.Decode(content, &loaded)
+		require.NoError(t, err)
+		require.Equal(t, "pi", loaded.Agent.Type)
+	})
+
+	t.Run("pi agent type round-trips through write and load", func(t *testing.T) {
+		cfg := baseCfg("pi")
+		tmpDir := t.TempDir()
+		configPath := tmpDir + "/config.toml"
+
+		err := cfg.SaveDocumentedConfig(configPath)
+		require.NoError(t, err)
+
+		loaded, err := LoadConfig(configPath)
+		require.NoError(t, err)
+		require.Equal(t, "pi", loaded.Agent.Type)
+		require.Equal(t, "test-project", loaded.Project.Name)
+	})
+
+	t.Run("default agent type round-trips through write and load", func(t *testing.T) {
+		cfg := baseCfg("")
+		tmpDir := t.TempDir()
+		configPath := tmpDir + "/config.toml"
+
+		err := cfg.SaveDocumentedConfig(configPath)
+		require.NoError(t, err)
+
+		loaded, err := LoadConfig(configPath)
+		require.NoError(t, err)
+		// Empty agent type means default (claude), no [agent] section written
+		require.Equal(t, "", loaded.Agent.Type)
+	})
 }
 
 func TestAgentConfigFromTOML(t *testing.T) {
