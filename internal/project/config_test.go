@@ -529,7 +529,8 @@ path = "main/.beads"
 
 	// New sections should be present (check for commented section headers)
 	require.Contains(t, merged, "# [hooks]")
-	require.Contains(t, merged, "# [claude]")
+	// When AgentType is empty (default), [claude] section is rendered uncommented
+	require.Contains(t, merged, "[claude]")
 
 	// Backup should exist
 	backupBytes, err := os.ReadFile(configPath + ".bak")

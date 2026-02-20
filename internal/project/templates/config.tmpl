@@ -56,15 +56,40 @@ path = {{.BeadsPath | tomlString}}
 # Agent Configuration (Optional)
 # =============================================================================
 # Which coding agent to use for this project.
+{{- if and .AgentType (ne .AgentType "claude")}}
+
+[agent]
+# Agent type: "claude" (default) or "pi"
+type = {{.AgentType | tomlString}}
+{{- else}}
 #
 # [agent]
 # # Agent type: "claude" (default) or "pi"
 # type = "claude"
+{{- end}}
 
 # =============================================================================
 # Claude Configuration (Optional)
 # =============================================================================
 # Controls how Claude Code sessions are executed.
+{{- if or (eq .AgentType "claude") (eq .AgentType "")}}
+
+[claude]
+# Whether to run Claude with --dangerously-skip-permissions flag.
+# When true, Claude can execute commands without prompting for confirmation.
+# Defaults to true when not specified.
+# skip_permissions = false
+
+# Maximum duration in minutes for a Claude session.
+# Tasks exceeding this limit are terminated and marked as failed.
+# Set to 0 or omit to disable the time limit (default).
+# time_limit = 30
+
+# Maximum execution time for a task in minutes.
+# Defaults to 60 minutes when not specified.
+# If time_limit is set and is less, time_limit takes precedence.
+# task_timeout_minutes = 120
+{{- else}}
 #
 # [claude]
 # # Whether to run Claude with --dangerously-skip-permissions flag.
@@ -81,12 +106,25 @@ path = {{.BeadsPath | tomlString}}
 # # Defaults to 60 minutes when not specified.
 # # If time_limit is set and is less, time_limit takes precedence.
 # task_timeout_minutes = 120
+{{- end}}
 
 # =============================================================================
 # Pi Configuration (Optional)
 # =============================================================================
 # Controls how the pi coding agent is executed (when agent.type = "pi").
 # Pi's built-in tools execute without permission prompts by default.
+{{- if eq .AgentType "pi"}}
+
+[pi]
+# AI provider to use (e.g., "anthropic", "openai", "google")
+# provider = "anthropic"
+
+# Model to use with the selected provider
+# model = "claude-sonnet-4-5-20250929"
+
+# Thinking/reasoning level: "low", "medium", or "high"
+# thinking = "medium"
+{{- else}}
 #
 # [pi]
 # # AI provider to use (e.g., "anthropic", "openai", "google")
@@ -97,6 +135,7 @@ path = {{.BeadsPath | tomlString}}
 #
 # # Thinking/reasoning level: "low", "medium", or "high"
 # thinking = "medium"
+{{- end}}
 
 # =============================================================================
 # Workflow Configuration (Optional)
