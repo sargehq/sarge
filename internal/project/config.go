@@ -280,11 +280,10 @@ type MultiplexerConfig struct {
 	// Type selects which terminal multiplexer to use: "zellij" (default) or "zmx".
 	Type string `toml:"type"`
 
-	// Terminal is the command template for opening a new terminal window with a zmx session.
+	// Terminal is the command template for opening a new terminal window attached to a zmx session.
 	// Used when type is "zmx".
 	// Default: "ghostty -e zmx attach {session}"
 	// The placeholder {session} is replaced with the zmx session name.
-	// The command to run in the session is appended automatically.
 	Terminal string `toml:"terminal"`
 }
 
