@@ -18,6 +18,9 @@ var _ Client = &ClientMock{}
 //
 //		// make and configure a mocked Client
 //		mockedClient := &ClientMock{
+//			AttachSessionFunc: func(ctx context.Context, name string, terminalCmdTemplate string, command string, args []string, cwd string) error {
+//				panic("mock out the AttachSession method")
+//			},
 //			KillSessionFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the KillSession method")
 //			},
@@ -37,6 +40,9 @@ var _ Client = &ClientMock{}
 //
 //	}
 type ClientMock struct {
+	// AttachSessionFunc mocks the AttachSession method.
+	AttachSessionFunc func(ctx context.Context, name string, terminalCmdTemplate string, command string, args []string, cwd string) error
+
 	// KillSessionFunc mocks the KillSession method.
 	KillSessionFunc func(ctx context.Context, name string) error
 
@@ -51,6 +57,21 @@ type ClientMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// AttachSession holds details about calls to the AttachSession method.
+		AttachSession []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// TerminalCmdTemplate is the terminalCmdTemplate argument value.
+			TerminalCmdTemplate string
+			// Command is the command argument value.
+			Command string
+			// Args is the args argument value.
+			Args []string
+			// Cwd is the cwd argument value.
+			Cwd string
+		}
 		// KillSession holds details about calls to the KillSession method.
 		KillSession []struct {
 			// Ctx is the ctx argument value.
@@ -86,10 +107,66 @@ type ClientMock struct {
 			Name string
 		}
 	}
+	lockAttachSession sync.RWMutex
 	lockKillSession   sync.RWMutex
 	lockListSessions  sync.RWMutex
 	lockRunSession    sync.RWMutex
 	lockSessionExists sync.RWMutex
+}
+
+// AttachSession calls AttachSessionFunc.
+func (mock *ClientMock) AttachSession(ctx context.Context, name string, terminalCmdTemplate string, command string, args []string, cwd string) error {
+	callInfo := struct {
+		Ctx                 context.Context
+		Name                string
+		TerminalCmdTemplate string
+		Command             string
+		Args                []string
+		Cwd                 string
+	}{
+		Ctx:                 ctx,
+		Name:                name,
+		TerminalCmdTemplate: terminalCmdTemplate,
+		Command:             command,
+		Args:                args,
+		Cwd:                 cwd,
+	}
+	mock.lockAttachSession.Lock()
+	mock.calls.AttachSession = append(mock.calls.AttachSession, callInfo)
+	mock.lockAttachSession.Unlock()
+	if mock.AttachSessionFunc == nil {
+		var (
+			errOut error
+		)
+		return errOut
+	}
+	return mock.AttachSessionFunc(ctx, name, terminalCmdTemplate, command, args, cwd)
+}
+
+// AttachSessionCalls gets all the calls that were made to AttachSession.
+// Check the length with:
+//
+//	len(mockedClient.AttachSessionCalls())
+func (mock *ClientMock) AttachSessionCalls() []struct {
+	Ctx                 context.Context
+	Name                string
+	TerminalCmdTemplate string
+	Command             string
+	Args                []string
+	Cwd                 string
+} {
+	var calls []struct {
+		Ctx                 context.Context
+		Name                string
+		TerminalCmdTemplate string
+		Command             string
+		Args                []string
+		Cwd                 string
+	}
+	mock.lockAttachSession.RLock()
+	calls = mock.calls.AttachSession
+	mock.lockAttachSession.RUnlock()
+	return calls
 }
 
 // KillSession calls KillSessionFunc.

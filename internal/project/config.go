@@ -5,7 +5,7 @@ import (
 	_ "embed"
 	"fmt"
 	"os"
-	"runtime"
+
 	"strings"
 	"text/template"
 	"time"
@@ -282,8 +282,7 @@ type MultiplexerConfig struct {
 
 	// Terminal is the command template for opening a new terminal window attached to a zmx session.
 	// Used when type is "zmx".
-	// macOS default: "open -na Ghostty.app --args -e zmx attach {session}"
-	// Linux default: "ghostty -e zmx attach {session}"
+	// Default: "ghostty -e zmx attach {session}"
 	// The placeholder {session} is replaced with the zmx session name.
 	Terminal string `toml:"terminal"`
 }
@@ -299,11 +298,7 @@ func (m *MultiplexerConfig) GetTerminalCommand() string {
 	if m.Terminal != "" {
 		return m.Terminal
 	}
-	// Platform-appropriate default
-	if runtime.GOOS == "linux" {
-		return "ghostty -e zmx attach {session}"
-	}
-	return "open -na Ghostty.app --args -e zmx attach {session}"
+	return "ghostty -e zmx attach {session}"
 }
 
 // BeadsConfig contains beads path configuration.

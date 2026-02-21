@@ -14,6 +14,7 @@ import (
 	"github.com/sargehq/sarge/internal/logging"
 	"github.com/sargehq/sarge/internal/process"
 	"github.com/sargehq/sarge/internal/progress"
+	"github.com/sargehq/sarge/internal/project"
 	"github.com/sargehq/sarge/internal/zmx"
 	workpkg "github.com/sargehq/sarge/internal/work"
 )
@@ -387,11 +388,10 @@ func (m *planModel) restartOrchestrator() tea.Cmd {
 			return workCommandMsg{action: "Restart orchestrator", workID: workID, err: err}
 		}
 
-		status := "already running"
 		if spawned {
-			status = "restarted"
+			return workCommandMsg{action: "Orchestrator spawned", workID: workID}
 		}
-		return workCommandMsg{action: fmt.Sprintf("Orchestrator %s", status), workID: workID}
+		return workCommandMsg{action: "Orchestrator already running", workID: workID}
 	}
 }
 
@@ -467,11 +467,36 @@ func (m *planModel) openIDE() tea.Cmd {
 }
 
 // attachTerminal opens a new terminal window attached to a zmx session based on the current
+// resolveZmxSessionName returns the zmx session name for the current work details selection.
+// If a task is selected, returns the task session; otherwise returns the orchestrator session.
+func (m *planModel) resolveZmxSessionName(ctx context.Context, workID string) (string, error) {
+	projectName := m.proj.Config.Project.Name
+
+	// Check if a specific task is selected
+	if m.workDetails.IsTaskSelected() {
+		if taskID := m.workDetails.GetSelectedTaskID(); taskID != "" {
+			return zmx.SessionName(projectName, fmt.Sprintf("task-%s", taskID)), nil
+		}
+	}
+
+	// Default: orchestrator session for the focused work
+	work, err := m.proj.DB.GetWork(ctx, workID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get work: %w", err)
+	}
+	friendlyName := ""
+	if work != nil {
+		friendlyName = work.Name
+	}
+	tabName := project.FormatTabName("orch", workID, friendlyName)
+	return zmx.SessionName(projectName, tabName), nil
+}
+
+// attachTerminal opens a new terminal window attached to the zmx session for the current
 // work details selection. Only works when multiplexer type is "zmx".
 func (m *planModel) attachTerminal() tea.Cmd {
 	workID := m.focusedWorkID
 	return func() tea.Msg {
-		// Check if multiplexer is zmx
 		if !m.proj.Config.Multiplexer.IsZmx() {
 			return workCommandMsg{action: "Attach terminal", workID: workID, err: fmt.Errorf("attach terminal requires [multiplexer] type = \"zmx\" in config")}
 		}
@@ -480,28 +505,14 @@ func (m *planModel) attachTerminal() tea.Cmd {
 			return workCommandMsg{action: "Attach terminal", workID: workID, err: fmt.Errorf("no work focused")}
 		}
 
-		projectName := m.proj.Config.Project.Name
-
-		// Determine the zmx session name based on the current work details selection
-		// Default: orchestrator session for the focused work
-		tabName := fmt.Sprintf("work-%s", workID)
-
-		// Check if a specific task is selected
-		if m.workDetails.IsTaskSelected() {
-			taskID := m.workDetails.GetSelectedTaskID()
-			if taskID != "" {
-				tabName = fmt.Sprintf("task-%s", taskID)
-			}
+		sessionName, err := m.resolveZmxSessionName(m.ctx, workID)
+		if err != nil {
+			return workCommandMsg{action: "Attach terminal", workID: workID, err: err}
 		}
-
-		sessionName := zmx.SessionName(projectName, tabName)
 
 		// Build the terminal launch command from config
 		cmdTemplate := m.proj.Config.Multiplexer.GetTerminalCommand()
 		cmdStr := strings.ReplaceAll(cmdTemplate, "{session}", sessionName)
-
-		// Use sh -c to handle the command string, which properly handles
-		// quoted arguments, paths with spaces, and other shell features.
 		if cmdStr == "" {
 			return workCommandMsg{action: "Attach terminal", workID: workID, err: fmt.Errorf("empty terminal command")}
 		}

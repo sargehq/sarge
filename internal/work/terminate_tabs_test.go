@@ -51,7 +51,7 @@ func setupTerminateTest(t *testing.T, tabNames []string) (*DefaultOrchestratorMa
 
 func TestTerminateWorkTabs_OrchestratorGetsSignaledBeforeClose(t *testing.T) {
 	tabNames := []string{
-		"work-w-abc (my feature)",
+		"orch-w-abc (my feature)",
 		"task-w-abc.1",
 		"console-w-abc",
 	}
@@ -80,7 +80,7 @@ func TestTerminateWorkTabs_OrchestratorGetsSignaledBeforeClose(t *testing.T) {
 	for _, call := range sessionMock.CloseTabByNameCalls() {
 		closedTabs = append(closedTabs, call.TabName)
 	}
-	assert.Contains(t, closedTabs, "work-w-abc (my feature)")
+	assert.Contains(t, closedTabs, "orch-w-abc (my feature)")
 	assert.Contains(t, closedTabs, "task-w-abc.1")
 	assert.Contains(t, closedTabs, "console-w-abc")
 }
@@ -108,7 +108,7 @@ func TestTerminateWorkTabs_NoCtrlCSent(t *testing.T) {
 
 func TestTerminateWorkTabs_OrchestratorProcessNotFound(t *testing.T) {
 	// Orchestrator tab exists but no process record in DB
-	tabNames := []string{"work-w-abc"}
+	tabNames := []string{"orch-w-abc"}
 	mgr, sessionMock, _ := setupTerminateTest(t, tabNames)
 	ctx := context.Background()
 
@@ -118,15 +118,15 @@ func TestTerminateWorkTabs_OrchestratorProcessNotFound(t *testing.T) {
 
 	// Tab should still be closed even without a process record
 	assert.Len(t, sessionMock.CloseTabByNameCalls(), 1)
-	assert.Equal(t, "work-w-abc", sessionMock.CloseTabByNameCalls()[0].TabName)
+	assert.Equal(t, "orch-w-abc", sessionMock.CloseTabByNameCalls()[0].TabName)
 }
 
 func TestTerminateWorkTabs_OnlyMatchesCorrectWork(t *testing.T) {
 	// Include tabs from another work to verify filtering
 	tabNames := []string{
-		"work-w-abc",
+		"orch-w-abc",
 		"task-w-abc.1",
-		"work-w-other",
+		"orch-w-other",
 		"task-w-other.1",
 		"control",
 	}
@@ -143,9 +143,9 @@ func TestTerminateWorkTabs_OnlyMatchesCorrectWork(t *testing.T) {
 	for _, call := range sessionMock.CloseTabByNameCalls() {
 		closedTabs = append(closedTabs, call.TabName)
 	}
-	assert.Contains(t, closedTabs, "work-w-abc")
+	assert.Contains(t, closedTabs, "orch-w-abc")
 	assert.Contains(t, closedTabs, "task-w-abc.1")
-	assert.NotContains(t, closedTabs, "work-w-other")
+	assert.NotContains(t, closedTabs, "orch-w-other")
 	assert.NotContains(t, closedTabs, "task-w-other.1")
 	assert.NotContains(t, closedTabs, "control")
 }
@@ -168,7 +168,7 @@ func TestTerminateWorkTabs_SessionDoesNotExist(t *testing.T) {
 }
 
 func TestTerminateWorkTabs_NoMatchingTabs(t *testing.T) {
-	tabNames := []string{"control", "work-w-other"}
+	tabNames := []string{"control", "orch-w-other"}
 	mgr, sessionMock, _ := setupTerminateTest(t, tabNames)
 	ctx := context.Background()
 

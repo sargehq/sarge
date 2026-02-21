@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/sargehq/sarge/internal/db"
@@ -12,6 +13,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// filterByPrefix filters a list of strings by prefix, matching real ListSessions behavior.
+func filterByPrefix(items []string, prefix string) []string {
+	var result []string
+	for _, s := range items {
+		if strings.HasPrefix(s, prefix) {
+			result = append(result, s)
+		}
+	}
+	return result
+}
 
 // setupZmxTest creates a DefaultOrchestratorManager configured for zmx with mocked dependencies.
 func setupZmxTest(t *testing.T) (*DefaultOrchestratorManager, *zmx.ClientMock, *db.DB) {
@@ -26,6 +38,9 @@ func setupZmxTest(t *testing.T) (*DefaultOrchestratorManager, *zmx.ClientMock, *
 			return false, nil
 		},
 		RunSessionFunc: func(ctx context.Context, name, command string, args []string, cwd string) error {
+			return nil
+		},
+		AttachSessionFunc: func(ctx context.Context, name string, terminalCmdTemplate string, command string, args []string, cwd string) error {
 			return nil
 		},
 		KillSessionFunc: func(ctx context.Context, name string) error {
@@ -56,7 +71,7 @@ func TestSpawnWorkOrchestratorZmx_CreatesSession(t *testing.T) {
 	// Should have called RunSession
 	calls := zmxMock.RunSessionCalls()
 	require.Len(t, calls, 1)
-	assert.Equal(t, "sarge-myproj--work-w-abc (my feature)", calls[0].Name)
+	assert.Equal(t, "sarge-myproj.orch-w-abc-my-feature", calls[0].Name)
 	assert.Equal(t, "sarge", calls[0].Command)
 	assert.Equal(t, []string{"orchestrate", "--work", "w-abc"}, calls[0].Args)
 	assert.Equal(t, "/tmp/work", calls[0].Cwd)
@@ -66,7 +81,7 @@ func TestSpawnWorkOrchestratorZmx_KillsExistingSession(t *testing.T) {
 	mgr, zmxMock, _ := setupZmxTest(t)
 	ctx := context.Background()
 
-	expectedName := "sarge-myproj--work-w-abc"
+	expectedName := "sarge-myproj.orch-w-abc"
 	zmxMock.SessionExistsFunc = func(ctx context.Context, name string) (bool, error) {
 		if name == expectedName {
 			return true, nil
@@ -92,16 +107,17 @@ func TestTerminateWorkTabsZmx_KillsMatchingSessions(t *testing.T) {
 	mgr, zmxMock, _ := setupZmxTest(t)
 	ctx := context.Background()
 
+	allSessions := []string{
+		"sarge-myproj.orch-w-abc-my-feature",
+		"sarge-myproj.task-w-abc.1",
+		"sarge-myproj.console-w-abc",
+		"sarge-myproj.claude-w-abc",
+		"sarge-myproj.pi-w-abc",
+		"sarge-myproj.orch-w-other",
+		"sarge-myproj.control",
+	}
 	zmxMock.ListSessionsFunc = func(ctx context.Context, prefix string) ([]string, error) {
-		return []string{
-			"sarge-myproj--work-w-abc (my feature)",
-			"sarge-myproj--task-w-abc.1",
-			"sarge-myproj--console-w-abc",
-			"sarge-myproj--claude-w-abc",
-			"sarge-myproj--pi-w-abc",
-			"sarge-myproj--work-w-other",
-			"sarge-myproj--control",
-		}, nil
+		return filterByPrefix(allSessions, prefix), nil
 	}
 
 	var buf bytes.Buffer
@@ -116,22 +132,23 @@ func TestTerminateWorkTabsZmx_KillsMatchingSessions(t *testing.T) {
 	for _, call := range killCalls {
 		killedNames = append(killedNames, call.Name)
 	}
-	assert.Contains(t, killedNames, "sarge-myproj--work-w-abc (my feature)")
-	assert.Contains(t, killedNames, "sarge-myproj--task-w-abc.1")
-	assert.Contains(t, killedNames, "sarge-myproj--console-w-abc")
-	assert.Contains(t, killedNames, "sarge-myproj--claude-w-abc")
-	assert.Contains(t, killedNames, "sarge-myproj--pi-w-abc")
+	assert.Contains(t, killedNames, "sarge-myproj.orch-w-abc-my-feature")
+	assert.Contains(t, killedNames, "sarge-myproj.task-w-abc.1")
+	assert.Contains(t, killedNames, "sarge-myproj.console-w-abc")
+	assert.Contains(t, killedNames, "sarge-myproj.claude-w-abc")
+	assert.Contains(t, killedNames, "sarge-myproj.pi-w-abc")
 }
 
 func TestTerminateWorkTabsZmx_NoMatchingSessions(t *testing.T) {
 	mgr, zmxMock, _ := setupZmxTest(t)
 	ctx := context.Background()
 
+	allSessions := []string{
+		"sarge-myproj.orch-w-other",
+		"sarge-myproj.control",
+	}
 	zmxMock.ListSessionsFunc = func(ctx context.Context, prefix string) ([]string, error) {
-		return []string{
-			"sarge-myproj--work-w-other",
-			"sarge-myproj--control",
-		}, nil
+		return filterByPrefix(allSessions, prefix), nil
 	}
 
 	var buf bytes.Buffer
@@ -145,8 +162,9 @@ func TestTerminateWorkTabsZmx_OrchestratorGetsSignaled(t *testing.T) {
 	mgr, zmxMock, testDB := setupZmxTest(t)
 	ctx := context.Background()
 
+	allSessions := []string{"sarge-myproj.orch-w-abc"}
 	zmxMock.ListSessionsFunc = func(ctx context.Context, prefix string) ([]string, error) {
-		return []string{"sarge-myproj--work-w-abc"}, nil
+		return filterByPrefix(allSessions, prefix), nil
 	}
 
 	// Register an orchestrator process with a non-existent PID
@@ -169,13 +187,13 @@ func TestOpenConsoleZmx_CreatesSession(t *testing.T) {
 	err := mgr.OpenConsole(ctx, "w-abc", "myproj", "/tmp/work", "my feature", nil, &buf)
 	require.NoError(t, err)
 
-	calls := zmxMock.RunSessionCalls()
+	calls := zmxMock.AttachSessionCalls()
 	require.Len(t, calls, 1)
-	assert.Equal(t, "sarge-myproj--console-w-abc (my feature)", calls[0].Name)
+	assert.Equal(t, "sarge-myproj.console-w-abc-my-feature", calls[0].Name)
 	assert.Equal(t, "/tmp/work", calls[0].Cwd)
 }
 
-func TestOpenConsoleZmx_ExistingSessionNoOp(t *testing.T) {
+func TestOpenConsoleZmx_ExistingSessionAttaches(t *testing.T) {
 	mgr, zmxMock, _ := setupZmxTest(t)
 	ctx := context.Background()
 
@@ -187,8 +205,10 @@ func TestOpenConsoleZmx_ExistingSessionNoOp(t *testing.T) {
 	err := mgr.OpenConsole(ctx, "w-abc", "myproj", "/tmp/work", "", nil, &buf)
 	require.NoError(t, err)
 
-	// Should NOT create a new session
-	assert.Empty(t, zmxMock.RunSessionCalls())
+	// Should attach to existing session (no command args)
+	calls := zmxMock.AttachSessionCalls()
+	require.Len(t, calls, 1)
+	assert.Equal(t, "", calls[0].Command)
 	assert.Contains(t, buf.String(), "already exists")
 }
 
@@ -202,9 +222,9 @@ func TestOpenAgentSessionZmx_CreatesClaudeSession(t *testing.T) {
 	err := mgr.OpenAgentSession(ctx, "w-abc", "myproj", "/tmp/work", "", nil, cfg, &buf)
 	require.NoError(t, err)
 
-	calls := zmxMock.RunSessionCalls()
+	calls := zmxMock.AttachSessionCalls()
 	require.Len(t, calls, 1)
-	assert.Equal(t, "sarge-myproj--claude-w-abc", calls[0].Name)
+	assert.Equal(t, "sarge-myproj.claude-w-abc", calls[0].Name)
 	assert.Equal(t, "claude", calls[0].Command)
 }
 
@@ -219,13 +239,13 @@ func TestOpenAgentSessionZmx_CreatesPiSession(t *testing.T) {
 	err := mgr.OpenAgentSession(ctx, "w-abc", "myproj", "/tmp/work", "feat", nil, cfg, &buf)
 	require.NoError(t, err)
 
-	calls := zmxMock.RunSessionCalls()
+	calls := zmxMock.AttachSessionCalls()
 	require.Len(t, calls, 1)
-	assert.Equal(t, "sarge-myproj--pi-w-abc (feat)", calls[0].Name)
+	assert.Equal(t, "sarge-myproj.pi-w-abc-feat", calls[0].Name)
 	assert.Equal(t, "pi", calls[0].Command)
 }
 
-func TestOpenAgentSessionZmx_ExistingSessionNoOp(t *testing.T) {
+func TestOpenAgentSessionZmx_ExistingSessionAttaches(t *testing.T) {
 	mgr, zmxMock, _ := setupZmxTest(t)
 	ctx := context.Background()
 
@@ -237,7 +257,10 @@ func TestOpenAgentSessionZmx_ExistingSessionNoOp(t *testing.T) {
 	err := mgr.OpenAgentSession(ctx, "w-abc", "myproj", "/tmp/work", "", nil, &project.Config{}, &buf)
 	require.NoError(t, err)
 
-	assert.Empty(t, zmxMock.RunSessionCalls())
+	// Should attach to existing session (no command args)
+	calls := zmxMock.AttachSessionCalls()
+	require.Len(t, calls, 1)
+	assert.Equal(t, "", calls[0].Command)
 	assert.Contains(t, buf.String(), "already exists")
 }
 
@@ -249,9 +272,9 @@ func TestSpawnPlanSessionZmx_CreatesSession(t *testing.T) {
 	err := mgr.SpawnPlanSession(ctx, "ac-cdo.5", "myproj", "/tmp/repo", &buf)
 	require.NoError(t, err)
 
-	calls := zmxMock.RunSessionCalls()
+	calls := zmxMock.AttachSessionCalls()
 	require.Len(t, calls, 1)
-	assert.Equal(t, "sarge-myproj--plan-ac-cdo.5", calls[0].Name)
+	assert.Equal(t, "sarge-myproj.plan-ac-cdo.5", calls[0].Name)
 	assert.Equal(t, "sarge", calls[0].Command)
 	assert.Equal(t, []string{"plan", "ac-cdo.5"}, calls[0].Args)
 	assert.Equal(t, "/tmp/repo", calls[0].Cwd)
@@ -261,7 +284,7 @@ func TestSpawnPlanSessionZmx_KillsExistingSession(t *testing.T) {
 	mgr, zmxMock, _ := setupZmxTest(t)
 	ctx := context.Background()
 
-	expectedName := "sarge-myproj--plan-ac-cdo.5"
+	expectedName := "sarge-myproj.plan-ac-cdo.5"
 	zmxMock.SessionExistsFunc = func(ctx context.Context, name string) (bool, error) {
 		if name == expectedName {
 			return true, nil
@@ -277,8 +300,8 @@ func TestSpawnPlanSessionZmx_KillsExistingSession(t *testing.T) {
 	require.Len(t, killCalls, 1)
 	assert.Equal(t, expectedName, killCalls[0].Name)
 
-	runCalls := zmxMock.RunSessionCalls()
-	require.Len(t, runCalls, 1)
+	attachCalls := zmxMock.AttachSessionCalls()
+	require.Len(t, attachCalls, 1)
 }
 
 func TestEnsureWorkOrchestratorZmx_SpawnsWhenNotRunning(t *testing.T) {
@@ -318,7 +341,7 @@ func TestEnsureWorkOrchestratorZmx_SkipsWhenAlive(t *testing.T) {
 func TestTerminateWorkTabsZellij_IncludesPiTabs(t *testing.T) {
 	// Verify the zellij path also cleans up pi- tabs after our fix
 	tabNames := []string{
-		"work-w-abc",
+		"orch-w-abc",
 		"pi-w-abc (feat)",
 		"console-w-abc",
 	}

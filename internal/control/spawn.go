@@ -44,6 +44,9 @@ func ensureControlPlaneZmxWith(ctx context.Context, proj *project.Project, zmxCl
 	projectName := proj.Config.Project.Name
 	zmxName := zmx.SessionName(projectName, ControlPlaneTabName)
 
+	logging.Debug("ensureControlPlaneZmxWith called",
+		"projectName", projectName, "zmxName", zmxName, "projectRoot", proj.Root)
+
 	result := &InitResult{
 		SessionName: zmxName,
 	}
@@ -54,12 +57,16 @@ func ensureControlPlaneZmxWith(ctx context.Context, proj *project.Project, zmxCl
 		return nil, fmt.Errorf("failed to check zmx session: %w", err)
 	}
 
+	logging.Debug("ensureControlPlaneZmxWith session check", "zmxName", zmxName, "exists", exists)
+
 	if !exists {
 		// Create control plane session
-		logging.Debug("Creating zmx control plane session", "zmxName", zmxName)
+		logging.Debug("Creating zmx control plane session", "zmxName", zmxName, "root", proj.Root)
 		if err := zmxClient.RunSession(ctx, zmxName, "sarge", []string{"control", "--root", proj.Root}, proj.Root); err != nil {
+			logging.Error("Failed to create zmx control plane session", "zmxName", zmxName, "error", err)
 			return nil, fmt.Errorf("failed to create zmx control plane session: %w", err)
 		}
+		logging.Debug("zmx control plane session created successfully", "zmxName", zmxName)
 		result.SessionCreated = true
 		return result, nil
 	}
@@ -69,17 +76,20 @@ func ensureControlPlaneZmxWith(ctx context.Context, proj *project.Project, zmxCl
 	if err != nil {
 		return nil, fmt.Errorf("failed to check control plane status: %w", err)
 	}
+	logging.Debug("ensureControlPlaneZmxWith heartbeat check", "zmxName", zmxName, "alive", alive)
 	if alive {
 		return result, nil
 	}
 
 	// Session exists but process is dead - kill and restart
-	logging.Debug("Control plane zmx session exists but process is dead - restarting...")
+	logging.Debug("Control plane zmx session exists but process is dead - restarting...", "zmxName", zmxName)
 	_ = zmxClient.KillSession(ctx, zmxName)
 
 	if err := zmxClient.RunSession(ctx, zmxName, "sarge", []string{"control", "--root", proj.Root}, proj.Root); err != nil {
+		logging.Error("Failed to restart zmx control plane session", "zmxName", zmxName, "error", err)
 		return nil, fmt.Errorf("failed to restart zmx control plane session: %w", err)
 	}
+	logging.Debug("zmx control plane session restarted successfully", "zmxName", zmxName)
 	result.SessionCreated = true
 	return result, nil
 }

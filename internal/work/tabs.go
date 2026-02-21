@@ -57,23 +57,24 @@ func buildShellCommand(hooksEnv []string) (command string, args []string, shellN
 	return
 }
 
-// openConsoleZmx creates a zmx session with a shell in the work's worktree.
+// openConsoleZmx opens a terminal window with a zmx shell session in the work's worktree.
 func (m *DefaultOrchestratorManager) openConsoleZmx(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, hooksEnv []string, w io.Writer) error {
 	tabName := project.FormatTabName("console", workID, friendlyName)
 	zmxName := zmx.SessionName(projectName, tabName)
 
-	// Check if session already exists
+	// If session already exists, just open a terminal attached to it
 	exists, _ := m.zmx.SessionExists(ctx, zmxName)
 	if exists {
-		fmt.Fprintf(w, "Console session %s already exists\n", zmxName)
-		return nil
+		fmt.Fprintf(w, "Console session %s already exists, attaching terminal\n", zmxName)
+		return m.zmx.AttachSession(ctx, zmxName, m.muxConfig.GetTerminalCommand(), "", nil, workDir)
 	}
 
 	command, args, _ := buildShellCommand(hooksEnv)
 
-	fmt.Fprintf(w, "Creating console zmx session: %s\n", zmxName)
-	if err := m.zmx.RunSession(ctx, zmxName, command, args, workDir); err != nil {
-		return fmt.Errorf("failed to create zmx session: %w", err)
+	// Launch terminal with zmx attach (creates session if needed)
+	fmt.Fprintf(w, "Opening console: %s\n", zmxName)
+	if err := m.zmx.AttachSession(ctx, zmxName, m.muxConfig.GetTerminalCommand(), command, args, workDir); err != nil {
+		return fmt.Errorf("failed to open console: %w", err)
 	}
 
 	fmt.Fprintf(w, "Console opened in zmx session %s\n", zmxName)
@@ -175,7 +176,7 @@ func buildAgentCommand(agentType string, hooksEnv []string, cfg *project.Config)
 	return
 }
 
-// openAgentSessionZmx creates a zmx session with an interactive agent.
+// openAgentSessionZmx opens a terminal window with an interactive agent zmx session.
 func (m *DefaultOrchestratorManager) openAgentSessionZmx(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) error {
 	agentType := "claude"
 	if cfg != nil && cfg.Agent.Type != "" {
@@ -185,18 +186,19 @@ func (m *DefaultOrchestratorManager) openAgentSessionZmx(ctx context.Context, wo
 	tabName := project.FormatTabName(agentType, workID, friendlyName)
 	zmxName := zmx.SessionName(projectName, tabName)
 
-	// Check if session already exists
+	// If session already exists, just open a terminal attached to it
 	exists, _ := m.zmx.SessionExists(ctx, zmxName)
 	if exists {
-		fmt.Fprintf(w, "Agent session %s already exists\n", zmxName)
-		return nil
+		fmt.Fprintf(w, "Agent session %s already exists, attaching terminal\n", zmxName)
+		return m.zmx.AttachSession(ctx, zmxName, m.muxConfig.GetTerminalCommand(), "", nil, workDir)
 	}
 
 	command, args := buildAgentCommand(agentType, hooksEnv, cfg)
 
-	fmt.Fprintf(w, "Creating %s zmx session: %s\n", agentType, zmxName)
-	if err := m.zmx.RunSession(ctx, zmxName, command, args, workDir); err != nil {
-		return fmt.Errorf("failed to create zmx session: %w", err)
+	// Launch terminal with zmx attach (creates session if needed)
+	fmt.Fprintf(w, "Opening %s session: %s\n", agentType, zmxName)
+	if err := m.zmx.AttachSession(ctx, zmxName, m.muxConfig.GetTerminalCommand(), command, args, workDir); err != nil {
+		return fmt.Errorf("failed to open %s session: %w", agentType, err)
 	}
 
 	fmt.Fprintf(w, "%s session opened in zmx session %s\n", agentType, zmxName)
@@ -258,7 +260,7 @@ func (m *DefaultOrchestratorManager) SpawnPlanSession(ctx context.Context, beadI
 	return m.spawnPlanSessionZellij(ctx, beadID, projectName, mainRepoPath, w)
 }
 
-// spawnPlanSessionZmx creates a zmx session running the plan command.
+// spawnPlanSessionZmx opens a terminal window with a zmx plan session.
 func (m *DefaultOrchestratorManager) spawnPlanSessionZmx(ctx context.Context, beadID string, projectName string, mainRepoPath string, w io.Writer) error {
 	tabName := PlanTabName(beadID)
 	zmxName := zmx.SessionName(projectName, tabName)
@@ -270,10 +272,10 @@ func (m *DefaultOrchestratorManager) spawnPlanSessionZmx(ctx context.Context, be
 		fmt.Fprintf(w, "Session %s already existed, killed and recreating...\n", zmxName)
 	}
 
-	// Create a new zmx session with the plan command
-	fmt.Fprintf(w, "Creating zmx session: %s\n", zmxName)
-	if err := m.zmx.RunSession(ctx, zmxName, "sarge", []string{"plan", beadID}, mainRepoPath); err != nil {
-		return fmt.Errorf("failed to create zmx session: %w", err)
+	// Launch terminal with zmx attach (creates session with plan command)
+	fmt.Fprintf(w, "Opening plan session: %s\n", zmxName)
+	if err := m.zmx.AttachSession(ctx, zmxName, m.muxConfig.GetTerminalCommand(), "sarge", []string{"plan", beadID}, mainRepoPath); err != nil {
+		return fmt.Errorf("failed to open plan session: %w", err)
 	}
 
 	fmt.Fprintf(w, "Plan session spawned in zmx session %s\n", zmxName)
