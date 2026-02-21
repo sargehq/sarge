@@ -77,21 +77,9 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 
 	// Get all tasks
 	var tasks []*db.Task
-	if flagTaskStatus != "" {
-		tasks, err = proj.DB.ListTasks(ctx, flagTaskStatus)
-		if err != nil {
-			return fmt.Errorf("failed to list tasks: %w", err)
-		}
-	} else {
-		// Get all tasks regardless of status
-		allStatuses := []string{db.StatusPending, db.StatusProcessing, db.StatusCompleted, db.StatusFailed}
-		for _, status := range allStatuses {
-			statusTasks, err := proj.DB.ListTasks(ctx, status)
-			if err != nil {
-				return fmt.Errorf("failed to list tasks with status %s: %w", status, err)
-			}
-			tasks = append(tasks, statusTasks...)
-		}
+	tasks, err = proj.DB.ListTasks(ctx, flagTaskStatus)
+	if err != nil {
+		return fmt.Errorf("failed to list tasks: %w", err)
 	}
 
 	// Filter by type if specified

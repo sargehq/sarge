@@ -280,10 +280,16 @@ func TestListTasks(t *testing.T) {
 	db.StartTask(context.Background(), "task-4", "")
 	db.FailTask(context.Background(), "task-4", "error")
 
-	// List all
+	// List all - should be ordered by created_at DESC (newest first)
 	tasks, err := db.ListTasks(context.Background(), "")
 	require.NoError(t, err, "ListTasks failed")
 	assert.Len(t, tasks, 4, "expected 4 tasks")
+	// Verify ordering: newest first (task-4, task-3, task-2, task-1)
+	for i := 0; i < len(tasks)-1; i++ {
+		assert.True(t, !tasks[i].CreatedAt.Before(tasks[i+1].CreatedAt),
+			"tasks should be ordered newest first, but task %s (created %v) is before task %s (created %v)",
+			tasks[i].ID, tasks[i].CreatedAt, tasks[i+1].ID, tasks[i+1].CreatedAt)
+	}
 
 	// List pending only
 	tasks, err = db.ListTasks(context.Background(), StatusPending)
