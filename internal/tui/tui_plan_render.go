@@ -256,7 +256,7 @@ func (m *planModel) renderHelp() string {
   ────────────────────────────
   t             Open terminal/console
   c             Open agent chat
-  i             Open IDE
+  i             Open IDE (work panel must be focused)
   r             Run work
   o             Restart orchestrator
   v             Create review task
@@ -267,8 +267,10 @@ func (m *planModel) renderHelp() string {
   a             Add child issue to work
   g             Pick zmx session to attach
 
-  Note: When a work is selected, keys like t/c/i/r/o/v/p/f/d
+  Note: When a work is selected, keys like t/c/r/o/v/p/f/d
   trigger work actions. Issue actions n/e/a/x/w remain available.
+  'i' triggers Import when the issues panel is focused, or
+  IDE when the work details panel is focused.
 
   Filters (capital letters)
   ────────────────────────────

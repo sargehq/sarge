@@ -1228,12 +1228,14 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// When a work is focused, route work action keys regardless of active panel.
-	// This allows work actions (t, c, i, r, o, f, g, v, p, d, x, a) to fire
+	// This allows work actions (t, c, r, o, f, g, v, p, d, x, a) to fire
 	// even when the issues panel is active.
+	// Note: 'i' is NOT intercepted here - it conflicts with Import from Linear.
+	// 'i' for IDE only works when the work details panel is focused.
 	if m.focusedWorkID != "" {
 		isWorkActionKey := false
 		switch msg.String() {
-		case "t", "c", "i", "r", "o", "f", "g", "v", "p", "d", "x", "a":
+		case "t", "c", "r", "o", "f", "g", "v", "p", "d", "x", "a":
 			isWorkActionKey = true
 		}
 
