@@ -154,7 +154,7 @@ func (m *DefaultOrchestratorManager) tabExists(ctx context.Context, sessionName,
 
 // TerminateWorkTabs terminates all zellij tabs associated with a work unit.
 // This includes the work orchestrator tab (orch-<workID>), task tabs (task-<workID>.*),
-// console tabs (console-<workID>*), and claude tabs (claude-<workID>*).
+// console tabs (console-<workID>*), and agent tabs (agent-<workID>*).
 //
 // For the orchestrator tab, the process is sent SIGTERM via its tracked PID before
 // the tab is closed. For all other tabs, the tab is closed directly (which kills
