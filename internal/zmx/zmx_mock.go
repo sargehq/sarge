@@ -36,6 +36,9 @@ var _ Client = &ClientMock{}
 //			SessionExistsFunc: func(ctx context.Context, name string) (bool, error) {
 //				panic("mock out the SessionExists method")
 //			},
+//			SessionHasClientsFunc: func(ctx context.Context, name string) (bool, error) {
+//				panic("mock out the SessionHasClients method")
+//			},
 //		}
 //
 //		// use mockedClient in code that requires Client
@@ -60,6 +63,9 @@ type ClientMock struct {
 
 	// SessionExistsFunc mocks the SessionExists method.
 	SessionExistsFunc func(ctx context.Context, name string) (bool, error)
+
+	// SessionHasClientsFunc mocks the SessionHasClients method.
+	SessionHasClientsFunc func(ctx context.Context, name string) (bool, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -113,13 +119,21 @@ type ClientMock struct {
 			// Name is the name argument value.
 			Name string
 		}
+		// SessionHasClients holds details about calls to the SessionHasClients method.
+		SessionHasClients []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+		}
 	}
-	lockAttachSession    sync.RWMutex
-	lockAttachSessionTab sync.RWMutex
-	lockKillSession      sync.RWMutex
-	lockListSessions     sync.RWMutex
-	lockRunSession       sync.RWMutex
-	lockSessionExists    sync.RWMutex
+	lockAttachSession     sync.RWMutex
+	lockAttachSessionTab  sync.RWMutex
+	lockKillSession       sync.RWMutex
+	lockListSessions      sync.RWMutex
+	lockRunSession        sync.RWMutex
+	lockSessionExists     sync.RWMutex
+	lockSessionHasClients sync.RWMutex
 }
 
 // AttachSession calls AttachSessionFunc.
@@ -371,5 +385,45 @@ func (mock *ClientMock) SessionExistsCalls() []struct {
 	mock.lockSessionExists.RLock()
 	calls = mock.calls.SessionExists
 	mock.lockSessionExists.RUnlock()
+	return calls
+}
+
+// SessionHasClients calls SessionHasClientsFunc.
+func (mock *ClientMock) SessionHasClients(ctx context.Context, name string) (bool, error) {
+	callInfo := struct {
+		Ctx  context.Context
+		Name string
+	}{
+		Ctx:  ctx,
+		Name: name,
+	}
+	mock.lockSessionHasClients.Lock()
+	mock.calls.SessionHasClients = append(mock.calls.SessionHasClients, callInfo)
+	mock.lockSessionHasClients.Unlock()
+	if mock.SessionHasClientsFunc == nil {
+		var (
+			bOut   bool
+			errOut error
+		)
+		return bOut, errOut
+	}
+	return mock.SessionHasClientsFunc(ctx, name)
+}
+
+// SessionHasClientsCalls gets all the calls that were made to SessionHasClients.
+// Check the length with:
+//
+//	len(mockedClient.SessionHasClientsCalls())
+func (mock *ClientMock) SessionHasClientsCalls() []struct {
+	Ctx  context.Context
+	Name string
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Name string
+	}
+	mock.lockSessionHasClients.RLock()
+	calls = mock.calls.SessionHasClients
+	mock.lockSessionHasClients.RUnlock()
 	return calls
 }

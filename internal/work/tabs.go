@@ -134,6 +134,13 @@ func (m *DefaultOrchestratorManager) openConsoleZmx(ctx context.Context, workID 
 		if err := m.zmx.RunSession(ctx, zmxName, initCmd, nil, workDir); err != nil {
 			return fmt.Errorf("failed to create console session: %w", err)
 		}
+	} else {
+		// Session exists — check if it already has a terminal attached
+		hasClients, _ := m.zmx.SessionHasClients(ctx, zmxName)
+		if hasClients {
+			fmt.Fprintf(w, "Console session %s already open\n", zmxName)
+			return nil
+		}
 	}
 
 	// Open terminal window attached to the session
@@ -275,6 +282,13 @@ func (m *DefaultOrchestratorManager) openAgentSessionZmx(ctx context.Context, wo
 		}
 		if err := m.zmx.RunSession(ctx, zmxName, agentCmd, nil, workDir); err != nil {
 			return fmt.Errorf("failed to create %s session: %w", agentType, err)
+		}
+	} else {
+		// Session exists — check if it already has a terminal attached
+		hasClients, _ := m.zmx.SessionHasClients(ctx, zmxName)
+		if hasClients {
+			fmt.Fprintf(w, "Agent session %s already open\n", zmxName)
+			return nil
 		}
 	}
 

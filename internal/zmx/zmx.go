@@ -41,6 +41,10 @@ type Client interface {
 
 	// ListSessions returns all zmx session names matching the given prefix.
 	ListSessions(ctx context.Context, prefix string) ([]string, error)
+
+	// SessionHasClients checks if a zmx session has active clients (terminal windows attached).
+	// Returns true if the session exists and has clients > 0.
+	SessionHasClients(ctx context.Context, name string) (bool, error)
 }
 
 // client implements the Client interface.
@@ -263,6 +267,48 @@ func (c *client) KillSession(ctx context.Context, name string) error {
 	}
 	logging.Debug("zmx KillSession succeeded", "name", name)
 	return nil
+}
+
+// SessionHasClients checks if a zmx session has active clients (terminal windows attached).
+// It parses the full 'zmx list' output (not --short) to extract the clients=N field.
+func (c *client) SessionHasClients(ctx context.Context, name string) (bool, error) {
+	cmd := exec.CommandContext(ctx, "zmx", "list")
+	output, err := cmd.Output()
+	if err != nil {
+		logging.Debug("zmx SessionHasClients: list failed", "name", name, "error", err)
+		return false, nil
+	}
+
+	raw := strings.TrimSpace(string(output))
+	if raw == "" {
+		return false, nil
+	}
+
+	target := "session_name=" + name
+	for _, line := range strings.Split(raw, "\n") {
+		line = strings.TrimSpace(line)
+		// Strip leading arrow marker (e.g. "→ ")
+		line = strings.TrimPrefix(line, "→ ")
+		line = strings.TrimSpace(line)
+		if !strings.Contains(line, target) {
+			continue
+		}
+		// Found the session line — extract clients=N
+		for _, field := range strings.Fields(line) {
+			if strings.HasPrefix(field, "clients=") {
+				val := strings.TrimPrefix(field, "clients=")
+				if val != "" && val != "0" {
+					logging.Debug("zmx SessionHasClients: has clients", "name", name, "clients", val)
+					return true, nil
+				}
+				logging.Debug("zmx SessionHasClients: no clients", "name", name, "clients", val)
+				return false, nil
+			}
+		}
+	}
+
+	logging.Debug("zmx SessionHasClients: session not found", "name", name)
+	return false, nil
 }
 
 // ListSessions returns all zmx session names matching the given prefix.
