@@ -255,19 +255,30 @@ func (m *planModel) renderHelp() string {
   i             Import issue from Linear
   I             Import from GitHub PR
 
-  Work Actions (when work focused)
+  Work Actions (work focused, any panel)
   ────────────────────────────
+  t             Open terminal/console
+  c             Open agent chat
+  i             Open IDE
+  r             Run work
+  o             Restart orchestrator
+  v             Create review task
+  p             Create PR / plan session
+  f             Check PR feedback
+  d             Destroy work
+  x             Reset failed task
+  a             Add child issue to work
   g             Pick zmx session to attach
 
   Filtering & Sorting
   ────────────────────────────
-  o             Show open issues
-  c             Show closed issues
-  r             Show ready issues
+  O             Show open issues
+  C             Show closed issues
+  R             Show ready issues
   /             Fuzzy search
   L             Filter by label
   s             Cycle sort mode
-  v             Toggle expanded view
+  V             Toggle expanded view
 
   Indicators
   ────────────────────────────
