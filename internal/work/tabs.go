@@ -47,7 +47,7 @@ func shellQuoteEnv(env string) (string, error) {
 		return "", fmt.Errorf("invalid env var %q: empty key", env)
 	}
 	for _, c := range key {
-		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') {
+		if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') && (c < '0' || c > '9') && c != '_' {
 			return "", fmt.Errorf("invalid env var key %q: contains invalid character %q", key, c)
 		}
 	}
