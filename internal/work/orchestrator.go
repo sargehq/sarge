@@ -18,12 +18,36 @@ import (
 // tabBelongsToWork returns true if a tab name belongs to the given work ID.
 // Matches orch, task, console, claude, and pi tabs for this work.
 func tabBelongsToWork(tabName, workID string) bool {
-	for _, prefix := range []string{"orch-", "task-", "console-", "claude-", "pi-"} {
+	for _, prefix := range []string{"orch-", "task-", "console-", "agent-"} {
 		if strings.HasPrefix(tabName, prefix+workID) {
 			return true
 		}
 	}
 	return false
+}
+
+// WorkSession represents an active zmx session for a work unit.
+type WorkSession struct {
+	Name        string // Full zmx session name, e.g. "sarge-myproj.orch-w123"
+	TabName     string // Parsed tab name, e.g. "orch-w123"
+	Type        string // Session type: "orch", "console", "agent", "task"
+	DisplayName string // Human-friendly label for the picker
+}
+
+// parseSessionType extracts the session type from a tab name.
+// e.g. "orch-w123-my-feature" → "orch", "task-w123.1" → "task"
+func parseSessionType(tabName string) string {
+	for _, prefix := range []string{"orch-", "task-", "console-", "agent-"} {
+		if strings.HasPrefix(tabName, prefix) {
+			return strings.TrimSuffix(prefix, "-")
+		}
+	}
+	return "unknown"
+}
+
+// sessionDisplayName returns a human-friendly display name for a session.
+func sessionDisplayName(sessionType, tabName string) string {
+	return fmt.Sprintf("%s (%s)", sessionType, tabName)
 }
 
 // OrchestratorManager provides operations for managing work orchestrators and related tabs.
@@ -49,6 +73,12 @@ type OrchestratorManager interface {
 
 	// OpenAgentSession creates a zellij tab with an interactive agent session.
 	OpenAgentSession(ctx context.Context, workID, projName, workDir, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) error
+
+	// ListWorkSessions returns active zmx sessions for a given work unit.
+	ListWorkSessions(ctx context.Context, workID, projectName string) ([]WorkSession, error)
+
+	// AttachToSession attaches to a named zmx session.
+	AttachToSession(ctx context.Context, sessionName string) error
 }
 
 // DefaultOrchestratorManager is the default implementation of OrchestratorManager.
@@ -124,7 +154,7 @@ func (m *DefaultOrchestratorManager) tabExists(ctx context.Context, sessionName,
 
 // TerminateWorkTabs terminates all zellij tabs associated with a work unit.
 // This includes the work orchestrator tab (orch-<workID>), task tabs (task-<workID>.*),
-// console tabs (console-<workID>*), and claude tabs (claude-<workID>*).
+// console tabs (console-<workID>*), and agent tabs (agent-<workID>*).
 //
 // For the orchestrator tab, the process is sent SIGTERM via its tracked PID before
 // the tab is closed. For all other tabs, the tab is closed directly (which kills
@@ -395,4 +425,38 @@ func (m *DefaultOrchestratorManager) EnsureWorkOrchestrator(ctx context.Context,
 
 	logging.Debug("EnsureWorkOrchestrator spawn succeeded", "workID", workID)
 	return true, nil
+}
+
+// ListWorkSessions returns active zmx sessions for a given work unit.
+// For non-zmx multiplexers, returns an empty list.
+func (m *DefaultOrchestratorManager) ListWorkSessions(ctx context.Context, workID, projectName string) ([]WorkSession, error) {
+	if !m.isZmx() {
+		return nil, nil
+	}
+
+	projectPrefix := zmx.SessionName(projectName, "")
+	sessions, err := m.zmx.ListSessions(ctx, projectPrefix)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list zmx sessions: %w", err)
+	}
+
+	var result []WorkSession
+	for _, name := range sessions {
+		_, tabName := zmx.ParseSessionName(name)
+		if tabName != "" && tabBelongsToWork(tabName, workID) {
+			sessionType := parseSessionType(tabName)
+			result = append(result, WorkSession{
+				Name:        name,
+				TabName:     tabName,
+				Type:        sessionType,
+				DisplayName: sessionDisplayName(sessionType, tabName),
+			})
+		}
+	}
+	return result, nil
+}
+
+// AttachToSession attaches to a named zmx session.
+func (m *DefaultOrchestratorManager) AttachToSession(ctx context.Context, sessionName string) error {
+	return m.attachZmxSession(ctx, sessionName)
 }

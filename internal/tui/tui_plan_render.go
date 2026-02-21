@@ -257,7 +257,7 @@ func (m *planModel) renderHelp() string {
 
   Work Actions (when work focused)
   ────────────────────────────
-  g             Attach terminal to zmx session (opens Ghostty)
+  g             Pick zmx session to attach
 
   Filtering & Sorting
   ────────────────────────────

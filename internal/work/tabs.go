@@ -253,7 +253,7 @@ func (m *DefaultOrchestratorManager) openAgentSessionZmx(ctx context.Context, wo
 		agentType = cfg.Agent.Type
 	}
 
-	tabName := project.FormatTabName(agentType, workID, friendlyName)
+	tabName := project.FormatTabName("agent", workID, friendlyName)
 	zmxName := zmx.SessionName(projectName, tabName)
 
 	// Create session if it doesn't exist
@@ -295,7 +295,7 @@ func (m *DefaultOrchestratorManager) openAgentSessionZellij(ctx context.Context,
 	}
 
 	sessionName := project.SessionNameForProject(projectName)
-	tabName := project.FormatTabName(agentType, workID, friendlyName)
+	tabName := project.FormatTabName("agent", workID, friendlyName)
 
 	// Verify session exists - callers must initialize it with control plane
 	exists, err := m.zellij.SessionExists(ctx, sessionName)

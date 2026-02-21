@@ -20,8 +20,14 @@ var _ OrchestratorManager = &OrchestratorManagerMock{}
 //
 //		// make and configure a mocked OrchestratorManager
 //		mockedOrchestratorManager := &OrchestratorManagerMock{
+//			AttachToSessionFunc: func(ctx context.Context, sessionName string) error {
+//				panic("mock out the AttachToSession method")
+//			},
 //			EnsureWorkOrchestratorFunc: func(ctx context.Context, workID string, projName string, workDir string, friendlyName string, w io.Writer) (bool, error) {
 //				panic("mock out the EnsureWorkOrchestrator method")
+//			},
+//			ListWorkSessionsFunc: func(ctx context.Context, workID string, projectName string) ([]WorkSession, error) {
+//				panic("mock out the ListWorkSessions method")
 //			},
 //			OpenAgentSessionFunc: func(ctx context.Context, workID string, projName string, workDir string, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) error {
 //				panic("mock out the OpenAgentSession method")
@@ -45,8 +51,14 @@ var _ OrchestratorManager = &OrchestratorManagerMock{}
 //
 //	}
 type OrchestratorManagerMock struct {
+	// AttachToSessionFunc mocks the AttachToSession method.
+	AttachToSessionFunc func(ctx context.Context, sessionName string) error
+
 	// EnsureWorkOrchestratorFunc mocks the EnsureWorkOrchestrator method.
 	EnsureWorkOrchestratorFunc func(ctx context.Context, workID string, projName string, workDir string, friendlyName string, w io.Writer) (bool, error)
+
+	// ListWorkSessionsFunc mocks the ListWorkSessions method.
+	ListWorkSessionsFunc func(ctx context.Context, workID string, projectName string) ([]WorkSession, error)
 
 	// OpenAgentSessionFunc mocks the OpenAgentSession method.
 	OpenAgentSessionFunc func(ctx context.Context, workID string, projName string, workDir string, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) error
@@ -65,6 +77,13 @@ type OrchestratorManagerMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// AttachToSession holds details about calls to the AttachToSession method.
+		AttachToSession []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// SessionName is the sessionName argument value.
+			SessionName string
+		}
 		// EnsureWorkOrchestrator holds details about calls to the EnsureWorkOrchestrator method.
 		EnsureWorkOrchestrator []struct {
 			// Ctx is the ctx argument value.
@@ -79,6 +98,15 @@ type OrchestratorManagerMock struct {
 			FriendlyName string
 			// W is the w argument value.
 			W io.Writer
+		}
+		// ListWorkSessions holds details about calls to the ListWorkSessions method.
+		ListWorkSessions []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// WorkID is the workID argument value.
+			WorkID string
+			// ProjectName is the projectName argument value.
+			ProjectName string
 		}
 		// OpenAgentSession holds details about calls to the OpenAgentSession method.
 		OpenAgentSession []struct {
@@ -156,12 +184,53 @@ type OrchestratorManagerMock struct {
 			W io.Writer
 		}
 	}
+	lockAttachToSession        sync.RWMutex
 	lockEnsureWorkOrchestrator sync.RWMutex
-	lockOpenAgentSession      sync.RWMutex
+	lockListWorkSessions       sync.RWMutex
+	lockOpenAgentSession       sync.RWMutex
 	lockOpenConsole            sync.RWMutex
 	lockSpawnPlanSession       sync.RWMutex
 	lockSpawnWorkOrchestrator  sync.RWMutex
 	lockTerminateWorkTabs      sync.RWMutex
+}
+
+// AttachToSession calls AttachToSessionFunc.
+func (mock *OrchestratorManagerMock) AttachToSession(ctx context.Context, sessionName string) error {
+	callInfo := struct {
+		Ctx         context.Context
+		SessionName string
+	}{
+		Ctx:         ctx,
+		SessionName: sessionName,
+	}
+	mock.lockAttachToSession.Lock()
+	mock.calls.AttachToSession = append(mock.calls.AttachToSession, callInfo)
+	mock.lockAttachToSession.Unlock()
+	if mock.AttachToSessionFunc == nil {
+		var (
+			errOut error
+		)
+		return errOut
+	}
+	return mock.AttachToSessionFunc(ctx, sessionName)
+}
+
+// AttachToSessionCalls gets all the calls that were made to AttachToSession.
+// Check the length with:
+//
+//	len(mockedOrchestratorManager.AttachToSessionCalls())
+func (mock *OrchestratorManagerMock) AttachToSessionCalls() []struct {
+	Ctx         context.Context
+	SessionName string
+} {
+	var calls []struct {
+		Ctx         context.Context
+		SessionName string
+	}
+	mock.lockAttachToSession.RLock()
+	calls = mock.calls.AttachToSession
+	mock.lockAttachToSession.RUnlock()
+	return calls
 }
 
 // EnsureWorkOrchestrator calls EnsureWorkOrchestratorFunc.
@@ -217,6 +286,50 @@ func (mock *OrchestratorManagerMock) EnsureWorkOrchestratorCalls() []struct {
 	mock.lockEnsureWorkOrchestrator.RLock()
 	calls = mock.calls.EnsureWorkOrchestrator
 	mock.lockEnsureWorkOrchestrator.RUnlock()
+	return calls
+}
+
+// ListWorkSessions calls ListWorkSessionsFunc.
+func (mock *OrchestratorManagerMock) ListWorkSessions(ctx context.Context, workID string, projectName string) ([]WorkSession, error) {
+	callInfo := struct {
+		Ctx         context.Context
+		WorkID      string
+		ProjectName string
+	}{
+		Ctx:         ctx,
+		WorkID:      workID,
+		ProjectName: projectName,
+	}
+	mock.lockListWorkSessions.Lock()
+	mock.calls.ListWorkSessions = append(mock.calls.ListWorkSessions, callInfo)
+	mock.lockListWorkSessions.Unlock()
+	if mock.ListWorkSessionsFunc == nil {
+		var (
+			workSessionsOut []WorkSession
+			errOut          error
+		)
+		return workSessionsOut, errOut
+	}
+	return mock.ListWorkSessionsFunc(ctx, workID, projectName)
+}
+
+// ListWorkSessionsCalls gets all the calls that were made to ListWorkSessions.
+// Check the length with:
+//
+//	len(mockedOrchestratorManager.ListWorkSessionsCalls())
+func (mock *OrchestratorManagerMock) ListWorkSessionsCalls() []struct {
+	Ctx         context.Context
+	WorkID      string
+	ProjectName string
+} {
+	var calls []struct {
+		Ctx         context.Context
+		WorkID      string
+		ProjectName string
+	}
+	mock.lockListWorkSessions.RLock()
+	calls = mock.calls.ListWorkSessions
+	mock.lockListWorkSessions.RUnlock()
 	return calls
 }
 

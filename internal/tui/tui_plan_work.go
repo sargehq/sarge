@@ -464,35 +464,30 @@ func (m *planModel) openIDE() tea.Cmd {
 	}
 }
 
-// attachTerminal opens a new terminal window attached to a zmx session based on the current
-// attachTerminal opens a new terminal window attached to the zmx session for the current
-// work details selection. Only works when multiplexer type is "zmx".
-func (m *planModel) attachTerminal() tea.Cmd {
+// listZmxSessions fires an async command to list zmx sessions for the focused work.
+func (m *planModel) listZmxSessions() tea.Cmd {
 	workID := m.focusedWorkID
 	return func() tea.Msg {
 		if !m.proj.Config.Multiplexer.IsZmx() {
-			return workCommandMsg{action: "Attach terminal", workID: workID, err: fmt.Errorf("attach terminal requires [multiplexer] type = \"zmx\" in config")}
+			return zmxSessionsLoadedMsg{err: fmt.Errorf("session picker requires [multiplexer] type = \"zmx\" in config")}
 		}
-
 		if workID == "" {
-			return workCommandMsg{action: "Attach terminal", workID: workID, err: fmt.Errorf("no work focused")}
+			return zmxSessionsLoadedMsg{err: fmt.Errorf("no work focused")}
 		}
 
-		// Get work details for worktree path and friendly name
-		work, err := m.proj.DB.GetWork(m.ctx, workID)
+		sessions, err := m.workService.OrchestratorManager.ListWorkSessions(m.ctx, workID, m.proj.Config.Project.Name)
+		return zmxSessionsLoadedMsg{sessions: sessions, err: err}
+	}
+}
+
+// attachToZmxSession fires an async command to attach to a specific zmx session.
+func (m *planModel) attachToZmxSession(sessionName string) tea.Cmd {
+	workID := m.focusedWorkID
+	return func() tea.Msg {
+		err := m.workService.OrchestratorManager.AttachToSession(m.ctx, sessionName)
 		if err != nil {
-			return workCommandMsg{action: "Attach terminal", workID: workID, err: fmt.Errorf("failed to get work: %w", err)}
+			return zmxSessionAttachedMsg{sessionName: sessionName, err: err}
 		}
-		if work == nil {
-			return workCommandMsg{action: "Attach terminal", workID: workID, err: fmt.Errorf("work %s not found", workID)}
-		}
-
-		// Use OpenConsole which handles run-then-attach properly
-		err = m.workService.OrchestratorManager.OpenConsole(m.ctx, workID, m.proj.Config.Project.Name, work.WorktreePath, work.Name, m.proj.Config.Hooks.Env, io.Discard)
-		if err != nil {
-			return workCommandMsg{action: "Attach terminal", workID: workID, err: err}
-		}
-
-		return workCommandMsg{action: "Opened terminal", workID: workID}
+		return workCommandMsg{action: "Attached to session", workID: workID}
 	}
 }
