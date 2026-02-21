@@ -112,8 +112,7 @@ func TestTerminateWorkTabsZmx_KillsMatchingSessions(t *testing.T) {
 		"sarge-myproj.orch-w-abc-my-feature",
 		"sarge-myproj.task-w-abc.1",
 		"sarge-myproj.console-w-abc",
-		"sarge-myproj.claude-w-abc",
-		"sarge-myproj.pi-w-abc",
+		"sarge-myproj.agent-w-abc",
 		"sarge-myproj.orch-w-other",
 		"sarge-myproj.control",
 	}
@@ -125,9 +124,9 @@ func TestTerminateWorkTabsZmx_KillsMatchingSessions(t *testing.T) {
 	err := mgr.TerminateWorkTabs(ctx, "w-abc", "myproj", &buf)
 	require.NoError(t, err)
 
-	// Should kill 5 sessions (work, task, console, claude, pi) but not w-other or control
+	// Should kill 4 sessions (orch, task, console, agent) but not w-other or control
 	killCalls := zmxMock.KillSessionCalls()
-	assert.Len(t, killCalls, 5)
+	assert.Len(t, killCalls, 4)
 
 	killedNames := make([]string, 0, len(killCalls))
 	for _, call := range killCalls {
@@ -136,8 +135,7 @@ func TestTerminateWorkTabsZmx_KillsMatchingSessions(t *testing.T) {
 	assert.Contains(t, killedNames, "sarge-myproj.orch-w-abc-my-feature")
 	assert.Contains(t, killedNames, "sarge-myproj.task-w-abc.1")
 	assert.Contains(t, killedNames, "sarge-myproj.console-w-abc")
-	assert.Contains(t, killedNames, "sarge-myproj.claude-w-abc")
-	assert.Contains(t, killedNames, "sarge-myproj.pi-w-abc")
+	assert.Contains(t, killedNames, "sarge-myproj.agent-w-abc")
 }
 
 func TestTerminateWorkTabsZmx_NoMatchingSessions(t *testing.T) {
@@ -329,7 +327,7 @@ func TestOpenAgentSessionZmx_CreatesClaudeSession(t *testing.T) {
 	// Should create session with agent command in one call
 	runCalls := zmxMock.RunSessionCalls()
 	require.Len(t, runCalls, 1)
-	assert.Equal(t, "sarge-myproj.claude-w-abc", runCalls[0].Name)
+	assert.Equal(t, "sarge-myproj.agent-w-abc", runCalls[0].Name)
 	assert.Equal(t, "claude --dangerously-skip-permissions", runCalls[0].Command)
 	assert.Equal(t, "/tmp/work", runCalls[0].Cwd)
 
@@ -351,7 +349,7 @@ func TestOpenAgentSessionZmx_CreatesPiSession(t *testing.T) {
 
 	runCalls := zmxMock.RunSessionCalls()
 	require.Len(t, runCalls, 1)
-	assert.Equal(t, "sarge-myproj.pi-w-abc-feat", runCalls[0].Name)
+	assert.Equal(t, "sarge-myproj.agent-w-abc-feat", runCalls[0].Name)
 	assert.Equal(t, "pi", runCalls[0].Command)
 
 	attachCalls := zmxMock.AttachSessionCalls()
@@ -458,11 +456,11 @@ func TestEnsureWorkOrchestratorZmx_SkipsWhenAlive(t *testing.T) {
 	assert.Empty(t, zmxMock.RunSessionCalls())
 }
 
-func TestTerminateWorkTabsZellij_IncludesPiTabs(t *testing.T) {
-	// Verify the zellij path also cleans up pi- tabs after our fix
+func TestTerminateWorkTabsZellij_IncludesAgentTabs(t *testing.T) {
+	// Verify the zellij path also cleans up agent- tabs
 	tabNames := []string{
 		"orch-w-abc",
-		"pi-w-abc (feat)",
+		"agent-w-abc (feat)",
 		"console-w-abc",
 	}
 	mgr, sessionMock, _ := setupTerminateTest(t, tabNames)
@@ -478,5 +476,5 @@ func TestTerminateWorkTabsZellij_IncludesPiTabs(t *testing.T) {
 	for _, call := range sessionMock.CloseTabByNameCalls() {
 		closedTabs = append(closedTabs, call.TabName)
 	}
-	assert.Contains(t, closedTabs, "pi-w-abc (feat)")
+	assert.Contains(t, closedTabs, "agent-w-abc (feat)")
 }

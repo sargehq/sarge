@@ -89,7 +89,7 @@ func TestTerminateWorkTabs_NoCtrlCSent(t *testing.T) {
 	tabNames := []string{
 		"task-w-xyz.1",
 		"task-w-xyz.2",
-		"claude-w-xyz",
+		"agent-w-xyz",
 	}
 	mgr, sessionMock, _ := setupTerminateTest(t, tabNames)
 	ctx := context.Background()
