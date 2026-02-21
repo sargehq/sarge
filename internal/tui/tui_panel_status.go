@@ -18,6 +18,7 @@ type StatusBarContext int
 const (
 	StatusBarContextIssues StatusBarContext = iota
 	StatusBarContextWorkDetail
+	StatusBarContextWorkFocused // Merged: work actions + issue actions
 )
 
 // StatusBar is the status bar panel at the bottom of the TUI.
@@ -147,8 +148,11 @@ func (s *StatusBar) Render() string {
 	var commandsPlain string
 
 	switch s.context {
+	case StatusBarContextWorkFocused:
+		// Merged commands: work actions + non-conflicting issue actions
+		commands, commandsPlain = s.renderWorkFocusedCommands()
 	case StatusBarContextWorkDetail:
-		// Work detail commands
+		// Work detail commands (legacy, kept for compatibility)
 		commands, commandsPlain = s.renderWorkDetailCommands()
 	default:
 		// Issues commands (default)
@@ -213,36 +217,22 @@ func (s *StatusBar) Render() string {
 	return tuiStatusBarStyle.Width(s.width).Render(commands + strings.Repeat(" ", padding) + status)
 }
 
-// renderIssuesCommands returns commands for the issues panel
+// renderIssuesCommands returns commands for the issues panel (no work focused)
 func (s *StatusBar) renderIssuesCommands() (string, string) {
-	// Show p action based on session state
-	pAction := "[p]Plan"
-	if s.getBeadItems != nil && s.getBeadsCursor != nil && s.getActiveSessions != nil {
-		beadItems := s.getBeadItems()
-		cursor := s.getBeadsCursor()
-		activeSessions := s.getActiveSessions()
-		if len(beadItems) > 0 && cursor < len(beadItems) {
-			beadID := beadItems[cursor].ID
-			if activeSessions[beadID] {
-				pAction = "[p]Resume"
-			}
-		}
-	}
-
 	// Commands on the left with hover effects - wrap each with zone.Mark
-	nButton := zone.Mark(s.zonePrefix+"n", styleButtonWithHover("[n]New", s.hoveredButton == "n"))
-	eButton := zone.Mark(s.zonePrefix+"e", styleButtonWithHover("[e]Edit", s.hoveredButton == "e"))
-	aButton := zone.Mark(s.zonePrefix+"a", styleButtonWithHover("[a]Child", s.hoveredButton == "a"))
-	xButton := zone.Mark(s.zonePrefix+"x", styleButtonWithHover("[x]Close", s.hoveredButton == "x"))
-	dButton := zone.Mark(s.zonePrefix+"d", styleButtonWithHover("[d]Del", s.hoveredButton == "d"))
-	wButton := zone.Mark(s.zonePrefix+"w", styleButtonWithHover("[w]Work", s.hoveredButton == "w"))
-	AButton := zone.Mark(s.zonePrefix+"A", styleButtonWithHover("[A]dd", s.hoveredButton == "A"))
-	iButton := zone.Mark(s.zonePrefix+"i", styleButtonWithHover("[i]Import", s.hoveredButton == "i"))
-	pButton := zone.Mark(s.zonePrefix+"p", styleButtonWithHover(pAction, s.hoveredButton == "p"))
-	helpButton := zone.Mark(s.zonePrefix+"?", styleButtonWithHover("[?]Help", s.hoveredButton == "?"))
+	nButton := zone.Mark(s.zonePrefix+"n", styleButtonWithHover("[n]ew", s.hoveredButton == "n"))
+	eButton := zone.Mark(s.zonePrefix+"e", styleButtonWithHover("[e]dit", s.hoveredButton == "e"))
+	aButton := zone.Mark(s.zonePrefix+"a", styleButtonWithHover("[a]child", s.hoveredButton == "a"))
+	xButton := zone.Mark(s.zonePrefix+"x", styleButtonWithHover("[x]close", s.hoveredButton == "x"))
+	dButton := zone.Mark(s.zonePrefix+"d", styleButtonWithHover("[d]el", s.hoveredButton == "d"))
+	wButton := zone.Mark(s.zonePrefix+"w", styleButtonWithHover("[w]ork", s.hoveredButton == "w"))
+	OButton := zone.Mark(s.zonePrefix+"O", styleButtonWithHover("[O]pen", s.hoveredButton == "O"))
+	CButton := zone.Mark(s.zonePrefix+"C", styleButtonWithHover("[C]losed", s.hoveredButton == "C"))
+	RButton := zone.Mark(s.zonePrefix+"R", styleButtonWithHover("[R]eady", s.hoveredButton == "R"))
+	helpButton := zone.Mark(s.zonePrefix+"?", styleButtonWithHover("[?]help", s.hoveredButton == "?"))
 
-	commands := nButton + " " + eButton + " " + aButton + " " + xButton + " " + dButton + " " + wButton + " " + AButton + " " + iButton + " " + pButton + " " + helpButton
-	commandsPlain := fmt.Sprintf("[n]New [e]Edit [a]Child [x]Close [d]Del [w]Work [A]dd [i]Import %s [?]Help", pAction)
+	commands := nButton + " " + eButton + " " + aButton + " " + xButton + " " + dButton + " " + wButton + " " + OButton + " " + CButton + " " + RButton + " " + helpButton
+	commandsPlain := "[n]ew [e]dit [a]child [x]close [d]el [w]ork [O]pen [C]losed [R]eady [?]help"
 
 	return commands, commandsPlain
 }
@@ -278,9 +268,41 @@ func (s *StatusBar) renderWorkDetailCommands() (string, string) {
 	return commands, commandsPlain
 }
 
+// renderWorkFocusedCommands returns merged commands: work actions + non-conflicting issue actions
+func (s *StatusBar) renderWorkFocusedCommands() (string, string) {
+	// Work action keys
+	tButton := zone.Mark(s.zonePrefix+"t", styleButtonWithHover("[t]erm", s.hoveredButton == "t"))
+	cButton := zone.Mark(s.zonePrefix+"c", styleButtonWithHover("[c]hat", s.hoveredButton == "c"))
+	iButton := zone.Mark(s.zonePrefix+"i", styleButtonWithHover("[i]DE", s.hoveredButton == "i"))
+	rButton := zone.Mark(s.zonePrefix+"r", styleButtonWithHover("[r]un", s.hoveredButton == "r"))
+	oButton := zone.Mark(s.zonePrefix+"o", styleButtonWithHover("[o]rch", s.hoveredButton == "o"))
+	vButton := zone.Mark(s.zonePrefix+"v", styleButtonWithHover("[v]review", s.hoveredButton == "v"))
+	pButton := zone.Mark(s.zonePrefix+"p", styleButtonWithHover("[p]r", s.hoveredButton == "p"))
+	fButton := zone.Mark(s.zonePrefix+"f", styleButtonWithHover("[f]eedback", s.hoveredButton == "f"))
+	dButton := zone.Mark(s.zonePrefix+"d", styleButtonWithHover("[d]estroy", s.hoveredButton == "d"))
+
+	// Separator
+	sep := tuiDimStyle.Render("|")
+
+	// Non-conflicting issue actions
+	nButton := zone.Mark(s.zonePrefix+"n", styleButtonWithHover("[n]ew", s.hoveredButton == "n"))
+	eButton := zone.Mark(s.zonePrefix+"e", styleButtonWithHover("[e]dit", s.hoveredButton == "e"))
+	aButton := zone.Mark(s.zonePrefix+"a", styleButtonWithHover("[a]child", s.hoveredButton == "a"))
+	xButton := zone.Mark(s.zonePrefix+"x", styleButtonWithHover("[x]close", s.hoveredButton == "x"))
+	wButton := zone.Mark(s.zonePrefix+"w", styleButtonWithHover("[w]ork", s.hoveredButton == "w"))
+	helpButton := zone.Mark(s.zonePrefix+"?", styleButtonWithHover("[?]help", s.hoveredButton == "?"))
+
+	commands := tButton + " " + cButton + " " + iButton + " " + rButton + " " + oButton + " " + vButton + " " + pButton + " " + fButton + " " + dButton + " " + sep + " " + nButton + " " + eButton + " " + aButton + " " + xButton + " " + wButton + " " + helpButton
+	commandsPlain := "[t]erm [c]hat [i]DE [r]un [o]rch [v]review [p]r [f]eedback [d]estroy | [n]ew [e]dit [a]child [x]close [w]ork [?]help"
+
+	return commands, commandsPlain
+}
+
 // DetectButton determines which button is at the mouse position using bubblezone
 func (s *StatusBar) DetectButton(msg tea.MouseMsg) string {
 	switch s.context {
+	case StatusBarContextWorkFocused:
+		return s.detectWorkFocusedButton(msg)
 	case StatusBarContextWorkDetail:
 		return s.detectWorkDetailButton(msg)
 	default:
@@ -290,7 +312,18 @@ func (s *StatusBar) DetectButton(msg tea.MouseMsg) string {
 
 // detectIssuesButton detects button clicks for the issues panel using bubblezone
 func (s *StatusBar) detectIssuesButton(msg tea.MouseMsg) string {
-	buttons := []string{"n", "e", "a", "x", "d", "w", "A", "i", "p", "?"}
+	buttons := []string{"n", "e", "a", "x", "d", "w", "O", "C", "R", "?"}
+	for _, btn := range buttons {
+		if zone.Get(s.zonePrefix + btn).InBounds(msg) {
+			return btn
+		}
+	}
+	return ""
+}
+
+// detectWorkFocusedButton detects button clicks for the merged work+issues bar
+func (s *StatusBar) detectWorkFocusedButton(msg tea.MouseMsg) string {
+	buttons := []string{"t", "c", "i", "r", "o", "v", "p", "f", "d", "n", "e", "a", "x", "w", "?"}
 	for _, btn := range buttons {
 		if zone.Get(s.zonePrefix + btn).InBounds(msg) {
 			return btn

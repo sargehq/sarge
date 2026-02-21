@@ -1687,12 +1687,11 @@ func (m *planModel) syncPanels() {
 	issuesWidth := int(float64(totalContentWidth) * m.columnRatio)
 	detailsWidth := totalContentWidth - issuesWidth
 
-	// Determine status bar context based on focused panel
+	// Determine status bar context: merged when work is focused, issues otherwise
 	var statusBarCtx StatusBarContext
-	switch m.activePanel {
-	case PanelWorkDetails:
-		statusBarCtx = StatusBarContextWorkDetail
-	default:
+	if m.focusedWorkID != "" {
+		statusBarCtx = StatusBarContextWorkFocused
+	} else {
 		statusBarCtx = StatusBarContextIssues
 	}
 

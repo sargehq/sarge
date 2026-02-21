@@ -225,37 +225,34 @@ func (m *planModel) renderHelp() string {
 	help := `
   Plan Mode - Help
 
-  Each issue gets its own dedicated agent session in a separate tab.
-  Use 'p' to start or resume a planning session for an issue.
-
   Layout
   ────────────────────────────
-  Two-column layout:
-    - Left: Issues list (default 40% width)
-    - Right: Issue details (default 60% width)
+  Two-column layout: Issues (left) + Details (right)
+  When a work is selected (1-9), a work panel appears above.
   [ / ]         Adjust column ratio (30/70, 40/60, 50/50)
 
   Navigation
   ────────────────────────────
   j/k, ↑/↓      Navigate list
+  Tab           Cycle focus between panels
   1-9           Select work by position
-  p             Start/Resume planning session
 
   Issue Management
   ────────────────────────────
-  n             Create new issue (any type)
+  n             Create new issue
   e             Edit issue inline (textarea)
   E             Edit issue in $EDITOR
-  a             Add child issue (blocked by selected)
+  a             Add child issue
   x             Close selected issue
   d             Delete issue (permanent removal)
   Space         Toggle issue selection (for multi-select)
   w             Create work from issue(s)
-  A             Add issue to existing work
+  A             Add issue to focused work
   i             Import issue from Linear
   I             Import from GitHub PR
+  p             Start/Resume planning session
 
-  Work Actions (work focused, any panel)
+  Work Actions (available globally when a work is selected)
   ────────────────────────────
   t             Open terminal/console
   c             Open agent chat
@@ -270,15 +267,19 @@ func (m *planModel) renderHelp() string {
   a             Add child issue to work
   g             Pick zmx session to attach
 
-  Filtering & Sorting
+  Note: When a work is selected, keys like t/c/i/r/o/v/p/f/d
+  trigger work actions. Issue actions n/e/a/x/w remain available.
+
+  Filters (capital letters)
   ────────────────────────────
   O             Show open issues
   C             Show closed issues
   R             Show ready issues
+  V             Toggle expanded view
   /             Fuzzy search
   L             Filter by label
   s             Cycle sort mode
-  V             Toggle expanded view
+  *             Show all (clear filters)
 
   Indicators
   ────────────────────────────
