@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"runtime"
 	"strings"
 
 	"github.com/sargehq/sarge/internal/logging"
@@ -28,6 +29,11 @@ type Client interface {
 	// (e.g. "ghostty -e zmx attach {session}").
 	// The session must already exist (use RunSession to create it first).
 	AttachSession(ctx context.Context, name string, terminalCmdTemplate string) error
+
+	// AttachSessionTab opens a new tab in the current Ghostty window and attaches
+	// to an existing zmx session using AppleScript (macOS only).
+	// The session must already exist (use RunSession to create it first).
+	AttachSessionTab(ctx context.Context, name string) error
 
 	// KillSession kills a zmx session by name.
 	// Returns an error if the session doesn't exist or the kill fails.
@@ -58,9 +64,10 @@ func SessionName(project, tab string) string {
 }
 
 // sanitizeSessionName replaces characters that are unsafe in CLI arguments
-// (spaces, parentheses) with hyphens and collapses runs of hyphens.
+// or AppleScript string interpolation (spaces, parentheses, quotes, backslashes)
+// with hyphens and collapses runs of hyphens.
 func sanitizeSessionName(name string) string {
-	r := strings.NewReplacer(" ", "-", "(", "", ")", "")
+	r := strings.NewReplacer(" ", "-", "(", "", ")", "", `"`, "", `\`, "", "'", "")
 	s := r.Replace(name)
 	// Collapse multiple consecutive hyphens into a single hyphen
 	for strings.Contains(s, "--") {
@@ -206,6 +213,41 @@ func (c *client) AttachSession(ctx context.Context, name string, terminalCmdTemp
 	go cmd.Wait() //nolint:errcheck // Fire-and-forget; prevent zombie process
 
 	logging.Debug("zmx AttachSession launched", "name", name)
+	return nil
+}
+
+// buildGhosttyTabAppleScript builds an AppleScript that opens a new tab in the
+// current Ghostty window and types a zmx attach command into it.
+func buildGhosttyTabAppleScript(sessionName string) string {
+	return fmt.Sprintf(`tell application "System Events"
+	tell process "Ghostty"
+		set frontmost to true
+		keystroke "t" using command down
+		delay 0.3
+		keystroke "zmx attach %s" & return
+	end tell
+end tell`, sessionName)
+}
+
+// AttachSessionTab opens a new tab in the current Ghostty window and attaches
+// to an existing zmx session using AppleScript. This is macOS-only; on other
+// platforms it returns an error.
+func (c *client) AttachSessionTab(ctx context.Context, name string) error {
+	if runtime.GOOS != "darwin" {
+		return fmt.Errorf("tab attach mode is only supported on macOS")
+	}
+
+	script := buildGhosttyTabAppleScript(name)
+	logging.Debug("zmx AttachSessionTab", "name", name, "script", script)
+
+	cmd := exec.CommandContext(ctx, "osascript", "-e", script) //nolint:gosec // AppleScript for Ghostty tab management
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		logging.Error("zmx AttachSessionTab failed", "name", name, "error", err, "output", strings.TrimSpace(string(output)))
+		return fmt.Errorf("failed to open Ghostty tab for session %q: %w: %s", name, err, strings.TrimSpace(string(output)))
+	}
+
+	logging.Debug("zmx AttachSessionTab succeeded", "name", name)
 	return nil
 }
 

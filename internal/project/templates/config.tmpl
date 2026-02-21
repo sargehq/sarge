@@ -188,6 +188,12 @@ type = "zmx"
 # Linux default: "ghostty -e zmx attach {session}"
 # terminal = "open -na Ghostty.app --args -e zmx attach {session}"
 
+# Attach mode: how new sessions connect to terminal windows.
+# "window" (default): opens a new Ghostty window per session.
+# "tab": opens a new tab in the current Ghostty window via AppleScript.
+# Note: "tab" mode is macOS-only and requires Accessibility permissions.
+# attach_mode = "tab"
+
 # Whether to auto-attach a terminal window to orchestrator sessions when spawned.
 # When false (default), orchestrators run detached.
 # attach_orchestrator = false
@@ -202,6 +208,12 @@ type = "zmx"
 # # macOS default: "open -na Ghostty.app --args -e zmx attach {session}"
 # # Linux default: "ghostty -e zmx attach {session}"
 # terminal = "open -na Ghostty.app --args -e zmx attach {session}"
+#
+# # Attach mode: how new sessions connect to terminal windows.
+# # "window" (default): opens a new Ghostty window per session.
+# # "tab": opens a new tab in the current Ghostty window via AppleScript.
+# # Note: "tab" mode is macOS-only and requires Accessibility permissions.
+# attach_mode = "tab"
 {{- end}}
 
 # =============================================================================

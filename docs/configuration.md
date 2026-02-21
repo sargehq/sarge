@@ -42,6 +42,7 @@ Project configuration is stored in `.co/config.toml`.
 [multiplexer]
   type = "zmx"
   terminal = "ghostty -e zmx attach {session}"
+  attach_mode = "window"    # "window" (default) or "tab" (macOS only)
   attach_orchestrator = false
 
 [zellij]
@@ -159,6 +160,7 @@ Terminal multiplexer configuration. Sarge supports two multiplexers: **zellij** 
 [multiplexer]
   type = "zmx"                                    # "zellij" (default) or "zmx"
   terminal = "ghostty -e zmx attach {session}"    # Terminal command template (zmx only)
+  attach_mode = "window"                           # "window" (default) or "tab" (macOS only)
   attach_orchestrator = false                      # Auto-attach orchestrator to terminal (zmx only)
 ```
 
@@ -166,6 +168,7 @@ Terminal multiplexer configuration. Sarge supports two multiplexers: **zellij** 
 |-----|-------------|---------|
 | `type` | Multiplexer backend: `zellij` or `zmx` | `zellij` |
 | `terminal` | Terminal command template for zmx sessions. `{session}` is replaced with the session name. | `ghostty -e zmx attach {session}` |
+| `attach_mode` | How sessions attach to terminals: `window` opens a new Ghostty window, `tab` opens a new tab in the current Ghostty window via AppleScript (macOS only, requires Accessibility permissions). On non-macOS platforms, `tab` falls back to `window`. | `window` |
 | `attach_orchestrator` | Whether to open a terminal window for orchestrator sessions when spawned (zmx only) | `false` |
 
 **zmx session naming convention:** Sessions are named `sarge-<project>.<tabname>` (e.g., `sarge-myproj.orch-w-abc`).

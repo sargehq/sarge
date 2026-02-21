@@ -286,6 +286,12 @@ type MultiplexerConfig struct {
 	// The placeholder {session} is replaced with the zmx session name.
 	Terminal string `toml:"terminal"`
 
+	// AttachMode controls how new sessions are attached to terminal windows.
+	// "window" (default): opens a new Ghostty window per session.
+	// "tab": opens a new tab in the current Ghostty window via AppleScript (macOS only).
+	// On non-macOS platforms, "tab" mode falls back to "window" mode.
+	AttachMode string `toml:"attach_mode"`
+
 	// AttachOrchestrator controls whether orchestrator sessions are automatically
 	// attached to a terminal window when spawned. When false (default), orchestrators
 	// run detached. When true, a terminal window opens attached to the orchestrator.
@@ -296,6 +302,15 @@ type MultiplexerConfig struct {
 // IsZmx returns true if the multiplexer type is zmx.
 func (m *MultiplexerConfig) IsZmx() bool {
 	return m.Type == "zmx"
+}
+
+// GetAttachMode returns the configured attach mode.
+// Returns "window" (default) or "tab".
+func (m *MultiplexerConfig) GetAttachMode() string {
+	if m.AttachMode == "tab" {
+		return "tab"
+	}
+	return "window"
 }
 
 // GetTerminalCommand returns the terminal launch command template.

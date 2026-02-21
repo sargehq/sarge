@@ -23,6 +23,10 @@ func TestSessionName(t *testing.T) {
 		// Friendly names with spaces and parens are sanitized
 		{"proj", "orch-w-abc (my feature)", "sarge-proj.orch-w-abc-my-feature"},
 		{"proj", "console-w-abc (stellar_zhukovsky)", "sarge-proj.console-w-abc-stellar_zhukovsky"},
+		// Double quotes, single quotes, and backslashes are stripped
+		{"proj", `tab-with"quotes`, "sarge-proj.tab-withquotes"},
+		{"proj", `tab-with'single`, "sarge-proj.tab-withsingle"},
+		{"proj", `tab-with\backslash`, "sarge-proj.tab-withbackslash"},
 	}
 
 	for _, tt := range tests {
@@ -95,6 +99,20 @@ func TestShellQuote(t *testing.T) {
 			require.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestBuildGhosttyTabAppleScript(t *testing.T) {
+	script := buildGhosttyTabAppleScript("sarge-myproject.editor")
+	require.Contains(t, script, `tell application "System Events"`)
+	require.Contains(t, script, `tell process "Ghostty"`)
+	require.Contains(t, script, `set frontmost to true`)
+	require.Contains(t, script, `keystroke "t" using command down`)
+	require.Contains(t, script, `zmx attach sarge-myproject.editor`)
+}
+
+func TestBuildGhosttyTabAppleScript_SessionNameIncluded(t *testing.T) {
+	script := buildGhosttyTabAppleScript("sarge-proj.console-w-abc-stellar")
+	require.Contains(t, script, "zmx attach sarge-proj.console-w-abc-stellar")
 }
 
 func TestSessionNameRoundTrip(t *testing.T) {
