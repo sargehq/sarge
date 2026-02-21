@@ -278,6 +278,14 @@ func (m *DefaultOrchestratorManager) spawnWorkOrchestratorZmx(ctx context.Contex
 		return fmt.Errorf("failed to create zmx session: %w", err)
 	}
 
+	// Optionally attach a terminal window to the orchestrator
+	if m.muxConfig.AttachOrchestrator {
+		fmt.Fprintf(w, "Attaching to orchestrator: %s\n", zmxName)
+		if err := m.zmx.AttachSession(ctx, zmxName, m.muxConfig.GetTerminalCommand()); err != nil {
+			return fmt.Errorf("failed to attach to orchestrator: %w", err)
+		}
+	}
+
 	logging.Debug("spawnWorkOrchestratorZmx completed", "workID", workID, "zmxName", zmxName)
 	fmt.Fprintf(w, "Work orchestrator spawned in zmx session %s\n", zmxName)
 	return nil

@@ -285,6 +285,12 @@ type MultiplexerConfig struct {
 	// Default: "ghostty -e zmx attach {session}"
 	// The placeholder {session} is replaced with the zmx session name.
 	Terminal string `toml:"terminal"`
+
+	// AttachOrchestrator controls whether orchestrator sessions are automatically
+	// attached to a terminal window when spawned. When false (default), orchestrators
+	// run detached. When true, a terminal window opens attached to the orchestrator.
+	// Only applies when type is "zmx".
+	AttachOrchestrator bool `toml:"attach_orchestrator"`
 }
 
 // IsZmx returns true if the multiplexer type is zmx.
