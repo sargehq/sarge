@@ -233,17 +233,15 @@ type = "zmx"
 # Controls how CI logs are analyzed for failures.
 #
 # [log_parser]
-# # Use Claude for log analysis instead of the Go-based parser.
-# # When true, CI log failures are analyzed using Claude which can handle
+# # Use the configured agent for log analysis instead of the Go-based parser.
+# # When true, CI log failures are analyzed using the agent which can handle
 # # any programming language and provide more detailed error context.
 # # Defaults to false (use Go parser).
-# use_claude = true
+# use_agent = true
 #
-# # Claude model to use for log analysis: "haiku", "sonnet", or "opus"
-# # Haiku is fastest and cheapest, suitable for most log analysis.
-# # Sonnet provides more detailed analysis for complex failures.
-# # Opus is most capable but slower and more expensive.
-# # Defaults to "haiku" when not specified.
+# # Model to use for log analysis (passed through to the agent).
+# # The value depends on your agent configuration.
+# # Defaults to the agent's own default when not specified.
 # model = "haiku"
 
 # =============================================================================
