@@ -185,6 +185,9 @@ func CreateWithSelections(ctx context.Context, dir, repoSource string, agentType
 		Agent: AgentConfig{
 			Type: agentType,
 		},
+		Multiplexer: MultiplexerConfig{
+			Type: toolSelections.MultiplexerType,
+		},
 		// Beads path will be set after setupBeads
 	}
 

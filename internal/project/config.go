@@ -357,13 +357,14 @@ func (c *Config) SaveDocumentedConfig(path string) error {
 
 // configTemplateData holds the data used to render the config template.
 type configTemplateData struct {
-	ProjectName string
-	CreatedAt   string
-	RepoType    string
-	RepoSource  string
-	RepoPath    string
-	BeadsPath   string
-	AgentType   string
+	ProjectName    string
+	CreatedAt      string
+	RepoType       string
+	RepoSource     string
+	RepoPath       string
+	BeadsPath      string
+	AgentType      string
+	MultiplexerType string // "zellij" (default) or "zmx"
 }
 
 // tomlString formats a string for TOML output with proper escaping.
@@ -579,13 +580,14 @@ func DryRunUpdateConfig(existingPath string, cfg *Config) ([]string, error) {
 // This includes the actual project values plus commented-out examples for optional sections.
 func (c *Config) GenerateDocumentedConfig() string {
 	data := configTemplateData{
-		ProjectName: c.Project.Name,
-		CreatedAt:   c.Project.CreatedAt.Format(time.RFC3339),
-		RepoType:    c.Repo.Type,
-		RepoSource:  c.Repo.Source,
-		RepoPath:    c.Repo.Path,
-		BeadsPath:   c.Beads.Path,
-		AgentType:   c.Agent.Type,
+		ProjectName:     c.Project.Name,
+		CreatedAt:       c.Project.CreatedAt.Format(time.RFC3339),
+		RepoType:        c.Repo.Type,
+		RepoSource:      c.Repo.Source,
+		RepoPath:        c.Repo.Path,
+		BeadsPath:       c.Beads.Path,
+		AgentType:       c.Agent.Type,
+		MultiplexerType: c.Multiplexer.Type,
 	}
 
 	var buf bytes.Buffer

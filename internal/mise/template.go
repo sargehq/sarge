@@ -26,10 +26,11 @@ type miseTemplateData struct {
 
 // ToolSelections holds user choices about which tools to include in mise config.
 type ToolSelections struct {
-	AgentType    string // "claude", "pi", or "none"/"" — which agent was chosen
-	AgentInMise  bool   // whether to activate (uncomment) the agent in mise
-	IncludeGH    bool   // whether to activate (uncomment) gh in mise
-	IncludeZellij bool  // whether to activate (uncomment) zellij in mise
+	AgentType       string // "claude", "pi", or "none"/"" — which agent was chosen
+	AgentInMise     bool   // whether to activate (uncomment) the agent in mise
+	IncludeGH       bool   // whether to activate (uncomment) gh in mise
+	IncludeZellij   bool   // whether to activate (uncomment) zellij in mise
+	MultiplexerType string // "zellij" (default) or "zmx" — which multiplexer to use
 }
 
 // DefaultToolSelections returns the default tool selections (gh and zellij included, agent not in mise).
