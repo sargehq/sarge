@@ -9,9 +9,6 @@ import (
 func TestNew(t *testing.T) {
 	c := New()
 	require.NotNil(t, c, "New() returned nil")
-
-	// Verify it implements Client
-	var _ Client = c
 }
 
 func TestSessionName(t *testing.T) {

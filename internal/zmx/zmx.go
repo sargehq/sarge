@@ -59,17 +59,17 @@ func ParseSessionName(name string) (project, tab string) {
 }
 
 // listAllSessions returns all zmx session names.
-func listAllSessions(ctx context.Context) ([]string, error) {
+func listAllSessions(ctx context.Context) []string {
 	cmd := exec.CommandContext(ctx, "zmx", "list", "--short")
 	output, err := cmd.Output()
 	if err != nil {
 		// zmx not running or no sessions
-		return nil, nil
+		return nil
 	}
 
 	raw := strings.TrimSpace(string(output))
 	if raw == "" {
-		return nil, nil
+		return nil
 	}
 
 	lines := strings.Split(raw, "\n")
@@ -80,7 +80,7 @@ func listAllSessions(ctx context.Context) ([]string, error) {
 			sessions = append(sessions, line)
 		}
 	}
-	return sessions, nil
+	return sessions
 }
 
 // SessionExists checks if a zmx session with the given name exists.
@@ -137,10 +137,7 @@ func (c *client) KillSession(ctx context.Context, name string) error {
 
 // ListSessions returns all zmx session names matching the given prefix.
 func (c *client) ListSessions(ctx context.Context, prefix string) ([]string, error) {
-	sessions, err := listAllSessions(ctx)
-	if err != nil {
-		return nil, err
-	}
+	sessions := listAllSessions(ctx)
 
 	if prefix == "" {
 		return sessions, nil
