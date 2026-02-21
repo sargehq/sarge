@@ -90,6 +90,16 @@ func (m *DefaultOrchestratorManager) isZmx() bool {
 	return m.muxConfig != nil && m.muxConfig.IsZmx()
 }
 
+// attachZmxSession attaches to a zmx session using the configured attach mode.
+// In "tab" mode, opens a new tab in the current Ghostty window via AppleScript (macOS only).
+// In "window" mode (default), opens a new terminal window.
+func (m *DefaultOrchestratorManager) attachZmxSession(ctx context.Context, name string) error {
+	if m.muxConfig.GetAttachMode() == "tab" {
+		return m.zmx.AttachSessionTab(ctx, name)
+	}
+	return m.zmx.AttachSession(ctx, name, m.muxConfig.GetTerminalCommand())
+}
+
 // tabExists checks if a tab with the given name exists in the session.
 func (m *DefaultOrchestratorManager) tabExists(ctx context.Context, sessionName, tabName string) bool {
 	if m.isZmx() {
@@ -281,7 +291,7 @@ func (m *DefaultOrchestratorManager) spawnWorkOrchestratorZmx(ctx context.Contex
 	// Optionally attach a terminal window to the orchestrator
 	if m.muxConfig.AttachOrchestrator {
 		fmt.Fprintf(w, "Attaching to orchestrator: %s\n", zmxName)
-		if err := m.zmx.AttachSession(ctx, zmxName, m.muxConfig.GetTerminalCommand()); err != nil {
+		if err := m.attachZmxSession(ctx, zmxName); err != nil {
 			return fmt.Errorf("failed to attach to orchestrator: %w", err)
 		}
 	}

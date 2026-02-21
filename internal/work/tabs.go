@@ -138,7 +138,7 @@ func (m *DefaultOrchestratorManager) openConsoleZmx(ctx context.Context, workID 
 
 	// Open terminal window attached to the session
 	fmt.Fprintf(w, "Attaching to console: %s\n", zmxName)
-	if err := m.zmx.AttachSession(ctx, zmxName, m.muxConfig.GetTerminalCommand()); err != nil {
+	if err := m.attachZmxSession(ctx, zmxName); err != nil {
 		return fmt.Errorf("failed to attach to console: %w", err)
 	}
 	return nil
@@ -280,7 +280,7 @@ func (m *DefaultOrchestratorManager) openAgentSessionZmx(ctx context.Context, wo
 
 	// Open terminal window attached to the session
 	fmt.Fprintf(w, "Attaching to %s: %s\n", agentType, zmxName)
-	if err := m.zmx.AttachSession(ctx, zmxName, m.muxConfig.GetTerminalCommand()); err != nil {
+	if err := m.attachZmxSession(ctx, zmxName); err != nil {
 		return fmt.Errorf("failed to attach to %s session: %w", agentType, err)
 	}
 	return nil
@@ -363,7 +363,7 @@ func (m *DefaultOrchestratorManager) spawnPlanSessionZmx(ctx context.Context, be
 	}
 
 	// Open terminal window attached to the session
-	if err := m.zmx.AttachSession(ctx, zmxName, m.muxConfig.GetTerminalCommand()); err != nil {
+	if err := m.attachZmxSession(ctx, zmxName); err != nil {
 		return fmt.Errorf("failed to attach to plan session: %w", err)
 	}
 	return nil

@@ -97,6 +97,20 @@ func TestShellQuote(t *testing.T) {
 	}
 }
 
+func TestBuildGhosttyTabAppleScript(t *testing.T) {
+	script := buildGhosttyTabAppleScript("sarge-myproject.editor")
+	require.Contains(t, script, `tell application "System Events"`)
+	require.Contains(t, script, `tell process "Ghostty"`)
+	require.Contains(t, script, `set frontmost to true`)
+	require.Contains(t, script, `keystroke "t" using command down`)
+	require.Contains(t, script, `zmx attach sarge-myproject.editor`)
+}
+
+func TestBuildGhosttyTabAppleScript_SessionNameIncluded(t *testing.T) {
+	script := buildGhosttyTabAppleScript("sarge-proj.console-w-abc-stellar")
+	require.Contains(t, script, "zmx attach sarge-proj.console-w-abc-stellar")
+}
+
 func TestSessionNameRoundTrip(t *testing.T) {
 	project := "my-project"
 	tab := "my-tab"
