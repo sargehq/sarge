@@ -173,6 +173,21 @@ type = {{.AgentType | tomlString}}
 # activity_update_seconds = 60
 
 # =============================================================================
+# Multiplexer Configuration (Optional)
+# =============================================================================
+# Controls which terminal multiplexer is used for managing work sessions.
+#
+# [multiplexer]
+# # Which multiplexer to use: "zellij" (default) or "zmx"
+# type = "zmx"
+#
+# # Terminal command template for opening new windows (zmx only).
+# # The {session} placeholder is replaced with the zmx session name.
+# # macOS default: "open -na Ghostty.app --args -e zmx attach {session}"
+# # Linux default: "ghostty -e zmx attach {session}"
+# terminal = "open -na Ghostty.app --args -e zmx attach {session}"
+
+# =============================================================================
 # Zellij Configuration (Optional)
 # =============================================================================
 # Controls zellij tab management behavior.
