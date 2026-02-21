@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/sargehq/sarge/internal/logging"
 )
@@ -158,6 +159,8 @@ func (c *client) SessionExists(ctx context.Context, name string) (bool, error) {
 
 // RunSession creates a new detached zmx session running the given command.
 // Uses: zmx run <name> <command> [args...]
+// Note: "zmx run" stays alive as a parent process for the session, so we
+// start it, wait briefly for fast failures, then return without blocking.
 func (c *client) RunSession(ctx context.Context, name, command string, args []string, cwd string) error {
 	zmxArgs := []string{"run", name, command}
 	zmxArgs = append(zmxArgs, args...)
@@ -170,12 +173,29 @@ func (c *client) RunSession(ctx context.Context, name, command string, args []st
 	logging.Debug("zmx RunSession", "name", name, "command", command, "args", args, "cwd", cwd,
 		"full_cmd", "zmx "+strings.Join(zmxArgs, " "))
 
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		logging.Error("zmx RunSession failed", "name", name, "error", err, "output", strings.TrimSpace(string(output)))
-		return fmt.Errorf("failed to run zmx session %q: %w: %s", name, err, strings.TrimSpace(string(output)))
+	if err := cmd.Start(); err != nil {
+		logging.Error("zmx RunSession failed to start", "name", name, "error", err)
+		return fmt.Errorf("failed to start zmx session %q: %w", name, err)
 	}
-	logging.Debug("zmx RunSession succeeded", "name", name, "output", strings.TrimSpace(string(output)))
+
+	// Wait briefly for fast failures (e.g., invalid session name, zmx not found).
+	// "zmx run" stays alive as the session parent, so we don't wait for exit.
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait() }()
+
+	select {
+	case err := <-done:
+		// Process exited quickly — likely an error
+		if err != nil {
+			logging.Error("zmx RunSession exited with error", "name", name, "error", err)
+			return fmt.Errorf("failed to run zmx session %q: %w", name, err)
+		}
+		logging.Debug("zmx RunSession process exited cleanly", "name", name)
+	case <-time.After(2 * time.Second):
+		// Still running after 2s — session is up, don't block
+		logging.Debug("zmx RunSession still running (session created)", "name", name, "pid", cmd.Process.Pid)
+	}
+
 	return nil
 }
 
