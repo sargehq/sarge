@@ -232,16 +232,10 @@ func (m *DefaultOrchestratorManager) openAgentSessionZellij(ctx context.Context,
 	}
 
 	command, args := buildAgentCommand(agentType, hooksEnv, cfg)
-	agentBinary := agentType
-	if agentType == "claude" {
-		agentBinary = "claude"
-	} else if agentType == "pi" {
-		agentBinary = "pi"
-	}
 
 	// Create tab with command using layout approach
 	fmt.Fprintf(w, "Creating %s session tab: %s in session %s\n", agentType, tabName, sessionName)
-	if err := session.CreateTabWithCommand(ctx, tabName, workDir, command, args, agentBinary); err != nil {
+	if err := session.CreateTabWithCommand(ctx, tabName, workDir, command, args, agentType); err != nil {
 		return fmt.Errorf("failed to create tab: %w", err)
 	}
 

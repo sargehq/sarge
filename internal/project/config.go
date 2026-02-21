@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"text/template"
 	"time"
@@ -17,21 +18,21 @@ var configTemplateText string
 
 // Config represents the project configuration stored in .co/config.toml.
 type Config struct {
-	Project   ProjectConfig   `toml:"project"`
-	Repo      RepoConfig      `toml:"repo"`
-	Beads     BeadsConfig     `toml:"beads"`
-	Hooks     HooksConfig     `toml:"hooks"`
-	Linear    LinearConfig    `toml:"linear"`
-	Agent     AgentConfig     `toml:"agent"`
-	Claude    ClaudeConfig    `toml:"claude"`
-	Pi        PiConfig        `toml:"pi"`
-	Workflow  WorkflowConfig  `toml:"workflow"`
-	Scheduler SchedulerConfig `toml:"scheduler"`
-	Zellij       ZellijConfig       `toml:"zellij"`
-	Multiplexer  MultiplexerConfig  `toml:"multiplexer"`
-	LogParser    LogParserConfig    `toml:"log_parser"`
-	IDE          IDEConfig          `toml:"ide"`
-	Debug        DebugConfig        `toml:"debug"`
+	Project     ProjectConfig     `toml:"project"`
+	Repo        RepoConfig        `toml:"repo"`
+	Beads       BeadsConfig       `toml:"beads"`
+	Hooks       HooksConfig       `toml:"hooks"`
+	Linear      LinearConfig      `toml:"linear"`
+	Agent       AgentConfig       `toml:"agent"`
+	Claude      ClaudeConfig      `toml:"claude"`
+	Pi          PiConfig          `toml:"pi"`
+	Workflow    WorkflowConfig    `toml:"workflow"`
+	Scheduler   SchedulerConfig   `toml:"scheduler"`
+	Zellij      ZellijConfig      `toml:"zellij"`
+	Multiplexer MultiplexerConfig `toml:"multiplexer"`
+	LogParser   LogParserConfig   `toml:"log_parser"`
+	IDE         IDEConfig         `toml:"ide"`
+	Debug       DebugConfig       `toml:"debug"`
 }
 
 // IDEConfig contains IDE configuration for opening worktrees.
@@ -298,7 +299,10 @@ func (m *MultiplexerConfig) GetTerminalCommand() string {
 	if m.Terminal != "" {
 		return m.Terminal
 	}
-	// Default for macOS
+	// Platform-appropriate default
+	if runtime.GOOS == "linux" {
+		return "ghostty -e zmx attach {session}"
+	}
 	return "open -na Ghostty.app --args -e zmx attach {session}"
 }
 

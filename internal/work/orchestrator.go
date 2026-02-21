@@ -65,10 +65,12 @@ func NewOrchestratorManager(database *db.DB, cfg *project.Config) OrchestratorMa
 
 // NewOrchestratorManagerWithDeps creates a new DefaultOrchestratorManager with explicit dependencies.
 // This is the preferred constructor for testing.
-func NewOrchestratorManagerWithDeps(database *db.DB, zc zellij.SessionManager) OrchestratorManager {
+func NewOrchestratorManagerWithDeps(database *db.DB, zc zellij.SessionManager, zmxClient zmx.Client, muxCfg *project.MultiplexerConfig) OrchestratorManager {
 	return &DefaultOrchestratorManager{
-		database: database,
-		zellij:   zc,
+		database:  database,
+		zellij:    zc,
+		zmx:       zmxClient,
+		muxConfig: muxCfg,
 	}
 }
 
