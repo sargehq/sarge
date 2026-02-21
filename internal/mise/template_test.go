@@ -33,6 +33,7 @@ func TestGenerateConfigWithSelections_DefaultSelections(t *testing.T) {
 	assert.NotContains(t, s, "# gh = \"latest\"")
 	assert.Contains(t, s, "zellij = \"latest\"")
 	assert.NotContains(t, s, "# zellij = \"latest\"")
+	assert.Contains(t, s, "# \"ubi:neurosnap/zmx\" = \"latest\"")
 	assert.Contains(t, s, "beads")
 }
 
@@ -193,10 +194,50 @@ func TestGenerateConfigWithSelections_SkipsExistingConfig(t *testing.T) {
 	assert.Equal(t, existingContent, content)
 }
 
+func TestGenerateConfigWithSelections_ZmxActive(t *testing.T) {
+	dir := t.TempDir()
+	sel := ToolSelections{
+		AgentType:       "none",
+		IncludeGH:       true,
+		IncludeZellij:   false,
+		IncludeZmx:      true,
+		MultiplexerType: "zmx",
+	}
+
+	err := GenerateConfigWithSelections(dir, sel)
+	require.NoError(t, err)
+
+	s := string(readMiseConfig(t, dir))
+	assert.Contains(t, s, "\"ubi:neurosnap/zmx\" = \"latest\"")
+	assert.NotContains(t, s, "# \"ubi:neurosnap/zmx\" = \"latest\"")
+	assert.Contains(t, s, "# zellij = \"latest\"")
+	assert.NotRegexp(t, `(?m)^zellij = "latest"`, s)
+}
+
+func TestGenerateConfigWithSelections_ZmxCommented(t *testing.T) {
+	dir := t.TempDir()
+	sel := ToolSelections{
+		AgentType:       "none",
+		IncludeGH:       true,
+		IncludeZellij:   true,
+		IncludeZmx:      false,
+		MultiplexerType: "zellij",
+	}
+
+	err := GenerateConfigWithSelections(dir, sel)
+	require.NoError(t, err)
+
+	s := string(readMiseConfig(t, dir))
+	assert.Contains(t, s, "zellij = \"latest\"")
+	assert.Contains(t, s, "# \"ubi:neurosnap/zmx\" = \"latest\"")
+	assert.NotRegexp(t, `(?m)^"ubi:neurosnap/zmx"`, s)
+}
+
 func TestDefaultToolSelections(t *testing.T) {
 	sel := DefaultToolSelections()
 	assert.Equal(t, "", sel.AgentType)
 	assert.False(t, sel.AgentInMise)
 	assert.True(t, sel.IncludeGH)
 	assert.True(t, sel.IncludeZellij)
+	assert.False(t, sel.IncludeZmx)
 }

@@ -50,6 +50,16 @@ zellij = "latest"
 # zellij = "latest"
 {{- end}}
 
+{{- if .ZmxActive}}
+# zmx - Lightweight session persistence for terminal processes
+# Used for session management and parallel task execution
+"ubi:neurosnap/zmx" = "latest"
+{{- else}}
+# zmx - Lightweight session persistence for terminal processes
+# Used for session management and parallel task execution
+# "ubi:neurosnap/zmx" = "latest"
+{{- end}}
+
 # =============================================================================
 # Tasks (Optional)
 # =============================================================================

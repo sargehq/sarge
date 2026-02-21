@@ -188,7 +188,7 @@ func promptToolSelections() (agentType string, selections mise.ToolSelections) {
 
 	multiplexerOptions := []huh.Option[string]{
 		huh.NewOption("Zellij — terminal multiplexer with tabs (managed by mise)", "zellij"),
-		huh.NewOption("zmx — lightweight terminal multiplexer (must be installed separately)", "zmx"),
+		huh.NewOption("zmx — lightweight session persistence for terminal processes (managed by mise)", "zmx"),
 	}
 
 	var includeGH, includeZellij bool
@@ -245,6 +245,7 @@ func promptToolSelections() (agentType string, selections mise.ToolSelections) {
 	selections.AgentInMise = includeAgentInMise && agentType != "none"
 	selections.IncludeGH = includeGH
 	selections.IncludeZellij = includeZellij && multiplexerType == "zellij"
+	selections.IncludeZmx = multiplexerType == "zmx"
 	selections.MultiplexerType = multiplexerType
 
 	fmt.Println()

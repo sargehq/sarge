@@ -18,10 +18,11 @@ var miseTemplate = template.Must(template.New("mise").Parse(miseTemplateText))
 // Each tool has an "active" flag: true = uncommented, false = commented out.
 // AgentType "none" means no agent section at all.
 type miseTemplateData struct {
-	AgentType   string // "claude", "pi", or "none"
-	AgentActive bool   // true = uncommented, false = commented out
-	GHActive    bool   // true = uncommented, false = commented out
-	ZellijActive bool  // true = uncommented, false = commented out
+	AgentType    string // "claude", "pi", or "none"
+	AgentActive  bool   // true = uncommented, false = commented out
+	GHActive     bool   // true = uncommented, false = commented out
+	ZellijActive bool   // true = uncommented, false = commented out
+	ZmxActive    bool   // true = uncommented, false = commented out
 }
 
 // ToolSelections holds user choices about which tools to include in mise config.
@@ -30,6 +31,7 @@ type ToolSelections struct {
 	AgentInMise     bool   // whether to activate (uncomment) the agent in mise
 	IncludeGH       bool   // whether to activate (uncomment) gh in mise
 	IncludeZellij   bool   // whether to activate (uncomment) zellij in mise
+	IncludeZmx      bool   // whether to activate (uncomment) zmx in mise
 	MultiplexerType string // "zellij" (default) or "zmx" — which multiplexer to use
 }
 
@@ -54,6 +56,7 @@ func (s ToolSelections) toTemplateData() miseTemplateData {
 		AgentActive:  s.AgentInMise,
 		GHActive:     s.IncludeGH,
 		ZellijActive: s.IncludeZellij,
+		ZmxActive:    s.IncludeZmx,
 	}
 }
 
