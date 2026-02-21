@@ -50,6 +50,9 @@ func setupZmxTest(t *testing.T) (*DefaultOrchestratorManager, *zmx.ClientMock, *
 		ListSessionsFunc: func(ctx context.Context, prefix string) ([]string, error) {
 			return nil, nil
 		},
+		SessionHasClientsFunc: func(ctx context.Context, name string) (bool, error) {
+			return false, nil
+		},
 	}
 
 	mgr := &DefaultOrchestratorManager{
@@ -309,9 +312,34 @@ func TestOpenConsoleZmx_ExistingSessionAttaches(t *testing.T) {
 	// Should NOT create session
 	assert.Empty(t, zmxMock.RunSessionCalls())
 
-	// Should attach
+	// Should attach (no clients)
 	attachCalls := zmxMock.AttachSessionCalls()
 	require.Len(t, attachCalls, 1)
+}
+
+func TestOpenConsoleZmx_ExistingSessionWithClientsSkipsAttach(t *testing.T) {
+	mgr, zmxMock, _ := setupZmxTest(t)
+	ctx := context.Background()
+
+	zmxMock.SessionExistsFunc = func(ctx context.Context, name string) (bool, error) {
+		return true, nil
+	}
+	zmxMock.SessionHasClientsFunc = func(ctx context.Context, name string) (bool, error) {
+		return true, nil
+	}
+
+	var buf bytes.Buffer
+	err := mgr.OpenConsole(ctx, "w-abc", "myproj", "/tmp/work", "", nil, &buf)
+	require.NoError(t, err)
+
+	// Should NOT create session
+	assert.Empty(t, zmxMock.RunSessionCalls())
+
+	// Should NOT attach — session already has clients
+	assert.Empty(t, zmxMock.AttachSessionCalls())
+
+	// Should print message about session already being open
+	assert.Contains(t, buf.String(), "already open")
 }
 
 func TestOpenAgentSessionZmx_CreatesClaudeSession(t *testing.T) {
@@ -371,9 +399,34 @@ func TestOpenAgentSessionZmx_ExistingSessionAttaches(t *testing.T) {
 	// Should NOT create session
 	assert.Empty(t, zmxMock.RunSessionCalls())
 
-	// Should attach
+	// Should attach (no clients)
 	attachCalls := zmxMock.AttachSessionCalls()
 	require.Len(t, attachCalls, 1)
+}
+
+func TestOpenAgentSessionZmx_ExistingSessionWithClientsSkipsAttach(t *testing.T) {
+	mgr, zmxMock, _ := setupZmxTest(t)
+	ctx := context.Background()
+
+	zmxMock.SessionExistsFunc = func(ctx context.Context, name string) (bool, error) {
+		return true, nil
+	}
+	zmxMock.SessionHasClientsFunc = func(ctx context.Context, name string) (bool, error) {
+		return true, nil
+	}
+
+	var buf bytes.Buffer
+	err := mgr.OpenAgentSession(ctx, "w-abc", "myproj", "/tmp/work", "", nil, &project.Config{}, &buf)
+	require.NoError(t, err)
+
+	// Should NOT create session
+	assert.Empty(t, zmxMock.RunSessionCalls())
+
+	// Should NOT attach — session already has clients
+	assert.Empty(t, zmxMock.AttachSessionCalls())
+
+	// Should print message about session already being open
+	assert.Contains(t, buf.String(), "already open")
 }
 
 func TestSpawnPlanSessionZmx_CreatesSession(t *testing.T) {
