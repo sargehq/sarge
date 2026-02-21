@@ -187,11 +187,24 @@ func (c *client) RunSession(ctx context.Context, name, command string, args []st
 // The terminal process is fire-and-forget.
 func (c *client) AttachSession(ctx context.Context, name string, terminalCmdTemplate string, command string, args []string, cwd string) error {
 	// Build the zmx attach command: "zmx attach <name> <command> [args...]"
+	// If cwd is set and a command is provided, wrap in "cd <dir> && <command>"
+	// so the session starts in the right directory (terminal emulators don't
+	// reliably inherit the parent process's working directory).
 	zmxAttachParts := []string{"zmx", "attach", shellQuote(name)}
 	if command != "" {
-		zmxAttachParts = append(zmxAttachParts, shellQuote(command))
-		for _, arg := range args {
-			zmxAttachParts = append(zmxAttachParts, shellQuote(arg))
+		if cwd != "" {
+			// Wrap: sh -c 'cd /path && command args...'
+			innerParts := []string{"cd", shellQuote(cwd), "&&", command}
+			for _, arg := range args {
+				innerParts = append(innerParts, arg)
+			}
+			inner := strings.Join(innerParts, " ")
+			zmxAttachParts = append(zmxAttachParts, "sh", "-c", shellQuote(inner))
+		} else {
+			zmxAttachParts = append(zmxAttachParts, shellQuote(command))
+			for _, arg := range args {
+				zmxAttachParts = append(zmxAttachParts, shellQuote(arg))
+			}
 		}
 	}
 	zmxAttachCmd := strings.Join(zmxAttachParts, " ")
