@@ -187,10 +187,11 @@ func TestOpenConsoleZmx_CreatesSession(t *testing.T) {
 	err := mgr.OpenConsole(ctx, "w-abc", "myproj", "/tmp/work", "my feature", nil, &buf)
 	require.NoError(t, err)
 
-	// Should create session via RunSession with correct cwd
+	// Should create session with "" command (zmx default shell) and correct cwd
 	runCalls := zmxMock.RunSessionCalls()
 	require.Len(t, runCalls, 1)
 	assert.Equal(t, "sarge-myproj.console-w-abc-my-feature", runCalls[0].Name)
+	assert.Equal(t, "", runCalls[0].Command)
 	assert.Equal(t, "/tmp/work", runCalls[0].Cwd)
 
 	// Then attach
@@ -229,11 +230,11 @@ func TestOpenAgentSessionZmx_CreatesClaudeSession(t *testing.T) {
 	err := mgr.OpenAgentSession(ctx, "w-abc", "myproj", "/tmp/work", "", nil, cfg, &buf)
 	require.NoError(t, err)
 
-	// Should create via RunSession
+	// Should create session with agent command in one call
 	runCalls := zmxMock.RunSessionCalls()
 	require.Len(t, runCalls, 1)
 	assert.Equal(t, "sarge-myproj.claude-w-abc", runCalls[0].Name)
-	assert.Equal(t, "claude", runCalls[0].Command)
+	assert.Equal(t, "claude --dangerously-skip-permissions", runCalls[0].Command)
 	assert.Equal(t, "/tmp/work", runCalls[0].Cwd)
 
 	// Then attach

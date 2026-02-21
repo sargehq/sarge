@@ -34,8 +34,65 @@ func (m *DefaultOrchestratorManager) OpenConsole(ctx context.Context, workID str
 	return m.openConsoleZellij(ctx, workID, projectName, workDir, friendlyName, hooksEnv, w)
 }
 
+// shellQuoteEnv quotes the value portion of a KEY=value env string for safe shell use.
+// e.g. "FOO=hello world" becomes "FOO='hello world'"
+// Returns an error if the format is invalid or the key contains invalid characters.
+func shellQuoteEnv(env string) (string, error) {
+	i := strings.IndexByte(env, '=')
+	if i < 0 {
+		return "", fmt.Errorf("invalid env var %q: missing '='", env)
+	}
+	key := env[:i]
+	if key == "" {
+		return "", fmt.Errorf("invalid env var %q: empty key", env)
+	}
+	for _, c := range key {
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') {
+			return "", fmt.Errorf("invalid env var key %q: contains invalid character %q", key, c)
+		}
+	}
+	val := env[i+1:]
+	// Single-quote the value, escaping any embedded single quotes
+	val = "'" + strings.ReplaceAll(val, "'", "'\\''") + "'"
+	return key + "=" + val, nil
+}
+
+// buildZmxExportCommand builds "export K='V' K2='V2'" for persisting env in a shell session.
+// Returns "" if no hooksEnv.
+func buildZmxExportCommand(hooksEnv []string) (string, error) {
+	if len(hooksEnv) == 0 {
+		return "", nil
+	}
+	var parts []string
+	for _, env := range hooksEnv {
+		quoted, err := shellQuoteEnv(env)
+		if err != nil {
+			return "", err
+		}
+		parts = append(parts, quoted)
+	}
+	return "export " + strings.Join(parts, " "), nil
+}
+
+// buildZmxEnvPrefix builds quoted "K=V K2=V2 " prefix from hooksEnv, or "" if none.
+// Used for "FOO=bar command" syntax where env is set for a single command.
+func buildZmxEnvPrefix(hooksEnv []string) (string, error) {
+	if len(hooksEnv) == 0 {
+		return "", nil
+	}
+	var parts []string
+	for _, env := range hooksEnv {
+		quoted, err := shellQuoteEnv(env)
+		if err != nil {
+			return "", err
+		}
+		parts = append(parts, quoted)
+	}
+	return strings.Join(parts, " ") + " ", nil
+}
+
 // buildShellCommand builds the shell command and args for a console session.
-func buildShellCommand(hooksEnv []string) (command string, args []string, shellName string) {
+func buildShellCommand(hooksEnv []string) (command string, args []string, shellName string, err error) {
 	shell := os.Getenv("SHELL")
 	if shell == "" {
 		shell = "bash"
@@ -45,7 +102,11 @@ func buildShellCommand(hooksEnv []string) (command string, args []string, shellN
 	if len(hooksEnv) > 0 {
 		var exports []string
 		for _, env := range hooksEnv {
-			exports = append(exports, fmt.Sprintf("export %s", env))
+			quoted, qerr := shellQuoteEnv(env)
+			if qerr != nil {
+				return "", nil, "", qerr
+			}
+			exports = append(exports, "export "+quoted)
 		}
 		shellCmd := fmt.Sprintf("%s && exec %s", strings.Join(exports, " && "), shell)
 		command = shell
@@ -65,9 +126,12 @@ func (m *DefaultOrchestratorManager) openConsoleZmx(ctx context.Context, workID 
 	// Create session if it doesn't exist
 	exists, _ := m.zmx.SessionExists(ctx, zmxName)
 	if !exists {
-		command, args, _ := buildShellCommand(hooksEnv)
 		fmt.Fprintf(w, "Creating console session: %s\n", zmxName)
-		if err := m.zmx.RunSession(ctx, zmxName, command, args, workDir); err != nil {
+		initCmd, err := buildZmxExportCommand(hooksEnv)
+		if err != nil {
+			return fmt.Errorf("failed to build env command: %w", err)
+		}
+		if err := m.zmx.RunSession(ctx, zmxName, initCmd, nil, workDir); err != nil {
 			return fmt.Errorf("failed to create console session: %w", err)
 		}
 	}
@@ -102,7 +166,10 @@ func (m *DefaultOrchestratorManager) openConsoleZellij(ctx context.Context, work
 		return nil
 	}
 
-	command, args, shellName := buildShellCommand(hooksEnv)
+	command, args, shellName, err := buildShellCommand(hooksEnv)
+	if err != nil {
+		return fmt.Errorf("failed to build shell command: %w", err)
+	}
 
 	// Create tab with shell using layout approach
 	fmt.Fprintf(w, "Creating console tab: %s in session %s\n", tabName, sessionName)
@@ -132,7 +199,7 @@ func (m *DefaultOrchestratorManager) OpenAgentSession(ctx context.Context, workI
 }
 
 // buildAgentCommand builds the agent command and args based on config.
-func buildAgentCommand(agentType string, hooksEnv []string, cfg *project.Config) (command string, args []string) {
+func buildAgentCommand(agentType string, hooksEnv []string, cfg *project.Config) (command string, args []string, err error) {
 	var agentBinary string
 	var agentArgs []string
 	switch agentType {
@@ -159,7 +226,11 @@ func buildAgentCommand(agentType string, hooksEnv []string, cfg *project.Config)
 	if len(hooksEnv) > 0 {
 		var exports []string
 		for _, env := range hooksEnv {
-			exports = append(exports, fmt.Sprintf("export %s", env))
+			quoted, qerr := shellQuoteEnv(env)
+			if qerr != nil {
+				return "", nil, qerr
+			}
+			exports = append(exports, "export "+quoted)
 		}
 		agentCmd := agentBinary
 		if len(agentArgs) > 0 {
@@ -188,9 +259,21 @@ func (m *DefaultOrchestratorManager) openAgentSessionZmx(ctx context.Context, wo
 	// Create session if it doesn't exist
 	exists, _ := m.zmx.SessionExists(ctx, zmxName)
 	if !exists {
-		command, args := buildAgentCommand(agentType, hooksEnv, cfg)
 		fmt.Fprintf(w, "Creating %s session: %s\n", agentType, zmxName)
-		if err := m.zmx.RunSession(ctx, zmxName, command, args, workDir); err != nil {
+		// Build "FOO='bar' BAZ='qux' claude [args...]"
+		envPrefix, err := buildZmxEnvPrefix(hooksEnv)
+		if err != nil {
+			return fmt.Errorf("failed to build env prefix: %w", err)
+		}
+		command, args, err := buildAgentCommand(agentType, nil, cfg)
+		if err != nil {
+			return fmt.Errorf("failed to build agent command: %w", err)
+		}
+		agentCmd := envPrefix + command
+		for _, a := range args {
+			agentCmd += " " + a
+		}
+		if err := m.zmx.RunSession(ctx, zmxName, agentCmd, nil, workDir); err != nil {
 			return fmt.Errorf("failed to create %s session: %w", agentType, err)
 		}
 	}
@@ -231,7 +314,10 @@ func (m *DefaultOrchestratorManager) openAgentSessionZellij(ctx context.Context,
 		return nil
 	}
 
-	command, args := buildAgentCommand(agentType, hooksEnv, cfg)
+	command, args, err := buildAgentCommand(agentType, hooksEnv, cfg)
+	if err != nil {
+		return fmt.Errorf("failed to build agent command: %w", err)
+	}
 
 	// Create tab with command using layout approach
 	fmt.Fprintf(w, "Creating %s session tab: %s in session %s\n", agentType, tabName, sessionName)

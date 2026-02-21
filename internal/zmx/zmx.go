@@ -170,12 +170,16 @@ func (c *client) RunSession(ctx context.Context, name, command string, args []st
 	logging.Debug("zmx RunSession", "name", name, "command", command, "args", args, "cwd", cwd,
 		"full_cmd", "zmx "+strings.Join(zmxArgs, " "))
 
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		logging.Error("zmx RunSession failed", "name", name, "error", err, "output", strings.TrimSpace(string(output)))
-		return fmt.Errorf("failed to run zmx session %q: %w: %s", name, err, strings.TrimSpace(string(output)))
+	// Don't use CombinedOutput() — zmx run forks a child process that inherits
+	// the stdout/stderr pipes, so CombinedOutput() would block until the child
+	// (the session process) exits. Discard output to avoid pipe inheritance.
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	if err := cmd.Run(); err != nil {
+		logging.Error("zmx RunSession failed", "name", name, "error", err)
+		return fmt.Errorf("failed to run zmx session %q: %w", name, err)
 	}
-	logging.Debug("zmx RunSession succeeded", "name", name, "output", strings.TrimSpace(string(output)))
+	logging.Debug("zmx RunSession succeeded", "name", name)
 	return nil
 }
 
