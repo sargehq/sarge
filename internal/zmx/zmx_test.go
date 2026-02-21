@@ -23,6 +23,10 @@ func TestSessionName(t *testing.T) {
 		// Friendly names with spaces and parens are sanitized
 		{"proj", "orch-w-abc (my feature)", "sarge-proj.orch-w-abc-my-feature"},
 		{"proj", "console-w-abc (stellar_zhukovsky)", "sarge-proj.console-w-abc-stellar_zhukovsky"},
+		// Double quotes, single quotes, and backslashes are stripped
+		{"proj", `tab-with"quotes`, "sarge-proj.tab-withquotes"},
+		{"proj", `tab-with'single`, "sarge-proj.tab-withsingle"},
+		{"proj", `tab-with\backslash`, "sarge-proj.tab-withbackslash"},
 	}
 
 	for _, tt := range tests {

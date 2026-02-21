@@ -64,9 +64,10 @@ func SessionName(project, tab string) string {
 }
 
 // sanitizeSessionName replaces characters that are unsafe in CLI arguments
-// (spaces, parentheses) with hyphens and collapses runs of hyphens.
+// or AppleScript string interpolation (spaces, parentheses, quotes, backslashes)
+// with hyphens and collapses runs of hyphens.
 func sanitizeSessionName(name string) string {
-	r := strings.NewReplacer(" ", "-", "(", "", ")", "")
+	r := strings.NewReplacer(" ", "-", "(", "", ")", "", `"`, "", `\`, "", "'", "")
 	s := r.Replace(name)
 	// Collapse multiple consecutive hyphens into a single hyphen
 	for strings.Contains(s, "--") {
