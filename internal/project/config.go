@@ -327,9 +327,19 @@ func (z *ZellijConfig) ShouldKillTabsOnDestroy() bool {
 // LoadConfig reads and parses a config.toml file.
 func LoadConfig(path string) (*Config, error) {
 	var cfg Config
-	if _, err := toml.DecodeFile(path, &cfg); err != nil {
+	meta, err := toml.DecodeFile(path, &cfg)
+	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
+
+	if undecoded := meta.Undecoded(); len(undecoded) > 0 {
+		keys := make([]string, len(undecoded))
+		for i, k := range undecoded {
+			keys[i] = k.String()
+		}
+		return nil, fmt.Errorf("unrecognized keys in config file %s: %s (possible commented-out section header with uncommented keys)", path, strings.Join(keys, ", "))
+	}
+
 	return &cfg, nil
 }
 
