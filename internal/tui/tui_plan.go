@@ -49,6 +49,9 @@ type planModel struct {
 	beadFormPanel     *BeadFormPanel
 	createWorkPanel   *CreateWorkPanel
 
+	// Zmx session picker
+	zmxPicker *ZmxPickerPanel
+
 	// Panel state
 	activePanel Panel
 	beadsCursor int
@@ -187,6 +190,7 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 	m.prImportPanel = NewPRImportPanel()
 	m.beadFormPanel = NewBeadFormPanel()
 	m.createWorkPanel = NewCreateWorkPanel()
+	m.zmxPicker = NewZmxPickerPanel()
 
 	// Set up status bar data providers
 	m.statusBar.SetDataProviders(
@@ -687,6 +691,37 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Refresh work tiles to update the tabs bar
 		return m, tea.Batch(m.refreshData(), m.loadWorkTiles())
 
+	case zmxSessionsLoadedMsg:
+		if msg.err != nil {
+			m.statusMessage = fmt.Sprintf("Session list failed: %v", msg.err)
+			m.statusIsError = true
+			return m, nil
+		}
+		if len(msg.sessions) == 0 {
+			m.statusMessage = "No active zmx sessions for this work"
+			m.statusIsError = false
+			return m, nil
+		}
+		if len(msg.sessions) == 1 {
+			// Only one session — attach directly
+			return m, m.attachToZmxSession(msg.sessions[0].Name)
+		}
+		// Multiple sessions — open the picker
+		m.zmxPicker.SetSize(m.width/2, m.height/2)
+		m.zmxPicker.SetSessions(msg.sessions)
+		m.viewMode = ViewZmxSessionPicker
+		return m, m.zmxPicker.Init()
+
+	case zmxSessionAttachedMsg:
+		if msg.err != nil {
+			m.statusMessage = fmt.Sprintf("Attach failed: %v", msg.err)
+			m.statusIsError = true
+		} else {
+			m.statusMessage = fmt.Sprintf("Attached to %s", msg.sessionName)
+			m.statusIsError = false
+		}
+		return m, nil
+
 	case workCommandMsg:
 		// Reset to normal mode
 		m.viewMode = ViewNormal
@@ -1113,6 +1148,21 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 		return m, cmd
+	case ViewZmxSessionPicker:
+		cmd, action := m.zmxPicker.Update(msg)
+		switch action {
+		case ZmxPickerActionCancel:
+			m.viewMode = ViewNormal
+			return m, cmd
+		case ZmxPickerActionSelect:
+			selected := m.zmxPicker.SelectedSession()
+			if selected != nil {
+				m.viewMode = ViewNormal
+				return m, m.attachToZmxSession(selected.Name)
+			}
+			return m, cmd
+		}
+		return m, cmd
 	case ViewDestroyConfirm:
 		// Handle destroy confirmation dialog
 		switch msg.String() {
@@ -1240,7 +1290,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case WorkDetailActionResetTask:
 			return m, m.resetSelectedTask()
 		case WorkDetailActionAttachTerminal:
-			return m, m.attachTerminal()
+			return m, m.listZmxSessions()
 		case WorkDetailActionPlan:
 			// Start planning session for selected unassigned bead
 			beadID := m.workDetails.GetSelectedUnassignedBeadID()
@@ -1728,6 +1778,8 @@ func (m *planModel) View() string {
 		return m.renderWithDialog(m.renderDeleteBeadConfirmContent())
 	case ViewDestroyConfirm:
 		return m.renderWithDialog(m.renderDestroyConfirmContent())
+	case ViewZmxSessionPicker:
+		return m.renderWithDialog(m.zmxPicker.View())
 	case ViewLinearImportInline:
 		// Inline import mode - render normal view with import form in details area
 		// Fall through to normal rendering

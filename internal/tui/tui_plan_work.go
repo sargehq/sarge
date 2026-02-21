@@ -496,3 +496,31 @@ func (m *planModel) attachTerminal() tea.Cmd {
 		return workCommandMsg{action: "Opened terminal", workID: workID}
 	}
 }
+
+// listZmxSessions fires an async command to list zmx sessions for the focused work.
+func (m *planModel) listZmxSessions() tea.Cmd {
+	workID := m.focusedWorkID
+	return func() tea.Msg {
+		if !m.proj.Config.Multiplexer.IsZmx() {
+			return zmxSessionsLoadedMsg{err: fmt.Errorf("session picker requires [multiplexer] type = \"zmx\" in config")}
+		}
+		if workID == "" {
+			return zmxSessionsLoadedMsg{err: fmt.Errorf("no work focused")}
+		}
+
+		sessions, err := m.workService.OrchestratorManager.ListWorkSessions(m.ctx, workID, m.proj.Config.Project.Name)
+		return zmxSessionsLoadedMsg{sessions: sessions, err: err}
+	}
+}
+
+// attachToZmxSession fires an async command to attach to a specific zmx session.
+func (m *planModel) attachToZmxSession(sessionName string) tea.Cmd {
+	workID := m.focusedWorkID
+	return func() tea.Msg {
+		err := m.workService.OrchestratorManager.AttachToSession(m.ctx, sessionName)
+		if err != nil {
+			return zmxSessionAttachedMsg{sessionName: sessionName, err: err}
+		}
+		return workCommandMsg{action: "Attached to session", workID: workID}
+	}
+}
