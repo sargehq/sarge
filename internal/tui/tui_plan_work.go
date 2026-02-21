@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os/exec"
 	"strings"
 	"time"
 
@@ -14,8 +13,7 @@ import (
 	"github.com/sargehq/sarge/internal/logging"
 	"github.com/sargehq/sarge/internal/process"
 	"github.com/sargehq/sarge/internal/progress"
-	"github.com/sargehq/sarge/internal/project"
-	"github.com/sargehq/sarge/internal/zmx"
+
 	workpkg "github.com/sargehq/sarge/internal/work"
 )
 
@@ -467,31 +465,6 @@ func (m *planModel) openIDE() tea.Cmd {
 }
 
 // attachTerminal opens a new terminal window attached to a zmx session based on the current
-// resolveZmxSessionName returns the zmx session name for the current work details selection.
-// If a task is selected, returns the task session; otherwise returns the orchestrator session.
-func (m *planModel) resolveZmxSessionName(ctx context.Context, workID string) (string, error) {
-	projectName := m.proj.Config.Project.Name
-
-	// Check if a specific task is selected
-	if m.workDetails.IsTaskSelected() {
-		if taskID := m.workDetails.GetSelectedTaskID(); taskID != "" {
-			return zmx.SessionName(projectName, fmt.Sprintf("task-%s", taskID)), nil
-		}
-	}
-
-	// Default: orchestrator session for the focused work
-	work, err := m.proj.DB.GetWork(ctx, workID)
-	if err != nil {
-		return "", fmt.Errorf("failed to get work: %w", err)
-	}
-	friendlyName := ""
-	if work != nil {
-		friendlyName = work.Name
-	}
-	tabName := project.FormatTabName("orch", workID, friendlyName)
-	return zmx.SessionName(projectName, tabName), nil
-}
-
 // attachTerminal opens a new terminal window attached to the zmx session for the current
 // work details selection. Only works when multiplexer type is "zmx".
 func (m *planModel) attachTerminal() tea.Cmd {
@@ -505,25 +478,21 @@ func (m *planModel) attachTerminal() tea.Cmd {
 			return workCommandMsg{action: "Attach terminal", workID: workID, err: fmt.Errorf("no work focused")}
 		}
 
-		sessionName, err := m.resolveZmxSessionName(m.ctx, workID)
+		// Get work details for worktree path and friendly name
+		work, err := m.proj.DB.GetWork(m.ctx, workID)
+		if err != nil {
+			return workCommandMsg{action: "Attach terminal", workID: workID, err: fmt.Errorf("failed to get work: %w", err)}
+		}
+		if work == nil {
+			return workCommandMsg{action: "Attach terminal", workID: workID, err: fmt.Errorf("work %s not found", workID)}
+		}
+
+		// Use OpenConsole which handles run-then-attach properly
+		err = m.workService.OrchestratorManager.OpenConsole(m.ctx, workID, m.proj.Config.Project.Name, work.WorktreePath, work.Name, m.proj.Config.Hooks.Env, io.Discard)
 		if err != nil {
 			return workCommandMsg{action: "Attach terminal", workID: workID, err: err}
 		}
 
-		// Build the terminal launch command from config
-		cmdTemplate := m.proj.Config.Multiplexer.GetTerminalCommand()
-		cmdStr := strings.ReplaceAll(cmdTemplate, "{session}", sessionName)
-		if cmdStr == "" {
-			return workCommandMsg{action: "Attach terminal", workID: workID, err: fmt.Errorf("empty terminal command")}
-		}
-
-		// Fire-and-forget: start the terminal process via shell
-		cmd := exec.Command("sh", "-c", cmdStr) //nolint:gosec // Command comes from user config
-		if err := cmd.Start(); err != nil {
-			return workCommandMsg{action: "Attach terminal", workID: workID, err: fmt.Errorf("failed to launch terminal: %w", err)}
-		}
-		go cmd.Wait() //nolint:errcheck // Fire-and-forget; prevent zombie process
-
-		return workCommandMsg{action: fmt.Sprintf("Attached terminal to %s", sessionName), workID: workID}
+		return workCommandMsg{action: "Opened terminal", workID: workID}
 	}
 }

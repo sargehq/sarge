@@ -62,22 +62,21 @@ func (m *DefaultOrchestratorManager) openConsoleZmx(ctx context.Context, workID 
 	tabName := project.FormatTabName("console", workID, friendlyName)
 	zmxName := zmx.SessionName(projectName, tabName)
 
-	// If session already exists, just open a terminal attached to it
+	// Create session if it doesn't exist
 	exists, _ := m.zmx.SessionExists(ctx, zmxName)
-	if exists {
-		fmt.Fprintf(w, "Console session %s already exists, attaching terminal\n", zmxName)
-		return m.zmx.AttachSession(ctx, zmxName, m.muxConfig.GetTerminalCommand(), "", nil, workDir)
+	if !exists {
+		command, args, _ := buildShellCommand(hooksEnv)
+		fmt.Fprintf(w, "Creating console session: %s\n", zmxName)
+		if err := m.zmx.RunSession(ctx, zmxName, command, args, workDir); err != nil {
+			return fmt.Errorf("failed to create console session: %w", err)
+		}
 	}
 
-	command, args, _ := buildShellCommand(hooksEnv)
-
-	// Launch terminal with zmx attach (creates session if needed)
-	fmt.Fprintf(w, "Opening console: %s\n", zmxName)
-	if err := m.zmx.AttachSession(ctx, zmxName, m.muxConfig.GetTerminalCommand(), command, args, workDir); err != nil {
-		return fmt.Errorf("failed to open console: %w", err)
+	// Open terminal window attached to the session
+	fmt.Fprintf(w, "Attaching to console: %s\n", zmxName)
+	if err := m.zmx.AttachSession(ctx, zmxName, m.muxConfig.GetTerminalCommand()); err != nil {
+		return fmt.Errorf("failed to attach to console: %w", err)
 	}
-
-	fmt.Fprintf(w, "Console opened in zmx session %s\n", zmxName)
 	return nil
 }
 
@@ -186,22 +185,21 @@ func (m *DefaultOrchestratorManager) openAgentSessionZmx(ctx context.Context, wo
 	tabName := project.FormatTabName(agentType, workID, friendlyName)
 	zmxName := zmx.SessionName(projectName, tabName)
 
-	// If session already exists, just open a terminal attached to it
+	// Create session if it doesn't exist
 	exists, _ := m.zmx.SessionExists(ctx, zmxName)
-	if exists {
-		fmt.Fprintf(w, "Agent session %s already exists, attaching terminal\n", zmxName)
-		return m.zmx.AttachSession(ctx, zmxName, m.muxConfig.GetTerminalCommand(), "", nil, workDir)
+	if !exists {
+		command, args := buildAgentCommand(agentType, hooksEnv, cfg)
+		fmt.Fprintf(w, "Creating %s session: %s\n", agentType, zmxName)
+		if err := m.zmx.RunSession(ctx, zmxName, command, args, workDir); err != nil {
+			return fmt.Errorf("failed to create %s session: %w", agentType, err)
+		}
 	}
 
-	command, args := buildAgentCommand(agentType, hooksEnv, cfg)
-
-	// Launch terminal with zmx attach (creates session if needed)
-	fmt.Fprintf(w, "Opening %s session: %s\n", agentType, zmxName)
-	if err := m.zmx.AttachSession(ctx, zmxName, m.muxConfig.GetTerminalCommand(), command, args, workDir); err != nil {
-		return fmt.Errorf("failed to open %s session: %w", agentType, err)
+	// Open terminal window attached to the session
+	fmt.Fprintf(w, "Attaching to %s: %s\n", agentType, zmxName)
+	if err := m.zmx.AttachSession(ctx, zmxName, m.muxConfig.GetTerminalCommand()); err != nil {
+		return fmt.Errorf("failed to attach to %s session: %w", agentType, err)
 	}
-
-	fmt.Fprintf(w, "%s session opened in zmx session %s\n", agentType, zmxName)
 	return nil
 }
 
@@ -272,13 +270,16 @@ func (m *DefaultOrchestratorManager) spawnPlanSessionZmx(ctx context.Context, be
 		fmt.Fprintf(w, "Session %s already existed, killed and recreating...\n", zmxName)
 	}
 
-	// Launch terminal with zmx attach (creates session with plan command)
-	fmt.Fprintf(w, "Opening plan session: %s\n", zmxName)
-	if err := m.zmx.AttachSession(ctx, zmxName, m.muxConfig.GetTerminalCommand(), "sarge", []string{"plan", beadID}, mainRepoPath); err != nil {
-		return fmt.Errorf("failed to open plan session: %w", err)
+	// Create session with plan command
+	fmt.Fprintf(w, "Creating plan session: %s\n", zmxName)
+	if err := m.zmx.RunSession(ctx, zmxName, "sarge", []string{"plan", beadID}, mainRepoPath); err != nil {
+		return fmt.Errorf("failed to create plan session: %w", err)
 	}
 
-	fmt.Fprintf(w, "Plan session spawned in zmx session %s\n", zmxName)
+	// Open terminal window attached to the session
+	if err := m.zmx.AttachSession(ctx, zmxName, m.muxConfig.GetTerminalCommand()); err != nil {
+		return fmt.Errorf("failed to attach to plan session: %w", err)
+	}
 	return nil
 }
 
