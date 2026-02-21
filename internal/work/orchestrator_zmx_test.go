@@ -201,6 +201,48 @@ func TestOpenConsoleZmx_CreatesSession(t *testing.T) {
 	assert.Equal(t, "sarge-myproj.console-w-abc-my-feature", attachCalls[0].Name)
 }
 
+func TestAttachZmxSession_WindowModeUsesAttachSession(t *testing.T) {
+	mgr, zmxMock, _ := setupZmxTest(t)
+	mgr.muxConfig = &project.MultiplexerConfig{
+		Type:       "zmx",
+		AttachMode: "window",
+		Terminal:   "ghostty -e zmx attach {session}",
+	}
+	ctx := context.Background()
+
+	err := mgr.attachZmxSession(ctx, "sarge-myproj.console-w-abc")
+	require.NoError(t, err)
+
+	// Should NOT try tab mode
+	assert.Empty(t, zmxMock.AttachSessionTabCalls())
+
+	// Should use window mode directly
+	attachCalls := zmxMock.AttachSessionCalls()
+	require.Len(t, attachCalls, 1)
+	assert.Equal(t, "sarge-myproj.console-w-abc", attachCalls[0].Name)
+	assert.Equal(t, "ghostty -e zmx attach {session}", attachCalls[0].TerminalCmdTemplate)
+}
+
+func TestAttachZmxSession_DefaultModeUsesWindow(t *testing.T) {
+	mgr, zmxMock, _ := setupZmxTest(t)
+	// Default config - no attach_mode set
+	mgr.muxConfig = &project.MultiplexerConfig{
+		Type:     "zmx",
+		Terminal: "ghostty -e zmx attach {session}",
+	}
+	ctx := context.Background()
+
+	err := mgr.attachZmxSession(ctx, "sarge-myproj.console-w-abc")
+	require.NoError(t, err)
+
+	// Should NOT try tab mode
+	assert.Empty(t, zmxMock.AttachSessionTabCalls())
+
+	// Should use window mode
+	attachCalls := zmxMock.AttachSessionCalls()
+	require.Len(t, attachCalls, 1)
+}
+
 func TestAttachZmxSession_TabModeFallsBackToWindow(t *testing.T) {
 	mgr, zmxMock, _ := setupZmxTest(t)
 	mgr.muxConfig = &project.MultiplexerConfig{

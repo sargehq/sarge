@@ -922,3 +922,18 @@ bogus_key = "oops"
 	require.Contains(t, err.Error(), "bogus_key")
 }
 
+func TestGetAttachMode_DefaultsToWindow(t *testing.T) {
+	m := &MultiplexerConfig{}
+	require.Equal(t, "window", m.GetAttachMode())
+}
+
+func TestGetAttachMode_ReturnsTab(t *testing.T) {
+	m := &MultiplexerConfig{AttachMode: "tab"}
+	require.Equal(t, "tab", m.GetAttachMode())
+}
+
+func TestGetAttachMode_UnknownDefaultsToWindow(t *testing.T) {
+	m := &MultiplexerConfig{AttachMode: "something-else"}
+	require.Equal(t, "window", m.GetAttachMode())
+}
+
