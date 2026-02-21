@@ -129,7 +129,7 @@ func buildBeadTree(ctx context.Context, items []beadItem, client *beads.Client, 
 		if a.Priority != b.Priority {
 			return a.Priority < b.Priority
 		}
-		return a.ID < b.ID
+		return compareIDsNatural(a.ID, b.ID)
 	})
 
 	// DFS to build tree order
@@ -182,12 +182,12 @@ func buildBeadTree(ctx context.Context, items []beadItem, client *beads.Client, 
 		sort.Slice(childIDs, func(i, j int) bool {
 			a, b := itemMap[childIDs[i]], itemMap[childIDs[j]]
 			if a == nil || b == nil {
-				return childIDs[i] < childIDs[j]
+				return compareIDsNatural(childIDs[i], childIDs[j])
 			}
 			if a.Priority != b.Priority {
 				return a.Priority < b.Priority
 			}
-			return a.ID < b.ID
+			return compareIDsNatural(a.ID, b.ID)
 		})
 
 		// Compute the ancestor pattern for children
