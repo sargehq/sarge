@@ -21,6 +21,7 @@ type Client interface {
 	RunSession(ctx context.Context, name, command string, args []string, cwd string) error
 
 	// KillSession kills a zmx session by name.
+	// Returns an error if the session doesn't exist or the kill fails.
 	KillSession(ctx context.Context, name string) error
 
 	// ListSessions returns all zmx session names matching the given prefix.

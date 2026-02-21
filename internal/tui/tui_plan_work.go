@@ -500,17 +500,14 @@ func (m *planModel) attachTerminal() tea.Cmd {
 		cmdTemplate := m.proj.Config.Multiplexer.GetTerminalCommand()
 		cmdStr := strings.ReplaceAll(cmdTemplate, "{session}", sessionName)
 
-		// Parse the command string into parts.
-		// NOTE: strings.Fields does not handle quoted arguments with spaces.
-		// Terminal commands with quoted arguments (e.g., paths with spaces) will not work correctly.
-		// If this becomes an issue, consider using a shell-word parser (e.g., google/shlex).
-		parts := strings.Fields(cmdStr)
-		if len(parts) == 0 {
+		// Use sh -c to handle the command string, which properly handles
+		// quoted arguments, paths with spaces, and other shell features.
+		if cmdStr == "" {
 			return workCommandMsg{action: "Attach terminal", workID: workID, err: fmt.Errorf("empty terminal command")}
 		}
 
-		// Fire-and-forget: start the terminal process
-		cmd := exec.Command(parts[0], parts[1:]...) //nolint:gosec // Command comes from user config
+		// Fire-and-forget: start the terminal process via shell
+		cmd := exec.Command("sh", "-c", cmdStr) //nolint:gosec // Command comes from user config
 		if err := cmd.Start(); err != nil {
 			return workCommandMsg{action: "Attach terminal", workID: workID, err: fmt.Errorf("failed to launch terminal: %w", err)}
 		}

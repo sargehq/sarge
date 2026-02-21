@@ -35,8 +35,13 @@ func EnsureControlPlane(ctx context.Context, proj *project.Project) (*InitResult
 
 // ensureControlPlaneZmx ensures the control plane is running as a zmx session.
 func ensureControlPlaneZmx(ctx context.Context, proj *project.Project) (*InitResult, error) {
+	return ensureControlPlaneZmxWith(ctx, proj, zmx.New())
+}
+
+// ensureControlPlaneZmxWith is the implementation of ensureControlPlaneZmx that accepts
+// an injected zmx client for testability.
+func ensureControlPlaneZmxWith(ctx context.Context, proj *project.Project, zmxClient zmx.Client) (*InitResult, error) {
 	projectName := proj.Config.Project.Name
-	zmxClient := zmx.New()
 	zmxName := zmx.SessionName(projectName, ControlPlaneTabName)
 
 	result := &InitResult{

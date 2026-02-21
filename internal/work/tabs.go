@@ -263,9 +263,10 @@ func (m *DefaultOrchestratorManager) spawnPlanSessionZmx(ctx context.Context, be
 	tabName := PlanTabName(beadID)
 	zmxName := zmx.SessionName(projectName, tabName)
 
-	// Kill existing session if present (kill is a no-op if session doesn't exist,
-	// avoiding a redundant SessionExists call)
-	if err := m.zmx.KillSession(ctx, zmxName); err == nil {
+	// Kill existing session if present
+	exists, _ := m.zmx.SessionExists(ctx, zmxName)
+	if exists {
+		_ = m.zmx.KillSession(ctx, zmxName)
 		fmt.Fprintf(w, "Session %s already existed, killed and recreating...\n", zmxName)
 	}
 
