@@ -92,10 +92,16 @@ func (m *DefaultOrchestratorManager) isZmx() bool {
 
 // attachZmxSession attaches to a zmx session using the configured attach mode.
 // In "tab" mode, opens a new tab in the current Ghostty window via AppleScript (macOS only).
+// On non-macOS platforms, tab mode falls back to window mode automatically.
 // In "window" mode (default), opens a new terminal window.
 func (m *DefaultOrchestratorManager) attachZmxSession(ctx context.Context, name string) error {
 	if m.muxConfig.GetAttachMode() == "tab" {
-		return m.zmx.AttachSessionTab(ctx, name)
+		err := m.zmx.AttachSessionTab(ctx, name)
+		if err == nil {
+			return nil
+		}
+		// Fall back to window mode (e.g. on non-macOS platforms where tab mode is unsupported)
+		logging.Debug("zmx tab attach failed, falling back to window mode", "name", name, "error", err)
 	}
 	return m.zmx.AttachSession(ctx, name, m.muxConfig.GetTerminalCommand())
 }

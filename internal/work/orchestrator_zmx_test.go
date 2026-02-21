@@ -3,6 +3,7 @@ package work
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -198,6 +199,59 @@ func TestOpenConsoleZmx_CreatesSession(t *testing.T) {
 	attachCalls := zmxMock.AttachSessionCalls()
 	require.Len(t, attachCalls, 1)
 	assert.Equal(t, "sarge-myproj.console-w-abc-my-feature", attachCalls[0].Name)
+}
+
+func TestAttachZmxSession_TabModeFallsBackToWindow(t *testing.T) {
+	mgr, zmxMock, _ := setupZmxTest(t)
+	mgr.muxConfig = &project.MultiplexerConfig{
+		Type:       "zmx",
+		AttachMode: "tab",
+		Terminal:   "ghostty -e zmx attach {session}",
+	}
+	ctx := context.Background()
+
+	// Simulate AttachSessionTab failing (e.g. non-macOS)
+	zmxMock.AttachSessionTabFunc = func(ctx context.Context, name string) error {
+		return fmt.Errorf("tab attach mode is only supported on macOS")
+	}
+
+	err := mgr.attachZmxSession(ctx, "sarge-myproj.console-w-abc")
+	require.NoError(t, err)
+
+	// Should have tried tab first
+	tabCalls := zmxMock.AttachSessionTabCalls()
+	require.Len(t, tabCalls, 1)
+	assert.Equal(t, "sarge-myproj.console-w-abc", tabCalls[0].Name)
+
+	// Should have fallen back to window
+	attachCalls := zmxMock.AttachSessionCalls()
+	require.Len(t, attachCalls, 1)
+	assert.Equal(t, "sarge-myproj.console-w-abc", attachCalls[0].Name)
+}
+
+func TestAttachZmxSession_TabModeSucceeds(t *testing.T) {
+	mgr, zmxMock, _ := setupZmxTest(t)
+	mgr.muxConfig = &project.MultiplexerConfig{
+		Type:       "zmx",
+		AttachMode: "tab",
+		Terminal:   "ghostty -e zmx attach {session}",
+	}
+	ctx := context.Background()
+
+	zmxMock.AttachSessionTabFunc = func(ctx context.Context, name string) error {
+		return nil
+	}
+
+	err := mgr.attachZmxSession(ctx, "sarge-myproj.console-w-abc")
+	require.NoError(t, err)
+
+	// Should have used tab mode
+	tabCalls := zmxMock.AttachSessionTabCalls()
+	require.Len(t, tabCalls, 1)
+
+	// Should NOT have fallen back to window
+	attachCalls := zmxMock.AttachSessionCalls()
+	assert.Empty(t, attachCalls)
 }
 
 func TestOpenConsoleZmx_ExistingSessionAttaches(t *testing.T) {
