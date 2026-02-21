@@ -511,6 +511,7 @@ func (m *planModel) attachTerminal() tea.Cmd {
 		if err := cmd.Start(); err != nil {
 			return workCommandMsg{action: "Attach terminal", workID: workID, err: fmt.Errorf("failed to launch terminal: %w", err)}
 		}
+		go cmd.Wait() //nolint:errcheck // Fire-and-forget; prevent zombie process
 
 		return workCommandMsg{action: fmt.Sprintf("Attached terminal to %s", sessionName), workID: workID}
 	}
