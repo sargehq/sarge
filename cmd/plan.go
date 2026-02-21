@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"os"
 
+	"log/slog"
+
 	"github.com/sargehq/sarge/internal/agents"
 	"github.com/sargehq/sarge/internal/agents/types"
 	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/git"
 	"github.com/sargehq/sarge/internal/project"
 	"github.com/spf13/cobra"
 )
@@ -64,6 +67,13 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	}()
 
 	mainRepoPath := proj.MainRepoPath()
+
+	// Fetch the base branch from origin before planning so the agent works
+	// against up-to-date refs. Failure is non-fatal to allow offline work.
+	baseBranch := proj.Config.Repo.GetBaseBranch()
+	if err := git.NewOperations().FetchBranch(ctx, mainRepoPath, baseBranch); err != nil {
+		slog.Warn("failed to fetch base branch before plan session", "branch", baseBranch, "error", err)
+	}
 
 	// Launch agent interactively with plan params
 	agent, err := agents.NewAgent(proj.Config)
