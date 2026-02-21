@@ -103,7 +103,7 @@ func (c *client) RunSession(ctx context.Context, name, command string, args []st
 	zmxArgs := []string{"run", name, command}
 	zmxArgs = append(zmxArgs, args...)
 
-	cmd := exec.CommandContext(ctx, "zmx", zmxArgs...)
+	cmd := exec.CommandContext(ctx, "zmx", zmxArgs...) //nolint:gosec // G204: args are from trusted internal callers
 	if cwd != "" {
 		cmd.Dir = cwd
 	}
