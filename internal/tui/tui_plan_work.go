@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/sargehq/sarge/internal/logging"
 	"github.com/sargehq/sarge/internal/process"
 	"github.com/sargehq/sarge/internal/progress"
+	"github.com/sargehq/sarge/internal/zmx"
 	workpkg "github.com/sargehq/sarge/internal/work"
 )
 
@@ -459,5 +461,55 @@ func (m *planModel) openIDE() tea.Cmd {
 		}
 
 		return workCommandMsg{action: "Opened in IDE", workID: workID}
+	}
+}
+
+// attachTerminal opens a new terminal window attached to a zmx session based on the current
+// work details selection. Only works when multiplexer type is "zmx".
+func (m *planModel) attachTerminal() tea.Cmd {
+	workID := m.focusedWorkID
+	return func() tea.Msg {
+		// Check if multiplexer is zmx
+		if !m.proj.Config.Multiplexer.IsZmx() {
+			return workCommandMsg{action: "Attach terminal", workID: workID, err: fmt.Errorf("attach terminal requires [multiplexer] type = \"zmx\" in config")}
+		}
+
+		if workID == "" {
+			return workCommandMsg{action: "Attach terminal", workID: workID, err: fmt.Errorf("no work focused")}
+		}
+
+		projectName := m.proj.Config.Project.Name
+
+		// Determine the zmx session name based on the current work details selection
+		// Default: orchestrator session for the focused work
+		tabName := fmt.Sprintf("work-%s", workID)
+
+		// Check if a specific task is selected
+		if m.workDetails.IsTaskSelected() {
+			taskID := m.workDetails.GetSelectedTaskID()
+			if taskID != "" {
+				tabName = fmt.Sprintf("task-%s", taskID)
+			}
+		}
+
+		sessionName := zmx.SessionName(projectName, tabName)
+
+		// Build the terminal launch command from config
+		cmdTemplate := m.proj.Config.Multiplexer.GetTerminalCommand()
+		cmdStr := strings.ReplaceAll(cmdTemplate, "{session}", sessionName)
+
+		// Parse the command string into parts
+		parts := strings.Fields(cmdStr)
+		if len(parts) == 0 {
+			return workCommandMsg{action: "Attach terminal", workID: workID, err: fmt.Errorf("empty terminal command")}
+		}
+
+		// Fire-and-forget: start the terminal process
+		cmd := exec.Command(parts[0], parts[1:]...) //nolint:gosec // Command comes from user config
+		if err := cmd.Start(); err != nil {
+			return workCommandMsg{action: "Attach terminal", workID: workID, err: fmt.Errorf("failed to launch terminal: %w", err)}
+		}
+
+		return workCommandMsg{action: fmt.Sprintf("Attached terminal to %s", sessionName), workID: workID}
 	}
 }

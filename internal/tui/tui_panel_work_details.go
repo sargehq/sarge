@@ -25,6 +25,7 @@ const (
 	WorkDetailActionDestroy                              // Destroy work (d)
 	WorkDetailActionAddChildIssue                        // Add child issue to root issue (a)
 	WorkDetailActionResetTask                            // Reset failed task (x)
+	WorkDetailActionAttachTerminal                       // Attach terminal to zmx session (g)
 )
 
 // WorkDetailsPanel is a coordinator that manages the work detail sub-panels.
@@ -397,6 +398,8 @@ func (p *WorkDetailsPanel) Update(msg tea.KeyMsg) (tea.Cmd, WorkDetailAction) {
 			return cmd, WorkDetailActionCheckFeedback
 		case "d":
 			return cmd, WorkDetailActionDestroy
+		case "g":
+			return cmd, WorkDetailActionAttachTerminal
 		case "a":
 			// Add child issue - only when there's a focused work with root issue
 			if p.focusedWork != nil && p.focusedWork.Work.RootIssueID != "" {
@@ -446,6 +449,8 @@ func (p *WorkDetailsPanel) Update(msg tea.KeyMsg) (tea.Cmd, WorkDetailAction) {
 		return nil, WorkDetailActionCheckFeedback
 	case "d":
 		return nil, WorkDetailActionDestroy
+	case "g":
+		return nil, WorkDetailActionAttachTerminal
 	case "a":
 		// Add child issue - only when there's a focused work with root issue
 		if p.focusedWork != nil && p.focusedWork.Work.RootIssueID != "" {

@@ -27,10 +27,11 @@ type Config struct {
 	Pi        PiConfig        `toml:"pi"`
 	Workflow  WorkflowConfig  `toml:"workflow"`
 	Scheduler SchedulerConfig `toml:"scheduler"`
-	Zellij    ZellijConfig    `toml:"zellij"`
-	LogParser LogParserConfig `toml:"log_parser"`
-	IDE       IDEConfig       `toml:"ide"`
-	Debug     DebugConfig     `toml:"debug"`
+	Zellij       ZellijConfig       `toml:"zellij"`
+	Multiplexer  MultiplexerConfig  `toml:"multiplexer"`
+	LogParser    LogParserConfig    `toml:"log_parser"`
+	IDE          IDEConfig          `toml:"ide"`
+	Debug        DebugConfig        `toml:"debug"`
 }
 
 // IDEConfig contains IDE configuration for opening worktrees.
@@ -271,6 +272,34 @@ type ZellijConfig struct {
 	// when work is destroyed. Includes work, task, console, and claude tabs.
 	// Defaults to true when not specified.
 	KillTabsOnDestroy *bool `toml:"kill_tabs_on_destroy"`
+}
+
+// MultiplexerConfig contains terminal multiplexer configuration.
+type MultiplexerConfig struct {
+	// Type selects which terminal multiplexer to use: "zellij" (default) or "zmx".
+	Type string `toml:"type"`
+
+	// Terminal is the command template for opening a new terminal window attached to a zmx session.
+	// Used when type is "zmx".
+	// macOS default: "open -na Ghostty.app --args -e zmx attach {session}"
+	// Linux default: "ghostty -e zmx attach {session}"
+	// The placeholder {session} is replaced with the zmx session name.
+	Terminal string `toml:"terminal"`
+}
+
+// IsZmx returns true if the multiplexer type is zmx.
+func (m *MultiplexerConfig) IsZmx() bool {
+	return m.Type == "zmx"
+}
+
+// GetTerminalCommand returns the terminal launch command template.
+// Returns the configured value, or a platform-appropriate default.
+func (m *MultiplexerConfig) GetTerminalCommand() string {
+	if m.Terminal != "" {
+		return m.Terminal
+	}
+	// Default for macOS
+	return "open -na Ghostty.app --args -e zmx attach {session}"
 }
 
 // BeadsConfig contains beads path configuration.

@@ -1223,6 +1223,8 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case WorkDetailActionResetTask:
 			return m, m.resetSelectedTask()
+		case WorkDetailActionAttachTerminal:
+			return m, m.attachTerminal()
 		case WorkDetailActionPlan:
 			// Start planning session for selected unassigned bead
 			beadID := m.workDetails.GetSelectedUnassignedBeadID()

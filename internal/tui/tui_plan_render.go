@@ -255,6 +255,10 @@ func (m *planModel) renderHelp() string {
   i             Import issue from Linear
   I             Import from GitHub PR
 
+  Work Actions (when work focused)
+  ────────────────────────────
+  g             Attach terminal to zmx session (opens Ghostty)
+
   Filtering & Sorting
   ────────────────────────────
   o             Show open issues
