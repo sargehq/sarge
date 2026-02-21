@@ -478,3 +478,55 @@ func TestTerminateWorkTabsZellij_IncludesAgentTabs(t *testing.T) {
 	}
 	assert.Contains(t, closedTabs, "agent-w-abc (feat)")
 }
+
+func TestListWorkSessions_ReturnsMatchingSessions(t *testing.T) {
+	mgr, zmxMock, _ := setupZmxTest(t)
+	ctx := context.Background()
+
+	allSessions := []string{
+		"sarge-myproj.orch-w-abc-my-feature",
+		"sarge-myproj.task-w-abc.1",
+		"sarge-myproj.console-w-abc",
+		"sarge-myproj.agent-w-abc",
+		"sarge-myproj.orch-w-other",
+		"sarge-myproj.control",
+	}
+	zmxMock.ListSessionsFunc = func(ctx context.Context, prefix string) ([]string, error) {
+		return filterByPrefix(allSessions, prefix), nil
+	}
+
+	sessions, err := mgr.ListWorkSessions(ctx, "w-abc", "myproj")
+	require.NoError(t, err)
+	assert.Len(t, sessions, 4)
+
+	types := make([]string, 0, len(sessions))
+	for _, s := range sessions {
+		types = append(types, s.Type)
+	}
+	assert.Contains(t, types, "orch")
+	assert.Contains(t, types, "task")
+	assert.Contains(t, types, "console")
+	assert.Contains(t, types, "agent")
+}
+
+func TestListWorkSessions_NonZmxReturnsEmpty(t *testing.T) {
+	mgr, _, _ := setupZmxTest(t)
+	mgr.muxConfig = &project.MultiplexerConfig{Type: "zellij"}
+	ctx := context.Background()
+
+	sessions, err := mgr.ListWorkSessions(ctx, "w-abc", "myproj")
+	require.NoError(t, err)
+	assert.Empty(t, sessions)
+}
+
+func TestAttachToSession_DelegatesToAttachZmx(t *testing.T) {
+	mgr, zmxMock, _ := setupZmxTest(t)
+	ctx := context.Background()
+
+	err := mgr.AttachToSession(ctx, "sarge-myproj.orch-w-abc")
+	require.NoError(t, err)
+
+	attachCalls := zmxMock.AttachSessionCalls()
+	require.Len(t, attachCalls, 1)
+	assert.Equal(t, "sarge-myproj.orch-w-abc", attachCalls[0].Name)
+}
