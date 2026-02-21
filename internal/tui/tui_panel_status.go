@@ -49,6 +49,7 @@ type StatusBar struct {
 	getViewMode             func() ViewMode
 	getTextInput            func() string
 	isFailedTaskSelected    func() bool
+	getActivePanel          func() Panel
 }
 
 // NewStatusBar creates a new StatusBar panel
@@ -87,6 +88,11 @@ func (s *StatusBar) SetDataProviders(
 // SetFailedTaskSelectedProvider sets the provider for checking if a failed task is selected
 func (s *StatusBar) SetFailedTaskSelectedProvider(isFailedTaskSelected func() bool) {
 	s.isFailedTaskSelected = isFailedTaskSelected
+}
+
+// SetActivePanelProvider sets the provider for checking which panel is active
+func (s *StatusBar) SetActivePanelProvider(getActivePanel func() Panel) {
+	s.getActivePanel = getActivePanel
 }
 
 // SetStatus updates the status message
@@ -244,7 +250,15 @@ func (s *StatusBar) renderWorkFocusedCommands() (string, string) {
 	vButton := zone.Mark(s.zonePrefix+"v", styleButtonWithHover("[v]review", s.hoveredButton == "v"))
 	pButton := zone.Mark(s.zonePrefix+"p", styleButtonWithHover("[p]r", s.hoveredButton == "p"))
 	fButton := zone.Mark(s.zonePrefix+"f", styleButtonWithHover("[f]eedback", s.hoveredButton == "f"))
-	dButton := zone.Mark(s.zonePrefix+"d", styleButtonWithHover("[d]estroy", s.hoveredButton == "d"))
+
+	// 'd' is panel-aware: shows [d]estroy when work panel is focused, [d]el when issues panel is focused
+	dLabel := "[d]estroy"
+	dLabelPlain := "[d]estroy"
+	if s.getActivePanel != nil && s.getActivePanel() == PanelLeft {
+		dLabel = "[d]el"
+		dLabelPlain = "[d]el"
+	}
+	dButton := zone.Mark(s.zonePrefix+"d", styleButtonWithHover(dLabel, s.hoveredButton == "d"))
 
 	// Separator
 	sep := tuiDimStyle.Render("|")
@@ -258,7 +272,7 @@ func (s *StatusBar) renderWorkFocusedCommands() (string, string) {
 	helpButton := zone.Mark(s.zonePrefix+"?", styleButtonWithHover("[?]help", s.hoveredButton == "?"))
 
 	commands := tButton + " " + cButton + " " + iButton + " " + rButton + " " + oButton + " " + vButton + " " + pButton + " " + fButton + " " + dButton + " " + sep + " " + nButton + " " + eButton + " " + aButton + " " + xButton + " " + wButton + " " + helpButton
-	commandsPlain := "[t]erm [c]hat [i]DE [r]un [o]rch [v]review [p]r [f]eedback [d]estroy | [n]ew [e]dit [a]child [x]close [w]ork [?]help"
+	commandsPlain := "[t]erm [c]hat [i]DE [r]un [o]rch [v]review [p]r [f]eedback " + dLabelPlain + " | [n]ew [e]dit [a]child [x]close [w]ork [?]help"
 
 	return commands, commandsPlain
 }

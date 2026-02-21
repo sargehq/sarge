@@ -206,6 +206,11 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 		return m.workDetails.IsSelectedTaskFailed()
 	})
 
+	// Set up the active panel provider for panel-aware key labels
+	m.statusBar.SetActivePanelProvider(func() Panel {
+		return m.activePanel
+	})
+
 	return m
 }
 
@@ -1232,11 +1237,20 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// even when the issues panel is active.
 	// Note: 'i' is NOT intercepted here - it conflicts with Import from Linear.
 	// 'i' for IDE only works when the work details panel is focused.
+	// Note: 'd' is NOT intercepted here - it conflicts with [d]elete bead.
+	// 'd' does [d]estroy when work details/tabs panel is focused,
+	// and [d]elete bead when issues panel is focused.
 	if m.focusedWorkID != "" {
 		isWorkActionKey := false
 		switch msg.String() {
-		case "t", "c", "r", "o", "f", "g", "v", "p", "d", "x", "a":
+		case "t", "c", "r", "o", "f", "g", "v", "p", "x", "a":
 			isWorkActionKey = true
+		case "d":
+			// 'd' is panel-aware: destroy work when work panel is focused,
+			// delete bead when issues panel is focused
+			if m.activePanel == PanelWorkDetails || m.activePanel == PanelWorkTabs {
+				isWorkActionKey = true
+			}
 		}
 
 		if isWorkActionKey {
