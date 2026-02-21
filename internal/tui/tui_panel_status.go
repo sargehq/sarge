@@ -17,7 +17,6 @@ type StatusBarContext int
 
 const (
 	StatusBarContextIssues StatusBarContext = iota
-	StatusBarContextWorkDetail
 	StatusBarContextWorkFocused // Merged: work actions + issue actions
 )
 
@@ -151,9 +150,6 @@ func (s *StatusBar) Render() string {
 	case StatusBarContextWorkFocused:
 		// Merged commands: work actions + non-conflicting issue actions
 		commands, commandsPlain = s.renderWorkFocusedCommands()
-	case StatusBarContextWorkDetail:
-		// Work detail commands (legacy, kept for compatibility)
-		commands, commandsPlain = s.renderWorkDetailCommands()
 	default:
 		// Issues commands (default)
 		commands, commandsPlain = s.renderIssuesCommands()
@@ -237,37 +233,6 @@ func (s *StatusBar) renderIssuesCommands() (string, string) {
 	return commands, commandsPlain
 }
 
-// renderWorkDetailCommands returns commands for the work detail panel
-func (s *StatusBar) renderWorkDetailCommands() (string, string) {
-	// Work detail specific commands - wrap each with zone.Mark
-	tButton := zone.Mark(s.zonePrefix+"t", styleButtonWithHover("[t]erminal", s.hoveredButton == "t"))
-	cButton := zone.Mark(s.zonePrefix+"c", styleButtonWithHover("[c]hat", s.hoveredButton == "c"))
-	iButton := zone.Mark(s.zonePrefix+"i", styleButtonWithHover("[i]DE", s.hoveredButton == "i"))
-	rButton := zone.Mark(s.zonePrefix+"r", styleButtonWithHover("[r]un", s.hoveredButton == "r"))
-	oButton := zone.Mark(s.zonePrefix+"o", styleButtonWithHover("[o]rch", s.hoveredButton == "o"))
-	vButton := zone.Mark(s.zonePrefix+"v", styleButtonWithHover("[v]review", s.hoveredButton == "v"))
-	pButton := zone.Mark(s.zonePrefix+"p", styleButtonWithHover("[p]r", s.hoveredButton == "p"))
-	fButton := zone.Mark(s.zonePrefix+"f", styleButtonWithHover("[f]eedback", s.hoveredButton == "f"))
-	dButton := zone.Mark(s.zonePrefix+"d", styleButtonWithHover("[d]estroy", s.hoveredButton == "d"))
-	escButton := zone.Mark(s.zonePrefix+"esc", styleButtonWithHover("[Esc]Deselect", s.hoveredButton == "esc"))
-	helpButton := zone.Mark(s.zonePrefix+"?", styleButtonWithHover("[?]Help", s.hoveredButton == "?"))
-
-	// Check if a failed task is selected to conditionally show reset button
-	showReset := s.isFailedTaskSelected != nil && s.isFailedTaskSelected()
-
-	var commands, commandsPlain string
-	if showReset {
-		xButton := zone.Mark(s.zonePrefix+"x", styleButtonWithHover("[x]Reset", s.hoveredButton == "x"))
-		commands = tButton + " " + cButton + " " + iButton + " " + rButton + " " + oButton + " " + vButton + " " + pButton + " " + fButton + " " + xButton + " " + dButton + " " + escButton + " " + helpButton
-		commandsPlain = "[t]erminal [c]hat [i]DE [r]un [o]rch [v]review [p]r [f]eedback [x]Reset [d]estroy [Esc]Deselect [?]Help"
-	} else {
-		commands = tButton + " " + cButton + " " + iButton + " " + rButton + " " + oButton + " " + vButton + " " + pButton + " " + fButton + " " + dButton + " " + escButton + " " + helpButton
-		commandsPlain = "[t]erminal [c]hat [i]DE [r]un [o]rch [v]review [p]r [f]eedback [d]estroy [Esc]Deselect [?]Help"
-	}
-
-	return commands, commandsPlain
-}
-
 // renderWorkFocusedCommands returns merged commands: work actions + non-conflicting issue actions
 func (s *StatusBar) renderWorkFocusedCommands() (string, string) {
 	// Work action keys
@@ -303,8 +268,6 @@ func (s *StatusBar) DetectButton(msg tea.MouseMsg) string {
 	switch s.context {
 	case StatusBarContextWorkFocused:
 		return s.detectWorkFocusedButton(msg)
-	case StatusBarContextWorkDetail:
-		return s.detectWorkDetailButton(msg)
 	default:
 		return s.detectIssuesButton(msg)
 	}
@@ -324,17 +287,6 @@ func (s *StatusBar) detectIssuesButton(msg tea.MouseMsg) string {
 // detectWorkFocusedButton detects button clicks for the merged work+issues bar
 func (s *StatusBar) detectWorkFocusedButton(msg tea.MouseMsg) string {
 	buttons := []string{"t", "c", "i", "r", "o", "v", "p", "f", "d", "n", "e", "a", "x", "w", "?"}
-	for _, btn := range buttons {
-		if zone.Get(s.zonePrefix + btn).InBounds(msg) {
-			return btn
-		}
-	}
-	return ""
-}
-
-// detectWorkDetailButton detects button clicks for the work detail panel using bubblezone
-func (s *StatusBar) detectWorkDetailButton(msg tea.MouseMsg) string {
-	buttons := []string{"t", "c", "i", "r", "o", "v", "p", "f", "x", "d", "esc", "?"}
 	for _, btn := range buttons {
 		if zone.Get(s.zonePrefix + btn).InBounds(msg) {
 			return btn
