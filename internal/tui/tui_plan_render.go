@@ -222,62 +222,117 @@ func (m *planModel) renderWithDialog(dialog string) string {
 }
 
 func (m *planModel) renderHelp() string {
-	help := `
-  Plan Mode - Help
+	titleStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("99")).
+		MarginBottom(1)
 
-  Each issue gets its own dedicated agent session in a separate tab.
-  Use 'p' to start or resume a planning session for an issue.
+	sectionStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("252")).
+		MarginTop(1)
 
-  Layout
-  ────────────────────────────
-  Two-column layout:
-    - Left: Issues list (default 40% width)
-    - Right: Issue details (default 60% width)
-  [ / ]         Adjust column ratio (30/70, 40/60, 50/50)
+	dimStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("245"))
 
-  Navigation
-  ────────────────────────────
-  j/k, ↑/↓      Navigate list
-  1-9           Select work by position
-  p             Start/Resume planning session
+	keyStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("114"))
 
-  Issue Management
-  ────────────────────────────
-  n             Create new issue (any type)
-  e             Edit issue inline (textarea)
-  E             Edit issue in $EDITOR
-  a             Add child issue (blocked by selected)
-  x             Close selected issue
-  d             Delete issue (permanent removal)
-  Space         Toggle issue selection (for multi-select)
-  w             Create work from issue(s)
-  A             Add issue to existing work
-  i             Import issue from Linear
-  I             Import from GitHub PR
+	sep := dimStyle.Render("─────────────────────────────")
 
-  Work Actions (when work focused)
-  ────────────────────────────
-  g             Pick zmx session to attach
+	renderSection := func(title string, entries [][]string, note string) string {
+		s := sectionStyle.Render(title) + "\n" + sep + "\n"
+		for _, e := range entries {
+			s += keyStyle.Render(e[0]) + dimStyle.Render(e[1]) + "\n"
+		}
+		if note != "" {
+			s += "\n" + dimStyle.Render(note) + "\n"
+		}
+		return s
+	}
 
-  Filtering & Sorting
-  ────────────────────────────
-  o             Show open issues
-  c             Show closed issues
-  r             Show ready issues
-  /             Fuzzy search
-  L             Filter by label
-  s             Cycle sort mode
-  v             Toggle expanded view
+	pad := func(s string, w int) string {
+		for len(s) < w {
+			s += " "
+		}
+		return s
+	}
 
-  Indicators
-  ────────────────────────────
-  ●             Issue is selected for multi-select
-  P             Issue is processing (active agent session)
-  [w-xxx]       Issue is assigned to work w-xxx
+	kw := 16 // key column width
+	entry := func(key, desc string) []string {
+		return []string{pad(key, kw), desc}
+	}
 
-  Press any key to close...
-`
-	return tuiHelpStyle.Width(m.width).Height(m.height).Render(help)
+	leftCol := titleStyle.Render("Plan Mode ─ Help") + "\n\n" +
+		renderSection("Layout", [][]string{
+			entry("[ / ]", "Adjust column ratio"),
+		}, "Two-column layout: Issues (left) + Details (right)\nWhen a work is selected (1-9), a work panel appears above.") + "\n" +
+
+		renderSection("Navigation", [][]string{
+			entry("j/k  ↑/↓", "Navigate list"),
+			entry("Tab", "Cycle focus between panels"),
+			entry("1-9", "Select work by position"),
+		}, "") + "\n" +
+
+		renderSection("Issue Management", [][]string{
+			entry("n", "Create new issue"),
+			entry("e", "Edit issue inline"),
+			entry("E", "Edit issue in $EDITOR"),
+			entry("a", "Add child issue"),
+			entry("x", "Close selected issue"),
+			entry("d", "Delete issue (permanent)"),
+			entry("Space", "Toggle multi-select"),
+			entry("w", "Create work from issue(s)"),
+			entry("A", "Add issue to focused work"),
+			entry("m", "Import from Linear"),
+			entry("M", "Import from GitHub PR"),
+			entry("p", "Start/Resume planning"),
+		}, "")
+
+	rightCol := "\n\n" +
+		renderSection("Work Actions", [][]string{
+			entry("t", "Open terminal/console"),
+			entry("c", "Open agent chat"),
+			entry("i", "Open IDE"),
+			entry("r", "Run work"),
+			entry("o", "Restart orchestrator"),
+			entry("v", "Create review task"),
+			entry("p", "Create PR / plan session"),
+			entry("f", "Check PR feedback"),
+			entry("d", "Destroy work / Delete issue"),
+			entry("x", "Reset failed task"),
+			entry("a", "Add child issue to work"),
+			entry("g", "Pick zmx session to attach"),
+		}, "Panel-aware: d changes behavior based on\nfocused panel. t/c/i/r/o/v/f/g are exclusively\nwork actions when a work is selected.") + "\n" +
+
+		renderSection("Filters", [][]string{
+			entry("O", "Show open issues"),
+			entry("C", "Show closed issues"),
+			entry("R", "Show ready issues"),
+			entry("V", "Toggle expanded view"),
+			entry("/", "Fuzzy search"),
+			entry("L", "Filter by label"),
+			entry("s", "Cycle sort mode"),
+			entry("*", "Show all (clear filters)"),
+		}, "") + "\n" +
+
+		renderSection("Indicators", [][]string{
+			entry("●", "Multi-selected"),
+			entry("P", "Processing (active agent)"),
+			entry("[w-xxx]", "Assigned to work w-xxx"),
+		}, "")
+
+	colWidth := (m.width - 10) / 2 // 10 for padding + gutter
+	leftRendered := lipgloss.NewStyle().Width(colWidth).Render(leftCol)
+	rightRendered := lipgloss.NewStyle().Width(colWidth).Render(rightCol)
+
+	body := lipgloss.JoinHorizontal(lipgloss.Top, leftRendered, "  ", rightRendered)
+
+	footer := "\n" + dimStyle.Render("Press any key to close...")
+
+	content := body + footer
+
+	return tuiHelpStyle.Width(m.width).Height(m.height).Render(content)
 }
 
 // handleMouseWheel handles mouse wheel events by routing them to the appropriate panel

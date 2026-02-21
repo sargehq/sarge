@@ -206,6 +206,11 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 		return m.workDetails.IsSelectedTaskFailed()
 	})
 
+	// Set up the active panel provider for panel-aware key labels
+	m.statusBar.SetActivePanelProvider(func() Panel {
+		return m.activePanel
+	})
+
 	return m
 }
 
@@ -1227,79 +1232,112 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Delegate to work details panel when it's active
-	if m.activePanel == PanelWorkDetails && m.focusedWorkID != "" {
-		cmd, action := m.workDetails.Update(msg)
-		switch action {
-		case WorkDetailActionNavigateUp, WorkDetailActionNavigateDown:
-			// Navigation actions - check if selection changed and update filter
-			return m, m.updateWorkSelectionFilter()
-		case WorkDetailActionOpenTerminal:
-			m.statusMessage = fmt.Sprintf("Opening console for %s...", m.focusedWorkID)
-			m.statusIsError = false
-			return m, m.openConsole()
-		case WorkDetailActionOpenAgent:
-			m.statusMessage = fmt.Sprintf("Opening agent for %s...", m.focusedWorkID)
-			m.statusIsError = false
-			return m, m.openAgent()
-		case WorkDetailActionOpenIDE:
-			return m, m.openIDE()
-		case WorkDetailActionRun:
-			m.statusMessage = fmt.Sprintf("Running work %s...", m.focusedWorkID)
-			m.statusIsError = false
-			// Run work - use auto-group if multiple unassigned beads
-			focusedWork := m.workDetails.GetFocusedWork()
-			useAutoGroup := focusedWork != nil && len(focusedWork.UnassignedBeads) > 1
-			return m, m.runFocusedWork(useAutoGroup)
-		case WorkDetailActionReview:
-			return m, m.createReviewTask()
-		case WorkDetailActionPR:
-			return m, m.createPRTask()
-		case WorkDetailActionRestartOrchestrator:
-			if checkOrchestratorHealth(m.ctx, m.proj.DB, m.focusedWorkID) {
-				m.statusMessage = fmt.Sprintf("Orchestrator already running (%s)", m.focusedWorkID)
-				m.statusIsError = false
-				return m, nil
+	// When a work is focused, route work action keys regardless of active panel.
+	// This allows work actions (t, c, i, r, o, f, g, v, p, d, x, a) to fire
+	// even when the issues panel is active.
+	// Note: 'd' is NOT intercepted here - it conflicts with [d]elete bead.
+	// 'd' does [d]estroy when work details/tabs panel is focused,
+	// and [d]elete bead when issues panel is focused.
+	if m.focusedWorkID != "" {
+		isWorkActionKey := false
+		switch msg.String() {
+		case "t", "c", "i", "r", "o", "f", "g", "v", "p", "x", "a":
+			isWorkActionKey = true
+		case "d":
+			// 'd' is panel-aware: destroy work when work panel is focused,
+			// delete bead when issues panel is focused
+			if m.activePanel == PanelWorkDetails || m.activePanel == PanelWorkTabs {
+				isWorkActionKey = true
 			}
-			m.statusMessage = fmt.Sprintf("Spawning orchestrator for %s...", m.focusedWorkID)
-			m.statusIsError = false
-			return m, m.restartOrchestrator()
-		case WorkDetailActionCheckFeedback:
-			return m, m.checkPRFeedback()
-		case WorkDetailActionDestroy:
-			// Show confirmation dialog for work destruction
-			// Check if work is currently processing
-			focusedWork := m.workDetails.GetFocusedWork()
-			if focusedWork != nil && focusedWork.Work.Status == "processing" {
-				m.statusMessage = "Cannot destroy work that is currently processing"
-				m.statusIsError = true
-				return m, nil
-			}
-			m.viewMode = ViewDestroyConfirm
-			return m, cmd
-		case WorkDetailActionAddChildIssue:
-			// Add child issue to root issue, then add to work and run
-			focusedWork := m.workDetails.GetFocusedWork()
-			if focusedWork != nil && focusedWork.Work.RootIssueID != "" {
-				m.addChildToWorkID = focusedWork.Work.ID
-				m.beadFormPanel.SetAddChildMode(focusedWork.Work.RootIssueID)
-				m.viewMode = ViewAddChildBead
-				return m, m.beadFormPanel.Init()
-			}
-			return m, nil
-		case WorkDetailActionResetTask:
-			return m, m.resetSelectedTask()
-		case WorkDetailActionAttachTerminal:
-			return m, m.listZmxSessions()
-		case WorkDetailActionPlan:
-			// Start planning session for selected unassigned bead
-			beadID := m.workDetails.GetSelectedUnassignedBeadID()
-			if beadID != "" {
-				return m, m.spawnPlanSession(beadID)
-			}
-			return m, nil
 		}
-		// WorkDetailActionNone - fall through to normal handling
+
+		if isWorkActionKey {
+			cmd, action := m.workDetails.Update(msg)
+			switch action {
+			case WorkDetailActionOpenTerminal:
+				m.statusMessage = fmt.Sprintf("Opening console for %s...", m.focusedWorkID)
+				m.statusIsError = false
+				return m, m.openConsole()
+			case WorkDetailActionOpenAgent:
+				m.statusMessage = fmt.Sprintf("Opening agent for %s...", m.focusedWorkID)
+				m.statusIsError = false
+				return m, m.openAgent()
+			case WorkDetailActionOpenIDE:
+				return m, m.openIDE()
+			case WorkDetailActionRun:
+				m.statusMessage = fmt.Sprintf("Running work %s...", m.focusedWorkID)
+				m.statusIsError = false
+				focusedWork := m.workDetails.GetFocusedWork()
+				useAutoGroup := focusedWork != nil && len(focusedWork.UnassignedBeads) > 1
+				return m, m.runFocusedWork(useAutoGroup)
+			case WorkDetailActionReview:
+				return m, m.createReviewTask()
+			case WorkDetailActionPR:
+				return m, m.createPRTask()
+			case WorkDetailActionRestartOrchestrator:
+				if checkOrchestratorHealth(m.ctx, m.proj.DB, m.focusedWorkID) {
+					m.statusMessage = fmt.Sprintf("Orchestrator already running (%s)", m.focusedWorkID)
+					m.statusIsError = false
+					return m, nil
+				}
+				m.statusMessage = fmt.Sprintf("Spawning orchestrator for %s...", m.focusedWorkID)
+				m.statusIsError = false
+				return m, m.restartOrchestrator()
+			case WorkDetailActionCheckFeedback:
+				return m, m.checkPRFeedback()
+			case WorkDetailActionDestroy:
+				focusedWork := m.workDetails.GetFocusedWork()
+				if focusedWork != nil && focusedWork.Work.Status == "processing" {
+					m.statusMessage = "Cannot destroy work that is currently processing"
+					m.statusIsError = true
+					return m, nil
+				}
+				m.viewMode = ViewDestroyConfirm
+				return m, cmd
+			case WorkDetailActionAddChildIssue:
+				focusedWork := m.workDetails.GetFocusedWork()
+				if focusedWork != nil && focusedWork.Work.RootIssueID != "" {
+					m.addChildToWorkID = focusedWork.Work.ID
+					m.beadFormPanel.SetAddChildMode(focusedWork.Work.RootIssueID)
+					m.viewMode = ViewAddChildBead
+					return m, m.beadFormPanel.Init()
+				}
+				return m, nil
+			case WorkDetailActionResetTask:
+				return m, m.resetSelectedTask()
+			case WorkDetailActionAttachTerminal:
+				return m, m.listZmxSessions()
+			case WorkDetailActionPlan:
+				beadID := m.workDetails.GetSelectedUnassignedBeadID()
+				if beadID != "" {
+					return m, m.spawnPlanSession(beadID)
+				}
+				return m, nil
+			case WorkDetailActionNone:
+				// Work details returned no action for this key (e.g., 'x' when no failed task).
+				// Fall through to issue-level handling below.
+			default:
+				// For navigation actions or unknown, just return
+				return m, cmd
+			}
+		}
+	}
+
+	// Delegate j/k navigation to work details panel when it's active
+	if m.activePanel == PanelWorkDetails && m.focusedWorkID != "" {
+		switch msg.String() {
+		case "j", "down", "k", "up":
+			cmd, action := m.workDetails.Update(msg)
+			if action == WorkDetailActionNavigateUp || action == WorkDetailActionNavigateDown {
+				return m, m.updateWorkSelectionFilter()
+			}
+			return m, cmd
+		}
+		// For other keys when on work details, let the right panel handle viewport scrolling
+		if !m.workDetailsFocusLeft {
+			cmd, _ := m.workDetails.Update(msg)
+			return m, cmd
+		}
 	}
 
 	// Handle [1-9] keys to select work by index (works from issues panel and work details panel)
@@ -1450,17 +1488,15 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.workSelectionCleared = true // Prevent auto-restore on refresh
 		return m, m.refreshData()
 
-	case "o":
+	case "O":
 		m.filters.status = beads.StatusOpen
 		return m, m.refreshData()
 
-	case "c":
-		// Filter to closed issues (work details panel handles 'c' for agent)
+	case "C":
 		m.filters.status = beads.StatusClosed
 		return m, m.refreshData()
 
-	case "r":
-		// Filter to ready issues (work details panel handles 'r' for Run)
+	case "R":
 		m.filters.status = "ready"
 		return m, m.refreshData()
 
@@ -1476,7 +1512,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, m.refreshData()
 
-	case "v":
+	case "V":
 		m.beadsExpanded = !m.beadsExpanded
 		return m, nil
 
@@ -1571,7 +1607,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case "i":
+	case "m":
 		// Import Linear issue inline - check for API key first
 		var apiKey string
 		if m.proj.Config != nil {
@@ -1586,7 +1622,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.linearImportPanel.Reset()
 		return m, m.linearImportPanel.Init()
 
-	case "I":
+	case "M":
 		// Import GitHub PR inline
 		m.viewMode = ViewPRImportInline
 		m.prImportPanel.Reset()
@@ -1665,12 +1701,11 @@ func (m *planModel) syncPanels() {
 	issuesWidth := int(float64(totalContentWidth) * m.columnRatio)
 	detailsWidth := totalContentWidth - issuesWidth
 
-	// Determine status bar context based on focused panel
+	// Determine status bar context: merged when work is focused, issues otherwise
 	var statusBarCtx StatusBarContext
-	switch m.activePanel {
-	case PanelWorkDetails:
-		statusBarCtx = StatusBarContextWorkDetail
-	default:
+	if m.focusedWorkID != "" {
+		statusBarCtx = StatusBarContextWorkFocused
+	} else {
 		statusBarCtx = StatusBarContextIssues
 	}
 
