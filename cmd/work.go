@@ -1024,7 +1024,7 @@ func runWorkConsole(cmd *cobra.Command, args []string) error {
 	}
 
 	// Open console in the work's worktree
-	orchestratorMgr := workpkg.NewOrchestratorManager(proj.DB)
+	orchestratorMgr := workpkg.NewOrchestratorManager(proj.DB, proj.Config)
 	return orchestratorMgr.OpenConsole(ctx, workID, proj.Config.Project.Name, work.WorktreePath, work.Name, proj.Config.Hooks.Env, os.Stdout)
 }
 
@@ -1063,7 +1063,7 @@ func runWorkClaude(cmd *cobra.Command, args []string) error {
 	}
 
 	// Open agent session in the work's worktree
-	orchestratorMgr := workpkg.NewOrchestratorManager(proj.DB)
+	orchestratorMgr := workpkg.NewOrchestratorManager(proj.DB, proj.Config)
 	return orchestratorMgr.OpenAgentSession(ctx, workID, proj.Config.Project.Name, work.WorktreePath, work.Name, proj.Config.Hooks.Env, proj.Config, os.Stdout)
 }
 

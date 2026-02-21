@@ -12,6 +12,7 @@ import (
 	"github.com/sargehq/sarge/internal/logging"
 	"github.com/sargehq/sarge/internal/project"
 	"github.com/sargehq/sarge/internal/zellij"
+	"github.com/sargehq/sarge/internal/zmx"
 )
 
 // OrchestratorManager provides operations for managing work orchestrators and related tabs.
@@ -42,15 +43,23 @@ type OrchestratorManager interface {
 // DefaultOrchestratorManager is the default implementation of OrchestratorManager.
 // It holds the database reference needed for orchestrator heartbeat checking.
 type DefaultOrchestratorManager struct {
-	database *db.DB
-	zellij   zellij.SessionManager
+	database  *db.DB
+	zellij    zellij.SessionManager
+	zmx       zmx.Client
+	muxConfig *project.MultiplexerConfig
 }
 
-// NewOrchestratorManager creates a new DefaultOrchestratorManager with the given database.
-func NewOrchestratorManager(database *db.DB) OrchestratorManager {
+// NewOrchestratorManager creates a new DefaultOrchestratorManager with the given database and config.
+func NewOrchestratorManager(database *db.DB, cfg *project.Config) OrchestratorManager {
+	var muxCfg *project.MultiplexerConfig
+	if cfg != nil {
+		muxCfg = &cfg.Multiplexer
+	}
 	return &DefaultOrchestratorManager{
-		database: database,
-		zellij:   zellij.New(),
+		database:  database,
+		zellij:    zellij.New(),
+		zmx:       zmx.New(),
+		muxConfig: muxCfg,
 	}
 }
 
@@ -63,8 +72,23 @@ func NewOrchestratorManagerWithDeps(database *db.DB, zc zellij.SessionManager) O
 	}
 }
 
+// isZmx returns true if the multiplexer is configured as zmx.
+func (m *DefaultOrchestratorManager) isZmx() bool {
+	return m.muxConfig != nil && m.muxConfig.IsZmx()
+}
+
 // tabExists checks if a tab with the given name exists in the session.
 func (m *DefaultOrchestratorManager) tabExists(ctx context.Context, sessionName, tabName string) bool {
+	if m.isZmx() {
+		projectName, _ := zmx.ParseSessionName(sessionName)
+		if projectName == "" {
+			// sessionName is a project name, not a zmx session name
+			projectName = strings.TrimPrefix(sessionName, "sarge-")
+		}
+		zmxName := zmx.SessionName(projectName, tabName)
+		exists, _ := m.zmx.SessionExists(ctx, zmxName)
+		return exists
+	}
 	exists, _ := m.zellij.Session(sessionName).TabExists(ctx, tabName)
 	return exists
 }
@@ -80,6 +104,76 @@ func (m *DefaultOrchestratorManager) tabExists(ctx context.Context, sessionName,
 //
 // Progress messages are written to the provided writer. Pass io.Discard to suppress output.
 func (m *DefaultOrchestratorManager) TerminateWorkTabs(ctx context.Context, workID string, projectName string, w io.Writer) error {
+	if m.isZmx() {
+		return m.terminateWorkTabsZmx(ctx, workID, projectName, w)
+	}
+	return m.terminateWorkTabsZellij(ctx, workID, projectName, w)
+}
+
+// terminateWorkTabsZmx terminates all zmx sessions associated with a work unit.
+func (m *DefaultOrchestratorManager) terminateWorkTabsZmx(ctx context.Context, workID string, projectName string, w io.Writer) error {
+	logging.Debug("terminateWorkTabsZmx starting", "work_id", workID)
+
+	// List all zmx sessions for this project
+	prefix := zmx.SessionName(projectName, "")
+	sessions, err := m.zmx.ListSessions(ctx, prefix)
+	if err != nil {
+		logging.Warn("Failed to list zmx sessions", "error", err)
+		return nil
+	}
+
+	// Find sessions to kill using prefix matching
+	workTabPrefix := fmt.Sprintf("work-%s", workID)
+	taskTabPrefix := fmt.Sprintf("task-%s.", workID)
+	consoleTabPrefix := fmt.Sprintf("console-%s", workID)
+	claudeTabPrefix := fmt.Sprintf("claude-%s", workID)
+	piTabPrefix := fmt.Sprintf("pi-%s", workID)
+
+	var sessionsToKill []string
+	for _, sessionName := range sessions {
+		_, tabName := zmx.ParseSessionName(sessionName)
+		if tabName == "" {
+			continue
+		}
+		if strings.HasPrefix(tabName, workTabPrefix) ||
+			strings.HasPrefix(tabName, taskTabPrefix) ||
+			strings.HasPrefix(tabName, consoleTabPrefix) ||
+			strings.HasPrefix(tabName, claudeTabPrefix) ||
+			strings.HasPrefix(tabName, piTabPrefix) {
+			sessionsToKill = append(sessionsToKill, sessionName)
+		}
+	}
+
+	if len(sessionsToKill) == 0 {
+		logging.Debug("No matching zmx sessions to kill", "work_id", workID)
+		return nil
+	}
+
+	fmt.Fprintf(w, "Terminating %d zmx session(s) for work %s...\n", len(sessionsToKill), workID)
+
+	for _, sessionName := range sessionsToKill {
+		logging.Debug("Killing zmx session", "work_id", workID, "session", sessionName)
+
+		// For the orchestrator session, SIGTERM its process first
+		_, tabName := zmx.ParseSessionName(sessionName)
+		if strings.HasPrefix(tabName, workTabPrefix) {
+			m.terminateOrchestratorProcess(ctx, workID)
+		}
+
+		if err := m.zmx.KillSession(ctx, sessionName); err != nil {
+			logging.Warn("Failed to kill zmx session", "session", sessionName, "error", err)
+			fmt.Fprintf(w, "Warning: failed to kill session %s: %v\n", sessionName, err)
+		} else {
+			fmt.Fprintf(w, "  Killed session: %s\n", sessionName)
+		}
+	}
+
+	logging.Debug("terminateWorkTabsZmx completed", "work_id", workID)
+	return nil
+}
+
+// terminateWorkTabsZellij terminates all zellij tabs associated with a work unit.
+func (m *DefaultOrchestratorManager) terminateWorkTabsZellij(ctx context.Context, workID string, projectName string, w io.Writer) error {
 	sessionName := project.SessionNameForProject(projectName)
 
 	logging.Debug("TerminateWorkTabs starting",
@@ -217,6 +311,38 @@ func (m *DefaultOrchestratorManager) terminateOrchestratorProcess(ctx context.Co
 // Callers should use control.EnsureControlPlane to ensure
 // the session exists with the control plane running.
 func (m *DefaultOrchestratorManager) SpawnWorkOrchestrator(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, w io.Writer) error {
+	if m.isZmx() {
+		return m.spawnWorkOrchestratorZmx(ctx, workID, projectName, workDir, friendlyName, w)
+	}
+	return m.spawnWorkOrchestratorZellij(ctx, workID, projectName, workDir, friendlyName, w)
+}
+
+// spawnWorkOrchestratorZmx creates a zmx session running the orchestrate command.
+func (m *DefaultOrchestratorManager) spawnWorkOrchestratorZmx(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, w io.Writer) error {
+	logging.Debug("spawnWorkOrchestratorZmx called", "workID", workID, "projectName", projectName, "workDir", workDir)
+	tabName := project.FormatTabName("work", workID, friendlyName)
+	zmxName := zmx.SessionName(projectName, tabName)
+
+	// Kill existing session if present
+	exists, _ := m.zmx.SessionExists(ctx, zmxName)
+	if exists {
+		fmt.Fprintf(w, "Session %s already exists, killing and recreating...\n", zmxName)
+		_ = m.zmx.KillSession(ctx, zmxName)
+	}
+
+	// Create a new zmx session with the orchestrate command
+	fmt.Fprintf(w, "Creating zmx session: %s\n", zmxName)
+	if err := m.zmx.RunSession(ctx, zmxName, "sarge", []string{"orchestrate", "--work", workID}, workDir); err != nil {
+		return fmt.Errorf("failed to create zmx session: %w", err)
+	}
+
+	logging.Debug("spawnWorkOrchestratorZmx completed", "workID", workID, "zmxName", zmxName)
+	fmt.Fprintf(w, "Work orchestrator spawned in zmx session %s\n", zmxName)
+	return nil
+}
+
+// spawnWorkOrchestratorZellij creates a zellij tab running the orchestrate command.
+func (m *DefaultOrchestratorManager) spawnWorkOrchestratorZellij(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, w io.Writer) error {
 	logging.Debug("SpawnWorkOrchestrator called", "workID", workID, "projectName", projectName, "workDir", workDir)
 	sessionName := project.SessionNameForProject(projectName)
 	tabName := project.FormatTabName("work", workID, friendlyName)
@@ -265,20 +391,29 @@ func (m *DefaultOrchestratorManager) SpawnWorkOrchestrator(ctx context.Context, 
 // Returns true if the orchestrator was spawned, false if it was already running.
 // Progress messages are written to the provided writer. Pass io.Discard to suppress output.
 func (m *DefaultOrchestratorManager) EnsureWorkOrchestrator(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, w io.Writer) (bool, error) {
-	sessionName := project.SessionNameForProject(projectName)
 	tabName := project.FormatTabName("work", workID, friendlyName)
 
+	// For zmx, check session existence directly
+	var sessionExists bool
+	if m.isZmx() {
+		zmxName := zmx.SessionName(projectName, tabName)
+		sessionExists, _ = m.zmx.SessionExists(ctx, zmxName)
+	} else {
+		sessionName := project.SessionNameForProject(projectName)
+		sessionExists = m.tabExists(ctx, sessionName, tabName)
+	}
+
 	// Check if the orchestrator is alive via database heartbeat
-	if m.tabExists(ctx, sessionName, tabName) {
+	if sessionExists {
 		if alive, err := m.database.IsOrchestratorAlive(ctx, workID, db.DefaultStalenessThreshold); err == nil && alive {
 			fmt.Fprintf(w, "Work orchestrator tab %s already exists and orchestrator is alive\n", tabName)
 			return false, nil
 		}
-		// Tab exists but orchestrator is dead - SpawnWorkOrchestrator will terminate and recreate
+		// Tab/session exists but orchestrator is dead - SpawnWorkOrchestrator will terminate and recreate
 		fmt.Fprintf(w, "Work orchestrator tab %s exists but orchestrator is dead - restarting...\n", tabName)
 	}
 
-	// Spawn the orchestrator (handles existing tab termination)
+	// Spawn the orchestrator (handles existing tab/session termination)
 	if err := m.SpawnWorkOrchestrator(ctx, workID, projectName, workDir, friendlyName, w); err != nil {
 		return false, err
 	}

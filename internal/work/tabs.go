@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/sargehq/sarge/internal/project"
+	"github.com/sargehq/sarge/internal/zmx"
 )
 
 // PlanTabName returns the zellij tab name for a bead's planning session.
@@ -27,6 +28,60 @@ func PlanTabName(beadID string) string {
 // Callers should use control.EnsureControlPlane to ensure
 // the session exists with the control plane running.
 func (m *DefaultOrchestratorManager) OpenConsole(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, hooksEnv []string, w io.Writer) error {
+	if m.isZmx() {
+		return m.openConsoleZmx(ctx, workID, projectName, workDir, friendlyName, hooksEnv, w)
+	}
+	return m.openConsoleZellij(ctx, workID, projectName, workDir, friendlyName, hooksEnv, w)
+}
+
+// buildShellCommand builds the shell command and args for a console session.
+func buildShellCommand(hooksEnv []string) (command string, args []string, shellName string) {
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		shell = "bash"
+	}
+	shellName = filepath.Base(shell)
+
+	if len(hooksEnv) > 0 {
+		var exports []string
+		for _, env := range hooksEnv {
+			exports = append(exports, fmt.Sprintf("export %s", env))
+		}
+		shellCmd := fmt.Sprintf("%s && exec %s", strings.Join(exports, " && "), shell)
+		command = shell
+		args = []string{"-c", shellCmd}
+	} else {
+		command = shell
+		args = nil
+	}
+	return
+}
+
+// openConsoleZmx creates a zmx session with a shell in the work's worktree.
+func (m *DefaultOrchestratorManager) openConsoleZmx(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, hooksEnv []string, w io.Writer) error {
+	tabName := project.FormatTabName("console", workID, friendlyName)
+	zmxName := zmx.SessionName(projectName, tabName)
+
+	// Check if session already exists
+	exists, _ := m.zmx.SessionExists(ctx, zmxName)
+	if exists {
+		fmt.Fprintf(w, "Console session %s already exists\n", zmxName)
+		return nil
+	}
+
+	command, args, _ := buildShellCommand(hooksEnv)
+
+	fmt.Fprintf(w, "Creating console zmx session: %s\n", zmxName)
+	if err := m.zmx.RunSession(ctx, zmxName, command, args, workDir); err != nil {
+		return fmt.Errorf("failed to create zmx session: %w", err)
+	}
+
+	fmt.Fprintf(w, "Console opened in zmx session %s\n", zmxName)
+	return nil
+}
+
+// openConsoleZellij creates a zellij tab with a shell in the work's worktree.
+func (m *DefaultOrchestratorManager) openConsoleZellij(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, hooksEnv []string, w io.Writer) error {
 	sessionName := project.SessionNameForProject(projectName)
 	tabName := project.FormatTabName("console", workID, friendlyName)
 
@@ -47,29 +102,7 @@ func (m *DefaultOrchestratorManager) OpenConsole(ctx context.Context, workID str
 		return nil
 	}
 
-	// Build shell command with exports if needed
-	// Use user's preferred shell from $SHELL, default to bash
-	shell := os.Getenv("SHELL")
-	if shell == "" {
-		shell = "bash"
-	}
-	shellName := filepath.Base(shell)
-
-	var command string
-	var args []string
-	if len(hooksEnv) > 0 {
-		var exports []string
-		for _, env := range hooksEnv {
-			exports = append(exports, fmt.Sprintf("export %s", env))
-		}
-		// Use shell -c to export vars and then exec shell for interactive shell
-		shellCmd := fmt.Sprintf("%s && exec %s", strings.Join(exports, " && "), shell)
-		command = shell
-		args = []string{"-c", shellCmd}
-	} else {
-		command = shell
-		args = nil
-	}
+	command, args, shellName := buildShellCommand(hooksEnv)
 
 	// Create tab with shell using layout approach
 	fmt.Fprintf(w, "Creating console tab: %s in session %s\n", tabName, sessionName)
@@ -92,6 +125,86 @@ func (m *DefaultOrchestratorManager) OpenConsole(ctx context.Context, workID str
 // Callers should use control.EnsureControlPlane to ensure
 // the session exists with the control plane running.
 func (m *DefaultOrchestratorManager) OpenAgentSession(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) error {
+	if m.isZmx() {
+		return m.openAgentSessionZmx(ctx, workID, projectName, workDir, friendlyName, hooksEnv, cfg, w)
+	}
+	return m.openAgentSessionZellij(ctx, workID, projectName, workDir, friendlyName, hooksEnv, cfg, w)
+}
+
+// buildAgentCommand builds the agent command and args based on config.
+func buildAgentCommand(agentType string, hooksEnv []string, cfg *project.Config) (command string, args []string) {
+	var agentBinary string
+	var agentArgs []string
+	switch agentType {
+	case "pi":
+		agentBinary = "pi"
+		if cfg != nil {
+			if cfg.Pi.Provider != "" {
+				agentArgs = append(agentArgs, "--provider", cfg.Pi.Provider)
+			}
+			if cfg.Pi.Model != "" {
+				agentArgs = append(agentArgs, "--model", cfg.Pi.Model)
+			}
+			if cfg.Pi.Thinking != "" {
+				agentArgs = append(agentArgs, "--thinking", cfg.Pi.Thinking)
+			}
+		}
+	default: // "claude"
+		agentBinary = "claude"
+		if cfg != nil && cfg.Claude.ShouldSkipPermissions() {
+			agentArgs = []string{"--dangerously-skip-permissions"}
+		}
+	}
+
+	if len(hooksEnv) > 0 {
+		var exports []string
+		for _, env := range hooksEnv {
+			exports = append(exports, fmt.Sprintf("export %s", env))
+		}
+		agentCmd := agentBinary
+		if len(agentArgs) > 0 {
+			agentCmd = agentBinary + " " + strings.Join(agentArgs, " ")
+		}
+		shellCmd := fmt.Sprintf("%s && %s", strings.Join(exports, " && "), agentCmd)
+		command = "bash"
+		args = []string{"-c", shellCmd}
+	} else {
+		command = agentBinary
+		args = agentArgs
+	}
+	return
+}
+
+// openAgentSessionZmx creates a zmx session with an interactive agent.
+func (m *DefaultOrchestratorManager) openAgentSessionZmx(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) error {
+	agentType := "claude"
+	if cfg != nil && cfg.Agent.Type != "" {
+		agentType = cfg.Agent.Type
+	}
+
+	tabName := project.FormatTabName(agentType, workID, friendlyName)
+	zmxName := zmx.SessionName(projectName, tabName)
+
+	// Check if session already exists
+	exists, _ := m.zmx.SessionExists(ctx, zmxName)
+	if exists {
+		fmt.Fprintf(w, "Agent session %s already exists\n", zmxName)
+		return nil
+	}
+
+	command, args := buildAgentCommand(agentType, hooksEnv, cfg)
+
+	fmt.Fprintf(w, "Creating %s zmx session: %s\n", agentType, zmxName)
+	if err := m.zmx.RunSession(ctx, zmxName, command, args, workDir); err != nil {
+		return fmt.Errorf("failed to create zmx session: %w", err)
+	}
+
+	fmt.Fprintf(w, "%s session opened in zmx session %s\n", agentType, zmxName)
+	return nil
+}
+
+// openAgentSessionZellij creates a zellij tab with an interactive agent session.
+func (m *DefaultOrchestratorManager) openAgentSessionZellij(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) error {
 	// Determine agent type from config (default to "claude")
 	agentType := "claude"
 	if cfg != nil && cfg.Agent.Type != "" {
@@ -118,48 +231,12 @@ func (m *DefaultOrchestratorManager) OpenAgentSession(ctx context.Context, workI
 		return nil
 	}
 
-	// Build agent command and args based on agent type
-	var agentBinary string
-	var agentArgs []string
-	switch agentType {
-	case "pi":
-		agentBinary = "pi"
-		if cfg != nil {
-			if cfg.Pi.Provider != "" {
-				agentArgs = append(agentArgs, "--provider", cfg.Pi.Provider)
-			}
-			if cfg.Pi.Model != "" {
-				agentArgs = append(agentArgs, "--model", cfg.Pi.Model)
-			}
-			if cfg.Pi.Thinking != "" {
-				agentArgs = append(agentArgs, "--thinking", cfg.Pi.Thinking)
-			}
-		}
-	default: // "claude"
+	command, args := buildAgentCommand(agentType, hooksEnv, cfg)
+	agentBinary := agentType
+	if agentType == "claude" {
 		agentBinary = "claude"
-		if cfg != nil && cfg.Claude.ShouldSkipPermissions() {
-			agentArgs = []string{"--dangerously-skip-permissions"}
-		}
-	}
-
-	// If we have environment variables, use bash -c to export them
-	var command string
-	var args []string
-	if len(hooksEnv) > 0 {
-		var exports []string
-		for _, env := range hooksEnv {
-			exports = append(exports, fmt.Sprintf("export %s", env))
-		}
-		agentCmd := agentBinary
-		if len(agentArgs) > 0 {
-			agentCmd = agentBinary + " " + strings.Join(agentArgs, " ")
-		}
-		shellCmd := fmt.Sprintf("%s && %s", strings.Join(exports, " && "), agentCmd)
-		command = "bash"
-		args = []string{"-c", shellCmd}
-	} else {
-		command = agentBinary
-		args = agentArgs
+	} else if agentType == "pi" {
+		agentBinary = "pi"
 	}
 
 	// Create tab with command using layout approach
@@ -181,6 +258,36 @@ func (m *DefaultOrchestratorManager) OpenAgentSession(ctx context.Context, workI
 // Callers should use control.EnsureControlPlane to ensure
 // the session exists with the control plane running.
 func (m *DefaultOrchestratorManager) SpawnPlanSession(ctx context.Context, beadID string, projectName string, mainRepoPath string, w io.Writer) error {
+	if m.isZmx() {
+		return m.spawnPlanSessionZmx(ctx, beadID, projectName, mainRepoPath, w)
+	}
+	return m.spawnPlanSessionZellij(ctx, beadID, projectName, mainRepoPath, w)
+}
+
+// spawnPlanSessionZmx creates a zmx session running the plan command.
+func (m *DefaultOrchestratorManager) spawnPlanSessionZmx(ctx context.Context, beadID string, projectName string, mainRepoPath string, w io.Writer) error {
+	tabName := PlanTabName(beadID)
+	zmxName := zmx.SessionName(projectName, tabName)
+
+	// Kill existing session if present
+	exists, _ := m.zmx.SessionExists(ctx, zmxName)
+	if exists {
+		fmt.Fprintf(w, "Session %s already exists, killing and recreating...\n", zmxName)
+		_ = m.zmx.KillSession(ctx, zmxName)
+	}
+
+	// Create a new zmx session with the plan command
+	fmt.Fprintf(w, "Creating zmx session: %s\n", zmxName)
+	if err := m.zmx.RunSession(ctx, zmxName, "sarge", []string{"plan", beadID}, mainRepoPath); err != nil {
+		return fmt.Errorf("failed to create zmx session: %w", err)
+	}
+
+	fmt.Fprintf(w, "Plan session spawned in zmx session %s\n", zmxName)
+	return nil
+}
+
+// spawnPlanSessionZellij creates a zellij tab running the plan command.
+func (m *DefaultOrchestratorManager) spawnPlanSessionZellij(ctx context.Context, beadID string, projectName string, mainRepoPath string, w io.Writer) error {
 	sessionName := project.SessionNameForProject(projectName)
 	tabName := PlanTabName(beadID)
 

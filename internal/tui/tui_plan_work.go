@@ -26,24 +26,26 @@ func (m *planModel) sessionName() string {
 // spawnPlanSession spawns or resumes a planning session for a specific bead
 func (m *planModel) spawnPlanSession(beadID string) tea.Cmd {
 	return func() tea.Msg {
-		zellijSession := m.sessionName()
 		tabName := workpkg.PlanTabName(beadID)
 		mainRepoPath := m.proj.MainRepoPath()
 
-		logging.Debug("spawnPlanSession started", "beadID", beadID, "session", zellijSession, "tabName", tabName)
+		logging.Debug("spawnPlanSession started", "beadID", beadID, "tabName", tabName)
 
 		// Check if session already running for this bead
 		running, _ := m.proj.DB.IsPlanSessionRunning(m.ctx, beadID)
 		logging.Debug("spawnPlanSession checked if running", "beadID", beadID, "running", running)
 		if running {
-			// Session exists - just switch to it
-			if err := m.zj.Session(zellijSession).SwitchToTab(m.ctx, tabName); err != nil {
-				return planSessionSpawnedMsg{beadID: beadID, err: err}
+			// Session exists - for zellij, switch to it; for zmx, it's a no-op (attach handled separately)
+			if !m.proj.Config.Multiplexer.IsZmx() {
+				zellijSession := m.sessionName()
+				if err := m.zj.Session(zellijSession).SwitchToTab(m.ctx, tabName); err != nil {
+					return planSessionSpawnedMsg{beadID: beadID, err: err}
+				}
 			}
 			return planSessionSpawnedMsg{beadID: beadID, resumed: true}
 		}
 
-		// Ensure zellij session and control plane are running
+		// Ensure control plane is running
 		sessionResult, err := control.EnsureControlPlane(m.ctx, m.proj)
 		if err != nil {
 			logging.Error("spawnPlanSession EnsureControlPlane failed", "beadID", beadID, "error", err)

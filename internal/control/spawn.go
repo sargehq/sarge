@@ -8,6 +8,7 @@ import (
 	"github.com/sargehq/sarge/internal/logging"
 	"github.com/sargehq/sarge/internal/project"
 	"github.com/sargehq/sarge/internal/zellij"
+	"github.com/sargehq/sarge/internal/zmx"
 )
 
 // ControlPlaneTabName is the name of the control plane tab in zellij
@@ -21,10 +22,65 @@ type InitResult struct {
 	SessionName string
 }
 
-// EnsureControlPlane ensures the zellij session and control plane are running.
-// Creates the session if needed, spawns control plane if missing, restarts if dead.
+// EnsureControlPlane ensures the control plane is running.
+// For zellij: creates session if needed, spawns control plane tab if missing, restarts if dead.
+// For zmx: creates control plane session if needed, restarts if dead.
 // Returns information about whether a new session was created.
 func EnsureControlPlane(ctx context.Context, proj *project.Project) (*InitResult, error) {
+	if proj.Config.Multiplexer.IsZmx() {
+		return ensureControlPlaneZmx(ctx, proj)
+	}
+	return ensureControlPlaneZellij(ctx, proj)
+}
+
+// ensureControlPlaneZmx ensures the control plane is running as a zmx session.
+func ensureControlPlaneZmx(ctx context.Context, proj *project.Project) (*InitResult, error) {
+	projectName := proj.Config.Project.Name
+	zmxClient := zmx.New()
+	zmxName := zmx.SessionName(projectName, ControlPlaneTabName)
+
+	result := &InitResult{
+		SessionName: zmxName,
+	}
+
+	// Check if control plane session exists
+	exists, err := zmxClient.SessionExists(ctx, zmxName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check zmx session: %w", err)
+	}
+
+	if !exists {
+		// Create control plane session
+		logging.Debug("Creating zmx control plane session", "zmxName", zmxName)
+		if err := zmxClient.RunSession(ctx, zmxName, "sarge", []string{"control", "--root", proj.Root}, proj.Root); err != nil {
+			return nil, fmt.Errorf("failed to create zmx control plane session: %w", err)
+		}
+		result.SessionCreated = true
+		return result, nil
+	}
+
+	// Session exists - check if control plane has a recent heartbeat
+	alive, err := proj.DB.IsControlPlaneAlive(ctx, db.DefaultStalenessThreshold)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check control plane status: %w", err)
+	}
+	if alive {
+		return result, nil
+	}
+
+	// Session exists but process is dead - kill and restart
+	logging.Debug("Control plane zmx session exists but process is dead - restarting...")
+	_ = zmxClient.KillSession(ctx, zmxName)
+
+	if err := zmxClient.RunSession(ctx, zmxName, "sarge", []string{"control", "--root", proj.Root}, proj.Root); err != nil {
+		return nil, fmt.Errorf("failed to restart zmx control plane session: %w", err)
+	}
+	result.SessionCreated = true
+	return result, nil
+}
+
+// ensureControlPlaneZellij ensures the control plane is running in a zellij session.
+func ensureControlPlaneZellij(ctx context.Context, proj *project.Project) (*InitResult, error) {
 	projectName := proj.Config.Project.Name
 	sessionName := project.SessionNameForProject(projectName)
 	zc := zellij.New()

@@ -21,6 +21,7 @@ import (
 	trackingwatcher "github.com/sargehq/sarge/internal/tracking/watcher"
 	"github.com/sargehq/sarge/internal/work"
 	"github.com/sargehq/sarge/internal/zellij"
+	"github.com/sargehq/sarge/internal/zmx"
 )
 
 // watcherEventMsg wraps beads watcher events for tea.Msg
@@ -85,6 +86,7 @@ type planModel struct {
 	// Per-bead session tracking
 	activeBeadSessions map[string]bool // beadID -> has active session
 	zj                 zellij.SessionManager
+	zmxClient          zmx.Client
 
 	// Two-column layout settings
 	columnRatio float64 // Ratio of issues column width (0.0-1.0), default 0.4 for 40/60 split
@@ -161,6 +163,7 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 		selectedBeads:          make(map[string]bool),
 		newBeads:               make(map[string]time.Time),
 		zj:                     zellij.New(),
+		zmxClient:              zmx.New(),
 		columnRatio:            0.4,  // Default 40/60 split (issues/details)
 		hoveredIssue:           -1,   // No issue hovered initially
 		hoveredWorkItem:        -1,   // No work item hovered initially
