@@ -40,7 +40,7 @@ func setupZmxTest(t *testing.T) (*DefaultOrchestratorManager, *zmx.ClientMock, *
 		RunSessionFunc: func(ctx context.Context, name, command string, args []string, cwd string) error {
 			return nil
 		},
-		AttachSessionFunc: func(ctx context.Context, name string, terminalCmdTemplate string) error {
+		AttachSessionFunc: func(ctx context.Context, name string, terminalCmdTemplate string, cwd string, command string, args []string) error {
 			return nil
 		},
 		KillSessionFunc: func(ctx context.Context, name string) error {
@@ -187,16 +187,16 @@ func TestOpenConsoleZmx_CreatesSession(t *testing.T) {
 	err := mgr.OpenConsole(ctx, "w-abc", "myproj", "/tmp/work", "my feature", nil, &buf)
 	require.NoError(t, err)
 
-	// Should create session via RunSession with correct cwd
-	runCalls := zmxMock.RunSessionCalls()
-	require.Len(t, runCalls, 1)
-	assert.Equal(t, "sarge-myproj.console-w-abc-my-feature", runCalls[0].Name)
-	assert.Equal(t, "/tmp/work", runCalls[0].Cwd)
+	// Should NOT use RunSession (zmx attach handles creation)
+	assert.Empty(t, zmxMock.RunSessionCalls())
 
-	// Then attach
+	// Should attach with command and cwd so zmx attach creates session if needed
 	attachCalls := zmxMock.AttachSessionCalls()
 	require.Len(t, attachCalls, 1)
 	assert.Equal(t, "sarge-myproj.console-w-abc-my-feature", attachCalls[0].Name)
+	assert.Equal(t, "/tmp/work", attachCalls[0].Cwd)
+	// Command should be the user's shell
+	assert.NotEmpty(t, attachCalls[0].Command)
 }
 
 func TestOpenConsoleZmx_ExistingSessionAttaches(t *testing.T) {
@@ -211,10 +211,10 @@ func TestOpenConsoleZmx_ExistingSessionAttaches(t *testing.T) {
 	err := mgr.OpenConsole(ctx, "w-abc", "myproj", "/tmp/work", "", nil, &buf)
 	require.NoError(t, err)
 
-	// Should NOT create session
+	// Should NOT create session via RunSession
 	assert.Empty(t, zmxMock.RunSessionCalls())
 
-	// Should attach
+	// Should attach (zmx attach handles existing sessions)
 	attachCalls := zmxMock.AttachSessionCalls()
 	require.Len(t, attachCalls, 1)
 }
@@ -229,16 +229,15 @@ func TestOpenAgentSessionZmx_CreatesClaudeSession(t *testing.T) {
 	err := mgr.OpenAgentSession(ctx, "w-abc", "myproj", "/tmp/work", "", nil, cfg, &buf)
 	require.NoError(t, err)
 
-	// Should create via RunSession
-	runCalls := zmxMock.RunSessionCalls()
-	require.Len(t, runCalls, 1)
-	assert.Equal(t, "sarge-myproj.claude-w-abc", runCalls[0].Name)
-	assert.Equal(t, "claude", runCalls[0].Command)
-	assert.Equal(t, "/tmp/work", runCalls[0].Cwd)
+	// Should NOT use RunSession (zmx attach handles creation)
+	assert.Empty(t, zmxMock.RunSessionCalls())
 
-	// Then attach
+	// Should attach with command and cwd
 	attachCalls := zmxMock.AttachSessionCalls()
 	require.Len(t, attachCalls, 1)
+	assert.Equal(t, "sarge-myproj.claude-w-abc", attachCalls[0].Name)
+	assert.Equal(t, "claude", attachCalls[0].Command)
+	assert.Equal(t, "/tmp/work", attachCalls[0].Cwd)
 }
 
 func TestOpenAgentSessionZmx_CreatesPiSession(t *testing.T) {
@@ -252,13 +251,12 @@ func TestOpenAgentSessionZmx_CreatesPiSession(t *testing.T) {
 	err := mgr.OpenAgentSession(ctx, "w-abc", "myproj", "/tmp/work", "feat", nil, cfg, &buf)
 	require.NoError(t, err)
 
-	runCalls := zmxMock.RunSessionCalls()
-	require.Len(t, runCalls, 1)
-	assert.Equal(t, "sarge-myproj.pi-w-abc-feat", runCalls[0].Name)
-	assert.Equal(t, "pi", runCalls[0].Command)
+	assert.Empty(t, zmxMock.RunSessionCalls())
 
 	attachCalls := zmxMock.AttachSessionCalls()
 	require.Len(t, attachCalls, 1)
+	assert.Equal(t, "sarge-myproj.pi-w-abc-feat", attachCalls[0].Name)
+	assert.Equal(t, "pi", attachCalls[0].Command)
 }
 
 func TestOpenAgentSessionZmx_ExistingSessionAttaches(t *testing.T) {
@@ -273,7 +271,7 @@ func TestOpenAgentSessionZmx_ExistingSessionAttaches(t *testing.T) {
 	err := mgr.OpenAgentSession(ctx, "w-abc", "myproj", "/tmp/work", "", nil, &project.Config{}, &buf)
 	require.NoError(t, err)
 
-	// Should NOT create session
+	// Should NOT create session via RunSession
 	assert.Empty(t, zmxMock.RunSessionCalls())
 
 	// Should attach
@@ -289,17 +287,16 @@ func TestSpawnPlanSessionZmx_CreatesSession(t *testing.T) {
 	err := mgr.SpawnPlanSession(ctx, "ac-cdo.5", "myproj", "/tmp/repo", &buf)
 	require.NoError(t, err)
 
-	// Should create via RunSession with correct cwd
-	runCalls := zmxMock.RunSessionCalls()
-	require.Len(t, runCalls, 1)
-	assert.Equal(t, "sarge-myproj.plan-ac-cdo.5", runCalls[0].Name)
-	assert.Equal(t, "sarge", runCalls[0].Command)
-	assert.Equal(t, []string{"plan", "ac-cdo.5"}, runCalls[0].Args)
-	assert.Equal(t, "/tmp/repo", runCalls[0].Cwd)
+	// Should NOT use RunSession (zmx attach handles creation)
+	assert.Empty(t, zmxMock.RunSessionCalls())
 
-	// Then attach
+	// Should attach with command and cwd
 	attachCalls := zmxMock.AttachSessionCalls()
 	require.Len(t, attachCalls, 1)
+	assert.Equal(t, "sarge-myproj.plan-ac-cdo.5", attachCalls[0].Name)
+	assert.Equal(t, "sarge", attachCalls[0].Command)
+	assert.Equal(t, []string{"plan", "ac-cdo.5"}, attachCalls[0].Args)
+	assert.Equal(t, "/tmp/repo", attachCalls[0].Cwd)
 }
 
 func TestSpawnPlanSessionZmx_KillsExistingSession(t *testing.T) {
@@ -322,8 +319,8 @@ func TestSpawnPlanSessionZmx_KillsExistingSession(t *testing.T) {
 	require.Len(t, killCalls, 1)
 	assert.Equal(t, expectedName, killCalls[0].Name)
 
-	// Should still create and attach
-	require.Len(t, zmxMock.RunSessionCalls(), 1)
+	// Should NOT use RunSession, just attach
+	assert.Empty(t, zmxMock.RunSessionCalls())
 	require.Len(t, zmxMock.AttachSessionCalls(), 1)
 }
 

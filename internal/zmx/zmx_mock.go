@@ -18,7 +18,7 @@ var _ Client = &ClientMock{}
 //
 //		// make and configure a mocked Client
 //		mockedClient := &ClientMock{
-//			AttachSessionFunc: func(ctx context.Context, name string, terminalCmdTemplate string) error {
+//			AttachSessionFunc: func(ctx context.Context, name string, terminalCmdTemplate string, cwd string, command string, args []string) error {
 //				panic("mock out the AttachSession method")
 //			},
 //			KillSessionFunc: func(ctx context.Context, name string) error {
@@ -41,7 +41,7 @@ var _ Client = &ClientMock{}
 //	}
 type ClientMock struct {
 	// AttachSessionFunc mocks the AttachSession method.
-	AttachSessionFunc func(ctx context.Context, name string, terminalCmdTemplate string) error
+	AttachSessionFunc func(ctx context.Context, name string, terminalCmdTemplate string, cwd string, command string, args []string) error
 
 	// KillSessionFunc mocks the KillSession method.
 	KillSessionFunc func(ctx context.Context, name string) error
@@ -65,6 +65,12 @@ type ClientMock struct {
 			Name string
 			// TerminalCmdTemplate is the terminalCmdTemplate argument value.
 			TerminalCmdTemplate string
+			// Cwd is the cwd argument value.
+			Cwd string
+			// Command is the command argument value.
+			Command string
+			// Args is the args argument value.
+			Args []string
 		}
 		// KillSession holds details about calls to the KillSession method.
 		KillSession []struct {
@@ -109,15 +115,21 @@ type ClientMock struct {
 }
 
 // AttachSession calls AttachSessionFunc.
-func (mock *ClientMock) AttachSession(ctx context.Context, name string, terminalCmdTemplate string) error {
+func (mock *ClientMock) AttachSession(ctx context.Context, name string, terminalCmdTemplate string, cwd string, command string, args []string) error {
 	callInfo := struct {
 		Ctx                 context.Context
 		Name                string
 		TerminalCmdTemplate string
+		Cwd                 string
+		Command             string
+		Args                []string
 	}{
 		Ctx:                 ctx,
 		Name:                name,
 		TerminalCmdTemplate: terminalCmdTemplate,
+		Cwd:                 cwd,
+		Command:             command,
+		Args:                args,
 	}
 	mock.lockAttachSession.Lock()
 	mock.calls.AttachSession = append(mock.calls.AttachSession, callInfo)
@@ -128,7 +140,7 @@ func (mock *ClientMock) AttachSession(ctx context.Context, name string, terminal
 		)
 		return errOut
 	}
-	return mock.AttachSessionFunc(ctx, name, terminalCmdTemplate)
+	return mock.AttachSessionFunc(ctx, name, terminalCmdTemplate, cwd, command, args)
 }
 
 // AttachSessionCalls gets all the calls that were made to AttachSession.
@@ -139,11 +151,17 @@ func (mock *ClientMock) AttachSessionCalls() []struct {
 	Ctx                 context.Context
 	Name                string
 	TerminalCmdTemplate string
+	Cwd                 string
+	Command             string
+	Args                []string
 } {
 	var calls []struct {
 		Ctx                 context.Context
 		Name                string
 		TerminalCmdTemplate string
+		Cwd                 string
+		Command             string
+		Args                []string
 	}
 	mock.lockAttachSession.RLock()
 	calls = mock.calls.AttachSession

@@ -24,11 +24,15 @@ type Client interface {
 	// The session runs in the background; use AttachSession for interactive sessions.
 	RunSession(ctx context.Context, name, command string, args []string, cwd string) error
 
-	// AttachSession opens a new terminal window attached to an existing zmx session.
+	// AttachSession opens a new terminal window attached to a zmx session.
 	// The terminalCmdTemplate is the command template with {session} placeholder
 	// (e.g. "ghostty -e zmx attach {session}").
-	// The session must already exist (use RunSession to create it first).
-	AttachSession(ctx context.Context, name string, terminalCmdTemplate string) error
+	// The {session} placeholder is replaced with the session name.
+	// If the session doesn't exist, zmx attach creates it with the given command.
+	// The cwd sets the working directory for the terminal process (used by zmx
+	// as the session's working directory when creating a new session).
+	// Pass empty command to attach to an existing session without a command.
+	AttachSession(ctx context.Context, name string, terminalCmdTemplate string, cwd string, command string, args []string) error
 
 	// KillSession kills a zmx session by name.
 	// Returns an error if the session doesn't exist or the kill fails.
@@ -201,20 +205,33 @@ func (c *client) RunSession(ctx context.Context, name, command string, args []st
 
 // AttachSession opens a new terminal window with a zmx session.
 // If the session doesn't exist, zmx attach creates it running the given command.
-// The terminalCmdTemplate contains {session} which is replaced with the full
-// "zmx attach <name> <command> [args...]" invocation.
+// The terminalCmdTemplate contains {session} which is replaced with the session name.
+// Any command/args are appended after the session name in the zmx attach invocation.
+// The cwd sets the working directory for the terminal process (used by zmx
+// as the session's working directory when creating a new session).
 // The terminal process is fire-and-forget.
-func (c *client) AttachSession(ctx context.Context, name string, terminalCmdTemplate string) error {
-	// Build: "ghostty -e zmx attach <name>"
+func (c *client) AttachSession(ctx context.Context, name string, terminalCmdTemplate string, cwd string, command string, args []string) error {
+	// Replace {session} with session name, then append command args
 	cmdStr := strings.ReplaceAll(terminalCmdTemplate, "{session}", shellQuote(name))
+
+	// Append the command and args after the session name for zmx attach
+	if command != "" {
+		cmdStr += " " + shellQuote(command)
+		for _, a := range args {
+			cmdStr += " " + shellQuote(a)
+		}
+	}
 
 	if cmdStr == "" {
 		return fmt.Errorf("empty terminal command for session %q", name)
 	}
 
-	logging.Debug("zmx AttachSession", "name", name, "cmd", cmdStr)
+	logging.Debug("zmx AttachSession", "name", name, "cmd", cmdStr, "cwd", cwd)
 
 	cmd := exec.CommandContext(ctx, "sh", "-c", cmdStr) //nolint:gosec // Command comes from user config
+	if cwd != "" {
+		cmd.Dir = cwd
+	}
 	if err := cmd.Start(); err != nil {
 		logging.Error("zmx AttachSession failed to start", "name", name, "error", err, "cmd", cmdStr)
 		return fmt.Errorf("failed to launch terminal for session %q: %w", name, err)

@@ -62,20 +62,14 @@ func (m *DefaultOrchestratorManager) openConsoleZmx(ctx context.Context, workID 
 	tabName := project.FormatTabName("console", workID, friendlyName)
 	zmxName := zmx.SessionName(projectName, tabName)
 
-	// Create session if it doesn't exist
-	exists, _ := m.zmx.SessionExists(ctx, zmxName)
-	if !exists {
-		command, args, _ := buildShellCommand(hooksEnv)
-		fmt.Fprintf(w, "Creating console session: %s\n", zmxName)
-		if err := m.zmx.RunSession(ctx, zmxName, command, args, workDir); err != nil {
-			return fmt.Errorf("failed to create console session: %w", err)
-		}
-	}
-
-	// Open terminal window attached to the session
-	fmt.Fprintf(w, "Attaching to console: %s\n", zmxName)
-	if err := m.zmx.AttachSession(ctx, zmxName, m.muxConfig.GetTerminalCommand()); err != nil {
-		return fmt.Errorf("failed to attach to console: %w", err)
+	// Use "zmx attach" which creates the session if needed.
+	// We don't use RunSession here because that creates a detached session
+	// with its own shell process; then attaching would layer a second shell on top.
+	// Instead, let zmx attach handle both creation and attachment in one step.
+	command, args, _ := buildShellCommand(hooksEnv)
+	fmt.Fprintf(w, "Opening console: %s\n", zmxName)
+	if err := m.zmx.AttachSession(ctx, zmxName, m.muxConfig.GetTerminalCommand(), workDir, command, args); err != nil {
+		return fmt.Errorf("failed to open console: %w", err)
 	}
 	return nil
 }
@@ -185,20 +179,13 @@ func (m *DefaultOrchestratorManager) openAgentSessionZmx(ctx context.Context, wo
 	tabName := project.FormatTabName(agentType, workID, friendlyName)
 	zmxName := zmx.SessionName(projectName, tabName)
 
-	// Create session if it doesn't exist
-	exists, _ := m.zmx.SessionExists(ctx, zmxName)
-	if !exists {
-		command, args := buildAgentCommand(agentType, hooksEnv, cfg)
-		fmt.Fprintf(w, "Creating %s session: %s\n", agentType, zmxName)
-		if err := m.zmx.RunSession(ctx, zmxName, command, args, workDir); err != nil {
-			return fmt.Errorf("failed to create %s session: %w", agentType, err)
-		}
-	}
-
-	// Open terminal window attached to the session
-	fmt.Fprintf(w, "Attaching to %s: %s\n", agentType, zmxName)
-	if err := m.zmx.AttachSession(ctx, zmxName, m.muxConfig.GetTerminalCommand()); err != nil {
-		return fmt.Errorf("failed to attach to %s session: %w", agentType, err)
+	// Use "zmx attach" which creates the session if needed.
+	// We don't use RunSession here because that creates a detached session
+	// with its own process; then attaching would layer a second process on top.
+	command, args := buildAgentCommand(agentType, hooksEnv, cfg)
+	fmt.Fprintf(w, "Opening %s: %s\n", agentType, zmxName)
+	if err := m.zmx.AttachSession(ctx, zmxName, m.muxConfig.GetTerminalCommand(), workDir, command, args); err != nil {
+		return fmt.Errorf("failed to open %s session: %w", agentType, err)
 	}
 	return nil
 }
@@ -263,22 +250,17 @@ func (m *DefaultOrchestratorManager) spawnPlanSessionZmx(ctx context.Context, be
 	tabName := PlanTabName(beadID)
 	zmxName := zmx.SessionName(projectName, tabName)
 
-	// Kill existing session if present
+	// Kill existing session if present (plan sessions are always recreated)
 	exists, _ := m.zmx.SessionExists(ctx, zmxName)
 	if exists {
 		_ = m.zmx.KillSession(ctx, zmxName)
 		fmt.Fprintf(w, "Session %s already existed, killed and recreating...\n", zmxName)
 	}
 
-	// Create session with plan command
-	fmt.Fprintf(w, "Creating plan session: %s\n", zmxName)
-	if err := m.zmx.RunSession(ctx, zmxName, "sarge", []string{"plan", beadID}, mainRepoPath); err != nil {
-		return fmt.Errorf("failed to create plan session: %w", err)
-	}
-
-	// Open terminal window attached to the session
-	if err := m.zmx.AttachSession(ctx, zmxName, m.muxConfig.GetTerminalCommand()); err != nil {
-		return fmt.Errorf("failed to attach to plan session: %w", err)
+	// Use "zmx attach" which creates the session and attaches in one step.
+	fmt.Fprintf(w, "Opening plan session: %s\n", zmxName)
+	if err := m.zmx.AttachSession(ctx, zmxName, m.muxConfig.GetTerminalCommand(), mainRepoPath, "sarge", []string{"plan", beadID}); err != nil {
+		return fmt.Errorf("failed to open plan session: %w", err)
 	}
 	return nil
 }
