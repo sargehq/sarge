@@ -222,83 +222,117 @@ func (m *planModel) renderWithDialog(dialog string) string {
 }
 
 func (m *planModel) renderHelp() string {
-	help := `
-  Plan Mode - Help
+	titleStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("99")).
+		MarginBottom(1)
 
-  Layout
-  ────────────────────────────
-  Two-column layout: Issues (left) + Details (right)
-  When a work is selected (1-9), a work panel appears above.
-  [ / ]         Adjust column ratio (30/70, 40/60, 50/50)
+	sectionStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("252")).
+		MarginTop(1)
 
-  Navigation
-  ────────────────────────────
-  j/k, ↑/↓      Navigate list
-  Tab           Cycle focus between panels
-  1-9           Select work by position
+	dimStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("245"))
 
-  Issue Management
-  ────────────────────────────
-  n             Create new issue
-  e             Edit issue inline (textarea)
-  E             Edit issue in $EDITOR
-  a             Add child issue
-  x             Close selected issue
-  d             Delete issue (permanent removal)
-  Space         Toggle issue selection (for multi-select)
-  w             Create work from issue(s)
-  A             Add issue to focused work
-  i             Import issue from Linear
-  I             Import from GitHub PR
-  p             Start/Resume planning session
+	keyStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("114"))
 
-  Work Actions (available globally when a work is selected)
-  ────────────────────────────
-  t             Open terminal/console
-  c             Open agent chat
-  i             Open IDE (work panel must be focused)
-  r             Run work
-  o             Restart orchestrator
-  v             Create review task
-  p             Create PR / plan session
-  f             Check PR feedback
-  d             Destroy work (work panel) / Delete issue (issues panel)
-  x             Reset failed task (when failed task selected)
-  a             Add child issue to work
-  g             Pick zmx session to attach
+	sep := dimStyle.Render("─────────────────────────────")
 
-  Note: When a work is selected, keys t/c/r/o/v/f/g are
-  exclusively work actions. Key p is shadowed by work
-  actions (PR/plan) and cannot trigger issue planning.
-  Keys a and x fall through to issue actions when not
-  applicable to the work (e.g., x closes an issue when no
-  failed task is selected). Issue actions n/e/w always
-  remain available.
-  'd' is panel-aware: triggers destroy when work panel is
-  focused, or delete issue when issues panel is focused.
-  'i' triggers Import when the issues panel is focused, or
-  IDE when the work details panel is focused.
+	renderSection := func(title string, entries [][]string, note string) string {
+		s := sectionStyle.Render(title) + "\n" + sep + "\n"
+		for _, e := range entries {
+			s += keyStyle.Render(e[0]) + dimStyle.Render(e[1]) + "\n"
+		}
+		if note != "" {
+			s += "\n" + dimStyle.Render(note) + "\n"
+		}
+		return s
+	}
 
-  Filters (capital letters)
-  ────────────────────────────
-  O             Show open issues
-  C             Show closed issues
-  R             Show ready issues
-  V             Toggle expanded view
-  /             Fuzzy search
-  L             Filter by label
-  s             Cycle sort mode
-  *             Show all (clear filters)
+	pad := func(s string, w int) string {
+		for len(s) < w {
+			s += " "
+		}
+		return s
+	}
 
-  Indicators
-  ────────────────────────────
-  ●             Issue is selected for multi-select
-  P             Issue is processing (active agent session)
-  [w-xxx]       Issue is assigned to work w-xxx
+	kw := 16 // key column width
+	entry := func(key, desc string) []string {
+		return []string{pad(key, kw), desc}
+	}
 
-  Press any key to close...
-`
-	return tuiHelpStyle.Width(m.width).Height(m.height).Render(help)
+	leftCol := titleStyle.Render("Plan Mode ─ Help") + "\n\n" +
+		renderSection("Layout", [][]string{
+			entry("[ / ]", "Adjust column ratio"),
+		}, "Two-column layout: Issues (left) + Details (right)\nWhen a work is selected (1-9), a work panel appears above.") + "\n" +
+
+		renderSection("Navigation", [][]string{
+			entry("j/k  ↑/↓", "Navigate list"),
+			entry("Tab", "Cycle focus between panels"),
+			entry("1-9", "Select work by position"),
+		}, "") + "\n" +
+
+		renderSection("Issue Management", [][]string{
+			entry("n", "Create new issue"),
+			entry("e", "Edit issue inline"),
+			entry("E", "Edit issue in $EDITOR"),
+			entry("a", "Add child issue"),
+			entry("x", "Close selected issue"),
+			entry("d", "Delete issue (permanent)"),
+			entry("Space", "Toggle multi-select"),
+			entry("w", "Create work from issue(s)"),
+			entry("A", "Add issue to focused work"),
+			entry("m", "Import from Linear"),
+			entry("M", "Import from GitHub PR"),
+			entry("p", "Start/Resume planning"),
+		}, "")
+
+	rightCol := "\n\n" +
+		renderSection("Work Actions", [][]string{
+			entry("t", "Open terminal/console"),
+			entry("c", "Open agent chat"),
+			entry("i", "Open IDE"),
+			entry("r", "Run work"),
+			entry("o", "Restart orchestrator"),
+			entry("v", "Create review task"),
+			entry("p", "Create PR / plan session"),
+			entry("f", "Check PR feedback"),
+			entry("d", "Destroy work / Delete issue"),
+			entry("x", "Reset failed task"),
+			entry("a", "Add child issue to work"),
+			entry("g", "Pick zmx session to attach"),
+		}, "Panel-aware: d changes behavior based on\nfocused panel. t/c/i/r/o/v/f/g are exclusively\nwork actions when a work is selected.") + "\n" +
+
+		renderSection("Filters", [][]string{
+			entry("O", "Show open issues"),
+			entry("C", "Show closed issues"),
+			entry("R", "Show ready issues"),
+			entry("V", "Toggle expanded view"),
+			entry("/", "Fuzzy search"),
+			entry("L", "Filter by label"),
+			entry("s", "Cycle sort mode"),
+			entry("*", "Show all (clear filters)"),
+		}, "") + "\n" +
+
+		renderSection("Indicators", [][]string{
+			entry("●", "Multi-selected"),
+			entry("P", "Processing (active agent)"),
+			entry("[w-xxx]", "Assigned to work w-xxx"),
+		}, "")
+
+	colWidth := (m.width - 10) / 2 // 10 for padding + gutter
+	leftRendered := lipgloss.NewStyle().Width(colWidth).Render(leftCol)
+	rightRendered := lipgloss.NewStyle().Width(colWidth).Render(rightCol)
+
+	body := lipgloss.JoinHorizontal(lipgloss.Top, leftRendered, "  ", rightRendered)
+
+	footer := "\n" + dimStyle.Render("Press any key to close...")
+
+	content := body + footer
+
+	return tuiHelpStyle.Width(m.width).Height(m.height).Render(content)
 }
 
 // handleMouseWheel handles mouse wheel events by routing them to the appropriate panel

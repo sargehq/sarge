@@ -1233,17 +1233,15 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// When a work is focused, route work action keys regardless of active panel.
-	// This allows work actions (t, c, r, o, f, g, v, p, d, x, a) to fire
+	// This allows work actions (t, c, i, r, o, f, g, v, p, d, x, a) to fire
 	// even when the issues panel is active.
-	// Note: 'i' is NOT intercepted here - it conflicts with Import from Linear.
-	// 'i' for IDE only works when the work details panel is focused.
 	// Note: 'd' is NOT intercepted here - it conflicts with [d]elete bead.
 	// 'd' does [d]estroy when work details/tabs panel is focused,
 	// and [d]elete bead when issues panel is focused.
 	if m.focusedWorkID != "" {
 		isWorkActionKey := false
 		switch msg.String() {
-		case "t", "c", "r", "o", "f", "g", "v", "p", "x", "a":
+		case "t", "c", "i", "r", "o", "f", "g", "v", "p", "x", "a":
 			isWorkActionKey = true
 		case "d":
 			// 'd' is panel-aware: destroy work when work panel is focused,
@@ -1609,7 +1607,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case "i":
+	case "m":
 		// Import Linear issue inline - check for API key first
 		var apiKey string
 		if m.proj.Config != nil {
@@ -1624,7 +1622,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.linearImportPanel.Reset()
 		return m, m.linearImportPanel.Init()
 
-	case "I":
+	case "M":
 		// Import GitHub PR inline
 		m.viewMode = ViewPRImportInline
 		m.prImportPanel.Reset()
