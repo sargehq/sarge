@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -51,6 +52,7 @@ func (c *CLIOperations) Create(ctx context.Context, repoPath, worktreePath, bran
 		args = append(args, baseBranch)
 	}
 	cmd := exec.CommandContext(ctx, "git", args...)
+	setMiseTrustedPaths(cmd, worktreePath)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to create worktree: %w\n%s", err, output)
 	}
@@ -61,10 +63,30 @@ func (c *CLIOperations) Create(ctx context.Context, repoPath, worktreePath, bran
 func (c *CLIOperations) CreateFromExisting(ctx context.Context, repoPath, worktreePath, branch string) error {
 	args := []string{"-C", repoPath, "worktree", "add", worktreePath, branch}
 	cmd := exec.CommandContext(ctx, "git", args...)
+	setMiseTrustedPaths(cmd, worktreePath)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to create worktree from existing branch: %w\n%s", err, output)
 	}
 	return nil
+}
+
+// setMiseTrustedPaths configures the MISE_TRUSTED_CONFIG_PATHS environment variable
+// on a command so that mise trusts config files in the worktree path. This prevents
+// git post-checkout hooks from failing when they invoke mise-managed tools (like bd)
+// in the newly created worktree before `mise trust` has been run.
+func setMiseTrustedPaths(cmd *exec.Cmd, worktreePath string) {
+	// Trust the worktree directory and its parent (the project root).
+	// The parent covers the project-level .mise.toml, and the worktree
+	// itself covers the repo's mise.toml that gets checked out.
+	projectRoot := filepath.Dir(filepath.Dir(worktreePath)) // worktreePath is <root>/<work-id>/tree
+	trustPaths := projectRoot
+
+	// Preserve any existing trusted paths
+	if existing := os.Getenv("MISE_TRUSTED_CONFIG_PATHS"); existing != "" {
+		trustPaths = existing + ":" + trustPaths
+	}
+
+	cmd.Env = append(os.Environ(), "MISE_TRUSTED_CONFIG_PATHS="+trustPaths)
 }
 
 // RemoveForce implements Operations.RemoveForce.

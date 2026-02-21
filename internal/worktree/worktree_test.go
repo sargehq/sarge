@@ -1,6 +1,9 @@
 package worktree
 
 import (
+	"os"
+	"os/exec"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -18,6 +21,52 @@ func TestNewOperations(t *testing.T) {
 func TestCLIOperationsImplementsInterface(t *testing.T) {
 	// Compile-time check that CLIOperations implements Operations
 	var _ Operations = (*CLIOperations)(nil)
+}
+
+func TestSetMiseTrustedPaths(t *testing.T) {
+	t.Run("sets project root as trusted path", func(t *testing.T) {
+		cmd := exec.Command("echo")
+		setMiseTrustedPaths(cmd, "/home/user/myproj/w-abc/tree")
+
+		var miseTrust string
+		for _, env := range cmd.Env {
+			if strings.HasPrefix(env, "MISE_TRUSTED_CONFIG_PATHS=") {
+				miseTrust = strings.TrimPrefix(env, "MISE_TRUSTED_CONFIG_PATHS=")
+			}
+		}
+		require.Equal(t, "/home/user/myproj", miseTrust)
+	})
+
+	t.Run("preserves existing trusted paths", func(t *testing.T) {
+		t.Setenv("MISE_TRUSTED_CONFIG_PATHS", "/existing/path")
+
+		cmd := exec.Command("echo")
+		setMiseTrustedPaths(cmd, "/home/user/myproj/w-abc/tree")
+
+		var miseTrust string
+		for _, env := range cmd.Env {
+			if strings.HasPrefix(env, "MISE_TRUSTED_CONFIG_PATHS=") {
+				miseTrust = strings.TrimPrefix(env, "MISE_TRUSTED_CONFIG_PATHS=")
+			}
+		}
+		require.Equal(t, "/existing/path:/home/user/myproj", miseTrust)
+	})
+
+	t.Run("no existing env var", func(t *testing.T) {
+		// Ensure env var is not set
+		os.Unsetenv("MISE_TRUSTED_CONFIG_PATHS")
+
+		cmd := exec.Command("echo")
+		setMiseTrustedPaths(cmd, "/projects/foo/w-123/tree")
+
+		var miseTrust string
+		for _, env := range cmd.Env {
+			if strings.HasPrefix(env, "MISE_TRUSTED_CONFIG_PATHS=") {
+				miseTrust = strings.TrimPrefix(env, "MISE_TRUSTED_CONFIG_PATHS=")
+			}
+		}
+		require.Equal(t, "/projects/foo", miseTrust)
+	})
 }
 
 func TestParseWorktreeList(t *testing.T) {
