@@ -174,7 +174,7 @@ SELECT t.id, t.status,
 FROM tasks t
 JOIN work_tasks wt ON t.id = wt.task_id
 WHERE wt.work_id = ?
-ORDER BY wt.position;
+ORDER BY t.created_at DESC;
 
 -- name: DeleteWorkTasks :execrows
 DELETE FROM work_tasks
