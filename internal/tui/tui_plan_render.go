@@ -263,12 +263,17 @@ func (m *planModel) renderHelp() string {
   p             Create PR / plan session
   f             Check PR feedback
   d             Destroy work
-  x             Reset failed task
+  x             Reset failed task (when failed task selected)
   a             Add child issue to work
   g             Pick zmx session to attach
 
-  Note: When a work is selected, keys like t/c/r/o/v/p/f/d
-  trigger work actions. Issue actions n/e/a/x/w remain available.
+  Note: When a work is selected, keys t/c/r/o/v/f/g are
+  exclusively work actions. Keys d and p are shadowed by work
+  actions (destroy work, PR/plan) and cannot trigger issue
+  delete or issue planning. Keys a and x fall through to issue
+  actions when not applicable to the work (e.g., x closes an
+  issue when no failed task is selected). Issue actions n/e/w
+  always remain available.
   'i' triggers Import when the issues panel is focused, or
   IDE when the work details panel is focused.
 
