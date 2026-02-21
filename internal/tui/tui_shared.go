@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -416,4 +417,32 @@ func sortBeadItems(items []beadItem, sortBy string) []beadItem {
 		})
 	}
 	return items
+}
+
+// compareIDsNatural compares two bead IDs using natural sort order.
+// IDs like "ac-819" are split into prefix ("ac-") and numeric suffix (819),
+// with the numeric part compared numerically instead of lexicographically.
+// This ensures "ac-9" sorts before "ac-10".
+func compareIDsNatural(a, b string) bool {
+	aPre, aNum, aOk := splitIDNumeric(a)
+	bPre, bNum, bOk := splitIDNumeric(b)
+
+	if aOk && bOk && aPre == bPre {
+		return aNum < bNum
+	}
+	return a < b
+}
+
+// splitIDNumeric splits an ID like "ac-819" into prefix "ac-" and numeric part 819.
+// Returns the prefix, number, and whether parsing succeeded.
+func splitIDNumeric(id string) (string, int, bool) {
+	lastDash := strings.LastIndex(id, "-")
+	if lastDash < 0 || lastDash == len(id)-1 {
+		return "", 0, false
+	}
+	num, err := strconv.Atoi(id[lastDash+1:])
+	if err != nil {
+		return "", 0, false
+	}
+	return id[:lastDash+1], num, true
 }
