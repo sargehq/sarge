@@ -327,11 +327,10 @@ func (m *DefaultOrchestratorManager) spawnWorkOrchestratorZmx(ctx context.Contex
 	tabName := project.FormatTabName("work", workID, friendlyName)
 	zmxName := zmx.SessionName(projectName, tabName)
 
-	// Kill existing session if present
-	exists, _ := m.zmx.SessionExists(ctx, zmxName)
-	if exists {
-		fmt.Fprintf(w, "Session %s already exists, killing and recreating...\n", zmxName)
-		_ = m.zmx.KillSession(ctx, zmxName)
+	// Kill existing session if present (kill is a no-op if session doesn't exist,
+	// avoiding a redundant SessionExists call)
+	if err := m.zmx.KillSession(ctx, zmxName); err == nil {
+		fmt.Fprintf(w, "Session %s already existed, killed and recreating...\n", zmxName)
 	}
 
 	// Create a new zmx session with the orchestrate command

@@ -84,13 +84,24 @@ func listAllSessions(ctx context.Context) ([]string, error) {
 }
 
 // SessionExists checks if a zmx session with the given name exists.
+// This performs a direct scan of the zmx list output without building
+// an intermediate slice, making it more efficient for single lookups.
 func (c *client) SessionExists(ctx context.Context, name string) (bool, error) {
-	sessions, err := listAllSessions(ctx)
+	cmd := exec.CommandContext(ctx, "zmx", "list", "--short")
+	output, err := cmd.Output()
 	if err != nil {
-		return false, err
+		// zmx not running or no sessions
+		return false, nil
 	}
-	for _, s := range sessions {
-		if s == name {
+
+	// Scan line-by-line without allocating a full slice
+	raw := strings.TrimSpace(string(output))
+	if raw == "" {
+		return false, nil
+	}
+
+	for _, line := range strings.Split(raw, "\n") {
+		if strings.TrimSpace(line) == name {
 			return true, nil
 		}
 	}
