@@ -2,6 +2,7 @@ package project
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -837,3 +838,87 @@ type = "pi"
 		})
 	}
 }
+
+func TestLoadConfig_DetectsUndecodedKeys(t *testing.T) {
+	// Simulate a commented-out section header with uncommented keys beneath it.
+	// The keys "use_agent" and "model" would normally belong to [log_parser], but
+	// with that header commented out they float up to the [project] section,
+	// becoming unrecognized.
+	configContent := `
+[project]
+name = "test"
+
+# [log_parser]
+use_agent = true
+model = "gpt-4"
+`
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.toml")
+	require.NoError(t, os.WriteFile(configPath, []byte(configContent), 0600))
+
+	_, err := LoadConfig(configPath)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unrecognized keys")
+	require.Contains(t, err.Error(), "use_agent")
+	require.Contains(t, err.Error(), "model")
+}
+
+func TestLoadConfig_ValidConfigNoFalsePositive(t *testing.T) {
+	// A fully valid config should not trigger unrecognized key errors.
+	configContent := `
+[project]
+name = "test"
+
+[log_parser]
+use_agent = true
+model = "gpt-4"
+`
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.toml")
+	require.NoError(t, os.WriteFile(configPath, []byte(configContent), 0600))
+
+	cfg, err := LoadConfig(configPath)
+	require.NoError(t, err)
+	require.Equal(t, "test", cfg.Project.Name)
+	require.True(t, cfg.LogParser.UseAgent)
+	require.Equal(t, "gpt-4", cfg.LogParser.Model)
+}
+
+func TestLoadConfig_CommentedKeysNoFalsePositive(t *testing.T) {
+	// Commented-out keys should not trigger false positives.
+	configContent := `
+[project]
+name = "test"
+# description = "some desc"
+
+[log_parser]
+# name = "disabled"
+model = "gpt-4"
+`
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.toml")
+	require.NoError(t, os.WriteFile(configPath, []byte(configContent), 0600))
+
+	cfg, err := LoadConfig(configPath)
+	require.NoError(t, err)
+	require.Equal(t, "test", cfg.Project.Name)
+	require.Equal(t, "gpt-4", cfg.LogParser.Model)
+}
+
+func TestLoadConfig_UnrecognizedKeyInSection(t *testing.T) {
+	// A typo or unknown key within a valid section should be detected.
+	configContent := `
+[project]
+name = "test"
+bogus_key = "oops"
+`
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.toml")
+	require.NoError(t, os.WriteFile(configPath, []byte(configContent), 0600))
+
+	_, err := LoadConfig(configPath)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unrecognized keys")
+	require.Contains(t, err.Error(), "bogus_key")
+}
+
