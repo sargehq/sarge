@@ -160,13 +160,18 @@ func (c *client) SessionExists(ctx context.Context, name string) (bool, error) {
 // RunSession creates a new detached zmx session running the given command.
 // Uses: zmx run <name> <command> [args...]
 func (c *client) RunSession(ctx context.Context, name, command string, args []string, cwd string) error {
-	zmxArgs := []string{"run", name, command}
-	zmxArgs = append(zmxArgs, args...)
+	var zmxArgs []string
+	if cwd != "" {
+		// Wrap command in cd to ensure the session starts in the right directory
+		innerParts := []string{"cd", shellQuote(cwd), "&&", command}
+		innerParts = append(innerParts, args...)
+		zmxArgs = []string{"run", name, "sh", "-c", strings.Join(innerParts, " ")}
+	} else {
+		zmxArgs = []string{"run", name, command}
+		zmxArgs = append(zmxArgs, args...)
+	}
 
 	cmd := exec.CommandContext(ctx, "zmx", zmxArgs...) //nolint:gosec // G204: args are from trusted internal callers
-	if cwd != "" {
-		cmd.Dir = cwd
-	}
 
 	logging.Debug("zmx RunSession", "name", name, "command", command, "args", args, "cwd", cwd,
 		"full_cmd", "zmx "+strings.Join(zmxArgs, " "))
