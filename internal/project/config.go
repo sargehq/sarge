@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"fmt"
 	"os"
+
 	"strings"
 	"text/template"
 	"time"
@@ -17,20 +18,21 @@ var configTemplateText string
 
 // Config represents the project configuration stored in .co/config.toml.
 type Config struct {
-	Project   ProjectConfig   `toml:"project"`
-	Repo      RepoConfig      `toml:"repo"`
-	Beads     BeadsConfig     `toml:"beads"`
-	Hooks     HooksConfig     `toml:"hooks"`
-	Linear    LinearConfig    `toml:"linear"`
-	Agent     AgentConfig     `toml:"agent"`
-	Claude    ClaudeConfig    `toml:"claude"`
-	Pi        PiConfig        `toml:"pi"`
-	Workflow  WorkflowConfig  `toml:"workflow"`
-	Scheduler SchedulerConfig `toml:"scheduler"`
-	Zellij    ZellijConfig    `toml:"zellij"`
-	LogParser LogParserConfig `toml:"log_parser"`
-	IDE       IDEConfig       `toml:"ide"`
-	Debug     DebugConfig     `toml:"debug"`
+	Project     ProjectConfig     `toml:"project"`
+	Repo        RepoConfig        `toml:"repo"`
+	Beads       BeadsConfig       `toml:"beads"`
+	Hooks       HooksConfig       `toml:"hooks"`
+	Linear      LinearConfig      `toml:"linear"`
+	Agent       AgentConfig       `toml:"agent"`
+	Claude      ClaudeConfig      `toml:"claude"`
+	Pi          PiConfig          `toml:"pi"`
+	Workflow    WorkflowConfig    `toml:"workflow"`
+	Scheduler   SchedulerConfig   `toml:"scheduler"`
+	Zellij      ZellijConfig      `toml:"zellij"`
+	Multiplexer MultiplexerConfig `toml:"multiplexer"`
+	LogParser   LogParserConfig   `toml:"log_parser"`
+	IDE         IDEConfig         `toml:"ide"`
+	Debug       DebugConfig       `toml:"debug"`
 }
 
 // IDEConfig contains IDE configuration for opening worktrees.
@@ -273,6 +275,38 @@ type ZellijConfig struct {
 	KillTabsOnDestroy *bool `toml:"kill_tabs_on_destroy"`
 }
 
+// MultiplexerConfig contains terminal multiplexer configuration.
+type MultiplexerConfig struct {
+	// Type selects which terminal multiplexer to use: "zellij" (default) or "zmx".
+	Type string `toml:"type"`
+
+	// Terminal is the command template for opening a new terminal window attached to a zmx session.
+	// Used when type is "zmx".
+	// Default: "ghostty -e zmx attach {session}"
+	// The placeholder {session} is replaced with the zmx session name.
+	Terminal string `toml:"terminal"`
+
+	// AttachOrchestrator controls whether orchestrator sessions are automatically
+	// attached to a terminal window when spawned. When false (default), orchestrators
+	// run detached. When true, a terminal window opens attached to the orchestrator.
+	// Only applies when type is "zmx".
+	AttachOrchestrator bool `toml:"attach_orchestrator"`
+}
+
+// IsZmx returns true if the multiplexer type is zmx.
+func (m *MultiplexerConfig) IsZmx() bool {
+	return m.Type == "zmx"
+}
+
+// GetTerminalCommand returns the terminal launch command template.
+// Returns the configured value, or a platform-appropriate default.
+func (m *MultiplexerConfig) GetTerminalCommand() string {
+	if m.Terminal != "" {
+		return m.Terminal
+	}
+	return "ghostty -e zmx attach {session}"
+}
+
 // BeadsConfig contains beads path configuration.
 type BeadsConfig struct {
 	// Path to beads directory (relative to project root)
@@ -323,13 +357,14 @@ func (c *Config) SaveDocumentedConfig(path string) error {
 
 // configTemplateData holds the data used to render the config template.
 type configTemplateData struct {
-	ProjectName string
-	CreatedAt   string
-	RepoType    string
-	RepoSource  string
-	RepoPath    string
-	BeadsPath   string
-	AgentType   string
+	ProjectName    string
+	CreatedAt      string
+	RepoType       string
+	RepoSource     string
+	RepoPath       string
+	BeadsPath      string
+	AgentType      string
+	MultiplexerType string // "zellij" (default) or "zmx"
 }
 
 // tomlString formats a string for TOML output with proper escaping.
@@ -545,13 +580,14 @@ func DryRunUpdateConfig(existingPath string, cfg *Config) ([]string, error) {
 // This includes the actual project values plus commented-out examples for optional sections.
 func (c *Config) GenerateDocumentedConfig() string {
 	data := configTemplateData{
-		ProjectName: c.Project.Name,
-		CreatedAt:   c.Project.CreatedAt.Format(time.RFC3339),
-		RepoType:    c.Repo.Type,
-		RepoSource:  c.Repo.Source,
-		RepoPath:    c.Repo.Path,
-		BeadsPath:   c.Beads.Path,
-		AgentType:   c.Agent.Type,
+		ProjectName:     c.Project.Name,
+		CreatedAt:       c.Project.CreatedAt.Format(time.RFC3339),
+		RepoType:        c.Repo.Type,
+		RepoSource:      c.Repo.Source,
+		RepoPath:        c.Repo.Path,
+		BeadsPath:       c.Beads.Path,
+		AgentType:       c.Agent.Type,
+		MultiplexerType: c.Multiplexer.Type,
 	}
 
 	var buf bytes.Buffer

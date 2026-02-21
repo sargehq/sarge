@@ -17,6 +17,9 @@ func (cp *ControlPlane) HandleSpawnOrchestratorTask(ctx context.Context, proj *p
 
 	logging.Info("Spawning orchestrator for work",
 		"work_id", workID,
+		"worker_name", workerName,
+		"project_name", proj.Config.Project.Name,
+		"multiplexer_type", proj.Config.Multiplexer.Type,
 		"attempt", task.AttemptCount+1)
 
 	// Get work details
@@ -30,12 +33,22 @@ func (cp *ControlPlane) HandleSpawnOrchestratorTask(ctx context.Context, proj *p
 		return nil
 	}
 
+	logging.Info("Work details for orchestrator spawn",
+		"work_id", workID,
+		"worktree_path", work.WorktreePath,
+		"branch_name", work.BranchName,
+		"worker_name", workerName,
+		"status", work.Status)
+
 	if work.WorktreePath == "" {
 		return fmt.Errorf("work %s has no worktree path", workID)
 	}
 
 	// Spawn the orchestrator
 	if err := cp.OrchestratorSpawner.SpawnWorkOrchestrator(ctx, workID, proj.Config.Project.Name, work.WorktreePath, workerName, io.Discard); err != nil {
+		logging.Error("Failed to spawn orchestrator",
+			"work_id", workID,
+			"error", err)
 		return fmt.Errorf("failed to spawn orchestrator: %w", err)
 	}
 

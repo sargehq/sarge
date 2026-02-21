@@ -122,6 +122,7 @@ func promptToolSelections() (agentType string, selections mise.ToolSelections) {
 	hasPi := isCommandAvailable("pi")
 	hasGH := isCommandAvailable("gh")
 	hasZellij := isCommandAvailable("zellij")
+	hasZmx := isCommandAvailable("zmx")
 
 	detected := []string{}
 	if hasClaude {
@@ -135,6 +136,9 @@ func promptToolSelections() (agentType string, selections mise.ToolSelections) {
 	}
 	if hasZellij {
 		detected = append(detected, "zellij")
+	}
+	if hasZmx {
+		detected = append(detected, "zmx")
 	}
 	if len(detected) > 0 {
 		detectedStyle := lipgloss.NewStyle().
@@ -176,6 +180,17 @@ func promptToolSelections() (agentType string, selections mise.ToolSelections) {
 		zellijDefault = false
 	}
 
+	// Multiplexer selection - default to zmx if available, otherwise zellij
+	multiplexerType := "zellij"
+	if hasZmx {
+		multiplexerType = "zmx"
+	}
+
+	multiplexerOptions := []huh.Option[string]{
+		huh.NewOption("Zellij — terminal multiplexer with tabs (managed by mise)", "zellij"),
+		huh.NewOption("zmx — lightweight terminal multiplexer (must be installed separately)", "zmx"),
+	}
+
 	var includeGH, includeZellij bool
 
 	form := huh.NewForm(
@@ -199,8 +214,15 @@ func promptToolSelections() (agentType string, selections mise.ToolSelections) {
 				Affirmative("Yes").
 				Negative("No"),
 
+			huh.NewSelect[string]().
+				Title("Terminal Multiplexer").
+				Description("Which terminal multiplexer to use for managing work sessions?").
+				Options(multiplexerOptions...).
+				Value(&multiplexerType),
+
 			huh.NewConfirm().
 				Title(zellijDescription).
+				Description("Only applies when using zellij as the multiplexer.").
 				Value(&includeZellij).
 				Affirmative("Yes").
 				Negative("No"),
@@ -222,7 +244,8 @@ func promptToolSelections() (agentType string, selections mise.ToolSelections) {
 	selections.AgentType = agentType
 	selections.AgentInMise = includeAgentInMise && agentType != "none"
 	selections.IncludeGH = includeGH
-	selections.IncludeZellij = includeZellij
+	selections.IncludeZellij = includeZellij && multiplexerType == "zellij"
+	selections.MultiplexerType = multiplexerType
 
 	fmt.Println()
 	return agentType, selections

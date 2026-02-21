@@ -13,6 +13,7 @@ import (
 	"github.com/sargehq/sarge/internal/logging"
 	"github.com/sargehq/sarge/internal/process"
 	"github.com/sargehq/sarge/internal/progress"
+
 	workpkg "github.com/sargehq/sarge/internal/work"
 )
 
@@ -24,24 +25,26 @@ func (m *planModel) sessionName() string {
 // spawnPlanSession spawns or resumes a planning session for a specific bead
 func (m *planModel) spawnPlanSession(beadID string) tea.Cmd {
 	return func() tea.Msg {
-		zellijSession := m.sessionName()
 		tabName := workpkg.PlanTabName(beadID)
 		mainRepoPath := m.proj.MainRepoPath()
 
-		logging.Debug("spawnPlanSession started", "beadID", beadID, "session", zellijSession, "tabName", tabName)
+		logging.Debug("spawnPlanSession started", "beadID", beadID, "tabName", tabName)
 
 		// Check if session already running for this bead
 		running, _ := m.proj.DB.IsPlanSessionRunning(m.ctx, beadID)
 		logging.Debug("spawnPlanSession checked if running", "beadID", beadID, "running", running)
 		if running {
-			// Session exists - just switch to it
-			if err := m.zj.Session(zellijSession).SwitchToTab(m.ctx, tabName); err != nil {
-				return planSessionSpawnedMsg{beadID: beadID, err: err}
+			// Session exists - for zellij, switch to it; for zmx, it's a no-op (attach handled separately)
+			if !m.proj.Config.Multiplexer.IsZmx() {
+				zellijSession := m.sessionName()
+				if err := m.zj.Session(zellijSession).SwitchToTab(m.ctx, tabName); err != nil {
+					return planSessionSpawnedMsg{beadID: beadID, err: err}
+				}
 			}
 			return planSessionSpawnedMsg{beadID: beadID, resumed: true}
 		}
 
-		// Ensure zellij session and control plane are running
+		// Ensure control plane is running
 		sessionResult, err := control.EnsureControlPlane(m.ctx, m.proj)
 		if err != nil {
 			logging.Error("spawnPlanSession EnsureControlPlane failed", "beadID", beadID, "error", err)
@@ -383,11 +386,10 @@ func (m *planModel) restartOrchestrator() tea.Cmd {
 			return workCommandMsg{action: "Restart orchestrator", workID: workID, err: err}
 		}
 
-		status := "already running"
 		if spawned {
-			status = "restarted"
+			return workCommandMsg{action: "Orchestrator spawned", workID: workID}
 		}
-		return workCommandMsg{action: fmt.Sprintf("Orchestrator %s", status), workID: workID}
+		return workCommandMsg{action: "Orchestrator already running", workID: workID}
 	}
 }
 
@@ -459,5 +461,38 @@ func (m *planModel) openIDE() tea.Cmd {
 		}
 
 		return workCommandMsg{action: "Opened in IDE", workID: workID}
+	}
+}
+
+// attachTerminal opens a new terminal window attached to a zmx session based on the current
+// attachTerminal opens a new terminal window attached to the zmx session for the current
+// work details selection. Only works when multiplexer type is "zmx".
+func (m *planModel) attachTerminal() tea.Cmd {
+	workID := m.focusedWorkID
+	return func() tea.Msg {
+		if !m.proj.Config.Multiplexer.IsZmx() {
+			return workCommandMsg{action: "Attach terminal", workID: workID, err: fmt.Errorf("attach terminal requires [multiplexer] type = \"zmx\" in config")}
+		}
+
+		if workID == "" {
+			return workCommandMsg{action: "Attach terminal", workID: workID, err: fmt.Errorf("no work focused")}
+		}
+
+		// Get work details for worktree path and friendly name
+		work, err := m.proj.DB.GetWork(m.ctx, workID)
+		if err != nil {
+			return workCommandMsg{action: "Attach terminal", workID: workID, err: fmt.Errorf("failed to get work: %w", err)}
+		}
+		if work == nil {
+			return workCommandMsg{action: "Attach terminal", workID: workID, err: fmt.Errorf("work %s not found", workID)}
+		}
+
+		// Use OpenConsole which handles run-then-attach properly
+		err = m.workService.OrchestratorManager.OpenConsole(m.ctx, workID, m.proj.Config.Project.Name, work.WorktreePath, work.Name, m.proj.Config.Hooks.Env, io.Discard)
+		if err != nil {
+			return workCommandMsg{action: "Attach terminal", workID: workID, err: err}
+		}
+
+		return workCommandMsg{action: "Opened terminal", workID: workID}
 	}
 }

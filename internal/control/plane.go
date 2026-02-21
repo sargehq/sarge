@@ -34,10 +34,10 @@ type DefaultOrchestratorSpawner struct {
 	orchestratorManager work.OrchestratorManager
 }
 
-// NewOrchestratorSpawner creates a new DefaultOrchestratorSpawner with the given database.
-func NewOrchestratorSpawner(database *db.DB) *DefaultOrchestratorSpawner {
+// NewOrchestratorSpawner creates a new DefaultOrchestratorSpawner with the given database and config.
+func NewOrchestratorSpawner(database *db.DB, cfg *project.Config) *DefaultOrchestratorSpawner {
 	return &DefaultOrchestratorSpawner{
-		orchestratorManager: work.NewOrchestratorManager(database),
+		orchestratorManager: work.NewOrchestratorManager(database, cfg),
 	}
 }
 
@@ -84,7 +84,7 @@ func NewControlPlane(proj *project.Project) *ControlPlane {
 		Zellij:              zellij.New(),
 		Mise:                mise.NewOperations,
 		FeedbackProcessor:   feedback.NewProcessor(),
-		OrchestratorSpawner: NewOrchestratorSpawner(proj.DB),
+		OrchestratorSpawner: NewOrchestratorSpawner(proj.DB, proj.Config),
 		WorkDestroyer:       NewWorkDestroyer(proj),
 		GitHubClient:        github.NewClient(),
 	}

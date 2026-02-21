@@ -21,6 +21,7 @@ import (
 	trackingwatcher "github.com/sargehq/sarge/internal/tracking/watcher"
 	"github.com/sargehq/sarge/internal/work"
 	"github.com/sargehq/sarge/internal/zellij"
+	"github.com/sargehq/sarge/internal/zmx"
 )
 
 // watcherEventMsg wraps beads watcher events for tea.Msg
@@ -85,6 +86,7 @@ type planModel struct {
 	// Per-bead session tracking
 	activeBeadSessions map[string]bool // beadID -> has active session
 	zj                 zellij.SessionManager
+	zmxClient          zmx.Client
 
 	// Two-column layout settings
 	columnRatio float64 // Ratio of issues column width (0.0-1.0), default 0.4 for 40/60 split
@@ -161,6 +163,7 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 		selectedBeads:          make(map[string]bool),
 		newBeads:               make(map[string]time.Time),
 		zj:                     zellij.New(),
+		zmxClient:              zmx.New(),
 		columnRatio:            0.4,  // Default 40/60 split (issues/details)
 		hoveredIssue:           -1,   // No issue hovered initially
 		hoveredWorkItem:        -1,   // No work item hovered initially
@@ -639,7 +642,7 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else if msg.resumed {
 			m.statusMessage = fmt.Sprintf("Resumed session for %s", msg.beadID)
 			m.statusIsError = false
-		} else if msg.sessionCreated {
+		} else if msg.sessionCreated && !m.proj.Config.Multiplexer.IsZmx() {
 			m.statusMessage = fmt.Sprintf("Started session for %s | Zellij: zellij attach %s", msg.beadID, msg.sessionName)
 			m.statusIsError = false
 		} else {
@@ -654,7 +657,7 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.statusMessage = fmt.Sprintf("Failed to create work: %v", msg.err)
 			m.statusIsError = true
 		} else {
-			if msg.sessionCreated {
+			if msg.sessionCreated && !m.proj.Config.Multiplexer.IsZmx() {
 				m.statusMessage = fmt.Sprintf("Created work %s | Zellij: zellij attach %s", msg.workID, msg.sessionName)
 			} else {
 				m.statusMessage = fmt.Sprintf("Created work %s from %s", msg.workID, msg.beadID)
@@ -691,7 +694,7 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.statusMessage = fmt.Sprintf("%s failed: %v", msg.action, msg.err)
 			m.statusIsError = true
 		} else {
-			m.statusMessage = fmt.Sprintf("%s completed for %s", msg.action, msg.workID)
+			m.statusMessage = fmt.Sprintf("%s (%s)", msg.action, msg.workID)
 			m.statusIsError = false
 			// If work was destroyed, clear the focused work
 			if msg.action == "Destroy work" {
@@ -1182,12 +1185,18 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			// Navigation actions - check if selection changed and update filter
 			return m, m.updateWorkSelectionFilter()
 		case WorkDetailActionOpenTerminal:
+			m.statusMessage = fmt.Sprintf("Opening console for %s...", m.focusedWorkID)
+			m.statusIsError = false
 			return m, m.openConsole()
 		case WorkDetailActionOpenAgent:
+			m.statusMessage = fmt.Sprintf("Opening agent for %s...", m.focusedWorkID)
+			m.statusIsError = false
 			return m, m.openAgent()
 		case WorkDetailActionOpenIDE:
 			return m, m.openIDE()
 		case WorkDetailActionRun:
+			m.statusMessage = fmt.Sprintf("Running work %s...", m.focusedWorkID)
+			m.statusIsError = false
 			// Run work - use auto-group if multiple unassigned beads
 			focusedWork := m.workDetails.GetFocusedWork()
 			useAutoGroup := focusedWork != nil && len(focusedWork.UnassignedBeads) > 1
@@ -1197,6 +1206,13 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case WorkDetailActionPR:
 			return m, m.createPRTask()
 		case WorkDetailActionRestartOrchestrator:
+			if checkOrchestratorHealth(m.ctx, m.proj.DB, m.focusedWorkID) {
+				m.statusMessage = fmt.Sprintf("Orchestrator already running (%s)", m.focusedWorkID)
+				m.statusIsError = false
+				return m, nil
+			}
+			m.statusMessage = fmt.Sprintf("Spawning orchestrator for %s...", m.focusedWorkID)
+			m.statusIsError = false
 			return m, m.restartOrchestrator()
 		case WorkDetailActionCheckFeedback:
 			return m, m.checkPRFeedback()
@@ -1223,6 +1239,8 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case WorkDetailActionResetTask:
 			return m, m.resetSelectedTask()
+		case WorkDetailActionAttachTerminal:
+			return m, m.attachTerminal()
 		case WorkDetailActionPlan:
 			// Start planning session for selected unassigned bead
 			beadID := m.workDetails.GetSelectedUnassignedBeadID()

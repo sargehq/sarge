@@ -39,6 +39,14 @@ Project configuration is stored in `.co/config.toml`.
   scheduler_poll_seconds = 1
   activity_update_seconds = 30
 
+[multiplexer]
+  type = "zmx"
+  terminal = "ghostty -e zmx attach {session}"
+  attach_orchestrator = false
+
+[zellij]
+  kill_tabs_on_destroy = true
+
 [log_parser]
   use_agent = false
   model = "haiku"
@@ -142,6 +150,47 @@ CI log analysis settings.
   - Small/fast models: ~$0.01 per log, ~2-5s
   - Mid-tier models: ~$0.03 per log, ~5-10s
   - Large/capable models: ~$0.15 per log, ~10-20s
+
+### `[multiplexer]`
+
+Terminal multiplexer configuration. Sarge supports two multiplexers: **zellij** (default) and **zmx**.
+
+```toml
+[multiplexer]
+  type = "zmx"                                    # "zellij" (default) or "zmx"
+  terminal = "ghostty -e zmx attach {session}"    # Terminal command template (zmx only)
+  attach_orchestrator = false                      # Auto-attach orchestrator to terminal (zmx only)
+```
+
+| Key | Description | Default |
+|-----|-------------|---------|
+| `type` | Multiplexer backend: `zellij` or `zmx` | `zellij` |
+| `terminal` | Terminal command template for zmx sessions. `{session}` is replaced with the session name. | `ghostty -e zmx attach {session}` |
+| `attach_orchestrator` | Whether to open a terminal window for orchestrator sessions when spawned (zmx only) | `false` |
+
+**zmx session naming convention:** Sessions are named `sarge-<project>.<tabname>` (e.g., `sarge-myproj.orch-w-abc`).
+
+**Session types managed per work unit:**
+- `orch-<workID>` — Work orchestrator
+- `task-<workID>.*` — Task runners
+- `console-<workID>` — Console shells
+- `claude-<workID>` — Claude agent sessions
+- `pi-<workID>` — Pi agent sessions
+
+When a work unit is destroyed (`sarge work destroy`), all associated zmx sessions (or zellij tabs) are automatically killed. The orchestrator process receives SIGTERM first for clean shutdown, then all matching sessions are terminated. This behavior is controlled by the `[zellij] kill_tabs_on_destroy` setting.
+
+### `[zellij]`
+
+Zellij/multiplexer tab management configuration. These settings apply to both zellij and zmx multiplexers.
+
+```toml
+[zellij]
+  kill_tabs_on_destroy = true   # Kill tabs/sessions when work is destroyed (default: true)
+```
+
+| Key | Description | Default |
+|-----|-------------|---------|
+| `kill_tabs_on_destroy` | Automatically kill all multiplexer tabs/sessions associated with a work unit when it is destroyed | `true` |
 
 ## Mise Setup Task
 

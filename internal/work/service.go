@@ -44,7 +44,7 @@ func NewWorkService(proj *project.Project) *WorkService {
 		GitHubClient:        github.NewClient(),
 		BeadsReader:         proj.Beads,
 		BeadsCLI:            beads.NewCLI(beadsDir),
-		OrchestratorManager: NewOrchestratorManager(proj.DB),
+		OrchestratorManager: NewOrchestratorManager(proj.DB, proj.Config),
 		TaskPlanner:         nil, // Planner needs specific initialization, set separately if needed
 		NameGenerator:       names.NewGenerator(),
 		Config:              proj.Config,

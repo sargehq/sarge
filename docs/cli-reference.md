@@ -88,9 +88,14 @@ Destroys a work unit and its resources.
 sarge work destroy w-abc
 ```
 
+- Closes the root issue (if one exists)
+- Terminates all associated multiplexer sessions (orchestrator, task, console, claude, and pi tabs/sessions)
+  - The orchestrator process receives SIGTERM first for clean shutdown
+  - All matching zellij tabs or zmx sessions are then killed
+  - Controlled by `[zellij] kill_tabs_on_destroy` config (default: `true`)
 - Removes git worktree
 - Deletes work subdirectory
-- Updates database records
+- Deletes database records (work, tasks, bead associations)
 - Use with caution - destructive operation
 
 ### `sarge work restart [<id>]`
@@ -121,23 +126,30 @@ sarge work complete w-abc  # Explicit ID
 
 ### `sarge work console [<id>]`
 
-Opens a zellij tab with a shell in the work's worktree.
+Opens a shell session in the work's worktree using the configured multiplexer.
 
 ```bash
 sarge work console        # Current directory
 sarge work console w-abc  # Explicit ID
 ```
 
+- With **zellij**: Opens a new tab in the project's zellij session
+- With **zmx**: Creates a detached zmx session and attaches a terminal window
+
 Useful for running tests, exploring the codebase, or debugging while the orchestrator runs in a separate tab.
 
 ### `sarge work claude [<id>]`
 
-Opens a zellij tab with an interactive Claude Code session in the work's worktree.
+Opens an interactive agent session in the work's worktree using the configured multiplexer.
 
 ```bash
 sarge work claude        # Current directory
 sarge work claude w-abc  # Explicit ID
 ```
+
+- With **zellij**: Opens a new tab in the project's zellij session
+- With **zmx**: Creates a detached zmx session and attaches a terminal window
+- Agent type is determined by `[agent] type` config (defaults to `claude`, also supports `pi`)
 
 Useful for manual exploration, debugging, or ad-hoc changes while the orchestrator runs in a separate tab.
 
