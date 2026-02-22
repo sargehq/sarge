@@ -29,7 +29,7 @@ func PlanTabName(beadID string) string {
 // the session exists with the control plane running.
 func (m *DefaultOrchestratorManager) OpenConsole(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, hooksEnv []string, w io.Writer) error {
 	if m.isZmx() {
-		return m.openConsoleZmx(ctx, workID, projectName, workDir, friendlyName, hooksEnv, w)
+		return m.openConsoleZmx(ctx, workID, projectName, workDir, hooksEnv, w)
 	}
 	return m.openConsoleZellij(ctx, workID, projectName, workDir, friendlyName, hooksEnv, w)
 }
@@ -119,7 +119,7 @@ func buildShellCommand(hooksEnv []string) (command string, args []string, shellN
 }
 
 // openConsoleZmx opens a terminal window with a zmx shell session in the work's worktree.
-func (m *DefaultOrchestratorManager) openConsoleZmx(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, hooksEnv []string, w io.Writer) error {
+func (m *DefaultOrchestratorManager) openConsoleZmx(ctx context.Context, workID string, projectName string, workDir string, hooksEnv []string, w io.Writer) error {
 	tabName := project.FormatTabNameShort("console", workID)
 	zmxName := zmx.SessionName(projectName, tabName)
 
@@ -200,7 +200,7 @@ func (m *DefaultOrchestratorManager) openConsoleZellij(ctx context.Context, work
 // the session exists with the control plane running.
 func (m *DefaultOrchestratorManager) OpenAgentSession(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) error {
 	if m.isZmx() {
-		return m.openAgentSessionZmx(ctx, workID, projectName, workDir, friendlyName, hooksEnv, cfg, w)
+		return m.openAgentSessionZmx(ctx, workID, projectName, workDir, hooksEnv, cfg, w)
 	}
 	return m.openAgentSessionZellij(ctx, workID, projectName, workDir, friendlyName, hooksEnv, cfg, w)
 }
@@ -254,7 +254,7 @@ func buildAgentCommand(agentType string, hooksEnv []string, cfg *project.Config)
 }
 
 // openAgentSessionZmx opens a terminal window with an interactive agent zmx session.
-func (m *DefaultOrchestratorManager) openAgentSessionZmx(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) error {
+func (m *DefaultOrchestratorManager) openAgentSessionZmx(ctx context.Context, workID string, projectName string, workDir string, hooksEnv []string, cfg *project.Config, w io.Writer) error {
 	agentType := "claude"
 	if cfg != nil && cfg.Agent.Type != "" {
 		agentType = cfg.Agent.Type

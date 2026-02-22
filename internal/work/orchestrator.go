@@ -311,13 +311,13 @@ func (m *DefaultOrchestratorManager) terminateOrchestratorProcess(ctx context.Co
 // the session exists with the control plane running.
 func (m *DefaultOrchestratorManager) SpawnWorkOrchestrator(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, w io.Writer) error {
 	if m.isZmx() {
-		return m.spawnWorkOrchestratorZmx(ctx, workID, projectName, workDir, friendlyName, w)
+		return m.spawnWorkOrchestratorZmx(ctx, workID, projectName, workDir, w)
 	}
 	return m.spawnWorkOrchestratorZellij(ctx, workID, projectName, workDir, friendlyName, w)
 }
 
 // spawnWorkOrchestratorZmx creates a zmx session running the orchestrate command.
-func (m *DefaultOrchestratorManager) spawnWorkOrchestratorZmx(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, w io.Writer) error {
+func (m *DefaultOrchestratorManager) spawnWorkOrchestratorZmx(ctx context.Context, workID string, projectName string, workDir string, w io.Writer) error {
 	logging.Debug("spawnWorkOrchestratorZmx called", "workID", workID, "projectName", projectName, "workDir", workDir)
 	tabName := project.FormatTabNameShort("orch", workID)
 	zmxName := zmx.SessionName(projectName, tabName)
