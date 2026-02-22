@@ -21,9 +21,20 @@ When breaking down into subtasks, create them as children of this issue:
 This establishes {{.BeadID}} as the parent, making the new issues its children.
 The orchestrator will then process these subtasks as part of this work.
 
+CRITICAL RULES:
+- The customer is here with you — ask them about product decisions, design tradeoffs,
+  or anything you're unsure about. This is a collaborative session.
+- Do NOT create research, investigation, or exploration subtasks — do that work NOW
+- Read source code, trace dependencies, and resolve technical ambiguities before creating subtasks
+- Every subtask you create must be a concrete, actionable implementation task with enough
+  detail for an implementing agent to proceed without further investigation
+- Include relevant findings (file paths, function names, specific code locations) in
+  subtask descriptions so the implementer has full context
+
 DO NOT:
 - Write or modify any code
 - Offer to implement fixes directly
 - Ask if the user wants you to implement something
+- Create subtasks that require further research or investigation
 
 Use /beads commands throughout to manage the issue tracker.
