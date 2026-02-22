@@ -13,6 +13,9 @@ import (
 //go:embed beads/SKILL.md beads/resources/*.md
 var beadsSkillFS embed.FS
 
+//go:embed extensions/sarge-complete.ts
+var sargeCompleteExtension []byte
+
 // PiSkillInstalled checks whether the pi beads skill exists in the given repo directory.
 func PiSkillInstalled(repoDir string) bool {
 	skillPath := filepath.Join(repoDir, ".pi", "skills", "beads", "SKILL.md")
@@ -45,6 +48,24 @@ func InstallPiSkill(repoDir string) error {
 
 		return os.WriteFile(destPath, data, 0o600)
 	})
+}
+
+// PiExtensionInstalled checks whether the sarge-complete pi extension exists in the given repo directory.
+func PiExtensionInstalled(repoDir string) bool {
+	extPath := filepath.Join(repoDir, ".pi", "extensions", "sarge-complete.ts")
+	_, err := os.Stat(extPath)
+	return err == nil
+}
+
+// InstallPiExtension copies the embedded sarge-complete extension into the repo's .pi/extensions/ directory.
+func InstallPiExtension(repoDir string) error {
+	extDir := filepath.Join(repoDir, ".pi", "extensions")
+	if err := os.MkdirAll(extDir, 0o750); err != nil {
+		return fmt.Errorf("creating extensions directory: %w", err)
+	}
+
+	destPath := filepath.Join(extDir, "sarge-complete.ts")
+	return os.WriteFile(destPath, sargeCompleteExtension, 0o600)
 }
 
 // ClaudePluginInstalled checks whether the beads plugin is installed for Claude Code.
