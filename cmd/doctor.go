@@ -6,6 +6,7 @@ import (
 
 	"github.com/sargehq/sarge/internal/mise"
 	"github.com/sargehq/sarge/internal/project"
+	"github.com/sargehq/sarge/internal/skill"
 	"github.com/spf13/cobra"
 )
 
@@ -21,6 +22,7 @@ var doctorCmd = &cobra.Command{
 Checks include:
   - Config update: ensures config.toml has all available sections
   - Mise beads version: ensures the mise config has the correct beads version
+  - Beads skill: ensures the coding agent has the beads skill installed
 
 Use --dry-run to preview changes without applying them.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -59,6 +61,13 @@ func runDoctor(proj *project.Project) error {
 		return fmt.Errorf("mise beads version check failed: %w", err)
 	}
 	issues += miseIssues
+
+	// Check 3: Beads skill for the configured agent
+	skillIssues, err := checkBeadsSkill(proj)
+	if err != nil {
+		return fmt.Errorf("beads skill check failed: %w", err)
+	}
+	issues += skillIssues
 
 	// Summary
 	fmt.Println()
@@ -160,6 +169,54 @@ func checkMiseBeadsVersion(proj *project.Project) (int, error) {
 		}
 	}
 	return issues, nil
+}
+
+func checkBeadsSkill(proj *project.Project) (int, error) {
+	agentType := proj.Config.Agent.Type
+	if agentType == "" {
+		agentType = "claude" // default
+	}
+
+	switch agentType {
+	case "pi":
+		return checkPiBeadsSkill(proj)
+	case "claude":
+		return checkClaudeBeadsPlugin()
+	default:
+		// Unknown or "none" agent — skip
+		return 0, nil
+	}
+}
+
+func checkPiBeadsSkill(proj *project.Project) (int, error) {
+	repoDir := proj.MainRepoPath()
+	if skill.PiSkillInstalled(repoDir) {
+		fmt.Println("🧩 Beads skill (pi): installed")
+		return 0, nil
+	}
+
+	if doctorDryRun {
+		fmt.Println("🧩 Beads skill (pi): missing")
+		fmt.Println("   Would install .pi/skills/beads/ in main repo")
+		return 1, nil
+	}
+
+	if err := skill.InstallPiSkill(repoDir); err != nil {
+		return 0, fmt.Errorf("failed to install pi beads skill: %w", err)
+	}
+	fmt.Println("🧩 Beads skill (pi): installed .pi/skills/beads/ in main repo")
+	return 1, nil
+}
+
+func checkClaudeBeadsPlugin() (int, error) {
+	if skill.ClaudePluginInstalled() {
+		fmt.Println("🧩 Beads skill (claude): installed")
+		return 0, nil
+	}
+
+	fmt.Println("🧩 Beads skill (claude): not found")
+	fmt.Println("   " + skill.ClaudeInstallInstructions())
+	return 1, nil
 }
 
 func checkConfigApply(configPath string, cfg *project.Config) (int, error) {
