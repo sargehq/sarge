@@ -75,7 +75,7 @@ func TestSpawnWorkOrchestratorZmx_CreatesSession(t *testing.T) {
 	// Should have called RunSession
 	calls := zmxMock.RunSessionCalls()
 	require.Len(t, calls, 1)
-	assert.Equal(t, "sarge-myproj.orch-w-abc-my-feature", calls[0].Name)
+	assert.Equal(t, "sarge-myproj.orch-w-abc", calls[0].Name)
 	assert.Equal(t, "sarge", calls[0].Command)
 	assert.Equal(t, []string{"orchestrate", "--work", "w-abc"}, calls[0].Args)
 	assert.Equal(t, "/tmp/work", calls[0].Cwd)
@@ -112,7 +112,7 @@ func TestTerminateWorkTabsZmx_KillsMatchingSessions(t *testing.T) {
 	ctx := context.Background()
 
 	allSessions := []string{
-		"sarge-myproj.orch-w-abc-my-feature",
+		"sarge-myproj.orch-w-abc",
 		"sarge-myproj.task-w-abc.1",
 		"sarge-myproj.console-w-abc",
 		"sarge-myproj.agent-w-abc",
@@ -135,7 +135,7 @@ func TestTerminateWorkTabsZmx_KillsMatchingSessions(t *testing.T) {
 	for _, call := range killCalls {
 		killedNames = append(killedNames, call.Name)
 	}
-	assert.Contains(t, killedNames, "sarge-myproj.orch-w-abc-my-feature")
+	assert.Contains(t, killedNames, "sarge-myproj.orch-w-abc")
 	assert.Contains(t, killedNames, "sarge-myproj.task-w-abc.1")
 	assert.Contains(t, killedNames, "sarge-myproj.console-w-abc")
 	assert.Contains(t, killedNames, "sarge-myproj.agent-w-abc")
@@ -192,14 +192,14 @@ func TestOpenConsoleZmx_CreatesSession(t *testing.T) {
 	// Should create session with "" command (zmx default shell) and correct cwd
 	runCalls := zmxMock.RunSessionCalls()
 	require.Len(t, runCalls, 1)
-	assert.Equal(t, "sarge-myproj.console-w-abc-my-feature", runCalls[0].Name)
+	assert.Equal(t, "sarge-myproj.console-w-abc", runCalls[0].Name)
 	assert.Equal(t, "", runCalls[0].Command)
 	assert.Equal(t, "/tmp/work", runCalls[0].Cwd)
 
 	// Then attach
 	attachCalls := zmxMock.AttachSessionCalls()
 	require.Len(t, attachCalls, 1)
-	assert.Equal(t, "sarge-myproj.console-w-abc-my-feature", attachCalls[0].Name)
+	assert.Equal(t, "sarge-myproj.console-w-abc", attachCalls[0].Name)
 }
 
 func TestAttachZmxSession_WindowModeUsesAttachSession(t *testing.T) {
@@ -377,7 +377,7 @@ func TestOpenAgentSessionZmx_CreatesPiSession(t *testing.T) {
 
 	runCalls := zmxMock.RunSessionCalls()
 	require.Len(t, runCalls, 1)
-	assert.Equal(t, "sarge-myproj.agent-w-abc-feat", runCalls[0].Name)
+	assert.Equal(t, "sarge-myproj.agent-w-abc", runCalls[0].Name)
 	assert.Equal(t, "pi", runCalls[0].Command)
 
 	attachCalls := zmxMock.AttachSessionCalls()
@@ -537,7 +537,7 @@ func TestListWorkSessions_ReturnsMatchingSessions(t *testing.T) {
 	ctx := context.Background()
 
 	allSessions := []string{
-		"sarge-myproj.orch-w-abc-my-feature",
+		"sarge-myproj.orch-w-abc",
 		"sarge-myproj.task-w-abc.1",
 		"sarge-myproj.console-w-abc",
 		"sarge-myproj.agent-w-abc",
