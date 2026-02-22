@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/project"
@@ -175,6 +178,11 @@ func FetchWorkProgress(ctx context.Context, proj *project.Project, work *db.Work
 		wp.Tasks = append(wp.Tasks, tp)
 	}
 
+	// Sort tasks by numeric ID suffix descending (e.g., 14, 13, 12, ...)
+	sort.Slice(wp.Tasks, func(i, j int) bool {
+		return taskNumericSuffix(wp.Tasks[i].Task.ID) > taskNumericSuffix(wp.Tasks[j].Task.ID)
+	})
+
 	// Populate work beads
 	for _, wb := range allWorkBeads {
 		bp := BeadProgress{ID: wb.BeadID}
@@ -253,4 +261,15 @@ func FetchWorkProgress(ctx context.Context, proj *project.Project, work *db.Work
 	}
 
 	return wp, nil
+}
+
+// taskNumericSuffix extracts the numeric suffix from a task ID like "work-1.14" -> 14.
+// Returns 0 if the ID doesn't have a numeric suffix.
+func taskNumericSuffix(id string) int {
+	if idx := strings.LastIndex(id, "."); idx >= 0 {
+		if n, err := strconv.Atoi(id[idx+1:]); err == nil {
+			return n
+		}
+	}
+	return 0
 }
