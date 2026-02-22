@@ -550,7 +550,7 @@ func TestListWorkSessions_ReturnsMatchingSessions(t *testing.T) {
 
 	sessions, err := mgr.ListWorkSessions(ctx, "w-abc", "myproj")
 	require.NoError(t, err)
-	assert.Len(t, sessions, 4)
+	assert.Len(t, sessions, 5)
 
 	types := make([]string, 0, len(sessions))
 	for _, s := range sessions {
@@ -560,6 +560,15 @@ func TestListWorkSessions_ReturnsMatchingSessions(t *testing.T) {
 	assert.Contains(t, types, "task")
 	assert.Contains(t, types, "console")
 	assert.Contains(t, types, "agent")
+	assert.Contains(t, types, "control")
+
+	// Check control plane session has correct display name
+	for _, s := range sessions {
+		if s.Type == "control" {
+			assert.Equal(t, "control plane", s.DisplayName)
+			assert.Equal(t, "control", s.TabName)
+		}
+	}
 }
 
 func TestListWorkSessions_NonZmxReturnsEmpty(t *testing.T) {
