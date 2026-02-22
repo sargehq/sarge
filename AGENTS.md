@@ -38,3 +38,18 @@ bd sync               # Sync with git
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
 
+## Technical Constraints
+
+### Ghostty AppleScript (macOS)
+
+Ghostty has no CLI/IPC for opening tabs or sending text to a specific window. The only mechanism is AppleScript via System Events.
+
+**Key limitation:** `keystroke` in System Events ALWAYS sends to the frontmost app, regardless of the `tell process` block. There is no way to send keystrokes to a non-frontmost window or process. Do not waste time searching for one.
+
+**Current approach** (`internal/zmx/zmx.go` — `buildGhosttyTabAppleScript`):
+- `click menu item "New Tab"` — process-targeted, safe even if Ghostty isn't frontmost
+- `set frontmost to true` — brings Ghostty to front before typing
+- `keystroke "zmx attach ..."` — types into the now-frontmost Ghostty tab
+
+There is a small race window between `set frontmost to true` and the `keystroke` if the user alt-tabs at exactly the wrong moment, but this is inherent to AppleScript and cannot be fixed without Ghostty adding IPC support.
+
