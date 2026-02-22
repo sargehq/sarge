@@ -225,8 +225,10 @@ func (c *client) AttachSession(ctx context.Context, name string, terminalCmdTemp
 func buildGhosttyTabAppleScript(sessionName string) string {
 	return fmt.Sprintf(`tell application "System Events"
 	tell process "Ghostty"
-		keystroke "t" using command down
+		click menu item "New Tab" of menu "File" of menu bar item "File" of menu bar 1
 		delay 0.3
+		set frontmost to true
+		delay 0.1
 		keystroke "zmx attach %s" & return
 	end tell
 end tell`, sessionName)
