@@ -20,8 +20,8 @@ bd show <id>                           # Read notes for context
 ```
 [ ] 1. git status                      # Check what changed
 [ ] 2. bd close <id> --reason "..."    # Close completed issues
-[ ] 3. git add -A                      # Stage changes
-[ ] 4. bd sync                         # Sync beads state
+[ ] 3. bd sync                         # Sync beads state
+[ ] 4. git add -A                      # Stage all changes (including synced beads)
 [ ] 5. git commit -m "..."             # Commit everything
 [ ] 6. git push                        # Push to remote
 ```
