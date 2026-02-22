@@ -120,7 +120,7 @@ func buildShellCommand(hooksEnv []string) (command string, args []string, shellN
 
 // openConsoleZmx opens a terminal window with a zmx shell session in the work's worktree.
 func (m *DefaultOrchestratorManager) openConsoleZmx(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, hooksEnv []string, w io.Writer) error {
-	tabName := project.FormatTabName("console", workID, friendlyName)
+	tabName := project.FormatTabNameShort("console", workID)
 	zmxName := zmx.SessionName(projectName, tabName)
 
 	// Create session if it doesn't exist
@@ -260,7 +260,7 @@ func (m *DefaultOrchestratorManager) openAgentSessionZmx(ctx context.Context, wo
 		agentType = cfg.Agent.Type
 	}
 
-	tabName := project.FormatTabName("agent", workID, friendlyName)
+	tabName := project.FormatTabNameShort("agent", workID)
 	zmxName := zmx.SessionName(projectName, tabName)
 
 	// Create session if it doesn't exist

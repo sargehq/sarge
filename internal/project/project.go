@@ -40,12 +40,20 @@ func SessionNameForProject(projectName string) string {
 
 // FormatTabName formats a tab name with an optional friendly name.
 // If friendlyName is not empty, formats as "prefix-workID (friendlyName)", otherwise just "prefix-workID".
+// This is used for zellij tab titles where the friendly name is nice for display.
 func FormatTabName(prefix, workID, friendlyName string) string {
 	baseName := fmt.Sprintf("%s-%s", prefix, workID)
 	if friendlyName != "" {
 		return fmt.Sprintf("%s (%s)", baseName, friendlyName)
 	}
 	return baseName
+}
+
+// FormatTabNameShort formats a tab name without the friendly name.
+// This is used for zmx session names where the full name becomes a Unix socket
+// path and must stay under the 104-byte macOS sun_path limit.
+func FormatTabNameShort(prefix, workID string) string {
+	return fmt.Sprintf("%s-%s", prefix, workID)
 }
 
 // Project represents an orchestrator project.

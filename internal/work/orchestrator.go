@@ -319,7 +319,7 @@ func (m *DefaultOrchestratorManager) SpawnWorkOrchestrator(ctx context.Context, 
 // spawnWorkOrchestratorZmx creates a zmx session running the orchestrate command.
 func (m *DefaultOrchestratorManager) spawnWorkOrchestratorZmx(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, w io.Writer) error {
 	logging.Debug("spawnWorkOrchestratorZmx called", "workID", workID, "projectName", projectName, "workDir", workDir)
-	tabName := project.FormatTabName("orch", workID, friendlyName)
+	tabName := project.FormatTabNameShort("orch", workID)
 	zmxName := zmx.SessionName(projectName, tabName)
 
 	// Kill existing session if present
@@ -398,19 +398,23 @@ func (m *DefaultOrchestratorManager) spawnWorkOrchestratorZellij(ctx context.Con
 // Returns true if the orchestrator was spawned, false if it was already running.
 // Progress messages are written to the provided writer. Pass io.Discard to suppress output.
 func (m *DefaultOrchestratorManager) EnsureWorkOrchestrator(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, w io.Writer) (bool, error) {
-	tabName := project.FormatTabName("orch", workID, friendlyName)
 	logging.Debug("EnsureWorkOrchestrator called",
 		"workID", workID, "projectName", projectName, "workDir", workDir,
-		"friendlyName", friendlyName, "tabName", tabName, "isZmx", m.isZmx())
+		"friendlyName", friendlyName, "isZmx", m.isZmx())
 
 	// For zmx, check session existence directly
 	var sessionExists bool
+	var displayTabName string
 	if m.isZmx() {
+		tabName := project.FormatTabNameShort("orch", workID)
+		displayTabName = tabName
 		zmxName := zmx.SessionName(projectName, tabName)
 		logging.Debug("EnsureWorkOrchestrator checking zmx session", "zmxName", zmxName)
 		sessionExists, _ = m.zmx.SessionExists(ctx, zmxName)
 		logging.Debug("EnsureWorkOrchestrator zmx session check result", "zmxName", zmxName, "exists", sessionExists)
 	} else {
+		tabName := project.FormatTabName("orch", workID, friendlyName)
+		displayTabName = tabName
 		sessionName := project.SessionNameForProject(projectName)
 		sessionExists = m.tabExists(ctx, sessionName, tabName)
 	}
@@ -420,11 +424,11 @@ func (m *DefaultOrchestratorManager) EnsureWorkOrchestrator(ctx context.Context,
 		alive, err := m.database.IsOrchestratorAlive(ctx, workID, db.DefaultStalenessThreshold)
 		logging.Debug("EnsureWorkOrchestrator heartbeat check", "workID", workID, "alive", alive, "err", err)
 		if err == nil && alive {
-			fmt.Fprintf(w, "Work orchestrator tab %s already exists and orchestrator is alive\n", tabName)
+			fmt.Fprintf(w, "Work orchestrator tab %s already exists and orchestrator is alive\n", displayTabName)
 			return false, nil
 		}
 		// Tab/session exists but orchestrator is dead - SpawnWorkOrchestrator will terminate and recreate
-		fmt.Fprintf(w, "Work orchestrator tab %s exists but orchestrator is dead - restarting...\n", tabName)
+		fmt.Fprintf(w, "Work orchestrator tab %s exists but orchestrator is dead - restarting...\n", displayTabName)
 	}
 
 	// Spawn the orchestrator (handles existing tab/session termination)
