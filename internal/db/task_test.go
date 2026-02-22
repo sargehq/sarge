@@ -21,7 +21,7 @@ func TestCreateTask(t *testing.T) {
 	defer cleanup()
 	workID := createTestWork(t, db)
 
-	err := db.CreateTask(context.Background(), "task-1", "implement", []string{"bead-1", "bead-2"}, 100, workID)
+	err := db.CreateTask(context.Background(), "task-1", "implement", []string{"bead-1", "bead-2"}, 100, workID, 0)
 	require.NoError(t, err, "CreateTask failed")
 
 	// Verify task was created
@@ -43,7 +43,7 @@ func TestStartTask(t *testing.T) {
 	defer cleanup()
 	workID := createTestWork(t, db)
 
-	err := db.CreateTask(context.Background(), "task-1", "implement", []string{"bead-1"}, 100, workID)
+	err := db.CreateTask(context.Background(), "task-1", "implement", []string{"bead-1"}, 100, workID, 0)
 	require.NoError(t, err, "CreateTask failed")
 
 	err = db.StartTask(context.Background(), "task-1", "")
@@ -70,7 +70,7 @@ func TestCompleteTask(t *testing.T) {
 	defer cleanup()
 	workID := createTestWork(t, db)
 
-	db.CreateTask(context.Background(), "task-1", "implement", []string{"bead-1"}, 100, workID)
+	db.CreateTask(context.Background(), "task-1", "implement", []string{"bead-1"}, 100, workID, 0)
 	db.StartTask(context.Background(), "task-1", "")
 
 	err := db.CompleteTask(context.Background(), "task-1", "https://github.com/example/pr/1")
@@ -95,7 +95,7 @@ func TestFailTask(t *testing.T) {
 	defer cleanup()
 	workID := createTestWork(t, db)
 
-	db.CreateTask(context.Background(), "task-1", "implement", []string{"bead-1"}, 100, workID)
+	db.CreateTask(context.Background(), "task-1", "implement", []string{"bead-1"}, 100, workID, 0)
 	db.StartTask(context.Background(), "task-1", "")
 
 	err := db.FailTask(context.Background(), "task-1", "something went wrong")
@@ -129,7 +129,7 @@ func TestGetTaskForBead(t *testing.T) {
 	defer cleanup()
 	workID := createTestWork(t, db)
 
-	db.CreateTask(context.Background(), "task-1", "implement", []string{"bead-1", "bead-2"}, 100, workID)
+	db.CreateTask(context.Background(), "task-1", "implement", []string{"bead-1", "bead-2"}, 100, workID, 0)
 
 	taskID, err := db.GetTaskForBead(context.Background(), "bead-1")
 	require.NoError(t, err, "GetTaskForBead failed")
@@ -150,7 +150,7 @@ func TestCompleteTaskBead(t *testing.T) {
 	defer cleanup()
 	workID := createTestWork(t, db)
 
-	db.CreateTask(context.Background(), "task-1", "implement", []string{"bead-1", "bead-2"}, 100, workID)
+	db.CreateTask(context.Background(), "task-1", "implement", []string{"bead-1", "bead-2"}, 100, workID, 0)
 
 	err := db.CompleteTaskBead(context.Background(), "task-1", "bead-1")
 	require.NoError(t, err, "CompleteTaskBead failed")
@@ -166,7 +166,7 @@ func TestCompleteTaskBeadNotFound(t *testing.T) {
 	defer cleanup()
 	workID := createTestWork(t, db)
 
-	db.CreateTask(context.Background(), "task-1", "implement", []string{"bead-1"}, 100, workID)
+	db.CreateTask(context.Background(), "task-1", "implement", []string{"bead-1"}, 100, workID, 0)
 
 	err := db.CompleteTaskBead(context.Background(), "task-1", "nonexistent")
 	assert.Error(t, err, "expected error for nonexistent task bead")
@@ -177,7 +177,7 @@ func TestFailTaskBead(t *testing.T) {
 	defer cleanup()
 	workID := createTestWork(t, db)
 
-	db.CreateTask(context.Background(), "task-1", "implement", []string{"bead-1"}, 100, workID)
+	db.CreateTask(context.Background(), "task-1", "implement", []string{"bead-1"}, 100, workID, 0)
 
 	err := db.FailTaskBead(context.Background(), "task-1", "bead-1")
 	require.NoError(t, err, "FailTaskBead failed")
@@ -192,7 +192,7 @@ func TestFailTaskBeadNotFound(t *testing.T) {
 	defer cleanup()
 	workID := createTestWork(t, db)
 
-	db.CreateTask(context.Background(), "task-1", "implement", []string{"bead-1"}, 100, workID)
+	db.CreateTask(context.Background(), "task-1", "implement", []string{"bead-1"}, 100, workID, 0)
 
 	err := db.FailTaskBead(context.Background(), "task-1", "nonexistent")
 	assert.Error(t, err, "expected error for nonexistent task bead")
@@ -203,7 +203,7 @@ func TestIsTaskCompleted(t *testing.T) {
 	defer cleanup()
 	workID := createTestWork(t, db)
 
-	db.CreateTask(context.Background(), "task-1", "implement", []string{"bead-1", "bead-2"}, 100, workID)
+	db.CreateTask(context.Background(), "task-1", "implement", []string{"bead-1", "bead-2"}, 100, workID, 0)
 
 	// Initially not completed
 	total, completed, err := db.CountTaskBeadStatuses(context.Background(), "task-1")
@@ -240,7 +240,7 @@ func TestCheckAndCompleteTask(t *testing.T) {
 	defer cleanup()
 	workID := createTestWork(t, db)
 
-	db.CreateTask(context.Background(), "task-1", "implement", []string{"bead-1", "bead-2"}, 100, workID)
+	db.CreateTask(context.Background(), "task-1", "implement", []string{"bead-1", "bead-2"}, 100, workID, 0)
 	db.StartTask(context.Background(), "task-1", "")
 
 	// Not all beads completed yet
@@ -270,13 +270,13 @@ func TestListTasks(t *testing.T) {
 	workID := createTestWork(t, db)
 
 	// Create several tasks with different statuses
-	db.CreateTask(context.Background(), "task-1", "implement", []string{"bead-1"}, 100, workID)
-	db.CreateTask(context.Background(), "task-2", "implement", []string{"bead-2"}, 100, workID)
+	db.CreateTask(context.Background(), "task-1", "implement", []string{"bead-1"}, 100, workID, 0)
+	db.CreateTask(context.Background(), "task-2", "implement", []string{"bead-2"}, 100, workID, 0)
 	db.StartTask(context.Background(), "task-2", "")
-	db.CreateTask(context.Background(), "task-3", "implement", []string{"bead-3"}, 100, workID)
+	db.CreateTask(context.Background(), "task-3", "implement", []string{"bead-3"}, 100, workID, 0)
 	db.StartTask(context.Background(), "task-3", "")
 	db.CompleteTask(context.Background(), "task-3", "")
-	db.CreateTask(context.Background(), "task-4", "implement", []string{"bead-4"}, 100, workID)
+	db.CreateTask(context.Background(), "task-4", "implement", []string{"bead-4"}, 100, workID, 0)
 	db.StartTask(context.Background(), "task-4", "")
 	db.FailTask(context.Background(), "task-4", "error")
 
@@ -323,10 +323,10 @@ func TestAddTaskDependency(t *testing.T) {
 	err := db.CreateWork(ctx, "work-1", "", "/tmp/worktree", "feat/test", "main", "root-issue-1", false)
 	require.NoError(t, err, "CreateWork failed")
 
-	err = db.CreateTask(ctx, "task-1", "implement", []string{"bead-1"}, 0, "work-1")
+	err = db.CreateTask(ctx, "task-1", "implement", []string{"bead-1"}, 0, "work-1", 0)
 	require.NoError(t, err, "CreateTask task-1 failed")
 
-	err = db.CreateTask(ctx, "task-2", "implement", []string{"bead-2"}, 0, "work-1")
+	err = db.CreateTask(ctx, "task-2", "implement", []string{"bead-2"}, 0, "work-1", 0)
 	require.NoError(t, err, "CreateTask task-2 failed")
 
 	// Add dependency: task-2 depends on task-1
@@ -356,15 +356,15 @@ func TestGetReadyTasksForWork(t *testing.T) {
 	require.NoError(t, err, "CreateWork failed")
 
 	// Create tasks: task-1 has no deps, task-2 depends on task-1, task-3 depends on task-2
-	err = db.CreateTask(ctx, "task-1", "implement", nil, 0, "work-1")
+	err = db.CreateTask(ctx, "task-1", "implement", nil, 0, "work-1", 0)
 	require.NoError(t, err, "CreateTask task-1 failed")
 
-	err = db.CreateTask(ctx, "task-2", "implement", nil, 0, "work-1")
+	err = db.CreateTask(ctx, "task-2", "implement", nil, 0, "work-1", 0)
 	require.NoError(t, err, "CreateTask task-2 failed")
 	err = db.AddTaskDependency(ctx, "task-2", "task-1")
 	require.NoError(t, err, "AddTaskDependency task-2 -> task-1 failed")
 
-	err = db.CreateTask(ctx, "task-3", "implement", nil, 0, "work-1")
+	err = db.CreateTask(ctx, "task-3", "implement", nil, 0, "work-1", 0)
 	require.NoError(t, err, "CreateTask task-3 failed")
 	err = db.AddTaskDependency(ctx, "task-3", "task-2")
 	require.NoError(t, err, "AddTaskDependency task-3 -> task-2 failed")
@@ -412,13 +412,13 @@ func TestGetReadyTasksForWorkMultipleDependencies(t *testing.T) {
 	require.NoError(t, err, "CreateWork failed")
 
 	// task-3 depends on both task-1 AND task-2
-	err = db.CreateTask(ctx, "task-1", "implement", nil, 0, "work-1")
+	err = db.CreateTask(ctx, "task-1", "implement", nil, 0, "work-1", 0)
 	require.NoError(t, err)
 
-	err = db.CreateTask(ctx, "task-2", "implement", nil, 0, "work-1")
+	err = db.CreateTask(ctx, "task-2", "implement", nil, 0, "work-1", 0)
 	require.NoError(t, err)
 
-	err = db.CreateTask(ctx, "task-3", "implement", nil, 0, "work-1")
+	err = db.CreateTask(ctx, "task-3", "implement", nil, 0, "work-1", 0)
 	require.NoError(t, err)
 
 	err = db.AddTaskDependency(ctx, "task-3", "task-1")
@@ -459,10 +459,10 @@ func TestHasPendingDependencies(t *testing.T) {
 	err := db.CreateWork(ctx, "work-1", "", "/tmp/worktree", "feat/test", "main", "root-issue-1", false)
 	require.NoError(t, err)
 
-	err = db.CreateTask(ctx, "task-1", "implement", nil, 0, "work-1")
+	err = db.CreateTask(ctx, "task-1", "implement", nil, 0, "work-1", 0)
 	require.NoError(t, err)
 
-	err = db.CreateTask(ctx, "task-2", "implement", nil, 0, "work-1")
+	err = db.CreateTask(ctx, "task-2", "implement", nil, 0, "work-1", 0)
 	require.NoError(t, err)
 
 	err = db.AddTaskDependency(ctx, "task-2", "task-1")
@@ -497,10 +497,10 @@ func TestDeleteTaskDependency(t *testing.T) {
 	err := db.CreateWork(ctx, "work-1", "", "/tmp/worktree", "feat/test", "main", "root-issue-1", false)
 	require.NoError(t, err)
 
-	err = db.CreateTask(ctx, "task-1", "implement", nil, 0, "work-1")
+	err = db.CreateTask(ctx, "task-1", "implement", nil, 0, "work-1", 0)
 	require.NoError(t, err)
 
-	err = db.CreateTask(ctx, "task-2", "implement", nil, 0, "work-1")
+	err = db.CreateTask(ctx, "task-2", "implement", nil, 0, "work-1", 0)
 	require.NoError(t, err)
 
 	err = db.AddTaskDependency(ctx, "task-2", "task-1")
@@ -531,15 +531,15 @@ func TestBlockedTasksNotReady(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a chain: task-1 -> task-2 -> task-3
-	err = db.CreateTask(ctx, "task-1", "implement", nil, 0, "work-1")
+	err = db.CreateTask(ctx, "task-1", "implement", nil, 0, "work-1", 0)
 	require.NoError(t, err)
 
-	err = db.CreateTask(ctx, "task-2", "implement", nil, 0, "work-1")
+	err = db.CreateTask(ctx, "task-2", "implement", nil, 0, "work-1", 0)
 	require.NoError(t, err)
 	err = db.AddTaskDependency(ctx, "task-2", "task-1")
 	require.NoError(t, err)
 
-	err = db.CreateTask(ctx, "task-3", "implement", nil, 0, "work-1")
+	err = db.CreateTask(ctx, "task-3", "implement", nil, 0, "work-1", 0)
 	require.NoError(t, err)
 	err = db.AddTaskDependency(ctx, "task-3", "task-2")
 	require.NoError(t, err)
@@ -567,10 +567,10 @@ func TestFailedTaskBlocksDependents(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create: task-2 depends on task-1
-	err = db.CreateTask(ctx, "task-1", "implement", nil, 0, "work-1")
+	err = db.CreateTask(ctx, "task-1", "implement", nil, 0, "work-1", 0)
 	require.NoError(t, err)
 
-	err = db.CreateTask(ctx, "task-2", "implement", nil, 0, "work-1")
+	err = db.CreateTask(ctx, "task-2", "implement", nil, 0, "work-1", 0)
 	require.NoError(t, err)
 	err = db.AddTaskDependency(ctx, "task-2", "task-1")
 	require.NoError(t, err)
@@ -605,7 +605,7 @@ func TestGetPRTaskForWork(t *testing.T) {
 	assert.Nil(t, prTask, "expected nil when no PR task exists")
 
 	// Create a non-PR task
-	err = db.CreateTask(ctx, "task-1", "implement", nil, 0, "work-1")
+	err = db.CreateTask(ctx, "task-1", "implement", nil, 0, "work-1", 0)
 	require.NoError(t, err)
 
 	// Still no PR task
@@ -614,7 +614,7 @@ func TestGetPRTaskForWork(t *testing.T) {
 	assert.Nil(t, prTask, "expected nil when only non-PR tasks exist")
 
 	// Create a PR task (pending)
-	err = db.CreateTask(ctx, "task-2", "pr", nil, 0, "work-1")
+	err = db.CreateTask(ctx, "task-2", "pr", nil, 0, "work-1", 0)
 	require.NoError(t, err)
 
 	prTask, err = db.GetPRTaskForWork(ctx, "work-1")
@@ -654,7 +654,7 @@ func TestGetPRTaskForWork_FailedNotReturned(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a PR task and fail it
-	err = db.CreateTask(ctx, "task-1", "pr", nil, 0, "work-1")
+	err = db.CreateTask(ctx, "task-1", "pr", nil, 0, "work-1", 0)
 	require.NoError(t, err)
 	err = db.StartTask(ctx, "task-1", "")
 	require.NoError(t, err)
@@ -679,7 +679,7 @@ func TestGetPRTaskForWork_MultipleWorks(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create PR task only for work-1
-	err = db.CreateTask(ctx, "task-1", "pr", nil, 0, "work-1")
+	err = db.CreateTask(ctx, "task-1", "pr", nil, 0, "work-1", 0)
 	require.NoError(t, err)
 
 	// work-1 should have a PR task

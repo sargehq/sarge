@@ -57,7 +57,7 @@ func TestWorkLifecycleFlow_SingleTask(t *testing.T) {
 	// Phase 2: Task Planning
 	// Simulate what happens after worktree creation: create a task for the bead
 	taskID := workID + ".1"
-	err = h.DB.CreateTask(ctx, taskID, "implement", []string{"bead-1"}, 10, workID)
+	err = h.DB.CreateTask(ctx, taskID, "implement", []string{"bead-1"}, 10, workID, 0)
 	require.NoError(t, err)
 
 	// Verify task created with bead
@@ -152,13 +152,13 @@ func TestWorkLifecycleFlow_MultipleTasksWithDependencies(t *testing.T) {
 	assert.Len(t, workBeads, 3)
 
 	// Phase 3: Create tasks - one per bead (respecting dependencies)
-	err = h.DB.CreateTask(ctx, workID+".1", "implement", []string{"bead-1"}, 5, workID)
+	err = h.DB.CreateTask(ctx, workID+".1", "implement", []string{"bead-1"}, 5, workID, 1)
 	require.NoError(t, err)
-	err = h.DB.CreateTask(ctx, workID+".2", "implement", []string{"bead-2"}, 5, workID)
+	err = h.DB.CreateTask(ctx, workID+".2", "implement", []string{"bead-2"}, 5, workID, 2)
 	require.NoError(t, err)
 	err = h.DB.AddTaskDependency(ctx, workID+".2", workID+".1")
 	require.NoError(t, err)
-	err = h.DB.CreateTask(ctx, workID+".3", "implement", []string{"bead-3"}, 5, workID)
+	err = h.DB.CreateTask(ctx, workID+".3", "implement", []string{"bead-3"}, 5, workID, 3)
 	require.NoError(t, err)
 	err = h.DB.AddTaskDependency(ctx, workID+".3", workID+".2")
 	require.NoError(t, err)
@@ -244,7 +244,7 @@ func TestWorkLifecycleFlow_EpicExpansion(t *testing.T) {
 	assert.True(t, beadIDs["task-3"])
 
 	// Phase 3: Create tasks for non-epic beads only
-	err = h.DB.CreateTask(ctx, workID+".1", "implement", []string{"task-1", "task-2", "task-3"}, 15, workID)
+	err = h.DB.CreateTask(ctx, workID+".1", "implement", []string{"task-1", "task-2", "task-3"}, 15, workID, 1)
 	require.NoError(t, err)
 
 	// Phase 4: Execute and complete
@@ -304,7 +304,7 @@ func TestPRFeedbackFlow_FeedbackBeadsAddedToWork(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create and complete initial task
-	err = h.DB.CreateTask(ctx, workID+".1", "implement", []string{"initial-bead"}, 10, workID)
+	err = h.DB.CreateTask(ctx, workID+".1", "implement", []string{"initial-bead"}, 10, workID, 1)
 	require.NoError(t, err)
 
 	workRecord, err := h.DB.GetWork(ctx, workID)
@@ -382,9 +382,9 @@ func TestPRFeedbackFlow_FeedbackBeadsAddedToWork(t *testing.T) {
 	assert.Equal(t, db.StatusProcessing, workRecord.Status)
 
 	// Create tasks for feedback beads
-	err = h.DB.CreateTask(ctx, workID+".2", "implement", []string{"feedback-1"}, 5, workID)
+	err = h.DB.CreateTask(ctx, workID+".2", "implement", []string{"feedback-1"}, 5, workID, 2)
 	require.NoError(t, err)
-	err = h.DB.CreateTask(ctx, workID+".3", "implement", []string{"feedback-2"}, 5, workID)
+	err = h.DB.CreateTask(ctx, workID+".3", "implement", []string{"feedback-2"}, 5, workID, 3)
 	require.NoError(t, err)
 
 	// Phase 5: Execute feedback tasks
@@ -462,7 +462,7 @@ func TestReviewIterationFlow_FullCycle(t *testing.T) {
 	taskNum, err := h.DB.GetNextTaskNumber(ctx, workID)
 	require.NoError(t, err)
 	implementTaskID := workID + "." + strconv.Itoa(taskNum)
-	err = h.DB.CreateTask(ctx, implementTaskID, "implement", []string{"root-1"}, 10, workID)
+	err = h.DB.CreateTask(ctx, implementTaskID, "implement", []string{"root-1"}, 10, workID, 0)
 	require.NoError(t, err)
 	err = h.DB.StartTask(ctx, implementTaskID, workRecord.WorktreePath)
 	require.NoError(t, err)
@@ -500,7 +500,7 @@ func TestReviewIterationFlow_FullCycle(t *testing.T) {
 	fixTaskNum, err := h.DB.GetNextTaskNumber(ctx, workID)
 	require.NoError(t, err)
 	fixTaskID1 := workID + "." + strconv.Itoa(fixTaskNum)
-	err = h.DB.CreateTask(ctx, fixTaskID1, "implement", []string{"fix-1"}, 5, workID)
+	err = h.DB.CreateTask(ctx, fixTaskID1, "implement", []string{"fix-1"}, 5, workID, 0)
 	require.NoError(t, err)
 	err = h.DB.AddTaskDependency(ctx, fixTaskID1, reviewTaskID1)
 	require.NoError(t, err)
@@ -508,7 +508,7 @@ func TestReviewIterationFlow_FullCycle(t *testing.T) {
 	fixTaskNum, err = h.DB.GetNextTaskNumber(ctx, workID)
 	require.NoError(t, err)
 	fixTaskID2 := workID + "." + strconv.Itoa(fixTaskNum)
-	err = h.DB.CreateTask(ctx, fixTaskID2, "implement", []string{"fix-2"}, 5, workID)
+	err = h.DB.CreateTask(ctx, fixTaskID2, "implement", []string{"fix-2"}, 5, workID, 0)
 	require.NoError(t, err)
 	err = h.DB.AddTaskDependency(ctx, fixTaskID2, reviewTaskID1)
 	require.NoError(t, err)
@@ -588,7 +588,7 @@ func TestReviewIterationFlow_MaxIterationsForcesPR(t *testing.T) {
 	taskNum, err := h.DB.GetNextTaskNumber(ctx, workID)
 	require.NoError(t, err)
 	implementTaskID := workID + "." + strconv.Itoa(taskNum)
-	err = h.DB.CreateTask(ctx, implementTaskID, "implement", []string{"root-1"}, 10, workID)
+	err = h.DB.CreateTask(ctx, implementTaskID, "implement", []string{"root-1"}, 10, workID, 0)
 	require.NoError(t, err)
 	err = h.DB.StartTask(ctx, implementTaskID, workRecord.WorktreePath)
 	require.NoError(t, err)
@@ -626,7 +626,7 @@ func TestReviewIterationFlow_MaxIterationsForcesPR(t *testing.T) {
 	prTaskNum, err := h.DB.GetNextTaskNumber(ctx, workID)
 	require.NoError(t, err)
 	prTaskID := workID + "." + strconv.Itoa(prTaskNum)
-	err = h.DB.CreateTask(ctx, prTaskID, "pr", nil, 0, workID)
+	err = h.DB.CreateTask(ctx, prTaskID, "pr", nil, 0, workID, 0)
 	require.NoError(t, err)
 
 	prTask, err := h.DB.GetTask(ctx, prTaskID)
@@ -808,7 +808,7 @@ func TestWorkLifecycleFlow_TaskFailureAndRecovery(t *testing.T) {
 
 	// Create and start task
 	taskID := workID + ".1"
-	err = h.DB.CreateTask(ctx, taskID, "implement", []string{"bead-1"}, 10, workID)
+	err = h.DB.CreateTask(ctx, taskID, "implement", []string{"bead-1"}, 10, workID, 0)
 	require.NoError(t, err)
 	err = h.DB.StartTask(ctx, taskID, workRecord.WorktreePath)
 	require.NoError(t, err)

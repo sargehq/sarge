@@ -178,7 +178,7 @@ func (s *WorkService) CreateEstimateTaskFromWorkBeads(ctx context.Context, workI
 
 	// Create the estimate task
 	taskID := fmt.Sprintf("%s.%d", workID, taskNum)
-	if err := s.DB.CreateTask(ctx, taskID, "estimate", beadIDs, 0, workID); err != nil {
+	if err := s.DB.CreateTask(ctx, taskID, "estimate", beadIDs, 0, workID, taskNum); err != nil {
 		return fmt.Errorf("failed to create estimate task: %w", err)
 	}
 
@@ -254,7 +254,7 @@ func (s *WorkService) createTasksFromWorkBeads(ctx context.Context, workID strin
 		}
 
 		taskID := fmt.Sprintf("%s.%d", workID, taskNum)
-		if err := s.DB.CreateTask(ctx, taskID, "implement", groupBeadIDs, 0, workID); err != nil {
+		if err := s.DB.CreateTask(ctx, taskID, "implement", groupBeadIDs, 0, workID, taskNum); err != nil {
 			return tasksCreated, fmt.Errorf("failed to create task: %w", err)
 		}
 

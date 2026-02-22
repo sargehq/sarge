@@ -36,7 +36,7 @@ func TestAutoWorkflowMetadata_ManualReviewSkipsAutomatedWorkflow(t *testing.T) {
 	require.NoError(t, err)
 
 	reviewTaskID := "work-1.1"
-	err = testDB.CreateTask(ctx, reviewTaskID, "review", nil, 0, "work-1")
+	err = testDB.CreateTask(ctx, reviewTaskID, "review", nil, 0, "work-1", 0)
 	require.NoError(t, err)
 
 	// Simulate TUI behavior: set auto_workflow=false for manual review
@@ -67,7 +67,7 @@ func TestAutoWorkflowMetadata_AutomatedReviewContinuesWorkflow(t *testing.T) {
 	require.NoError(t, err)
 
 	reviewTaskID := "work-1.1"
-	err = testDB.CreateTask(ctx, reviewTaskID, "review", nil, 0, "work-1")
+	err = testDB.CreateTask(ctx, reviewTaskID, "review", nil, 0, "work-1", 0)
 	require.NoError(t, err)
 
 	// Don't set auto_workflow metadata (this is what automated workflow does)
@@ -96,7 +96,7 @@ func TestAutoWorkflowMetadata_ExplicitTrueAlsoContinuesWorkflow(t *testing.T) {
 	require.NoError(t, err)
 
 	reviewTaskID := "work-1.1"
-	err = testDB.CreateTask(ctx, reviewTaskID, "review", nil, 0, "work-1")
+	err = testDB.CreateTask(ctx, reviewTaskID, "review", nil, 0, "work-1", 0)
 	require.NoError(t, err)
 
 	// Explicitly set auto_workflow=true
@@ -143,11 +143,11 @@ func TestGetReadyTasksRespectsDependencies(t *testing.T) {
 	// task-1 has no dependencies (ready)
 	// task-2 depends on task-1 (not ready until task-1 completes)
 	// task-3 depends on task-2 (not ready until task-2 completes)
-	err = testDB.CreateTask(ctx, "work-1.1", "implement", []string{"a"}, 5, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.1", "implement", []string{"a"}, 5, "work-1", 1)
 	require.NoError(t, err)
-	err = testDB.CreateTask(ctx, "work-1.2", "implement", []string{"b"}, 5, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.2", "implement", []string{"b"}, 5, "work-1", 2)
 	require.NoError(t, err)
-	err = testDB.CreateTask(ctx, "work-1.3", "implement", []string{"c"}, 5, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.3", "implement", []string{"c"}, 5, "work-1", 3)
 	require.NoError(t, err)
 
 	// Add dependencies: task-2 depends on task-1, task-3 depends on task-2
@@ -195,13 +195,13 @@ func TestGetReadyTasksWithDiamondDependency(t *testing.T) {
 	// task-1 and task-2 have no dependencies (both ready)
 	// task-3 depends on both task-1 and task-2 (not ready until both complete)
 	// task-4 depends on task-3
-	err = testDB.CreateTask(ctx, "work-1.1", "implement", []string{"a"}, 5, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.1", "implement", []string{"a"}, 5, "work-1", 1)
 	require.NoError(t, err)
-	err = testDB.CreateTask(ctx, "work-1.2", "implement", []string{"b"}, 5, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.2", "implement", []string{"b"}, 5, "work-1", 2)
 	require.NoError(t, err)
-	err = testDB.CreateTask(ctx, "work-1.3", "implement", []string{"c"}, 5, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.3", "implement", []string{"c"}, 5, "work-1", 3)
 	require.NoError(t, err)
-	err = testDB.CreateTask(ctx, "work-1.4", "implement", []string{"d"}, 5, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.4", "implement", []string{"d"}, 5, "work-1", 4)
 	require.NoError(t, err)
 
 	// task-3 depends on task-1 and task-2
@@ -258,7 +258,7 @@ func TestCreatePRTask_NoPRTaskExists(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a review task that the PR task will depend on
-	err = testDB.CreateTask(ctx, "work-1.1", "review", nil, 0, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.1", "review", nil, 0, "work-1", 1)
 	require.NoError(t, err)
 
 	// Verify no PR task exists initially
@@ -273,7 +273,7 @@ func TestCreatePRTask_NoPRTaskExists(t *testing.T) {
 	require.Greater(t, nextNum, 0, "task number should be positive")
 
 	prTaskID := "work-1.2"
-	err = testDB.CreateTask(ctx, prTaskID, "pr", nil, 0, "work-1")
+	err = testDB.CreateTask(ctx, prTaskID, "pr", nil, 0, "work-1", 0)
 	require.NoError(t, err)
 
 	err = testDB.AddTaskDependency(ctx, prTaskID, "work-1.1")
@@ -305,11 +305,11 @@ func TestCreatePRTask_PendingPRTaskExists(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create existing pending PR task
-	err = testDB.CreateTask(ctx, "work-1.1", "pr", nil, 0, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.1", "pr", nil, 0, "work-1", 1)
 	require.NoError(t, err)
 
 	// Create a review task that would trigger PR creation
-	err = testDB.CreateTask(ctx, "work-1.2", "review", nil, 0, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.2", "review", nil, 0, "work-1", 2)
 	require.NoError(t, err)
 
 	// Get existing PR task
@@ -346,7 +346,7 @@ func TestCreatePRTask_ProcessingPRTaskExists(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create and start a PR task (processing)
-	err = testDB.CreateTask(ctx, "work-1.1", "pr", nil, 0, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.1", "pr", nil, 0, "work-1", 1)
 	require.NoError(t, err)
 	err = testDB.StartTask(ctx, "work-1.1", "")
 	require.NoError(t, err)
@@ -383,7 +383,7 @@ func TestCreatePRTask_CompletedPRTaskExists(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create and complete a PR task
-	err = testDB.CreateTask(ctx, "work-1.1", "pr", nil, 0, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.1", "pr", nil, 0, "work-1", 1)
 	require.NoError(t, err)
 	err = testDB.StartTask(ctx, "work-1.1", "")
 	require.NoError(t, err)
@@ -391,7 +391,7 @@ func TestCreatePRTask_CompletedPRTaskExists(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a review task that the update-pr-description task will depend on
-	err = testDB.CreateTask(ctx, "work-1.2", "review", nil, 0, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.2", "review", nil, 0, "work-1", 2)
 	require.NoError(t, err)
 
 	// Get existing PR task
@@ -405,7 +405,7 @@ func TestCreatePRTask_CompletedPRTaskExists(t *testing.T) {
 	require.NoError(t, err)
 
 	updateTaskID := "work-1.3"
-	err = testDB.CreateTask(ctx, updateTaskID, "update-pr-description", nil, 0, "work-1")
+	err = testDB.CreateTask(ctx, updateTaskID, "update-pr-description", nil, 0, "work-1", 0)
 	require.NoError(t, err)
 
 	err = testDB.AddTaskDependency(ctx, updateTaskID, "work-1.2")
@@ -443,7 +443,7 @@ func TestCreatePRTask_FailedPRTaskAllowsNewPR(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create and fail a PR task
-	err = testDB.CreateTask(ctx, "work-1.1", "pr", nil, 0, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.1", "pr", nil, 0, "work-1", 1)
 	require.NoError(t, err)
 	err = testDB.StartTask(ctx, "work-1.1", "")
 	require.NoError(t, err)
@@ -451,7 +451,7 @@ func TestCreatePRTask_FailedPRTaskAllowsNewPR(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a review task
-	err = testDB.CreateTask(ctx, "work-1.2", "review", nil, 0, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.2", "review", nil, 0, "work-1", 2)
 	require.NoError(t, err)
 
 	// GetPRTaskForWork should return nil for failed PR tasks
@@ -464,7 +464,7 @@ func TestCreatePRTask_FailedPRTaskAllowsNewPR(t *testing.T) {
 	require.NoError(t, err)
 
 	newPRTaskID := "work-1.3"
-	err = testDB.CreateTask(ctx, newPRTaskID, "pr", nil, 0, "work-1")
+	err = testDB.CreateTask(ctx, newPRTaskID, "pr", nil, 0, "work-1", 0)
 	require.NoError(t, err)
 
 	err = testDB.AddTaskDependency(ctx, newPRTaskID, "work-1.2")
@@ -491,11 +491,11 @@ func TestReviewFixLoopCreatesOnlyOnePRTask(t *testing.T) {
 	require.NoError(t, err)
 
 	// First review cycle - no PR task exists
-	err = testDB.CreateTask(ctx, "work-1.1", "implement", []string{"bead-1"}, 5, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.1", "implement", []string{"bead-1"}, 5, "work-1", 1)
 	require.NoError(t, err)
 
 	// First review passes - should create PR task
-	err = testDB.CreateTask(ctx, "work-1.2", "review", nil, 0, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.2", "review", nil, 0, "work-1", 2)
 	require.NoError(t, err)
 	err = testDB.AddTaskDependency(ctx, "work-1.2", "work-1.1")
 	require.NoError(t, err)
@@ -507,7 +507,7 @@ func TestReviewFixLoopCreatesOnlyOnePRTask(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create PR task (first review pass)
-	err = testDB.CreateTask(ctx, "work-1.3", "pr", nil, 0, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.3", "pr", nil, 0, "work-1", 3)
 	require.NoError(t, err)
 	err = testDB.AddTaskDependency(ctx, "work-1.3", "work-1.2")
 	require.NoError(t, err)
@@ -519,9 +519,9 @@ func TestReviewFixLoopCreatesOnlyOnePRTask(t *testing.T) {
 	require.NoError(t, err)
 
 	// Second review cycle (after PR feedback) - PR already exists
-	err = testDB.CreateTask(ctx, "work-1.4", "implement", []string{"bead-2"}, 5, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.4", "implement", []string{"bead-2"}, 5, "work-1", 4)
 	require.NoError(t, err)
-	err = testDB.CreateTask(ctx, "work-1.5", "review", nil, 0, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.5", "review", nil, 0, "work-1", 5)
 	require.NoError(t, err)
 	err = testDB.AddTaskDependency(ctx, "work-1.5", "work-1.4")
 	require.NoError(t, err)
@@ -539,7 +539,7 @@ func TestReviewFixLoopCreatesOnlyOnePRTask(t *testing.T) {
 	assert.Equal(t, db.StatusCompleted, existingPRTask.Status)
 
 	// Should create update-pr-description, not a new PR task
-	err = testDB.CreateTask(ctx, "work-1.6", "update-pr-description", nil, 0, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.6", "update-pr-description", nil, 0, "work-1", 6)
 	require.NoError(t, err)
 	err = testDB.AddTaskDependency(ctx, "work-1.6", "work-1.5")
 	require.NoError(t, err)
@@ -575,9 +575,9 @@ func TestMultipleReviewCyclesCreateMultipleUpdatePRTasks(t *testing.T) {
 	require.NoError(t, err)
 
 	// Setup: create and complete a PR task
-	err = testDB.CreateTask(ctx, "work-1.1", "review", nil, 0, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.1", "review", nil, 0, "work-1", 1)
 	require.NoError(t, err)
-	err = testDB.CreateTask(ctx, "work-1.2", "pr", nil, 0, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.2", "pr", nil, 0, "work-1", 2)
 	require.NoError(t, err)
 	err = testDB.AddTaskDependency(ctx, "work-1.2", "work-1.1")
 	require.NoError(t, err)
@@ -587,14 +587,14 @@ func TestMultipleReviewCyclesCreateMultipleUpdatePRTasks(t *testing.T) {
 	require.NoError(t, err)
 
 	// First feedback cycle - creates first update-pr-description
-	err = testDB.CreateTask(ctx, "work-1.3", "review", nil, 0, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.3", "review", nil, 0, "work-1", 3)
 	require.NoError(t, err)
 	err = testDB.StartTask(ctx, "work-1.3", "")
 	require.NoError(t, err)
 	err = testDB.CompleteTask(ctx, "work-1.3", "")
 	require.NoError(t, err)
 
-	err = testDB.CreateTask(ctx, "work-1.4", "update-pr-description", nil, 0, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.4", "update-pr-description", nil, 0, "work-1", 4)
 	require.NoError(t, err)
 	err = testDB.AddTaskDependency(ctx, "work-1.4", "work-1.3")
 	require.NoError(t, err)
@@ -604,14 +604,14 @@ func TestMultipleReviewCyclesCreateMultipleUpdatePRTasks(t *testing.T) {
 	require.NoError(t, err)
 
 	// Second feedback cycle - creates second update-pr-description
-	err = testDB.CreateTask(ctx, "work-1.5", "review", nil, 0, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.5", "review", nil, 0, "work-1", 5)
 	require.NoError(t, err)
 	err = testDB.StartTask(ctx, "work-1.5", "")
 	require.NoError(t, err)
 	err = testDB.CompleteTask(ctx, "work-1.5", "")
 	require.NoError(t, err)
 
-	err = testDB.CreateTask(ctx, "work-1.6", "update-pr-description", nil, 0, "work-1")
+	err = testDB.CreateTask(ctx, "work-1.6", "update-pr-description", nil, 0, "work-1", 6)
 	require.NoError(t, err)
 	err = testDB.AddTaskDependency(ctx, "work-1.6", "work-1.5")
 	require.NoError(t, err)

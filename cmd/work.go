@@ -710,7 +710,7 @@ func CreatePRTask(ctx context.Context, proj *project.Project, workID string) (*C
 	prTaskID := fmt.Sprintf("%s.%d", workID, prTaskNum)
 
 	// Create a PR creation task
-	if err := proj.DB.CreateTask(ctx, prTaskID, "pr", []string{}, 0, workID); err != nil {
+	if err := proj.DB.CreateTask(ctx, prTaskID, "pr", []string{}, 0, workID, prTaskNum); err != nil {
 		return nil, fmt.Errorf("failed to create PR task: %w", err)
 	}
 
@@ -801,7 +801,7 @@ func CreateReviewTask(ctx context.Context, proj *project.Project, workID string)
 	reviewTaskID := fmt.Sprintf("%s.%d", workID, reviewTaskNum)
 
 	// Create the review task
-	if err := proj.DB.CreateTask(ctx, reviewTaskID, "review", []string{}, 0, workID); err != nil {
+	if err := proj.DB.CreateTask(ctx, reviewTaskID, "review", []string{}, 0, workID, reviewTaskNum); err != nil {
 		return nil, fmt.Errorf("failed to create review task: %w", err)
 	}
 
@@ -921,7 +921,7 @@ func runWorkReview(cmd *cobra.Command, args []string) error {
 			}
 			taskID := fmt.Sprintf("%s.%d", workID, nextNum)
 
-			if err := proj.DB.CreateTask(ctx, taskID, "implement", []string{b.ID}, 0, workID); err != nil {
+			if err := proj.DB.CreateTask(ctx, taskID, "implement", []string{b.ID}, 0, workID, nextNum); err != nil {
 				return fmt.Errorf("failed to create fix task: %w", err)
 			}
 

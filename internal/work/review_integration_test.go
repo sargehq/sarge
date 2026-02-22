@@ -37,7 +37,7 @@ func TestReviewLoop_NoIssuesCreatesPR(t *testing.T) {
 	require.NoError(t, err)
 
 	prTaskID := "w-test." + itoa(prTaskNum)
-	err = h.DB.CreateTask(ctx, prTaskID, "pr", nil, 0, "w-test")
+	err = h.DB.CreateTask(ctx, prTaskID, "pr", nil, 0, "w-test", 0)
 	require.NoError(t, err)
 
 	// Verify PR task exists
@@ -79,7 +79,7 @@ func TestReviewLoop_IssuesCreateFixTasks(t *testing.T) {
 		require.NoError(t, err)
 		taskID := "w-test." + itoa(taskNum)
 
-		err = h.DB.CreateTask(ctx, taskID, "implement", []string{issue.ID}, 0, "w-test")
+		err = h.DB.CreateTask(ctx, taskID, "implement", []string{issue.ID}, 0, "w-test", 0)
 		require.NoError(t, err)
 
 		// Fix task depends on the review task
@@ -151,7 +151,7 @@ func TestReviewLoop_MaxIterationsForcesPR(t *testing.T) {
 	require.NoError(t, err)
 
 	prTaskID := "w-test." + itoa(prTaskNum)
-	err = h.DB.CreateTask(ctx, prTaskID, "pr", nil, 0, "w-test")
+	err = h.DB.CreateTask(ctx, prTaskID, "pr", nil, 0, "w-test", 0)
 	require.NoError(t, err)
 
 	// Verify PR task was created
@@ -231,7 +231,7 @@ func TestReviewLoop_FixTaskDependencies(t *testing.T) {
 	var fixTaskIDs []string
 	for i, issue := range reviewIssues {
 		taskID := "w-test." + itoa(i+2) // Start after review task
-		err = h.DB.CreateTask(ctx, taskID, "implement", []string{issue.ID}, 0, "w-test")
+		err = h.DB.CreateTask(ctx, taskID, "implement", []string{issue.ID}, 0, "w-test", 0)
 		require.NoError(t, err)
 
 		// Fix task depends on review task
@@ -243,7 +243,7 @@ func TestReviewLoop_FixTaskDependencies(t *testing.T) {
 
 	// Create new review task that depends on all fix tasks
 	newReviewTaskID := "w-test." + itoa(len(fixTaskIDs)+2)
-	err = h.DB.CreateTask(ctx, newReviewTaskID, "review", nil, 0, "w-test")
+	err = h.DB.CreateTask(ctx, newReviewTaskID, "review", nil, 0, "w-test", 0)
 	require.NoError(t, err)
 
 	for _, fixID := range fixTaskIDs {

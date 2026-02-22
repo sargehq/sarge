@@ -27,10 +27,10 @@ func TestDeleteWork(t *testing.T) {
 	task1ID := "w-test.1"
 	task2ID := "w-test.2"
 
-	err = db.CreateTask(ctx, task1ID, "implement", []string{"bead-1", "bead-2"}, 50, workID)
+	err = db.CreateTask(ctx, task1ID, "implement", []string{"bead-1", "bead-2"}, 50, workID, 0)
 	require.NoError(t, err, "Failed to create task 1")
 
-	err = db.CreateTask(ctx, task2ID, "implement", []string{"bead-3"}, 30, workID)
+	err = db.CreateTask(ctx, task2ID, "implement", []string{"bead-3"}, 30, workID, 0)
 	require.NoError(t, err, "Failed to create task 2")
 
 	// Note: CreateTask already adds the task to work_tasks when workID is provided,
@@ -242,9 +242,9 @@ func TestWorkStatusTransitionToCompleted(t *testing.T) {
 	// Create tasks for the work
 	task1ID := workID + ".1"
 	task2ID := workID + ".2"
-	err = db.CreateTask(ctx, task1ID, "implement", []string{"bead-1"}, 10, workID)
+	err = db.CreateTask(ctx, task1ID, "implement", []string{"bead-1"}, 10, workID, 0)
 	require.NoError(t, err)
-	err = db.CreateTask(ctx, task2ID, "implement", []string{"bead-2"}, 10, workID)
+	err = db.CreateTask(ctx, task2ID, "implement", []string{"bead-2"}, 10, workID, 0)
 	require.NoError(t, err)
 
 	// Verify work is not completed yet
@@ -297,7 +297,7 @@ func TestWorkStatusTransitionToCompletedWithoutPR(t *testing.T) {
 
 	// Create and complete a task
 	taskID := workID + ".1"
-	err = db.CreateTask(ctx, taskID, "implement", []string{"bead-1"}, 10, workID)
+	err = db.CreateTask(ctx, taskID, "implement", []string{"bead-1"}, 10, workID, 0)
 	require.NoError(t, err)
 	err = db.CompleteTask(ctx, taskID, "")
 	require.NoError(t, err)
@@ -340,11 +340,11 @@ func TestIsWorkCompletedWithPartialCompletion(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create three tasks
-	err = db.CreateTask(ctx, workID+".1", "implement", []string{"bead-1"}, 10, workID)
+	err = db.CreateTask(ctx, workID+".1", "implement", []string{"bead-1"}, 10, workID, 1)
 	require.NoError(t, err)
-	err = db.CreateTask(ctx, workID+".2", "implement", []string{"bead-2"}, 10, workID)
+	err = db.CreateTask(ctx, workID+".2", "implement", []string{"bead-2"}, 10, workID, 2)
 	require.NoError(t, err)
-	err = db.CreateTask(ctx, workID+".3", "implement", []string{"bead-3"}, 10, workID)
+	err = db.CreateTask(ctx, workID+".3", "implement", []string{"bead-3"}, 10, workID, 3)
 	require.NoError(t, err)
 
 	// Complete only one task

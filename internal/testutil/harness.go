@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/sargehq/sarge/internal/beads"
@@ -392,7 +393,7 @@ func (h *TestHarness) CreateTask(taskID, workID string, beadIDs []string) *db.Ta
 	h.T.Helper()
 	ctx := context.Background()
 
-	err := h.DB.CreateTask(ctx, taskID, "implement", beadIDs, 10, workID)
+	err := h.DB.CreateTask(ctx, taskID, "implement", beadIDs, 10, workID, extractTaskNumber(taskID))
 	require.NoError(h.T, err, "failed to create task")
 
 	task, err := h.DB.GetTask(ctx, taskID)
@@ -497,7 +498,7 @@ func (h *TestHarness) CreateReviewTask(taskID, workID string) *db.Task {
 		_, _ = h.DB.GetNextTaskNumber(ctx, workID)
 	}
 
-	err := h.DB.CreateTask(ctx, taskID, "review", nil, 0, workID)
+	err := h.DB.CreateTask(ctx, taskID, "review", nil, 0, workID, extractTaskNumber(taskID))
 	require.NoError(h.T, err, "failed to create review task")
 
 	task, err := h.DB.GetTask(ctx, taskID)
@@ -508,6 +509,17 @@ func (h *TestHarness) CreateReviewTask(taskID, workID string) *db.Task {
 // itoaHarness converts an int to a string for task IDs
 func itoaHarness(n int) string {
 	return strconv.Itoa(n)
+}
+
+// extractTaskNumber extracts the numeric suffix from a task ID like "work-1.14" -> 14.
+// Returns 0 if the ID doesn't have a numeric suffix.
+func extractTaskNumber(id string) int {
+	if idx := strings.LastIndex(id, "."); idx >= 0 {
+		if n, err := strconv.Atoi(id[idx+1:]); err == nil {
+			return n
+		}
+	}
+	return 0
 }
 
 // AddReviewIssues adds beads that simulate issues created by a review task.

@@ -42,16 +42,16 @@ func TestCountReviewIterations(t *testing.T) {
 		defer database.DeleteWork(ctx, "w-review-count")
 
 		// Create some implement tasks and review tasks
-		err := database.CreateTask(ctx, "w-review-count.1", "implement", []string{"bead-1"}, 10, "w-review-count")
+		err := database.CreateTask(ctx, "w-review-count.1", "implement", []string{"bead-1"}, 10, "w-review-count", 1)
 		require.NoError(t, err)
 
-		err = database.CreateTask(ctx, "w-review-count.2", "review", []string{}, 10, "w-review-count")
+		err = database.CreateTask(ctx, "w-review-count.2", "review", []string{}, 10, "w-review-count", 2)
 		require.NoError(t, err)
 
-		err = database.CreateTask(ctx, "w-review-count.3", "review", []string{}, 10, "w-review-count")
+		err = database.CreateTask(ctx, "w-review-count.3", "review", []string{}, 10, "w-review-count", 3)
 		require.NoError(t, err)
 
-		err = database.CreateTask(ctx, "w-review-count.4", "implement", []string{"bead-2"}, 10, "w-review-count")
+		err = database.CreateTask(ctx, "w-review-count.4", "implement", []string{"bead-2"}, 10, "w-review-count", 4)
 		require.NoError(t, err)
 
 		// Count review iterations
@@ -65,7 +65,7 @@ func TestCountReviewIterations(t *testing.T) {
 		defer database.DeleteWork(ctx, "w-no-review")
 
 		// Create only implement tasks
-		err := database.CreateTask(ctx, "w-no-review.1", "implement", []string{"bead-1"}, 10, "w-no-review")
+		err := database.CreateTask(ctx, "w-no-review.1", "implement", []string{"bead-1"}, 10, "w-no-review", 1)
 		require.NoError(t, err)
 
 		// Count review iterations
@@ -95,19 +95,19 @@ func TestCountReviewIterations(t *testing.T) {
 		defer database.DeleteWork(ctx, "w-mixed")
 
 		// Create mixed task types
-		err := database.CreateTask(ctx, "w-mixed.1", "estimate", []string{}, 10, "w-mixed")
+		err := database.CreateTask(ctx, "w-mixed.1", "estimate", []string{}, 10, "w-mixed", 1)
 		require.NoError(t, err)
 
-		err = database.CreateTask(ctx, "w-mixed.2", "review", []string{}, 10, "w-mixed")
+		err = database.CreateTask(ctx, "w-mixed.2", "review", []string{}, 10, "w-mixed", 2)
 		require.NoError(t, err)
 
-		err = database.CreateTask(ctx, "w-mixed.3", "pr", []string{}, 10, "w-mixed")
+		err = database.CreateTask(ctx, "w-mixed.3", "pr", []string{}, 10, "w-mixed", 3)
 		require.NoError(t, err)
 
-		err = database.CreateTask(ctx, "w-mixed.4", "review", []string{}, 10, "w-mixed")
+		err = database.CreateTask(ctx, "w-mixed.4", "review", []string{}, 10, "w-mixed", 4)
 		require.NoError(t, err)
 
-		err = database.CreateTask(ctx, "w-mixed.5", "review", []string{}, 10, "w-mixed")
+		err = database.CreateTask(ctx, "w-mixed.5", "review", []string{}, 10, "w-mixed", 5)
 		require.NoError(t, err)
 
 		// Count review iterations
