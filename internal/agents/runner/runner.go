@@ -159,6 +159,12 @@ func handleAgentExit(ctx context.Context, database *db.DB, taskID string, exitEr
 		fmt.Printf("\n=== Task %s completed (took %s) ===\n", taskID, elapsed.Round(time.Second))
 	} else if task != nil && task.Status == db.StatusFailed {
 		fmt.Printf("\n=== Task %s failed (took %s) ===\n", taskID, elapsed.Round(time.Second))
+	} else if task != nil && task.Status == db.StatusProcessing {
+		// Agent exited cleanly but never called sarge complete — mark as failed
+		fmt.Printf("\n=== Agent exited without completing task %s (took %s), marking as failed ===\n", taskID, elapsed.Round(time.Second))
+		if dbErr := database.FailTask(ctx, taskID, "agent exited without completing task"); dbErr != nil {
+			fmt.Printf("Warning: failed to mark task as failed: %v\n", dbErr)
+		}
 	} else {
 		fmt.Printf("\n=== Agent exited for task %s (took %s) ===\n", taskID, elapsed.Round(time.Second))
 	}
