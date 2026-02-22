@@ -105,8 +105,8 @@ func TestBuildGhosttyTabAppleScript(t *testing.T) {
 	script := buildGhosttyTabAppleScript("sarge-myproject.editor")
 	require.Contains(t, script, `tell application "System Events"`)
 	require.Contains(t, script, `tell process "Ghostty"`)
+	require.Contains(t, script, `click menu item "New Tab" of menu "File" of menu bar item "File" of menu bar 1`)
 	require.Contains(t, script, `set frontmost to true`)
-	require.Contains(t, script, `keystroke "t" using command down`)
 	require.Contains(t, script, `zmx attach sarge-myproject.editor`)
 }
 
