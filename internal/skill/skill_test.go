@@ -18,7 +18,7 @@ func TestPiSkillInstalled(t *testing.T) {
 	t.Run("returns true when SKILL.md exists", func(t *testing.T) {
 		dir := t.TempDir()
 		skillDir := filepath.Join(dir, ".pi", "skills", "beads")
-		if err := os.MkdirAll(skillDir, 0o755); err != nil {
+		if err := os.MkdirAll(skillDir, 0o750); err != nil {
 			t.Fatal(err)
 		}
 		if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("test"), 0o644); err != nil {
@@ -58,7 +58,7 @@ func TestInstallPiSkill(t *testing.T) {
 	}
 
 	// Verify SKILL.md has expected content
-	data, err := os.ReadFile(skillPath)
+	data, err := os.ReadFile(skillPath) //nolint:gosec // test code, path from t.TempDir()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestClaudePluginInstalled_WithFile(t *testing.T) {
 	// Create a temp dir to simulate ~/.claude/plugins/
 	dir := t.TempDir()
 	pluginsDir := filepath.Join(dir, ".claude", "plugins")
-	if err := os.MkdirAll(pluginsDir, 0o755); err != nil {
+	if err := os.MkdirAll(pluginsDir, 0o750); err != nil {
 		t.Fatal(err)
 	}
 

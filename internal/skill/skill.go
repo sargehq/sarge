@@ -31,7 +31,7 @@ func InstallPiSkill(repoDir string) error {
 		destPath := filepath.Join(repoDir, ".pi", "skills", path)
 
 		if d.IsDir() {
-			return os.MkdirAll(destPath, 0o755)
+			return os.MkdirAll(destPath, 0o750)
 		}
 
 		data, err := beadsSkillFS.ReadFile(path)
@@ -39,11 +39,11 @@ func InstallPiSkill(repoDir string) error {
 			return fmt.Errorf("reading embedded %s: %w", path, err)
 		}
 
-		if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(destPath), 0o750); err != nil {
 			return fmt.Errorf("creating directory for %s: %w", destPath, err)
 		}
 
-		return os.WriteFile(destPath, data, 0o644)
+		return os.WriteFile(destPath, data, 0o600)
 	})
 }
 
@@ -59,7 +59,8 @@ func claudePluginInstalledFromFile(path string) bool {
 		return false
 	}
 
-	data, err := os.ReadFile(path)
+	cleanPath := filepath.Clean(path)
+	data, err := os.ReadFile(cleanPath) //nolint:gosec // path is constructed from os.UserHomeDir(), not user input
 	if err != nil {
 		return false
 	}
