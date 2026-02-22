@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -80,6 +81,70 @@ func TestInstallPiSkill_Idempotent(t *testing.T) {
 		t.Fatalf("first install failed: %v", err)
 	}
 	if err := InstallPiSkill(dir); err != nil {
+		t.Fatalf("second install failed: %v", err)
+	}
+}
+
+func TestPiExtensionInstalled(t *testing.T) {
+	t.Run("returns false when extension does not exist", func(t *testing.T) {
+		dir := t.TempDir()
+		if PiExtensionInstalled(dir) {
+			t.Error("expected false for empty directory")
+		}
+	})
+
+	t.Run("returns true when sarge-complete.ts exists", func(t *testing.T) {
+		dir := t.TempDir()
+		extDir := filepath.Join(dir, ".pi", "extensions")
+		if err := os.MkdirAll(extDir, 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(extDir, "sarge-complete.ts"), []byte("test"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if !PiExtensionInstalled(dir) {
+			t.Error("expected true when sarge-complete.ts exists")
+		}
+	})
+}
+
+func TestInstallPiExtension(t *testing.T) {
+	dir := t.TempDir()
+
+	if err := InstallPiExtension(dir); err != nil {
+		t.Fatalf("InstallPiExtension failed: %v", err)
+	}
+
+	extPath := filepath.Join(dir, ".pi", "extensions", "sarge-complete.ts")
+	if _, err := os.Stat(extPath); err != nil {
+		t.Errorf("sarge-complete.ts not created: %v", err)
+	}
+
+	data, err := os.ReadFile(extPath) //nolint:gosec // test code
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(data) == 0 {
+		t.Error("sarge-complete.ts is empty")
+	}
+
+	// Should contain expected content
+	if !strings.Contains(string(data), "agent_end") {
+		t.Error("sarge-complete.ts missing expected agent_end handler")
+	}
+
+	if !PiExtensionInstalled(dir) {
+		t.Error("PiExtensionInstalled should return true after install")
+	}
+}
+
+func TestInstallPiExtension_Idempotent(t *testing.T) {
+	dir := t.TempDir()
+
+	if err := InstallPiExtension(dir); err != nil {
+		t.Fatalf("first install failed: %v", err)
+	}
+	if err := InstallPiExtension(dir); err != nil {
 		t.Fatalf("second install failed: %v", err)
 	}
 }

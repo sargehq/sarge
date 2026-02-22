@@ -452,6 +452,7 @@ Checks include:
 - **Config update**: Ensures `config.toml` has all available sections (new sections added commented-out)
 - **Mise beads version**: Ensures the mise config has the correct beads version
 - **Beads skill**: Ensures the coding agent has the beads skill installed (pi skill or Claude plugin)
+- **Sarge extension (pi)**: Ensures the sarge-complete extension is installed for pi agents
 
 ## Agent Commands
 

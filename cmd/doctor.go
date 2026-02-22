@@ -23,6 +23,7 @@ Checks include:
   - Config update: ensures config.toml has all available sections
   - Mise beads version: ensures the mise config has the correct beads version
   - Beads skill: ensures the coding agent has the beads skill installed
+  - Sarge extension (pi): ensures the sarge-complete extension is installed
 
 Use --dry-run to preview changes without applying them.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -68,6 +69,13 @@ func runDoctor(proj *project.Project) error {
 		return fmt.Errorf("beads skill check failed: %w", err)
 	}
 	issues += skillIssues
+
+	// Check 4: Pi sarge-complete extension
+	extIssues, err := checkPiExtension(proj)
+	if err != nil {
+		return fmt.Errorf("pi extension check failed: %w", err)
+	}
+	issues += extIssues
 
 	// Summary
 	fmt.Println()
@@ -216,6 +224,34 @@ func checkClaudeBeadsPlugin() (int, error) {
 
 	fmt.Println("🧩 Beads skill (claude): not found")
 	fmt.Println("   " + skill.ClaudeInstallInstructions())
+	return 1, nil
+}
+
+func checkPiExtension(proj *project.Project) (int, error) {
+	agentType := proj.Config.Agent.Type
+	if agentType == "" {
+		agentType = "claude" // default
+	}
+	if agentType != "pi" {
+		return 0, nil
+	}
+
+	repoDir := proj.MainRepoPath()
+	if skill.PiExtensionInstalled(repoDir) {
+		fmt.Println("🧩 Sarge extension (pi): installed")
+		return 0, nil
+	}
+
+	if doctorDryRun {
+		fmt.Println("🧩 Sarge extension (pi): missing")
+		fmt.Println("   Would install .pi/extensions/sarge-complete.ts in main repo")
+		return 1, nil
+	}
+
+	if err := skill.InstallPiExtension(repoDir); err != nil {
+		return 0, fmt.Errorf("failed to install pi sarge-complete extension: %w", err)
+	}
+	fmt.Println("🧩 Sarge extension (pi): installed .pi/extensions/sarge-complete.ts in main repo")
 	return 1, nil
 }
 
