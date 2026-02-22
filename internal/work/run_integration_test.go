@@ -167,18 +167,19 @@ func TestRunWork_WithPlanningEnabled(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, tasks, 2)
 
-	// First task should have 2 beads
-	task1Beads, err := h.DB.GetTaskBeads(ctx, tasks[0].ID)
+	// Tasks ordered by task_number DESC, so tasks[0] is the last-created task
+	// Second task (higher number) should have 1 bead
+	task2Beads, err := h.DB.GetTaskBeads(ctx, tasks[0].ID)
+	require.NoError(t, err)
+	assert.Len(t, task2Beads, 1)
+	assert.Contains(t, task2Beads, "bead-3")
+
+	// First task (lower number) should have 2 beads
+	task1Beads, err := h.DB.GetTaskBeads(ctx, tasks[1].ID)
 	require.NoError(t, err)
 	assert.Len(t, task1Beads, 2)
 	assert.Contains(t, task1Beads, "bead-1")
 	assert.Contains(t, task1Beads, "bead-2")
-
-	// Second task should have 1 bead
-	task2Beads, err := h.DB.GetTaskBeads(ctx, tasks[1].ID)
-	require.NoError(t, err)
-	assert.Len(t, task2Beads, 1)
-	assert.Contains(t, task2Beads, "bead-3")
 }
 
 func TestRunWork_SkipsAlreadyAssignedBeads(t *testing.T) {

@@ -94,7 +94,7 @@ type TaskBead struct {
 }
 
 // CreateTask creates a new task with the given beads.
-func (db *DB) CreateTask(ctx context.Context, id string, taskType string, beadIDs []string, complexityBudget int, workID string) error {
+func (db *DB) CreateTask(ctx context.Context, id string, taskType string, beadIDs []string, complexityBudget int, workID string, taskNumber int) error {
 	// Use a transaction for atomicity
 	tx, err := db.Begin()
 	if err != nil {
@@ -110,6 +110,7 @@ func (db *DB) CreateTask(ctx context.Context, id string, taskType string, beadID
 		TaskType:         taskType,
 		ComplexityBudget: int64(complexityBudget),
 		WorkID:           workID,
+		TaskNumber:       int64(taskNumber),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create task %s: %w", id, err)

@@ -65,7 +65,8 @@ CREATE TABLE tasks (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     spawned_at DATETIME,
     spawn_status TEXT NOT NULL DEFAULT '',
-    last_activity DATETIME
+    last_activity DATETIME,
+    task_number INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX idx_tasks_status ON tasks(status);

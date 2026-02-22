@@ -231,7 +231,7 @@ func (m *planModel) createReviewTask() tea.Cmd {
 		reviewTaskID := fmt.Sprintf("%s.%d", workID, reviewTaskNum)
 
 		// Create the review task
-		err = m.proj.DB.CreateTask(m.ctx, reviewTaskID, "review", []string{}, 0, workID)
+		err = m.proj.DB.CreateTask(m.ctx, reviewTaskID, "review", []string{}, 0, workID, reviewTaskNum)
 		if err != nil {
 			return workCommandMsg{action: "Create review", workID: workID, err: fmt.Errorf("failed to create review task: %w", err)}
 		}
@@ -271,7 +271,7 @@ func (m *planModel) createPRTask() tea.Cmd {
 		prTaskID := fmt.Sprintf("%s.%d", workID, prTaskNum)
 
 		// Create the PR task
-		err = m.proj.DB.CreateTask(m.ctx, prTaskID, "pr", []string{}, 0, workID)
+		err = m.proj.DB.CreateTask(m.ctx, prTaskID, "pr", []string{}, 0, workID, prTaskNum)
 		if err != nil {
 			return workCommandMsg{action: "Create PR", workID: workID, err: fmt.Errorf("failed to create PR task: %w", err)}
 		}

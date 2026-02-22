@@ -1,6 +1,6 @@
 -- name: CreateTask :exec
-INSERT INTO tasks (id, status, task_type, complexity_budget, work_id)
-VALUES (?, 'pending', ?, ?, ?);
+INSERT INTO tasks (id, status, task_type, complexity_budget, work_id, task_number)
+VALUES (?, 'pending', ?, ?, ?, ?);
 
 -- name: CreateTaskBead :exec
 INSERT INTO task_beads (task_id, bead_id, status)

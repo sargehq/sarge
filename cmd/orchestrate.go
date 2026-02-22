@@ -434,7 +434,7 @@ func handlePostEstimation(proj *project.Project, estimateTask *db.Task, work *db
 		}
 		taskID := fmt.Sprintf("%s.%d", work.ID, nextNum)
 
-		if err := proj.DB.CreateTask(ctx, taskID, "implement", t.BeadIDs, t.Complexity, work.ID); err != nil {
+		if err := proj.DB.CreateTask(ctx, taskID, "implement", t.BeadIDs, t.Complexity, work.ID, nextNum); err != nil {
 			return fmt.Errorf("failed to create implement task: %w", err)
 		}
 
@@ -494,7 +494,7 @@ func handlePostEstimation(proj *project.Project, estimateTask *db.Task, work *db
 		return fmt.Errorf("failed to get next task number for review: %w", err)
 	}
 	reviewTaskID := fmt.Sprintf("%s.%d", work.ID, reviewTaskNum)
-	if err := proj.DB.CreateTask(ctx, reviewTaskID, "review", nil, 0, work.ID); err != nil {
+	if err := proj.DB.CreateTask(ctx, reviewTaskID, "review", nil, 0, work.ID, reviewTaskNum); err != nil {
 		return fmt.Errorf("failed to create review task: %w", err)
 	}
 	for _, implID := range implementTaskIDs {
@@ -598,7 +598,7 @@ func handleReviewFixLoop(proj *project.Project, reviewTask *db.Task, work *db.Wo
 		}
 		taskID := fmt.Sprintf("%s.%d", work.ID, nextNum)
 
-		if err := proj.DB.CreateTask(ctx, taskID, "implement", []string{b.ID}, 0, work.ID); err != nil {
+		if err := proj.DB.CreateTask(ctx, taskID, "implement", []string{b.ID}, 0, work.ID, nextNum); err != nil {
 			return fmt.Errorf("failed to create fix task: %w", err)
 		}
 
@@ -617,7 +617,7 @@ func handleReviewFixLoop(proj *project.Project, reviewTask *db.Task, work *db.Wo
 		return fmt.Errorf("failed to get next task number for review: %w", err)
 	}
 	newReviewTaskID := fmt.Sprintf("%s.%d", work.ID, newReviewTaskNum)
-	if err := proj.DB.CreateTask(ctx, newReviewTaskID, "review", nil, 0, work.ID); err != nil {
+	if err := proj.DB.CreateTask(ctx, newReviewTaskID, "review", nil, 0, work.ID, newReviewTaskNum); err != nil {
 		return fmt.Errorf("failed to create new review task: %w", err)
 	}
 	for _, fixID := range fixTaskIDs {
@@ -662,7 +662,7 @@ func createPRTask(proj *project.Project, work *db.Work, reviewTaskID string) err
 	}
 	prTaskID := fmt.Sprintf("%s.%d", work.ID, prTaskNum)
 
-	if err := proj.DB.CreateTask(ctx, prTaskID, "pr", nil, 0, work.ID); err != nil {
+	if err := proj.DB.CreateTask(ctx, prTaskID, "pr", nil, 0, work.ID, prTaskNum); err != nil {
 		return fmt.Errorf("failed to create PR task: %w", err)
 	}
 	if err := proj.DB.AddTaskDependency(ctx, prTaskID, reviewTaskID); err != nil {
@@ -683,7 +683,7 @@ func createUpdatePRDescriptionTask(proj *project.Project, work *db.Work, reviewT
 	}
 	taskID := fmt.Sprintf("%s.%d", work.ID, taskNum)
 
-	if err := proj.DB.CreateTask(ctx, taskID, "update-pr-description", nil, 0, work.ID); err != nil {
+	if err := proj.DB.CreateTask(ctx, taskID, "update-pr-description", nil, 0, work.ID, taskNum); err != nil {
 		return fmt.Errorf("failed to create update-pr-description task: %w", err)
 	}
 	if err := proj.DB.AddTaskDependency(ctx, taskID, reviewTaskID); err != nil {
