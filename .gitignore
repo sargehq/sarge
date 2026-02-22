@@ -7,6 +7,13 @@
 ac
 .swp
 
+# Node (semantic-release tooling)
+node_modules/
+package-lock.json
+
+# GoReleaser
+dist/
+
 # bd daemon state (items not covered by .beads/.gitignore)
 .beads/bd.pipe
 .beads/.exclusive-lock
