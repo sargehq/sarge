@@ -150,6 +150,7 @@ These commands must be used via CLI (not available in TUI):
 | `sarge proj create <dir> <repo>` | Create a new project (local path or GitHub URL) |
 | `sarge proj destroy [--force]` | Remove project and all worktrees |
 | `sarge proj status` | Show project info, worktrees, and task status |
+| `sarge doctor [--dry-run]` | Check and fix project health (config, mise, agent skill) |
 
 ### Project Structure
 
@@ -226,6 +227,14 @@ go build -o sarge .
 ```
 
 ## Troubleshooting
+
+### General Health Check
+
+Run `sarge doctor` to automatically detect and fix common project issues:
+```bash
+sarge doctor             # Check and fix
+sarge doctor --dry-run   # Preview changes
+```
 
 ### "not in a project directory"
 

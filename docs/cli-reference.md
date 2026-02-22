@@ -435,6 +435,24 @@ sarge linear import ENG-123 --dry-run
 
 Linear metadata (ID, URL, assignee, labels) is preserved in the imported bead.
 
+### `sarge doctor`
+
+Check and fix project health.
+
+```bash
+sarge doctor             # Check and fix issues
+sarge doctor --dry-run   # Preview changes without applying
+```
+
+| Flag | Description |
+|------|-------------|
+| `--dry-run` | Show what would change without writing anything |
+
+Checks include:
+- **Config update**: Ensures `config.toml` has all available sections (new sections added commented-out)
+- **Mise beads version**: Ensures the mise config has the correct beads version
+- **Beads skill**: Ensures the coding agent has the beads skill installed (pi skill or Claude plugin)
+
 ## Agent Commands
 
 These commands are called by Claude Code during task execution. Not intended for direct user invocation.
