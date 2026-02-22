@@ -15,6 +15,11 @@ import (
 	"github.com/sargehq/sarge/internal/zmx"
 )
 
+// controlPlaneTabName is the tab name used for the control plane session.
+// This must match control.ControlPlaneTabName but is duplicated here to avoid
+// a circular import.
+const controlPlaneTabName = "control"
+
 // tabBelongsToWork returns true if a tab name belongs to the given work ID.
 // Matches orch, task, console, claude, and pi tabs for this work.
 func tabBelongsToWork(tabName, workID string) bool {
@@ -35,8 +40,11 @@ type WorkSession struct {
 }
 
 // parseSessionType extracts the session type from a tab name.
-// e.g. "orch-w123-my-feature" → "orch", "task-w123.1" → "task"
+// e.g. "orch-w123-my-feature" → "orch", "task-w123.1" → "task", "control" → "control"
 func parseSessionType(tabName string) string {
+	if tabName == controlPlaneTabName {
+		return "control"
+	}
 	for _, prefix := range []string{"orch-", "task-", "console-", "agent-"} {
 		if strings.HasPrefix(tabName, prefix) {
 			return strings.TrimSuffix(prefix, "-")
@@ -47,6 +55,9 @@ func parseSessionType(tabName string) string {
 
 // sessionDisplayName returns a human-friendly display name for a session.
 func sessionDisplayName(sessionType, tabName string) string {
+	if sessionType == "control" {
+		return "control plane"
+	}
 	return fmt.Sprintf("%s (%s)", sessionType, tabName)
 }
 
@@ -443,7 +454,10 @@ func (m *DefaultOrchestratorManager) ListWorkSessions(ctx context.Context, workI
 	var result []WorkSession
 	for _, name := range sessions {
 		_, tabName := zmx.ParseSessionName(name)
-		if tabName != "" && tabBelongsToWork(tabName, workID) {
+		if tabName == "" {
+			continue
+		}
+		if tabBelongsToWork(tabName, workID) || tabName == controlPlaneTabName {
 			sessionType := parseSessionType(tabName)
 			result = append(result, WorkSession{
 				Name:        name,
