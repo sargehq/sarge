@@ -250,6 +250,7 @@ func (a *Agent) Run(ctx context.Context, database *db.DB, taskID string, params 
 	agentArgs = append(agentArgs, prompt)
 	agentCmd := exec.CommandContext(ctx, a.binaryName, agentArgs...)
 	agentCmd.Dir = workDir
+	agentCmd.Env = append(os.Environ(), fmt.Sprintf("SARGE_TASK_ID=%s", taskID))
 	agentCmd.Stdin = os.Stdin
 	agentCmd.Stdout = os.Stdout
 	agentCmd.Stderr = os.Stderr
