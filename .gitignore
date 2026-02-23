@@ -6,14 +6,3 @@
 .idea
 ac
 .swp
-
-# bd daemon state (items not covered by .beads/.gitignore)
-.beads/bd.pipe
-.beads/.exclusive-lock
-
-# Git worktrees (if using protected branches)
-.git/beads-worktrees/
-
-# bv (beads viewer) local config and caches
-.bv/
-.beads/

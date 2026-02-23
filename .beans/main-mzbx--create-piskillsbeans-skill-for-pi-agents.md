@@ -1,11 +1,11 @@
 ---
 # main-mzbx
 title: Create .pi/skills/beans/ skill for pi agents
-status: todo
+status: completed
 type: task
 priority: high
 created_at: 2026-02-23T02:07:21Z
-updated_at: 2026-02-23T02:07:21Z
+updated_at: 2026-02-23T03:22:54Z
 parent: main-5uxi
 ---
 

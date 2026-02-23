@@ -1,11 +1,11 @@
 ---
 # main-mxwu
 title: Delete .pi/skills/beads/ and .beads/ directory
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-02-23T02:07:21Z
-updated_at: 2026-02-23T02:07:21Z
+updated_at: 2026-02-23T03:22:54Z
 parent: main-5uxi
 blocked_by:
     - main-3hea
