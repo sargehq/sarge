@@ -38,6 +38,17 @@ func (b *Bean) HasTag(tag string) bool {
 	return false
 }
 
+// CanBeParent returns true if the given bean type can have children.
+// Only milestone, epic, and feature beans can be parents.
+func CanBeParent(beanType string) bool {
+	switch beanType {
+	case "milestone", "epic", "feature":
+		return true
+	default:
+		return false
+	}
+}
+
 // HasTagValue checks if a slice of tags contains the given tag.
 func HasTagValue(tags []string, tag string) bool {
 	for _, t := range tags {

@@ -1,11 +1,11 @@
 ---
 # main-lg9w
 title: Update DB tests (beads→beans)
-status: todo
+status: completed
 type: task
 priority: high
 created_at: 2026-02-23T02:07:03Z
-updated_at: 2026-02-23T02:07:03Z
+updated_at: 2026-02-23T04:08:12Z
 parent: main-a6ly
 blocked_by:
     - main-3isk

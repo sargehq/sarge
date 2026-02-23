@@ -1,11 +1,11 @@
 ---
 # main-rgdi
 title: Update DB Go wrapper code (bead→bean naming)
-status: todo
+status: completed
 type: task
 priority: critical
 created_at: 2026-02-23T02:06:25Z
-updated_at: 2026-02-23T02:06:25Z
+updated_at: 2026-02-23T04:08:06Z
 parent: main-3isk
 ---
 

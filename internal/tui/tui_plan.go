@@ -1297,6 +1297,13 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			case WorkDetailActionAddChildIssue:
 				focusedWork := m.workDetails.GetFocusedWork()
 				if focusedWork != nil && focusedWork.Work.RootIssueID != "" {
+					// Check if root issue type supports children
+					rootBean := m.findBeanByID(focusedWork.Work.RootIssueID)
+					if rootBean != nil && !beans.CanBeParent(rootBean.Type) {
+						m.statusMessage = fmt.Sprintf("Cannot add child — root issue %s (type %q) cannot have children", rootBean.ID, rootBean.Type)
+						m.statusIsError = true
+						return m, nil
+					}
 					m.addChildToWorkID = focusedWork.Work.ID
 					m.beanFormPanel.SetAddChildMode(focusedWork.Work.RootIssueID)
 					m.viewMode = ViewAddChildBean
@@ -1583,7 +1590,13 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "a":
 		// Add child issue to selected issue
 		if len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
-			m.beanFormPanel.SetAddChildMode(m.beanItems[m.beansCursor].ID)
+			parent := m.beanItems[m.beansCursor]
+			if !beans.CanBeParent(parent.Type) {
+				m.statusMessage = fmt.Sprintf("Cannot add child to %s (type %q) — only milestone, epic, and feature beans can have children", parent.ID, parent.Type)
+				m.statusIsError = true
+				return m, nil
+			}
+			m.beanFormPanel.SetAddChildMode(parent.ID)
 			m.viewMode = ViewAddChildBean
 			return m, m.beanFormPanel.Init()
 		}
@@ -1995,6 +2008,15 @@ func (m *planModel) findWorkByID(id string) *progress.WorkProgress {
 	for _, work := range m.workTiles {
 		if work != nil && work.Work.ID == id {
 			return work
+		}
+	}
+	return nil
+}
+
+func (m *planModel) findBeanByID(id string) *beans.BeanWithDeps {
+	for _, item := range m.beanItems {
+		if item.ID == id {
+			return item.BeanWithDeps
 		}
 	}
 	return nil

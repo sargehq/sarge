@@ -1,11 +1,11 @@
 ---
 # main-z865
 title: 'Create migration 002: rename bead tables to bean tables'
-status: todo
+status: completed
 type: task
 priority: critical
 created_at: 2026-02-23T02:06:25Z
-updated_at: 2026-02-23T02:06:25Z
+updated_at: 2026-02-23T04:08:06Z
 parent: main-3isk
 blocked_by:
     - main-1icu

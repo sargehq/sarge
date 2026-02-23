@@ -1,11 +1,11 @@
 ---
 # main-ds0d
 title: Migrate from Beads to Beans
-status: todo
+status: completed
 type: milestone
 priority: critical
 created_at: 2026-02-23T02:05:45Z
-updated_at: 2026-02-23T02:05:45Z
+updated_at: 2026-02-23T04:08:12Z
 ---
 
 Replace the beads issue tracker (bd CLI + sqlite) with beans (beans CLI + markdown files + GraphQL) across the entire codebase.
