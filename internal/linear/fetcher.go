@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 )
 
 // Fetcher orchestrates fetching Linear issues and importing them into Beads
@@ -168,115 +168,111 @@ func (f *Fetcher) FetchBatch(ctx context.Context, linearIDsOrURLs []string, opts
 	return results, nil
 }
 
-// findExistingBead checks if a bead already exists for the given Linear ID
+// findExistingBead checks if a bean already exists for the given Linear ID
 func (f *Fetcher) findExistingBead(ctx context.Context, linearID string) (string, error) {
-	// First try to find by external_ref using bd list --external-ref
-	// This is the most reliable method since we now set external_ref
-	cmd := exec.CommandContext(ctx, "bd", "list", "--json")
+	// Use beans list --json to find by tag or body content
+	args := []string{"list", "--json"}
 	if f.beadsDir != "" {
-		cmd.Dir = f.beadsDir
+		args = append([]string{"--beans-path", f.beadsDir}, args...)
 	}
+	cmd := exec.CommandContext(ctx, "beans", args...)
 	output, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("failed to list beads: %w", err)
+		return "", fmt.Errorf("failed to list beans: %w", err)
 	}
 
-	var beadsList []struct {
-		ID          string `json:"id"`
-		ExternalRef string `json:"external_ref"`
-		Description string `json:"description"`
+	var beansList []struct {
+		ID   string   `json:"id"`
+		Tags []string `json:"tags"`
+		Body string   `json:"body"`
 	}
-	if err := json.Unmarshal(output, &beadsList); err != nil {
-		return "", fmt.Errorf("failed to parse beads list: %w", err)
+	if err := json.Unmarshal(output, &beansList); err != nil {
+		return "", fmt.Errorf("failed to parse beans list: %w", err)
 	}
 
-	for _, bead := range beadsList {
-		// Check external_ref first (most reliable)
-		if bead.ExternalRef == linearID {
-			return bead.ID, nil
+	linearTag := "linear:" + linearID
+	for _, bean := range beansList {
+		// Check tags first (most reliable - we store linear:ID as a tag)
+		for _, tag := range bean.Tags {
+			if tag == linearTag {
+				return bean.ID, nil
+			}
 		}
-		// Fallback: check if the bead's description contains the Linear ID
-		if strings.Contains(bead.Description, linearID) ||
-			strings.Contains(bead.Description, "linear.app/") && strings.Contains(bead.Description, linearID) {
-			return bead.ID, nil
+		// Fallback: check if the bean's body contains the Linear ID
+		if strings.Contains(bean.Body, linearID) ||
+			(strings.Contains(bean.Body, "linear.app/") && strings.Contains(bean.Body, linearID)) {
+			return bean.ID, nil
 		}
 	}
 
 	return "", nil
 }
 
-// createBead creates a bead using the beads client and sets all metadata
+// createBead creates a bean using the beans client and sets all metadata
 func (f *Fetcher) createBead(ctx context.Context, opts *BeadCreateOptions) (string, error) {
-	// Convert priority string (P0-P4) to int (0-4)
-	priority := 2 // default to medium
-	if len(opts.Priority) >= 2 && opts.Priority[0] == 'P' {
-		switch opts.Priority[1] {
-		case '0':
-			priority = 0
-		case '1':
-			priority = 1
-		case '2':
-			priority = 2
-		case '3':
-			priority = 3
-		case '4':
-			priority = 4
-		}
+	// Convert P0-P4 priority string to beans priority
+	priority := mapPriorityToBeans(opts.Priority)
+
+	createOpts := beans.CreateOptions{
+		Title:    opts.Title,
+		Body:     opts.Description,
+		Type:     opts.Type,
+		Priority: priority,
 	}
 
-	createOpts := beads.CreateOptions{
-		Title:       opts.Title,
-		Description: opts.Description,
-		Type:        opts.Type,
-		Priority:    priority,
+	// Add labels including assignee and Linear ID as tags
+	var tags []string
+	tags = append(tags, opts.Labels...)
+	if opts.Assignee != "" {
+		tags = append(tags, "assignee:"+opts.Assignee)
+	}
+	if linearID, ok := opts.Metadata["linear_id"]; ok && linearID != "" {
+		tags = append(tags, "linear:"+linearID)
+	}
+	if len(tags) > 0 {
+		createOpts.Tags = tags
 	}
 
-	cli := beads.NewCLI(f.beadsDir)
+	cli := beans.NewCLI(f.beadsDir)
 	beanID, err := cli.Create(ctx, createOpts)
 	if err != nil {
 		return "", err
 	}
 
-	// Set assignee if specified
-	if opts.Assignee != "" {
-		updateOpts := beads.UpdateOptions{
-			Assignee: opts.Assignee,
-		}
-		if err := cli.Update(ctx, beanID, updateOpts); err != nil {
-			return beanID, fmt.Errorf("created bead but failed to set assignee: %w", err)
-		}
-	}
-
-	// Add labels if specified
-	if len(opts.Labels) > 0 {
-		if err := cli.AddLabels(ctx, beanID, opts.Labels); err != nil {
-			return beanID, fmt.Errorf("created bead but failed to add labels: %w", err)
-		}
-	}
-
-	// Set Linear ID as external reference
-	if linearID, ok := opts.Metadata["linear_id"]; ok && linearID != "" {
-		if err := cli.SetExternalRef(ctx, beanID, linearID); err != nil {
-			return beanID, fmt.Errorf("created bead but failed to set external ref: %w", err)
-		}
-	}
-
-	// Set status if it's not the default "open"
-	if opts.Status != "" && opts.Status != "open" {
-		updateOpts := beads.UpdateOptions{
+	// Set status if it's not the default "todo"
+	if opts.Status != "" && opts.Status != beans.StatusTodo {
+		updateOpts := beans.UpdateOptions{
 			Status: opts.Status,
 		}
 		if err := cli.Update(ctx, beanID, updateOpts); err != nil {
-			return beanID, fmt.Errorf("created bead but failed to set status: %w", err)
+			return beanID, fmt.Errorf("created bean but failed to set status: %w", err)
 		}
 	}
 
 	return beanID, nil
 }
 
-// updateExistingBead updates an existing bead with fresh data from Linear
+// mapPriorityToBeans converts a P0-P4 string to a beans priority string.
+func mapPriorityToBeans(p string) string {
+	switch p {
+	case "P0":
+		return beans.PriorityCritical
+	case "P1":
+		return beans.PriorityHigh
+	case "P2":
+		return beans.PriorityNormal
+	case "P3":
+		return beans.PriorityLow
+	case "P4":
+		return beans.PriorityDeferred
+	default:
+		return beans.PriorityNormal
+	}
+}
+
+// updateExistingBead updates an existing bean with fresh data from Linear
 func (f *Fetcher) updateExistingBead(ctx context.Context, beanID string, issue *Issue, opts *ImportOptions) error {
-	// Map Linear issue to Beads creation options (reuse mapping logic)
+	// Map Linear issue to creation options (reuse mapping logic)
 	beadOpts := MapIssueToBeadCreate(issue)
 
 	// Override type if specified in options
@@ -284,48 +280,34 @@ func (f *Fetcher) updateExistingBead(ctx context.Context, beanID string, issue *
 		beadOpts.Type = opts.TypeFilter
 	}
 
-	// Format description with Linear metadata
-	beadOpts.Description = FormatBeadDescription(issue)
+	// Format body with Linear metadata
+	body := FormatBeadDescription(issue)
 
-	// Convert priority string (P0-P4) to int (0-4)
-	var priority *int
-	if beadOpts.Priority != "" {
-		p := 2 // default to medium
-		if len(beadOpts.Priority) >= 2 && beadOpts.Priority[0] == 'P' {
-			switch beadOpts.Priority[1] {
-			case '0':
-				p = 0
-			case '1':
-				p = 1
-			case '2':
-				p = 2
-			case '3':
-				p = 3
-			case '4':
-				p = 4
-			}
-		}
-		priority = &p
-	}
+	// Convert priority
+	priority := mapPriorityToBeans(beadOpts.Priority)
 
-	// Update the bead with all fields
-	cli := beads.NewCLI(f.beadsDir)
-	updateOpts := beads.UpdateOptions{
-		Title:       beadOpts.Title,
-		Type:        beadOpts.Type,
-		Description: beadOpts.Description,
-		Assignee:    beadOpts.Assignee,
-		Priority:    priority,
-		Status:      beadOpts.Status,
+	// Update the bean with all fields
+	cli := beans.NewCLI(f.beadsDir)
+	updateOpts := beans.UpdateOptions{
+		Title:    beadOpts.Title,
+		Type:     beadOpts.Type,
+		Body:     body,
+		Priority: priority,
+		Status:   beadOpts.Status,
 	}
 	if err := cli.Update(ctx, beanID, updateOpts); err != nil {
-		return fmt.Errorf("failed to update bead fields: %w", err)
+		return fmt.Errorf("failed to update bean fields: %w", err)
 	}
 
-	// Update labels (replace all existing labels)
-	if len(beadOpts.Labels) > 0 {
-		if err := cli.AddLabels(ctx, beanID, beadOpts.Labels); err != nil {
-			return fmt.Errorf("failed to update labels: %w", err)
+	// Update tags (labels + assignee)
+	var tags []string
+	tags = append(tags, beadOpts.Labels...)
+	if beadOpts.Assignee != "" {
+		tags = append(tags, "assignee:"+beadOpts.Assignee)
+	}
+	if len(tags) > 0 {
+		if err := cli.AddTags(ctx, beanID, tags); err != nil {
+			return fmt.Errorf("failed to update tags: %w", err)
 		}
 	}
 
@@ -339,7 +321,7 @@ func (f *Fetcher) createDependencies(ctx context.Context, beanID string, blocked
 		return nil
 	}
 
-	cli := beads.NewCLI(f.beadsDir)
+	cli := beans.NewCLI(f.beadsDir)
 	for _, blockedByID := range blockedByIDs {
 		// Fetch and import the blocking issue if not already imported
 		result, err := f.FetchAndImport(ctx, blockedByID, &ImportOptions{

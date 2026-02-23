@@ -4,12 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGenerateBranchNameFromBead_BasicTitle(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "Add user authentication",
 	}
@@ -20,7 +20,7 @@ func TestGenerateBranchNameFromBead_BasicTitle(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_UppercaseTitle(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "ADD USER AUTHENTICATION",
 	}
@@ -31,7 +31,7 @@ func TestGenerateBranchNameFromBead_UppercaseTitle(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_MixedCase(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "Add OAuth2 Support",
 	}
@@ -42,7 +42,7 @@ func TestGenerateBranchNameFromBead_MixedCase(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_WithUnderscores(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "add_user_authentication",
 	}
@@ -53,7 +53,7 @@ func TestGenerateBranchNameFromBead_WithUnderscores(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_WithSpecialCharacters(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "Add user auth! (v2.0) [WIP]",
 	}
@@ -64,7 +64,7 @@ func TestGenerateBranchNameFromBead_WithSpecialCharacters(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_WithMultipleSpaces(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "Add   user    authentication",
 	}
@@ -75,7 +75,7 @@ func TestGenerateBranchNameFromBead_WithMultipleSpaces(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_WithMultipleHyphens(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "Add---user---auth",
 	}
@@ -86,7 +86,7 @@ func TestGenerateBranchNameFromBead_WithMultipleHyphens(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_LeadingTrailingSpecialChars(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "  --Add user auth--  ",
 	}
@@ -97,7 +97,7 @@ func TestGenerateBranchNameFromBead_LeadingTrailingSpecialChars(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_WithNumbers(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "Add support for HTTP2",
 	}
@@ -108,7 +108,7 @@ func TestGenerateBranchNameFromBead_WithNumbers(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_OnlyNumbers(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "123456",
 	}
@@ -119,7 +119,7 @@ func TestGenerateBranchNameFromBead_OnlyNumbers(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_LongTitle_Truncates(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "Add comprehensive user authentication system with OAuth2 support and role-based access control",
 	}
@@ -133,7 +133,7 @@ func TestGenerateBranchNameFromBead_LongTitle_Truncates(t *testing.T) {
 
 func TestGenerateBranchNameFromBead_LongTitle_NoTrailingHyphen(t *testing.T) {
 	// Create a title that would end with a hyphen after truncation
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "Add comprehensive user authentication system with- more text here that will be cut off",
 	}
@@ -146,7 +146,7 @@ func TestGenerateBranchNameFromBead_LongTitle_NoTrailingHyphen(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_EmptyTitle(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "",
 	}
@@ -157,7 +157,7 @@ func TestGenerateBranchNameFromBead_EmptyTitle(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_OnlySpecialChars(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "!@#$%^&*()",
 	}
@@ -168,7 +168,7 @@ func TestGenerateBranchNameFromBead_OnlySpecialChars(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_OnlyWhitespace(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "     ",
 	}
@@ -179,7 +179,7 @@ func TestGenerateBranchNameFromBead_OnlyWhitespace(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_Unicode(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "Add café support",
 	}
@@ -191,7 +191,7 @@ func TestGenerateBranchNameFromBead_Unicode(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_MixedUnderscoresAndSpaces(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "add_user authentication_system",
 	}
@@ -203,7 +203,7 @@ func TestGenerateBranchNameFromBead_MixedUnderscoresAndSpaces(t *testing.T) {
 
 func TestGenerateBranchNameFromBead_ExactlyFiftyChars(t *testing.T) {
 	// Create a title that results in exactly 50 chars
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "Add user authentication system for the application",
 	}
@@ -215,7 +215,7 @@ func TestGenerateBranchNameFromBead_ExactlyFiftyChars(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_PrefixIsCorrect(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "Any title",
 	}
@@ -227,7 +227,7 @@ func TestGenerateBranchNameFromBead_PrefixIsCorrect(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_SingleWord(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "Authentication",
 	}
@@ -238,7 +238,7 @@ func TestGenerateBranchNameFromBead_SingleWord(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_SingleCharacter(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "A",
 	}
@@ -249,7 +249,7 @@ func TestGenerateBranchNameFromBead_SingleCharacter(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_Colons(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "feat: add user authentication",
 	}
@@ -260,7 +260,7 @@ func TestGenerateBranchNameFromBead_Colons(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_SlashesInTitle(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "Add user/admin authentication",
 	}
@@ -271,7 +271,7 @@ func TestGenerateBranchNameFromBead_SlashesInTitle(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_Apostrophes(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "Fix user's profile page",
 	}
@@ -282,7 +282,7 @@ func TestGenerateBranchNameFromBead_Apostrophes(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_Quotes(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: `Add "hello world" feature`,
 	}
@@ -293,7 +293,7 @@ func TestGenerateBranchNameFromBead_Quotes(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_Ampersand(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "Add search & filter",
 	}
@@ -304,7 +304,7 @@ func TestGenerateBranchNameFromBead_Ampersand(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_PlusSign(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "Add C++ support",
 	}
@@ -315,7 +315,7 @@ func TestGenerateBranchNameFromBead_PlusSign(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_AtSign(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "Add @mentions support",
 	}
@@ -326,7 +326,7 @@ func TestGenerateBranchNameFromBead_AtSign(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_HashSign(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "Add #hashtag support",
 	}
@@ -337,7 +337,7 @@ func TestGenerateBranchNameFromBead_HashSign(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_Dollars(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "Add $currency display",
 	}
@@ -348,7 +348,7 @@ func TestGenerateBranchNameFromBead_Dollars(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBead_Percent(t *testing.T) {
-	bead := &beads.Bead{
+	bead := &beans.Bean{
 		ID:    "test-1",
 		Title: "Add 50% discount feature",
 	}
@@ -397,7 +397,7 @@ func TestParseBeanIDs_EmptyEntries(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBeads_Single(t *testing.T) {
-	beadList := []*beads.Bead{
+	beadList := []*beans.Bean{
 		{ID: "test-1", Title: "Add user authentication"},
 	}
 
@@ -407,7 +407,7 @@ func TestGenerateBranchNameFromBeads_Single(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBeads_Multiple(t *testing.T) {
-	beadList := []*beads.Bead{
+	beadList := []*beans.Bean{
 		{ID: "test-1", Title: "Fix bug"},
 		{ID: "test-2", Title: "Add test"},
 	}
@@ -418,7 +418,7 @@ func TestGenerateBranchNameFromBeads_Multiple(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBeads_MultipleTruncated(t *testing.T) {
-	beadList := []*beads.Bead{
+	beadList := []*beans.Bean{
 		{ID: "test-1", Title: "Add comprehensive user authentication"},
 		{ID: "test-2", Title: "Add role based access control"},
 	}
@@ -432,7 +432,7 @@ func TestGenerateBranchNameFromBeads_MultipleTruncated(t *testing.T) {
 }
 
 func TestGenerateBranchNameFromBeads_Empty(t *testing.T) {
-	result := GenerateBranchNameFromIssues([]*beads.Bead{})
+	result := GenerateBranchNameFromIssues([]*beans.Bean{})
 
 	assert.Equal(t, "feat/automated-work", result)
 }

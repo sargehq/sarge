@@ -7,7 +7,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/sargehq/sarge/internal/logging"
 )
@@ -253,4 +255,32 @@ func Init(ctx context.Context, beansDir, prefix string) error {
 		return fmt.Errorf("beans init failed: %w\n%s", err, output)
 	}
 	return nil
+}
+
+// EditCommand returns an exec.Cmd for opening a bean's markdown file in $EDITOR.
+// It queries the bean's path via --json and opens it in the editor.
+func EditCommand(ctx context.Context, beanID, beansDir string) *exec.Cmd {
+	editor := os.Getenv("EDITOR")
+	if editor == "" {
+		editor = "vi"
+	}
+
+	// Get bean path from beans show --json
+	showCmd := beansCommand(ctx, beansDir, "show", beanID, "--json")
+	output, err := showCmd.Output()
+	if err != nil {
+		// Fall back to showing the bean
+		return beansCommand(ctx, beansDir, "show", beanID)
+	}
+
+	var beanInfo struct {
+		Path string `json:"path"`
+	}
+	if err := json.Unmarshal(output, &beanInfo); err != nil || beanInfo.Path == "" {
+		return beansCommand(ctx, beansDir, "show", beanID)
+	}
+
+	// Construct full path: beansDir/beans/<path>
+	fullPath := filepath.Join(beansDir, "beans", beanInfo.Path)
+	return exec.CommandContext(ctx, editor, fullPath)
 }

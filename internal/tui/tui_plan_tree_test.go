@@ -4,15 +4,16 @@ import (
 	"context"
 	"testing"
 
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/stretchr/testify/require"
 )
 
 // TestBuildBeadTree_EpicHierarchy tests handling of epic (parent-child) relationships
 func TestBuildBeadTree_EpicHierarchy(t *testing.T) {
 	items := []beadItem{
-		testBeadItem("epic-1", "Epic 1", "open", 1, "epic"),
-		testBeadItem("task-1", "Task 1", "open", 2, "task", "epic-1"),
-		testBeadItem("task-2", "Task 2", "open", 2, "task", "epic-1"),
+		testBeadItem("epic-1", "Epic 1", beans.StatusTodo, beans.PriorityHigh, "epic"),
+		testBeadItem("task-1", "Task 1", beans.StatusTodo, beans.PriorityNormal, "task", "epic-1"),
+		testBeadItem("task-2", "Task 2", beans.StatusTodo, beans.PriorityNormal, "task", "epic-1"),
 	}
 
 	result := buildBeadTree(context.Background(), items, nil)
@@ -31,8 +32,8 @@ func TestBuildBeadTree_EpicHierarchy(t *testing.T) {
 // TestBuildBeadTree_BlocksDependencies tests handling of "blocks" type dependencies
 func TestBuildBeadTree_BlocksDependencies(t *testing.T) {
 	items := []beadItem{
-		testBeadItem("blocker", "Blocker", "open", 1, "task"),
-		testBeadItem("blocked", "Blocked", "open", 2, "task", "blocker"),
+		testBeadItem("blocker", "Blocker", beans.StatusTodo, beans.PriorityHigh, "task"),
+		testBeadItem("blocked", "Blocked", beans.StatusTodo, beans.PriorityNormal, "task", "blocker"),
 	}
 
 	result := buildBeadTree(context.Background(), items, nil)
@@ -48,8 +49,8 @@ func TestBuildBeadTree_BlocksDependencies(t *testing.T) {
 // TestBuildBeadTree_ClosedParentVisibility tests filtering of closed parents
 func TestBuildBeadTree_ClosedParentVisibility(t *testing.T) {
 	items := []beadItem{
-		testBeadItemWithOptions("parent", "Parent", 1, "epic", true),
-		testBeadItem("child", "Child", "open", 2, "task", "parent"),
+		testBeadItemWithOptions("parent", "Parent", beans.PriorityHigh, "epic", true),
+		testBeadItem("child", "Child", beans.StatusTodo, beans.PriorityNormal, "task", "parent"),
 	}
 
 	result := buildBeadTree(context.Background(), items, nil)
@@ -61,7 +62,7 @@ func TestBuildBeadTree_ClosedParentVisibility(t *testing.T) {
 // TestBuildBeadTree_ClosedParentNoVisibleChildren tests filtering out closed parents without visible children
 func TestBuildBeadTree_ClosedParentNoVisibleChildren(t *testing.T) {
 	items := []beadItem{
-		testBeadItemWithOptions("parent", "Parent", 1, "epic", true),
+		testBeadItemWithOptions("parent", "Parent", beans.PriorityHigh, "epic", true),
 	}
 
 	result := buildBeadTree(context.Background(), items, nil)
@@ -73,10 +74,10 @@ func TestBuildBeadTree_ClosedParentNoVisibleChildren(t *testing.T) {
 // TestBuildBeadTree_MultiLevelNesting tests deep hierarchy
 func TestBuildBeadTree_MultiLevelNesting(t *testing.T) {
 	items := []beadItem{
-		testBeadItem("level-0", "Level 0", "open", 1, "task"),
-		testBeadItem("level-1", "Level 1", "open", 2, "task", "level-0"),
-		testBeadItem("level-2", "Level 2", "open", 3, "task", "level-1"),
-		testBeadItem("level-3", "Level 3", "open", 4, "task", "level-2"),
+		testBeadItem("level-0", "Level 0", beans.StatusTodo, beans.PriorityHigh, "task"),
+		testBeadItem("level-1", "Level 1", beans.StatusTodo, beans.PriorityNormal, "task", "level-0"),
+		testBeadItem("level-2", "Level 2", beans.StatusTodo, beans.PriorityLow, "task", "level-1"),
+		testBeadItem("level-3", "Level 3", beans.StatusTodo, beans.PriorityDeferred, "task", "level-2"),
 	}
 
 	result := buildBeadTree(context.Background(), items, nil)
@@ -93,10 +94,10 @@ func TestBuildBeadTree_MultiLevelNesting(t *testing.T) {
 // TestBuildBeadTree_MultipleRoots tests handling of multiple independent trees
 func TestBuildBeadTree_MultipleRoots(t *testing.T) {
 	items := []beadItem{
-		testBeadItem("root-1", "Root 1", "open", 1, "task"),
-		testBeadItem("root-2", "Root 2", "open", 2, "task"),
-		testBeadItem("child-1", "Child 1", "open", 3, "task", "root-1"),
-		testBeadItem("child-2", "Child 2", "open", 4, "task", "root-2"),
+		testBeadItem("root-1", "Root 1", beans.StatusTodo, beans.PriorityHigh, "task"),
+		testBeadItem("root-2", "Root 2", beans.StatusTodo, beans.PriorityNormal, "task"),
+		testBeadItem("child-1", "Child 1", beans.StatusTodo, beans.PriorityLow, "task", "root-1"),
+		testBeadItem("child-2", "Child 2", beans.StatusTodo, beans.PriorityDeferred, "task", "root-2"),
 	}
 
 	result := buildBeadTree(context.Background(), items, nil)
@@ -117,10 +118,10 @@ func TestBuildBeadTree_MultipleRoots(t *testing.T) {
 // TestBuildBeadTree_MixedTypes tests handling of different dependency types together
 func TestBuildBeadTree_MixedTypes(t *testing.T) {
 	items := []beadItem{
-		testBeadItem("epic", "Epic", "open", 1, "epic"),
-		testBeadItem("task", "Task", "open", 2, "task", "epic"),
-		testBeadItem("bug", "Bug", "open", 3, "bug"),
-		testBeadItem("feature", "Feature", "open", 4, "feature", "bug"),
+		testBeadItem("epic", "Epic", beans.StatusTodo, beans.PriorityHigh, "epic"),
+		testBeadItem("task", "Task", beans.StatusTodo, beans.PriorityNormal, "task", "epic"),
+		testBeadItem("bug", "Bug", beans.StatusTodo, beans.PriorityLow, "bug"),
+		testBeadItem("feature", "Feature", beans.StatusTodo, beans.PriorityDeferred, "feature", "bug"),
 	}
 
 	result := buildBeadTree(context.Background(), items, nil)
@@ -141,9 +142,9 @@ func TestBuildBeadTree_MixedTypes(t *testing.T) {
 // TestBuildBeadTree_CircularDependencies tests handling of circular dependency detection
 func TestBuildBeadTree_CircularDependencies(t *testing.T) {
 	items := []beadItem{
-		testBeadItem("item-1", "Item 1", "open", 1, "task", "item-3"),
-		testBeadItem("item-2", "Item 2", "open", 2, "task", "item-1"),
-		testBeadItem("item-3", "Item 3", "open", 3, "task", "item-2"),
+		testBeadItem("item-1", "Item 1", beans.StatusTodo, beans.PriorityHigh, "task", "item-3"),
+		testBeadItem("item-2", "Item 2", beans.StatusTodo, beans.PriorityNormal, "task", "item-1"),
+		testBeadItem("item-3", "Item 3", beans.StatusTodo, beans.PriorityLow, "task", "item-2"),
 	}
 
 	// The function should handle this gracefully without infinite loop
@@ -165,7 +166,7 @@ func TestBuildBeadTree_EmptyInput(t *testing.T) {
 func TestBuildBeadTree_WithNilClient(t *testing.T) {
 	// With nil client, function uses dependencies already set on items
 	items := []beadItem{
-		testBeadItem("item-1", "Item 1", "open", 1, "task"),
+		testBeadItem("item-1", "Item 1", beans.StatusTodo, beans.PriorityHigh, "task"),
 	}
 
 	result := buildBeadTree(context.Background(), items, nil)
@@ -176,8 +177,8 @@ func TestBuildBeadTree_WithNilClient(t *testing.T) {
 // TestBuildBeadTree_ParentChildRelationship tests that parent-child relationships are preserved
 func TestBuildBeadTree_ParentChildRelationship(t *testing.T) {
 	items := []beadItem{
-		testBeadItemWithOptions("parent", "Parent", 1, "epic", true),
-		testBeadItem("child", "Child", "open", 2, "task", "parent"),
+		testBeadItemWithOptions("parent", "Parent", beans.PriorityHigh, "epic", true),
+		testBeadItem("child", "Child", beans.StatusTodo, beans.PriorityNormal, "task", "parent"),
 	}
 
 	// Parents should be fetched and visible when they have visible children
@@ -190,9 +191,9 @@ func TestBuildBeadTree_ParentChildRelationship(t *testing.T) {
 // TestBuildBeadTree_ClosedParentWithClosedChildren tests that closed parents with only closed children are filtered out
 func TestBuildBeadTree_ClosedParentWithClosedChildren(t *testing.T) {
 	items := []beadItem{
-		testBeadItemWithOptions("parent", "Parent", 1, "epic", true),
-		testBeadItemWithOptions("child-1", "Child 1", 2, "task", false, "parent"),
-		testBeadItemWithOptions("child-2", "Child 2", 2, "task", false, "parent"),
+		testBeadItemWithOptions("parent", "Parent", beans.PriorityHigh, "epic", true),
+		testBeadItemWithOptions("child-1", "Child 1", beans.PriorityNormal, "task", false, "parent"),
+		testBeadItemWithOptions("child-2", "Child 2", beans.PriorityNormal, "task", false, "parent"),
 	}
 
 	result := buildBeadTree(context.Background(), items, nil)
@@ -204,9 +205,9 @@ func TestBuildBeadTree_ClosedParentWithClosedChildren(t *testing.T) {
 // TestBuildBeadTree_ClosedParentWithMixedChildren tests closed parent with both closed and open children
 func TestBuildBeadTree_ClosedParentWithMixedChildren(t *testing.T) {
 	items := []beadItem{
-		testBeadItemWithOptions("parent", "Parent", 1, "epic", true),
-		testBeadItemWithOptions("child-1", "Child 1", 2, "task", false, "parent"),
-		testBeadItem("child-2", "Child 2", "open", 2, "task", "parent"),
+		testBeadItemWithOptions("parent", "Parent", beans.PriorityHigh, "epic", true),
+		testBeadItemWithOptions("child-1", "Child 1", beans.PriorityNormal, "task", false, "parent"),
+		testBeadItem("child-2", "Child 2", beans.StatusTodo, beans.PriorityNormal, "task", "parent"),
 	}
 
 	result := buildBeadTree(context.Background(), items, nil)
@@ -225,9 +226,9 @@ func TestBuildBeadTree_ClosedParentWithMixedChildren(t *testing.T) {
 // TestBuildBeadTree_DeepClosedHierarchyWithOpenLeaf tests visibility propagates up through multiple closed levels
 func TestBuildBeadTree_DeepClosedHierarchyWithOpenLeaf(t *testing.T) {
 	items := []beadItem{
-		testBeadItemWithOptions("grandparent", "Grandparent", 1, "epic", true),
-		testBeadItemWithOptions("parent", "Parent", 2, "task", true, "grandparent"),
-		testBeadItem("child", "Child", "open", 3, "task", "parent"),
+		testBeadItemWithOptions("grandparent", "Grandparent", beans.PriorityHigh, "epic", true),
+		testBeadItemWithOptions("parent", "Parent", beans.PriorityNormal, "task", true, "grandparent"),
+		testBeadItem("child", "Child", beans.StatusTodo, beans.PriorityLow, "task", "parent"),
 	}
 
 	result := buildBeadTree(context.Background(), items, nil)
@@ -240,8 +241,8 @@ func TestBuildBeadTree_DeepClosedHierarchyWithOpenLeaf(t *testing.T) {
 // the visibility filter from removing a closed root issue
 func TestBuildBeadTree_PreserveIDsKeepsClosedRootIssue(t *testing.T) {
 	items := []beadItem{
-		testBeadItem("root-issue", "Root Issue", "closed", 1, "epic"),
-		testBeadItem("child-1", "Child 1", "closed", 2, "task", "root-issue"),
+		testBeadItem("root-issue", "Root Issue", beans.StatusCompleted, beans.PriorityHigh, "epic"),
+		testBeadItem("child-1", "Child 1", beans.StatusCompleted, beans.PriorityNormal, "task", "root-issue"),
 	}
 
 	// Without preserveIDs, both closed items should be filtered out
@@ -260,7 +261,7 @@ func TestBuildBeadTree_PreserveIDsKeepsClosedRootIssue(t *testing.T) {
 // TestBuildBeadTree_PreserveIDsEmptyStringIgnored tests that empty preserveIDs are ignored
 func TestBuildBeadTree_PreserveIDsEmptyStringIgnored(t *testing.T) {
 	items := []beadItem{
-		testBeadItem("closed-item", "Closed", "closed", 1, "task"),
+		testBeadItem("closed-item", "Closed", beans.StatusCompleted, beans.PriorityHigh, "task"),
 	}
 
 	// Empty string should be ignored, closed item should still be filtered

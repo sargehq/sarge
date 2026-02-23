@@ -5,7 +5,7 @@ import (
 	"io"
 	"testing"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/task"
 	"github.com/sargehq/sarge/internal/testutil"
@@ -87,12 +87,12 @@ func TestRunWork_RespectsBeadDependencies(t *testing.T) {
 	}
 
 	// Configure task planner to return tasks in correct order
-	h.TaskPlanner.PlanFunc = func(ctx context.Context, beadList []beads.Bead, dependencies map[string][]beads.Dependency, budget int) ([]task.Task, error) {
+	h.TaskPlanner.PlanFunc = func(ctx context.Context, beadList []beans.Bean, dependencies map[string][]beans.Dependency, budget int) ([]task.Task, error) {
 		// Return tasks respecting dependencies: bead-1, then bead-2, then bead-3
 		return []task.Task{
-			{ID: "task-1", BeanIDs: []string{"bead-1"}, Beads: []beads.Bead{{ID: "bead-1"}}},
-			{ID: "task-2", BeanIDs: []string{"bead-2"}, Beads: []beads.Bead{{ID: "bead-2"}}},
-			{ID: "task-3", BeanIDs: []string{"bead-3"}, Beads: []beads.Bead{{ID: "bead-3"}}},
+			{ID: "task-1", BeanIDs: []string{"bead-1"}, Beads: []beans.Bean{{ID: "bead-1"}}},
+			{ID: "task-2", BeanIDs: []string{"bead-2"}, Beads: []beans.Bean{{ID: "bead-2"}}},
+			{ID: "task-3", BeanIDs: []string{"bead-3"}, Beads: []beans.Bean{{ID: "bead-3"}}},
 		}, nil
 	}
 
@@ -135,19 +135,19 @@ func TestRunWork_WithPlanningEnabled(t *testing.T) {
 
 	// Configure task planner to group beads by complexity
 	// Simple beads grouped together, complex bead in separate task
-	h.TaskPlanner.PlanFunc = func(ctx context.Context, beadList []beads.Bead, dependencies map[string][]beads.Dependency, budget int) ([]task.Task, error) {
+	h.TaskPlanner.PlanFunc = func(ctx context.Context, beadList []beans.Bean, dependencies map[string][]beans.Dependency, budget int) ([]task.Task, error) {
 		return []task.Task{
 			{
 				ID:              "task-1",
 				BeanIDs:         []string{"bead-1", "bead-2"},
-				Beads:           []beads.Bead{{ID: "bead-1"}, {ID: "bead-2"}},
+				Beads:           []beans.Bean{{ID: "bead-1"}, {ID: "bead-2"}},
 				Complexity:      4,
 				EstimatedTokens: 20000,
 			},
 			{
 				ID:              "task-2",
 				BeanIDs:         []string{"bead-3"},
-				Beads:           []beads.Bead{{ID: "bead-3"}},
+				Beads:           []beans.Bean{{ID: "bead-3"}},
 				Complexity:      8,
 				EstimatedTokens: 80000,
 			},

@@ -20,7 +20,7 @@ var configTemplateText string
 type Config struct {
 	Project     ProjectConfig     `toml:"project"`
 	Repo        RepoConfig        `toml:"repo"`
-	Beads       BeadsConfig       `toml:"beads"`
+	Beads       BeansConfig       `toml:"beans"`
 	Hooks       HooksConfig       `toml:"hooks"`
 	Linear      LinearConfig      `toml:"linear"`
 	Agent       AgentConfig       `toml:"agent"`
@@ -322,11 +322,11 @@ func (m *MultiplexerConfig) GetTerminalCommand() string {
 	return "ghostty -e zmx attach {session}"
 }
 
-// BeadsConfig contains beads path configuration.
-type BeadsConfig struct {
-	// Path to beads directory (relative to project root)
-	// "main/.beads" = beads in repository (synced with git)
-	// ".co/.beads" = project-local beads (standalone, not synced)
+// BeansConfig contains beans path configuration.
+type BeansConfig struct {
+	// Path to beans directory (relative to project root)
+	// "main/.beans" = beans in repository (synced with git)
+	// ".co/.beans" = project-local beans (standalone, not synced)
 	Path string `toml:"path"`
 }
 
@@ -387,7 +387,7 @@ type configTemplateData struct {
 	RepoType       string
 	RepoSource     string
 	RepoPath       string
-	BeadsPath      string
+	BeansPath      string
 	AgentType      string
 	MultiplexerType string // "zellij" (default) or "zmx"
 }
@@ -610,7 +610,7 @@ func (c *Config) GenerateDocumentedConfig() string {
 		RepoType:        c.Repo.Type,
 		RepoSource:      c.Repo.Source,
 		RepoPath:        c.Repo.Path,
-		BeadsPath:       c.Beads.Path,
+		BeansPath:       c.Beads.Path,
 		AgentType:       c.Agent.Type,
 		MultiplexerType: c.Multiplexer.Type,
 	}

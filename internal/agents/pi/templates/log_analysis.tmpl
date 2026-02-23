@@ -1,4 +1,4 @@
-**THIS IS A FULLY AUTOMATED TASK. DO NOT ask questions, request clarification, or wait for user input. There is no human to respond. If you cannot determine failures from the log, complete the task with no beads created.**
+**THIS IS A FULLY AUTOMATED TASK. DO NOT ask questions, request clarification, or wait for user input. There is no human to respond. If you cannot determine failures from the log, complete the task with no beans created.**
 
 **MANDATORY**: Your FINAL action MUST be running: `sarge complete {{.TaskID}}`
 
@@ -10,10 +10,10 @@ Workflow: {{.WorkflowName}}
 {{if .ExistingBeads}}
 ## Existing Open Issues
 
-The following issues already exist. Before creating a new bead, check if any failure matches one of these existing issues:
+The following issues already exist. Before creating a new bean, check if any failure matches one of these existing issues:
 {{range .ExistingBeads}}
-- **{{.ID}}**: {{.Title}}{{if .Description}}
-  {{.Description}}{{end}}
+- **{{.ID}}**: {{.Title}}{{if .Body}}
+  {{.Body}}{{end}}
 {{end}}
 {{end}}
 ## Instructions
@@ -21,13 +21,13 @@ The following issues already exist. Before creating a new bead, check if any fai
 1. Read the CI log file: {{.LogFilePath}}
 
 2. Analyze the log to identify all failures, errors, and issues.
-   - If the log appears truncated, incomplete, or contains no identifiable failures, **do not ask questions**. Simply complete the task with no beads created.
-   - If errors are ambiguous, use your best judgment to create beads for the most likely failures.
+   - If the log appears truncated, incomplete, or contains no identifiable failures, **do not ask questions**. Simply complete the task with no beans created.
+   - If errors are ambiguous, use your best judgment to create beans for the most likely failures.
 
 3. For each distinct failure found:
    a. **First check** if it matches an existing issue above (same test name, same error type, same root cause)
    b. If it matches an existing issue: **skip it** (already tracked, no action needed)
-   c. If it's a new failure: create a bead{{if .RootIssueID}} under the root issue{{end}}:
+   c. If it's a new failure: create a bean{{if .RootIssueID}} under the root issue{{end}}:
    ```
    bd create "<issue title>"{{if .RootIssueID}} --parent {{.RootIssueID}}{{end}} --type <bug|task> \
      --priority <priority> \
@@ -70,7 +70,7 @@ YOUR FINAL ACTION MUST be running this command:
 sarge complete {{.TaskID}}
 ```
 Run this in ALL cases:
-- You created beads for new failures
+- You created beans for new failures
 - All failures matched existing issues
 - No failures were found in the log
 - The log was truncated or unreadable

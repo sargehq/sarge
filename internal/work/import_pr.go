@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/github"
 	"github.com/sargehq/sarge/internal/logging"
 )
@@ -128,38 +128,28 @@ func (s *WorkService) CreateBeadFromPR(ctx context.Context, metadata *github.PRM
 		beadOpts.priority = opts.OverridePriority
 	}
 
-	// Format description with PR metadata
+	// Format body with PR metadata
 	beadOpts.description = formatBeadDescription(metadata)
 
-	// Convert priority string (P0-P4) to int (0-4)
-	priority := parsePriority(beadOpts.priority)
+	// Convert priority string (P0-P4) to beans priority
+	priority := parsePriorityToBeans(beadOpts.priority)
 
-	// Create the bead
-	createOpts := beads.CreateOptions{
-		Title:       beadOpts.title,
-		Description: beadOpts.description,
-		Type:        beadOpts.issueType,
-		Priority:    priority,
+	// Build tags from labels plus PR URL for deduplication
+	tags := append(beadOpts.labels, "pr:"+metadata.URL)
+
+	// Create the bean
+	createOpts := beans.CreateOptions{
+		Title:    beadOpts.title,
+		Body:     beadOpts.description,
+		Type:     beadOpts.issueType,
+		Priority: priority,
+		Tags:     tags,
 	}
 
-	cli := beads.NewCLI(opts.BeadsDir)
+	cli := beans.NewCLI(opts.BeadsDir)
 	beanID, err := cli.Create(ctx, createOpts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create bead: %w", err)
-	}
-
-	// Set external reference to PR URL for deduplication
-	if err := cli.SetExternalRef(ctx, beanID, metadata.URL); err != nil {
-		logging.Warn("failed to set external ref on bead", "error", err, "beanID", beanID)
-		// Continue - bead was created successfully
-	}
-
-	// Add labels if present
-	if len(beadOpts.labels) > 0 {
-		if err := cli.AddLabels(ctx, beanID, beadOpts.labels); err != nil {
-			logging.Warn("failed to add labels to bead", "error", err, "beanID", beanID)
-			// Continue - bead was created successfully
-		}
+		return nil, fmt.Errorf("failed to create bean: %w", err)
 	}
 
 	result.BeanID = beanID
@@ -308,37 +298,39 @@ func formatBeadDescription(pr *github.PRMetadata) string {
 	return builder.String()
 }
 
-// findBeadByExternalRef checks if a bead already exists with the given external ref.
+// findBeadByExternalRef checks if a bean already exists with the given PR URL as a tag.
 func (s *WorkService) findBeadByExternalRef(ctx context.Context, externalRef string) (string, error) {
-	beadsList, err := s.BeadsReader.ListBeads(ctx, "")
+	beansList, err := s.BeadsReader.ListBeans(ctx, "")
 	if err != nil {
-		return "", fmt.Errorf("failed to list beads: %w", err)
+		return "", fmt.Errorf("failed to list beans: %w", err)
 	}
 
-	for _, bead := range beadsList {
-		if bead.ExternalRef == externalRef {
-			return bead.ID, nil
+	prTag := "pr:" + externalRef
+	for _, bean := range beansList {
+		for _, tag := range bean.Tags {
+			if tag == prTag {
+				return bean.ID, nil
+			}
 		}
 	}
 
 	return "", nil
 }
 
-// parsePriority converts priority string (P0-P4) to int (0-4).
-func parsePriority(priority string) int {
-	if len(priority) >= 2 && priority[0] == 'P' {
-		switch priority[1] {
-		case '0':
-			return 0
-		case '1':
-			return 1
-		case '2':
-			return 2
-		case '3':
-			return 3
-		case '4':
-			return 4
-		}
+// parsePriorityToBeans converts priority string (P0-P4) to beans priority string.
+func parsePriorityToBeans(priority string) string {
+	switch priority {
+	case "P0":
+		return beans.PriorityCritical
+	case "P1":
+		return beans.PriorityHigh
+	case "P2":
+		return beans.PriorityNormal
+	case "P3":
+		return beans.PriorityLow
+	case "P4":
+		return beans.PriorityDeferred
+	default:
+		return beans.PriorityNormal
 	}
-	return 2 // default to medium
 }

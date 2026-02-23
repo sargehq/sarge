@@ -2,13 +2,12 @@ package feedback
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 	"unicode"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/github"
 	"github.com/sargehq/sarge/internal/project"
 )
@@ -21,15 +20,15 @@ var (
 	issueNumberPattern     = regexp.MustCompile(`/issues/(\d+)`)
 )
 
-// BeadInfo represents information for creating a bead from feedback.
+// BeadInfo represents information for creating a bean from feedback.
 type BeadInfo struct {
 	Title       string
 	Description string
 	Type        string // task, bug, feature
-	Priority    int    // 0-4
+	Priority    string // critical, high, normal, low, deferred
 	ParentID    string // Parent issue ID (root_issue_id)
 	Labels      []string
-	SourceURL   string // GitHub URL for external reference generation
+	SourceURL   string // GitHub URL for tag generation
 }
 
 // Integration handles the integration between GitHub PR feedback and beads.
@@ -95,49 +94,37 @@ func (i *Integration) CreateBeadFromFeedback(ctx context.Context, beadDir string
 		return "", fmt.Errorf("invalid description: %w", err)
 	}
 
-	// Prepare external reference if we have a source URL
-	var externalRef string
-	if beadInfo.SourceURL != "" {
-		// Validate the source URL
-		sanitizedURL, err := validateAndSanitizeInput(beadInfo.SourceURL, 500, "source URL")
-		if err == nil {
-			// Create a short reference for the external-ref field
-			// For example, "gh-comment-123456" or "gh-pr-123"
-			ref := fmt.Sprintf("gh-%s", extractGitHubID(sanitizedURL))
-			// Validate the external reference
-			if sanitizedRef, err := validateAndSanitizeInput(ref, 100, "external reference"); err == nil {
-				externalRef = sanitizedRef
-			}
-		}
-		// If validation fails, we skip adding the external reference but continue
-	}
-
-	// Validate labels
-	var validLabels []string
+	// Build tags from labels and source URL
+	var validTags []string
 	for _, label := range beadInfo.Labels {
-		// Validate each label
 		sanitizedLabel, err := validateAndSanitizeInput(label, 50, "label")
 		if err != nil {
-			// Skip invalid labels but continue
 			continue
 		}
-		validLabels = append(validLabels, sanitizedLabel)
+		validTags = append(validTags, sanitizedLabel)
+	}
+	if beadInfo.SourceURL != "" {
+		if sanitizedURL, err := validateAndSanitizeInput(beadInfo.SourceURL, 500, "source URL"); err == nil {
+			ref := fmt.Sprintf("gh-%s", extractGitHubID(sanitizedURL))
+			if sanitizedRef, err := validateAndSanitizeInput(ref, 100, "source tag"); err == nil {
+				validTags = append(validTags, sanitizedRef)
+			}
+		}
 	}
 
-	// Create bead using the beads package
-	createOpts := beads.CreateOptions{
-		Title:       title,
-		Type:        beadInfo.Type,     // Already validated
-		Priority:    beadInfo.Priority, // Already validated as int
-		Parent:      parentID,
-		Description: description,
-		Labels:      validLabels,
-		ExternalRef: externalRef,
+	// Create bean using the beans package
+	createOpts := beans.CreateOptions{
+		Title:    title,
+		Type:     beadInfo.Type,
+		Priority: beadInfo.Priority,
+		Parent:   parentID,
+		Body:     description,
+		Tags:     validTags,
 	}
 
-	beanID, err := beads.NewCLI(beadDir).Create(ctx, createOpts)
+	beanID, err := beans.NewCLI(beadDir).Create(ctx, createOpts)
 	if err != nil {
-		return "", fmt.Errorf("failed to create bead: %w", err)
+		return "", fmt.Errorf("failed to create bean: %w", err)
 	}
 
 	return beanID, nil
@@ -233,10 +220,17 @@ func validateBeadType(beadType string) error {
 	return nil
 }
 
-// validatePriority ensures the priority is within valid range.
-func validatePriority(priority int) error {
-	if priority < 0 || priority > 4 {
-		return errors.New("priority must be between 0 and 4")
+// validatePriority ensures the priority is a valid beans priority string.
+func validatePriority(priority string) error {
+	valid := map[string]bool{
+		beans.PriorityCritical: true,
+		beans.PriorityHigh:     true,
+		beans.PriorityNormal:   true,
+		beans.PriorityLow:      true,
+		beans.PriorityDeferred: true,
+	}
+	if !valid[priority] {
+		return fmt.Errorf("invalid priority: %s", priority)
 	}
 	return nil
 }

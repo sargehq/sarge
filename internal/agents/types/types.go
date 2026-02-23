@@ -33,7 +33,7 @@ type TaskParams struct {
 
 // BeadSummary provides a summary of an existing bead for matching.
 type BeadSummary struct {
-	ID          string
-	Title       string
-	Description string
+	ID    string
+	Title string
+	Body  string
 }

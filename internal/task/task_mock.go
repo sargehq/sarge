@@ -5,7 +5,7 @@ package task
 
 import (
 	"context"
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"sync"
 )
 
@@ -19,7 +19,7 @@ var _ ComplexityEstimator = &ComplexityEstimatorMock{}
 //
 //		// make and configure a mocked ComplexityEstimator
 //		mockedComplexityEstimator := &ComplexityEstimatorMock{
-//			EstimateFunc: func(ctx context.Context, bead beads.Bead) (int, int, error) {
+//			EstimateFunc: func(ctx context.Context, bead beans.Bean) (int, int, error) {
 //				panic("mock out the Estimate method")
 //			},
 //		}
@@ -30,7 +30,7 @@ var _ ComplexityEstimator = &ComplexityEstimatorMock{}
 //	}
 type ComplexityEstimatorMock struct {
 	// EstimateFunc mocks the Estimate method.
-	EstimateFunc func(ctx context.Context, bead beads.Bead) (int, int, error)
+	EstimateFunc func(ctx context.Context, bead beans.Bean) (int, int, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -39,17 +39,17 @@ type ComplexityEstimatorMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Bead is the bead argument value.
-			Bead beads.Bead
+			Bead beans.Bean
 		}
 	}
 	lockEstimate sync.RWMutex
 }
 
 // Estimate calls EstimateFunc.
-func (mock *ComplexityEstimatorMock) Estimate(ctx context.Context, bead beads.Bead) (int, int, error) {
+func (mock *ComplexityEstimatorMock) Estimate(ctx context.Context, bead beans.Bean) (int, int, error) {
 	callInfo := struct {
 		Ctx  context.Context
-		Bead beads.Bead
+		Bead beans.Bean
 	}{
 		Ctx:  ctx,
 		Bead: bead,
@@ -74,11 +74,11 @@ func (mock *ComplexityEstimatorMock) Estimate(ctx context.Context, bead beads.Be
 //	len(mockedComplexityEstimator.EstimateCalls())
 func (mock *ComplexityEstimatorMock) EstimateCalls() []struct {
 	Ctx  context.Context
-	Bead beads.Bead
+	Bead beans.Bean
 } {
 	var calls []struct {
 		Ctx  context.Context
-		Bead beads.Bead
+		Bead beans.Bean
 	}
 	mock.lockEstimate.RLock()
 	calls = mock.calls.Estimate
@@ -96,7 +96,7 @@ var _ Planner = &PlannerMock{}
 //
 //		// make and configure a mocked Planner
 //		mockedPlanner := &PlannerMock{
-//			PlanFunc: func(ctx context.Context, beadList []beads.Bead, dependencies map[string][]beads.Dependency, budget int) ([]Task, error) {
+//			PlanFunc: func(ctx context.Context, beadList []beans.Bean, dependencies map[string][]beans.Dependency, budget int) ([]Task, error) {
 //				panic("mock out the Plan method")
 //			},
 //		}
@@ -107,7 +107,7 @@ var _ Planner = &PlannerMock{}
 //	}
 type PlannerMock struct {
 	// PlanFunc mocks the Plan method.
-	PlanFunc func(ctx context.Context, beadList []beads.Bead, dependencies map[string][]beads.Dependency, budget int) ([]Task, error)
+	PlanFunc func(ctx context.Context, beadList []beans.Bean, dependencies map[string][]beans.Dependency, budget int) ([]Task, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -116,9 +116,9 @@ type PlannerMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// BeadList is the beadList argument value.
-			BeadList []beads.Bead
+			BeadList []beans.Bean
 			// Dependencies is the dependencies argument value.
-			Dependencies map[string][]beads.Dependency
+			Dependencies map[string][]beans.Dependency
 			// Budget is the budget argument value.
 			Budget int
 		}
@@ -127,11 +127,11 @@ type PlannerMock struct {
 }
 
 // Plan calls PlanFunc.
-func (mock *PlannerMock) Plan(ctx context.Context, beadList []beads.Bead, dependencies map[string][]beads.Dependency, budget int) ([]Task, error) {
+func (mock *PlannerMock) Plan(ctx context.Context, beadList []beans.Bean, dependencies map[string][]beans.Dependency, budget int) ([]Task, error) {
 	callInfo := struct {
 		Ctx          context.Context
-		BeadList     []beads.Bead
-		Dependencies map[string][]beads.Dependency
+		BeadList     []beans.Bean
+		Dependencies map[string][]beans.Dependency
 		Budget       int
 	}{
 		Ctx:          ctx,
@@ -158,14 +158,14 @@ func (mock *PlannerMock) Plan(ctx context.Context, beadList []beads.Bead, depend
 //	len(mockedPlanner.PlanCalls())
 func (mock *PlannerMock) PlanCalls() []struct {
 	Ctx          context.Context
-	BeadList     []beads.Bead
-	Dependencies map[string][]beads.Dependency
+	BeadList     []beans.Bean
+	Dependencies map[string][]beans.Dependency
 	Budget       int
 } {
 	var calls []struct {
 		Ctx          context.Context
-		BeadList     []beads.Bead
-		Dependencies map[string][]beads.Dependency
+		BeadList     []beans.Bean
+		Dependencies map[string][]beans.Dependency
 		Budget       int
 	}
 	mock.lockPlan.RLock()

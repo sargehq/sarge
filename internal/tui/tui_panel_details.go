@@ -156,7 +156,7 @@ func (p *IssueDetailsPanel) renderFullIssueContent() string {
 	header.WriteString(tuiValueStyle.Render(bead.Type))
 	header.WriteString("  ")
 	header.WriteString(tuiLabelStyle.Render("P"))
-	header.WriteString(tuiValueStyle.Render(fmt.Sprintf("%d", bead.Priority)))
+	header.WriteString(tuiValueStyle.Render(bead.Priority))
 	header.WriteString("  ")
 	header.WriteString(tuiLabelStyle.Render("Status: "))
 	header.WriteString(tuiValueStyle.Render(bead.Status))
@@ -185,10 +185,10 @@ func (p *IssueDetailsPanel) renderFullIssueContent() string {
 	content.WriteString(tuiValueStyle.Render(titleStr))
 
 	// Show full description
-	if bead.Description != "" {
+	if bead.Body != "" {
 		content.WriteString("\n\n")
 		// Word wrap description to fit within inner width
-		wrapped := wordwrap.String(bead.Description, innerWidth)
+		wrapped := wordwrap.String(bead.Body, innerWidth)
 		content.WriteString(tuiDimStyle.Render(wrapped))
 	}
 

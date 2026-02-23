@@ -9,7 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	zone "github.com/lrstanley/bubblezone"
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 )
 
 // BeadFormMode indicates which mode the form is in
@@ -32,11 +32,20 @@ const (
 
 // beadStatuses is the list of valid bead statuses for editing
 var beadStatuses = []string{
-	beads.StatusOpen,
-	beads.StatusInProgress,
-	beads.StatusBlocked,
-	beads.StatusDeferred,
-	beads.StatusClosed,
+	beans.StatusTodo,
+	beans.StatusInProgress,
+	beans.StatusDraft,
+	beans.StatusScrapped,
+	beans.StatusCompleted,
+}
+
+// beadPriorities is the ordered list of bean priority values for the form.
+var beadPriorities = []string{
+	beans.PriorityCritical,
+	beans.PriorityHigh,
+	beans.PriorityNormal,
+	beans.PriorityLow,
+	beans.PriorityDeferred,
 }
 
 // BeadFormResult contains form values when submitted
@@ -44,7 +53,7 @@ type BeadFormResult struct {
 	Title       string
 	Description string
 	BeadType    string
-	Priority    int
+	Priority    string
 	Status      string // Only used in edit mode
 	EditBeanID  string // Non-empty when editing
 	ParentID    string // Non-empty when adding child
@@ -117,8 +126,8 @@ func (p *BeadFormPanel) Reset() {
 	p.parentID = ""
 }
 
-// SetEditMode configures the form for editing an existing bead
-func (p *BeadFormPanel) SetEditMode(beanID, title, description, beadType string, priority int, status string) {
+// SetEditMode configures the form for editing an existing bean
+func (p *BeadFormPanel) SetEditMode(beanID, title, description, beadType string, priority string, status string) {
 	p.mode = BeadFormModeEdit
 	p.editBeanID = beanID
 	p.parentID = ""
@@ -133,7 +142,14 @@ func (p *BeadFormPanel) SetEditMode(beanID, title, description, beadType string,
 			break
 		}
 	}
-	p.priority = priority
+	// Find the priority index
+	p.priority = 2 // default to normal
+	for i, pr := range beadPriorities {
+		if pr == priority {
+			p.priority = i
+			break
+		}
+	}
 	// Find the status index
 	p.status = 0
 	for i, s := range beadStatuses {
@@ -282,7 +298,7 @@ func (p *BeadFormPanel) Update(msg tea.KeyMsg) (tea.Cmd, BeadFormAction) {
 	case 2: // Priority
 		switch msg.String() {
 		case "j", "down", "right", "-":
-			if p.priority < 4 {
+			if p.priority < len(beadPriorities)-1 {
 				p.priority++
 			}
 		case "k", "up", "left", "+", "=":
@@ -346,7 +362,7 @@ func (p *BeadFormPanel) GetResult() BeadFormResult {
 		Title:       strings.TrimSpace(p.titleInput.Value()),
 		Description: strings.TrimSpace(p.descTextarea.Value()),
 		BeadType:    beadTypes[p.beadType],
-		Priority:    p.priority,
+		Priority:    beadPriorities[p.priority],
 		Status:      beadStatuses[p.status],
 		EditBeanID:  p.editBeanID,
 		ParentID:    p.parentID,
@@ -448,12 +464,12 @@ func (p *BeadFormPanel) Render(visibleLines int) string {
 	}
 
 	// Priority display
-	priorityLabels := []string{"P0 (critical)", "P1 (high)", "P2 (medium)", "P3 (low)", "P4 (backlog)"}
+	currentPriority := beadPriorities[p.priority]
 	var priorityDisplay string
 	if priorityFocused {
-		priorityDisplay = fmt.Sprintf("< %s >", tuiValueStyle.Render(priorityLabels[p.priority]))
+		priorityDisplay = fmt.Sprintf("< %s >", tuiValueStyle.Render(currentPriority))
 	} else {
-		priorityDisplay = priorityLabels[p.priority]
+		priorityDisplay = currentPriority
 	}
 
 	// Status display (edit mode only)

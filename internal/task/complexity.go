@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/db"
 )
 
@@ -30,9 +30,9 @@ func NewLLMEstimator(database *db.DB, workDir, projectName, workID string) *LLME
 // Estimate returns a complexity score (1-10) and estimated context tokens for a bead.
 // Results are cached based on the description hash.
 // Returns (0, 0, nil) if the bead needs estimation but an estimation task was spawned.
-func (e *LLMEstimator) Estimate(ctx context.Context, bead beads.Bead) (score int, tokens int, err error) {
+func (e *LLMEstimator) Estimate(ctx context.Context, bead beans.Bean) (score int, tokens int, err error) {
 	// Calculate description hash for caching
-	fullDescription := bead.Title + "\n" + bead.Description
+	fullDescription := bead.Title + "\n" + bead.Body
 	descHash := db.HashDescription(fullDescription)
 
 	// Check cache first
@@ -44,7 +44,7 @@ func (e *LLMEstimator) Estimate(ctx context.Context, bead beads.Bead) (score int
 	}
 
 	// For single estimates, run a batch of one (never force)
-	result, err := e.EstimateBatch(ctx, []beads.Bead{bead}, false)
+	result, err := e.EstimateBatch(ctx, []beans.Bean{bead}, false)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -74,7 +74,7 @@ type EstimationResult struct {
 // EstimateBatch spawns an estimation task for beads without cached complexity.
 // This function is non-blocking - it spawns the task and returns immediately.
 // Returns EstimationResult indicating whether all beads are cached or if a task was spawned.
-func (e *LLMEstimator) EstimateBatch(ctx context.Context, beadList []beads.Bead, forceEstimate bool) (*EstimationResult, error) {
+func (e *LLMEstimator) EstimateBatch(ctx context.Context, beadList []beans.Bean, forceEstimate bool) (*EstimationResult, error) {
 	result := &EstimationResult{}
 
 	if len(beadList) == 0 {
@@ -83,7 +83,7 @@ func (e *LLMEstimator) EstimateBatch(ctx context.Context, beadList []beads.Bead,
 	}
 
 	// Filter out already cached beads (unless forcing re-estimation)
-	var uncachedBeads []beads.Bead
+	var uncachedBeads []beans.Bean
 
 	if forceEstimate {
 		// Force re-estimation of all beads
@@ -95,7 +95,7 @@ func (e *LLMEstimator) EstimateBatch(ctx context.Context, beadList []beads.Bead,
 	} else {
 		// Normal flow: filter out cached beads
 		for _, bead := range beadList {
-			fullDescription := bead.Title + "\n" + bead.Description
+			fullDescription := bead.Title + "\n" + bead.Body
 			descHash := db.HashDescription(fullDescription)
 			_, _, found, _ := e.database.GetCachedComplexity(ctx, bead.ID, descHash)
 			if !found {

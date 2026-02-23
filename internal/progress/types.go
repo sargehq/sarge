@@ -28,13 +28,13 @@ type TaskProgress struct {
 	Beads []BeanProgress
 }
 
-// BeanProgress holds progress info for a bead.
+// BeanProgress holds progress info for a bean.
 type BeanProgress struct {
 	ID          string
 	Status      string
 	Title       string
 	Description string
-	BeanStatus  string // status from beads (open/closed)
-	Priority    int
+	BeanStatus  string // status from beans (todo/completed/etc)
+	Priority    string
 	IssueType   string
 }

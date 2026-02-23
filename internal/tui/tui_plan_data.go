@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/github"
 	"github.com/sargehq/sarge/internal/linear"
@@ -77,9 +77,9 @@ func (m *planModel) loadBeadsWithFilters(filters beadFilters) ([]beadItem, error
 			}
 		}
 		if !found {
-			rootBead, err := m.proj.Beads.GetBead(m.ctx, filters.rootIssue)
+			rootBead, err := m.proj.Beads.GetBean(m.ctx, filters.rootIssue)
 			if err == nil && rootBead != nil {
-				items = append([]beadItem{{BeadWithDeps: rootBead}}, items...)
+				items = append([]beadItem{{BeanWithDeps: rootBead}}, items...)
 			}
 		}
 	}
@@ -143,22 +143,22 @@ func (m *planModel) loadBeadsForTask(filters beadFilters) ([]beadItem, error) {
 	// Start with root issue if specified and not already in the task
 	var items []beadItem
 	if filters.rootIssue != "" && !beanIDSet[filters.rootIssue] {
-		rootBead, err := m.proj.Beads.GetBead(m.ctx, filters.rootIssue)
+		rootBead, err := m.proj.Beads.GetBean(m.ctx, filters.rootIssue)
 		if err == nil && rootBead != nil {
 			items = append(items, beadItem{
-				BeadWithDeps: rootBead,
+				BeanWithDeps: rootBead,
 			})
 		}
 	}
 
 	// Fetch the beads from the beads client (uses cache)
 	for _, beanID := range beanIDs {
-		bead, err := m.proj.Beads.GetBead(m.ctx, beanID)
+		bead, err := m.proj.Beads.GetBean(m.ctx, beanID)
 		if err != nil || bead == nil {
 			continue
 		}
 		items = append(items, beadItem{
-			BeadWithDeps: bead,
+			BeanWithDeps: bead,
 		})
 	}
 
@@ -173,7 +173,7 @@ func (m *planModel) loadBeadsForTask(filters beadFilters) ([]beadItem, error) {
 		for _, item := range items {
 			if strings.Contains(strings.ToLower(item.ID), searchLower) ||
 				strings.Contains(strings.ToLower(item.Title), searchLower) ||
-				strings.Contains(strings.ToLower(item.Description), searchLower) {
+				strings.Contains(strings.ToLower(item.Body), searchLower) {
 				filtered = append(filtered, item)
 			}
 		}
@@ -191,7 +191,7 @@ func (m *planModel) loadBeadsForTask(filters beadFilters) ([]beadItem, error) {
 // This fetches all dependents regardless of status filter.
 func (m *planModel) loadBeadsForChildren(filters beadFilters) ([]beadItem, error) {
 	// Get the parent bead to find its dependents
-	parentBead, err := m.proj.Beads.GetBead(m.ctx, filters.children)
+	parentBead, err := m.proj.Beads.GetBean(m.ctx, filters.children)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get bead: %w", err)
 	}
@@ -200,16 +200,16 @@ func (m *planModel) loadBeadsForChildren(filters beadFilters) ([]beadItem, error
 	}
 
 	// Also include the parent bead itself
-	items := []beadItem{{BeadWithDeps: parentBead}}
+	items := []beadItem{{BeanWithDeps: parentBead}}
 
 	// Fetch each dependent bead
 	for _, dep := range parentBead.Dependents {
-		bead, err := m.proj.Beads.GetBead(m.ctx, dep.IssueID)
+		bead, err := m.proj.Beads.GetBean(m.ctx, dep.BeanID)
 		if err != nil || bead == nil {
 			continue
 		}
 		items = append(items, beadItem{
-			BeadWithDeps: bead,
+			BeanWithDeps: bead,
 		})
 	}
 
@@ -220,7 +220,7 @@ func (m *planModel) loadBeadsForChildren(filters beadFilters) ([]beadItem, error
 		for _, item := range items {
 			if strings.Contains(strings.ToLower(item.ID), searchLower) ||
 				strings.Contains(strings.ToLower(item.Title), searchLower) ||
-				strings.Contains(strings.ToLower(item.Description), searchLower) {
+				strings.Contains(strings.ToLower(item.Body), searchLower) {
 				filtered = append(filtered, item)
 			}
 		}
@@ -234,18 +234,18 @@ func (m *planModel) loadBeadsForChildren(filters beadFilters) ([]beadItem, error
 	return items, nil
 }
 
-func (m *planModel) createBead(title, beadType string, priority int, isEpic bool, description string, parent string) tea.Cmd {
+func (m *planModel) createBead(title, beadType string, priority string, isEpic bool, description string, parent string) tea.Cmd {
 	return func() tea.Msg {
 		ctx := m.ctx
-		beadsPath := m.proj.BeadsPath()
+		beansPath := m.proj.BeansPath()
 
-		beanID, err := beads.NewCLI(beadsPath).Create(ctx, beads.CreateOptions{
-			Title:       title,
-			Type:        beadType,
-			Priority:    priority,
-			IsEpic:      isEpic,
-			Description: description,
-			Parent:      parent,
+		beanID, err := beans.NewCLI(beansPath).Create(ctx, beans.CreateOptions{
+			Title:    title,
+			Type:     beadType,
+			Priority: priority,
+			IsEpic:   isEpic,
+			Body:     description,
+			Parent:   parent,
 		})
 		if err != nil {
 			return planDataMsg{err: fmt.Errorf("failed to create issue: %w", err)}
@@ -262,7 +262,7 @@ func (m *planModel) createBead(title, beadType string, priority int, isEpic bool
 
 func (m *planModel) closeBead(beanID string) tea.Cmd {
 	return func() tea.Msg {
-		beadsPath := m.proj.BeadsPath()
+		beansPath := m.proj.BeansPath()
 		session := m.sessionName()
 		tabName := db.TabNameForBean(beanID)
 
@@ -275,7 +275,7 @@ func (m *planModel) closeBead(beanID string) tea.Cmd {
 		}
 
 		// Close the bead
-		if err := beads.NewCLI(beadsPath).Close(m.ctx, beanID); err != nil {
+		if err := beans.NewCLI(beansPath).Close(m.ctx, beanID); err != nil {
 			return planDataMsg{err: fmt.Errorf("failed to close issue: %w", err)}
 		}
 
@@ -288,7 +288,7 @@ func (m *planModel) closeBead(beanID string) tea.Cmd {
 
 func (m *planModel) closeBeads(beanIDs []string) tea.Cmd {
 	return func() tea.Msg {
-		beadsPath := m.proj.BeadsPath()
+		beansPath := m.proj.BeansPath()
 		session := m.sessionName()
 
 		// First, close any active sessions for these beads
@@ -304,7 +304,7 @@ func (m *planModel) closeBeads(beanIDs []string) tea.Cmd {
 		}
 
 		// Close all beads using the beads package
-		cli := beads.NewCLI(beadsPath)
+		cli := beans.NewCLI(beansPath)
 		for _, beanID := range beanIDs {
 			if err := cli.Close(m.ctx, beanID); err != nil {
 				return planDataMsg{err: fmt.Errorf("failed to close issue %s: %w", beanID, err)}
@@ -320,7 +320,7 @@ func (m *planModel) closeBeads(beanIDs []string) tea.Cmd {
 
 func (m *planModel) deleteBead(beanID string) tea.Cmd {
 	return func() tea.Msg {
-		beadsPath := m.proj.BeadsPath()
+		beansPath := m.proj.BeansPath()
 		session := m.sessionName()
 		tabName := db.TabNameForBean(beanID)
 
@@ -333,7 +333,7 @@ func (m *planModel) deleteBead(beanID string) tea.Cmd {
 		}
 
 		// Delete the bead permanently with --force to skip confirmation
-		if err := beads.NewCLI(beadsPath).Delete(m.ctx, beanID, true); err != nil {
+		if err := beans.NewCLI(beansPath).Delete(m.ctx, beanID, true); err != nil {
 			return planDataMsg{err: fmt.Errorf("failed to delete issue: %w", err)}
 		}
 
@@ -346,7 +346,7 @@ func (m *planModel) deleteBead(beanID string) tea.Cmd {
 
 func (m *planModel) deleteBeads(beanIDs []string) tea.Cmd {
 	return func() tea.Msg {
-		beadsPath := m.proj.BeadsPath()
+		beansPath := m.proj.BeansPath()
 		session := m.sessionName()
 
 		// First, close any active sessions for these beads
@@ -362,7 +362,7 @@ func (m *planModel) deleteBeads(beanIDs []string) tea.Cmd {
 		}
 
 		// Delete all beads permanently with --force
-		cli := beads.NewCLI(beadsPath)
+		cli := beans.NewCLI(beansPath)
 		for _, beanID := range beanIDs {
 			if err := cli.Delete(m.ctx, beanID, true); err != nil {
 				return planDataMsg{err: fmt.Errorf("failed to delete issue %s: %w", beanID, err)}
@@ -378,14 +378,14 @@ func (m *planModel) deleteBeads(beanIDs []string) tea.Cmd {
 
 func (m *planModel) saveBeadEdit(beanID, title, description, beadType, status string) tea.Cmd {
 	return func() tea.Msg {
-		beadsPath := m.proj.BeadsPath()
+		beansPath := m.proj.BeansPath()
 
-		// Update the bead using beads package
-		err := beads.NewCLI(beadsPath).Update(m.ctx, beanID, beads.UpdateOptions{
-			Title:       title,
-			Type:        beadType,
-			Description: description,
-			Status:      status,
+		// Update the bean using beans package
+		err := beans.NewCLI(beansPath).Update(m.ctx, beanID, beans.UpdateOptions{
+			Title:  title,
+			Type:   beadType,
+			Body:   description,
+			Status: status,
 		})
 		if err != nil {
 			return planDataMsg{err: fmt.Errorf("failed to update issue: %w", err)}
@@ -401,10 +401,10 @@ func (m *planModel) saveBeadEdit(beanID, title, description, beadType, status st
 
 // openInEditor opens the issue in $EDITOR using bd edit
 func (m *planModel) openInEditor(beanID string) tea.Cmd {
-	beadsPath := m.proj.BeadsPath()
+	beansPath := m.proj.BeansPath()
 
 	// Use bd edit which handles $EDITOR and the issue format
-	c := beads.EditCommand(m.ctx, beanID, beadsPath)
+	c := beans.EditCommand(m.ctx, beanID, beansPath)
 	return tea.ExecProcess(c, func(err error) tea.Msg {
 		if err != nil {
 			return planStatusMsg{message: fmt.Sprintf("Editor error: %v", err), isError: true}
@@ -417,7 +417,7 @@ func (m *planModel) openInEditor(beanID string) tea.Cmd {
 // importLinearIssue imports Linear issues (supports multiple IDs/URLs)
 func (m *planModel) importLinearIssue(issueIDsInput string) tea.Cmd {
 	return func() tea.Msg {
-		beadsPath := m.proj.BeadsPath()
+		beansPath := m.proj.BeansPath()
 
 		// Get API key from config
 		var apiKey string
@@ -429,7 +429,7 @@ func (m *planModel) importLinearIssue(issueIDsInput string) tea.Cmd {
 		}
 
 		// Create fetcher
-		fetcher, err := linear.NewFetcher(apiKey, beadsPath)
+		fetcher, err := linear.NewFetcher(apiKey, beansPath)
 		if err != nil {
 			return linearImportCompleteMsg{err: fmt.Errorf("failed to create Linear fetcher: %w", err)}
 		}
@@ -559,7 +559,7 @@ func (m *planModel) importPR(prURL string) tea.Cmd {
 		// This is done in the TUI because we need the bead ID before scheduling
 		var rootIssueID string
 		beadResult, err := workSvc.CreateBeadFromPR(m.ctx, metadata, &work.CreateBeadOptions{
-			BeadsDir:     m.proj.BeadsPath(),
+			BeadsDir:     m.proj.BeansPath(),
 			SkipIfExists: true,
 		})
 		if err != nil {

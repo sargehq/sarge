@@ -45,7 +45,7 @@ Authentication:
   2. [linear] api_key in .co/config.toml
 
 Environment Variables:
-  BEADS_DIR          Beads directory (default: auto-detect)
+  BEANS_DIR          Beads directory (default: auto-detect)
 `,
 	Args: cobra.MinimumNArgs(1),
 	RunE: runLinearImport,
@@ -97,7 +97,7 @@ func runLinearImport(cmd *cobra.Command, args []string) error {
 	// Get beads directory
 	beadsDir := linearBeadsDir
 	if beadsDir == "" {
-		beadsDir = os.Getenv("BEADS_DIR")
+		beadsDir = os.Getenv("BEANS_DIR")
 	}
 	if beadsDir == "" {
 		// Auto-detect: look for .beads directory in current or parent directories

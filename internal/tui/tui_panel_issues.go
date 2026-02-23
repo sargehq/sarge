@@ -320,7 +320,7 @@ func (p *IssuesPanel) renderBeadLine(i int, bead beadItem) string {
 	// Build styled line for normal display
 	var line string
 	if p.expanded {
-		line = fmt.Sprintf("%s%s%s%s %s [P%d %s] %s%s", selectionIndicator, treePrefix, workIndicator, icon, styledID, bead.Priority, bead.Type, sessionIndicator, title)
+		line = fmt.Sprintf("%s%s%s%s %s [P:%s %s] %s%s", selectionIndicator, treePrefix, workIndicator, icon, styledID, bead.Priority, bead.Type, sessionIndicator, title)
 	} else {
 		line = fmt.Sprintf("%s%s%s%s %s %s%s %s", selectionIndicator, treePrefix, workIndicator, icon, styledID, styledType, sessionIndicator, title)
 	}
@@ -371,7 +371,7 @@ func (p *IssuesPanel) renderBeadLine(i int, bead beadItem) string {
 		// Build plain text line without any styling
 		var plainLine string
 		if p.expanded {
-			plainLine = fmt.Sprintf("%s%s%s%s %s [P%d %s] %s%s", plainSelectionIndicator, plainTreePrefix, plainWorkIndicator, icon, bead.ID, bead.Priority, bead.Type, plainSessionIndicator, title)
+			plainLine = fmt.Sprintf("%s%s%s%s %s [P:%s %s] %s%s", plainSelectionIndicator, plainTreePrefix, plainWorkIndicator, icon, bead.ID, bead.Priority, bead.Type, plainSessionIndicator, title)
 		} else {
 			plainLine = fmt.Sprintf("%s%s%s%s %s %s%s %s", plainSelectionIndicator, plainTreePrefix, plainWorkIndicator, icon, bead.ID, typeLetter, plainSessionIndicator, title)
 		}
@@ -420,7 +420,7 @@ func (p *IssuesPanel) renderBeadLine(i int, bead beadItem) string {
 
 		var newLine string
 		if p.expanded {
-			newLine = fmt.Sprintf("%s%s%s%s %s [P%d %s] %s%s", selectionIndicator, treePrefix, workIndicator, icon, styledID, bead.Priority, bead.Type, sessionIndicator, yellowTitle)
+			newLine = fmt.Sprintf("%s%s%s%s %s [P:%s %s] %s%s", selectionIndicator, treePrefix, workIndicator, icon, styledID, bead.Priority, bead.Type, sessionIndicator, yellowTitle)
 		} else {
 			newLine = fmt.Sprintf("%s%s%s%s %s %s%s %s", selectionIndicator, treePrefix, workIndicator, icon, styledID, styledType, sessionIndicator, yellowTitle)
 		}

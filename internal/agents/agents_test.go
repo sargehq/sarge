@@ -217,15 +217,15 @@ func TestTaskParamsExistingBeadsField(t *testing.T) {
 		JobName:      "job-1",
 		LogFilePath:  "content",
 		ExistingBeads: []types.BeadSummary{
-			{ID: "bead-1", Title: "Fix test failure", Description: "Test failed at file.go:42"},
-			{ID: "bead-2", Title: "Lint error", Description: "Missing comment on exported function"},
+			{ID: "bead-1", Title: "Fix test failure", Body: "Test failed at file.go:42"},
+			{ID: "bead-2", Title: "Lint error", Body: "Missing comment on exported function"},
 		},
 	}
 
 	require.Len(t, params.ExistingBeads, 2)
 	require.Equal(t, "bead-1", params.ExistingBeads[0].ID)
 	require.Equal(t, "Fix test failure", params.ExistingBeads[0].Title)
-	require.Equal(t, "Test failed at file.go:42", params.ExistingBeads[0].Description)
+	require.Equal(t, "Test failed at file.go:42", params.ExistingBeads[0].Body)
 }
 
 func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
@@ -241,8 +241,8 @@ func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
 			JobName:      "Test",
 			LogFilePath:  "--- FAIL: TestSomething (0.02s)",
 			ExistingBeads: []types.BeadSummary{
-				{ID: "beads-123", Title: "Fix TestUserAuth failure", Description: "Test failed at auth_test.go:42"},
-				{ID: "beads-456", Title: "Fix lint error in utils", Description: "Missing comment"},
+				{ID: "beads-123", Title: "Fix TestUserAuth failure", Body: "Test failed at auth_test.go:42"},
+				{ID: "beads-456", Title: "Fix lint error in utils", Body: "Missing comment"},
 			},
 		}
 
@@ -296,7 +296,7 @@ func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
 			JobName:      "Test",
 			LogFilePath:  "--- FAIL: TestSomething (0.02s)",
 			ExistingBeads: []types.BeadSummary{
-				{ID: "beads-789", Title: "Fix test", Description: ""},
+				{ID: "beads-789", Title: "Fix test", Body: ""},
 			},
 		}
 
@@ -316,12 +316,12 @@ func TestBeadSummaryStruct(t *testing.T) {
 	summary := types.BeadSummary{
 		ID:          "bead-test",
 		Title:       "Test Title",
-		Description: "Test Description",
+		Body: "Test Description",
 	}
 
 	require.Equal(t, "bead-test", summary.ID)
 	require.Equal(t, "Test Title", summary.Title)
-	require.Equal(t, "Test Description", summary.Description)
+	require.Equal(t, "Test Description", summary.Body)
 }
 
 func TestNewAgent(t *testing.T) {

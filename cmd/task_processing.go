@@ -7,7 +7,7 @@ import (
 
 	"github.com/sargehq/sarge/internal/agents"
 	agenttypes "github.com/sargehq/sarge/internal/agents/types"
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/project"
 	"github.com/sargehq/sarge/internal/worktree"
@@ -169,7 +169,7 @@ func fetchExistingBeadSummaries(ctx context.Context, proj *project.Project, work
 	}
 
 	// Fetch bead details from beads database
-	result, err := proj.Beads.GetBeadsWithDeps(ctx, beanIDs)
+	result, err := proj.Beads.GetBeansWithDeps(ctx, beanIDs)
 	if err != nil {
 		fmt.Printf("Warning: failed to fetch bead details for deduplication: %v\n", err)
 		return nil
@@ -178,11 +178,11 @@ func fetchExistingBeadSummaries(ctx context.Context, proj *project.Project, work
 	// Filter to only open beads and convert to summaries
 	summaries := make([]agenttypes.BeadSummary, 0, len(beanIDs))
 	for _, beanID := range beanIDs {
-		if bwd := result.GetBead(beanID); bwd != nil && bwd.Bead.Status == beads.StatusOpen {
+		if bwd := result.GetBean(beanID); bwd != nil && bwd.Bean.Status == beans.StatusTodo {
 			summaries = append(summaries, agenttypes.BeadSummary{
-				ID:          bwd.Bead.ID,
-				Title:       bwd.Bead.Title,
-				Description: bwd.Bead.Description,
+				ID:          bwd.Bean.ID,
+				Title:       bwd.Bean.Title,
+				Body: bwd.Bean.Body,
 			})
 		}
 	}
@@ -204,22 +204,22 @@ func beanIDsForTask(ctx context.Context, proj *project.Project, taskID string) (
 }
 
 // getBeadsForTask retrieves the beads associated with a task.
-func getBeadsForTask(ctx context.Context, proj *project.Project, taskID string) ([]beads.Bead, error) {
+func getBeadsForTask(ctx context.Context, proj *project.Project, taskID string) ([]beans.Bean, error) {
 	beanIDs, err := proj.DB.GetTaskBeans(ctx, taskID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get task beads: %w", err)
 	}
 
 	// Get beads with dependencies
-	result, err := proj.Beads.GetBeadsWithDeps(ctx, beanIDs)
+	result, err := proj.Beads.GetBeansWithDeps(ctx, beanIDs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get beads: %w", err)
 	}
 
 	// Convert map to slice in order of beanIDs
-	var beadList []beads.Bead
+	var beadList []beans.Bean
 	for _, beanID := range beanIDs {
-		if b, ok := result.Beads[beanID]; ok {
+		if b, ok := result.Beans[beanID]; ok {
 			beadList = append(beadList, b)
 		} else {
 			fmt.Printf("Warning: bead %s not found\n", beanID)

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/agents"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/git"
@@ -226,15 +226,15 @@ func runWorkCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get issue details for branch name generation
-	issuesResult, err := proj.Beads.GetBeadsWithDeps(ctx, expandedIssueIDs)
+	issuesResult, err := proj.Beads.GetBeansWithDeps(ctx, expandedIssueIDs)
 	if err != nil {
 		return fmt.Errorf("failed to get issue details: %w", err)
 	}
 
 	// Convert to slice of issue pointers for branch name generation
-	var groupIssues []*beads.Bead
+	var groupIssues []*beans.Bean
 	for _, issueID := range expandedIssueIDs {
-		if issue, ok := issuesResult.Beads[issueID]; ok {
+		if issue, ok := issuesResult.Beans[issueID]; ok {
 			issueCopy := issue
 			groupIssues = append(groupIssues, &issueCopy)
 		}
@@ -325,7 +325,7 @@ func runWorkCreate(cmd *cobra.Command, args []string) error {
 // Both commas and spaces are treated as separators.
 // Epics are expanded to their child beads.
 // Returns an error if duplicate bead IDs are found.
-func parseBeadArgs(ctx context.Context, args []string, beadsClient *beads.Client) ([]string, error) {
+func parseBeadArgs(ctx context.Context, args []string, beadsClient *beans.Client) ([]string, error) {
 	seenBeads := make(map[string]bool)
 	var allIssueIDs []string
 
@@ -767,7 +767,7 @@ func runWorkPR(cmd *cobra.Command, args []string) error {
 	work, err := proj.DB.GetWork(ctx, workID)
 	if err == nil && work != nil && work.RootIssueID != "" {
 		fmt.Printf("Closing root issue %s...\n", work.RootIssueID)
-		if err := beads.NewCLI(proj.BeadsPath()).Close(ctx, work.RootIssueID); err != nil {
+		if err := beans.NewCLI(proj.BeansPath()).Close(ctx, work.RootIssueID); err != nil {
 			fmt.Printf("Warning: failed to close root issue %s: %v\n", work.RootIssueID, err)
 		}
 	}
@@ -886,10 +886,10 @@ func runWorkReview(cmd *cobra.Command, args []string) error {
 		}
 
 		// Check if the review created any issues under the root issue
-		var beadsToFix []beads.Bead
+		var beadsToFix []beans.Bean
 		if work.RootIssueID != "" {
 			// Get all children of the root issue
-			rootChildrenIssues, err := proj.Beads.GetBeadWithChildren(ctx, work.RootIssueID)
+			rootChildrenIssues, err := proj.Beads.GetBeanWithChildren(ctx, work.RootIssueID)
 			if err != nil {
 				return fmt.Errorf("failed to get children of root issue %s: %w", work.RootIssueID, err)
 			}
@@ -899,8 +899,8 @@ func runWorkReview(cmd *cobra.Command, args []string) error {
 			expectedExternalRef := fmt.Sprintf("review-%s", reviewTask.ID)
 			for _, issue := range rootChildrenIssues {
 				if issue.ID != work.RootIssueID &&
-					beads.IsWorkableStatus(issue.Status) &&
-					issue.ExternalRef == expectedExternalRef {
+					beans.IsWorkableStatus(issue.Status) &&
+					beans.HasTagValue(issue.Tags, expectedExternalRef) {
 					beadsToFix = append(beadsToFix, issue)
 				}
 			}

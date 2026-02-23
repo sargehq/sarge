@@ -13,8 +13,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/sargehq/sarge/internal/beads"
-	beadswatcher "github.com/sargehq/sarge/internal/beads/watcher"
+	"github.com/sargehq/sarge/internal/beans"
+	beanswatcher "github.com/sargehq/sarge/internal/beans/watcher"
 	"github.com/sargehq/sarge/internal/git"
 	"github.com/sargehq/sarge/internal/progress"
 	"github.com/sargehq/sarge/internal/project"
@@ -25,7 +25,7 @@ import (
 )
 
 // watcherEventMsg wraps beads watcher events for tea.Msg
-type watcherEventMsg beadswatcher.WatcherEvent
+type watcherEventMsg beanswatcher.WatcherEvent
 
 // trackingWatcherEventMsg wraps tracking watcher events for tea.Msg
 type trackingWatcherEventMsg trackingwatcher.WatcherEvent
@@ -105,7 +105,7 @@ type planModel struct {
 	hoveredTabID        string    // which work tab is hovered
 
 	// Database watcher for cache invalidation
-	beadsWatcher    *beadswatcher.Watcher
+	beadsWatcher    *beanswatcher.Watcher
 	trackingWatcher *trackingwatcher.Watcher
 
 	// New bead animation tracking
@@ -124,8 +124,8 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 	ti.Width = 40
 
 	// Initialize beads database watcher
-	beadsDBPath := filepath.Join(proj.BeadsPath(), "beads.db")
-	beadsWatcher, err := beadswatcher.New(beadswatcher.DefaultConfig(beadsDBPath))
+	beansDir := proj.BeansPath()
+	beadsWatcher, err := beanswatcher.New(beanswatcher.DefaultConfig(beansDir))
 	if err != nil {
 		// Log error but continue without watcher
 		fmt.Fprintf(os.Stderr, "Warning: Failed to initialize beads watcher: %v\n", err)
@@ -303,14 +303,14 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case watcherEventMsg:
 		// Handle watcher events
-		if msg.Type == beadswatcher.DBChanged {
+		if msg.Type == beanswatcher.BeansChanged {
 			// Flush cache and trigger data reload
 			if m.proj.Beads != nil {
 				_ = m.proj.Beads.FlushCache(m.ctx)
 			}
 			// Trigger data reload and wait for next watcher event
 			return m, tea.Batch(m.refreshData(), m.waitForWatcherEvent())
-		} else if msg.Type == beadswatcher.WatcherError {
+		} else if msg.Type == beanswatcher.WatcherError {
 			// Log error and continue waiting for events
 			return m, m.waitForWatcherEvent()
 		}
@@ -1489,11 +1489,11 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.refreshData()
 
 	case "O":
-		m.filters.status = beads.StatusOpen
+		m.filters.status = beans.StatusTodo
 		return m, m.refreshData()
 
 	case "C":
-		m.filters.status = beads.StatusClosed
+		m.filters.status = beans.StatusCompleted
 		return m, m.refreshData()
 
 	case "R":
@@ -1593,7 +1593,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Edit selected issue using the unified bead form
 		if len(m.beadItems) > 0 && m.beadsCursor < len(m.beadItems) {
 			bead := m.beadItems[m.beadsCursor]
-			m.beadFormPanel.SetEditMode(bead.ID, bead.Title, bead.Description, bead.Type, bead.Priority, bead.Status)
+			m.beadFormPanel.SetEditMode(bead.ID, bead.Title, bead.Body, bead.Type, bead.Priority, bead.Status)
 			m.viewMode = ViewEditBead
 			return m, m.beadFormPanel.Init()
 		}

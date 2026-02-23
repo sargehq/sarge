@@ -506,7 +506,7 @@ path = "main/.beads"
 			Source: "https://github.com/example/repo",
 			Path:   "main",
 		},
-		Beads: BeadsConfig{
+		Beads: BeansConfig{
 			Path: "main/.beads",
 		},
 	}
@@ -589,7 +589,7 @@ time_limit = 45
 			Source: "/home/user/repo",
 			Path:   "main",
 		},
-		Beads: BeadsConfig{
+		Beads: BeansConfig{
 			Path: ".co/.beads",
 		},
 	}
@@ -649,7 +649,7 @@ path = "main/.beads"
 			Source: "https://github.com/example/repo",
 			Path:   "main",
 		},
-		Beads: BeadsConfig{
+		Beads: BeansConfig{
 			Path: "main/.beads",
 		},
 	}
@@ -686,7 +686,7 @@ func TestGenerateDocumentedConfig_AgentType(t *testing.T) {
 				Source: "https://github.com/example/repo",
 				Path:   "main",
 			},
-			Beads: BeadsConfig{
+			Beads: BeansConfig{
 				Path: "main/.beads",
 			},
 			Agent: AgentConfig{

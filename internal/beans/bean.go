@@ -27,3 +27,23 @@ type Bean struct {
 	BlockedByIDs []string
 	BlockingIDs  []string
 }
+
+// HasTag returns true if the bean has the given tag.
+func (b *Bean) HasTag(tag string) bool {
+	for _, t := range b.Tags {
+		if t == tag {
+			return true
+		}
+	}
+	return false
+}
+
+// HasTagValue checks if a slice of tags contains the given tag.
+func HasTagValue(tags []string, tag string) bool {
+	for _, t := range tags {
+		if t == tag {
+			return true
+		}
+	}
+	return false
+}

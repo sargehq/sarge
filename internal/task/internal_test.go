@@ -3,7 +3,7 @@ package task
 import (
 	"testing"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -33,7 +33,7 @@ func TestCanAddToTask(t *testing.T) {
 
 // ComputeInterTaskDeps is a helper function that mimics the inter-task dependency
 // computation logic from handlePostEstimation. Used for testing.
-func ComputeInterTaskDeps(tasks []Task, dependencies map[string][]beads.Dependency) map[int][]int {
+func ComputeInterTaskDeps(tasks []Task, dependencies map[string][]beans.Dependency) map[int][]int {
 	// Build beanID → task index mapping
 	beadToTask := make(map[string]int)
 	for i, t := range tasks {
@@ -51,7 +51,7 @@ func ComputeInterTaskDeps(tasks []Task, dependencies map[string][]beads.Dependen
 			continue
 		}
 		for _, dep := range deps {
-			depTaskIdx, ok := beadToTask[dep.DependsOnID]
+			depTaskIdx, ok := beadToTask[dep.BlockedByID]
 			if !ok {
 				continue
 			}
@@ -83,9 +83,9 @@ func TestComputeInterTaskDepsChain(t *testing.T) {
 		{ID: "task-3", BeanIDs: []string{"c"}},
 	}
 
-	dependencies := map[string][]beads.Dependency{
-		"b": {{IssueID: "b", DependsOnID: "a", Type: "blocks"}},
-		"c": {{IssueID: "c", DependsOnID: "b", Type: "blocks"}},
+	dependencies := map[string][]beans.Dependency{
+		"b": {{BeanID: "b", BlockedByID: "a"}},
+		"c": {{BeanID: "c", BlockedByID: "b"}},
 	}
 
 	interDeps := ComputeInterTaskDeps(tasks, dependencies)
@@ -111,12 +111,12 @@ func TestComputeInterTaskDepsDiamond(t *testing.T) {
 		{ID: "task-4", BeanIDs: []string{"d"}},
 	}
 
-	dependencies := map[string][]beads.Dependency{
+	dependencies := map[string][]beans.Dependency{
 		"c": {
-			{IssueID: "c", DependsOnID: "a", Type: "blocks"},
-			{IssueID: "c", DependsOnID: "b", Type: "blocks"},
+			{BeanID: "c", BlockedByID: "a"},
+			{BeanID: "c", BlockedByID: "b"},
 		},
-		"d": {{IssueID: "d", DependsOnID: "c", Type: "blocks"}},
+		"d": {{BeanID: "d", BlockedByID: "c"}},
 	}
 
 	interDeps := ComputeInterTaskDeps(tasks, dependencies)
@@ -141,8 +141,8 @@ func TestComputeInterTaskDepsSameTaskNoDeps(t *testing.T) {
 		{ID: "task-1", BeanIDs: []string{"a", "b"}},
 	}
 
-	dependencies := map[string][]beads.Dependency{
-		"b": {{IssueID: "b", DependsOnID: "a", Type: "blocks"}},
+	dependencies := map[string][]beans.Dependency{
+		"b": {{BeanID: "b", BlockedByID: "a"}},
 	}
 
 	interDeps := ComputeInterTaskDeps(tasks, dependencies)

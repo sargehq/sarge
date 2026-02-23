@@ -3,7 +3,7 @@ package task
 import (
 	"fmt"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 )
 
 // DependencyGraph represents bead dependencies.
@@ -16,8 +16,8 @@ type DependencyGraph struct {
 
 // BuildDependencyGraph creates a dependency graph from beads and their dependencies.
 func BuildDependencyGraph(
-	beadList []beads.Bead,
-	dependencies map[string][]beads.Dependency,
+	beadList []beans.Bean,
+	dependencies map[string][]beans.Dependency,
 ) *DependencyGraph {
 	graph := &DependencyGraph{
 		DependsOn:  make(map[string][]string),
@@ -36,12 +36,10 @@ func BuildDependencyGraph(
 	// Build dependency relationships from the dependencies map
 	for beanID, deps := range dependencies {
 		for _, dep := range deps {
-			// Only add dependencies that are in our bead set
-			if validIDs[dep.DependsOnID] {
-				if dep.Type == "blocks" || dep.Type == "blocked_by" {
-					graph.DependsOn[beanID] = append(graph.DependsOn[beanID], dep.DependsOnID)
-					graph.Dependents[dep.DependsOnID] = append(graph.Dependents[dep.DependsOnID], beanID)
-				}
+			// Only add dependencies that are in our bean set
+			if validIDs[dep.BlockedByID] {
+				graph.DependsOn[beanID] = append(graph.DependsOn[beanID], dep.BlockedByID)
+				graph.Dependents[dep.BlockedByID] = append(graph.Dependents[dep.BlockedByID], beanID)
 			}
 		}
 	}
@@ -50,8 +48,8 @@ func BuildDependencyGraph(
 }
 
 // TopologicalSort returns beads in dependency order (dependencies before dependents).
-func TopologicalSort(graph *DependencyGraph, beadList []beads.Bead) ([]beads.Bead, error) {
-	beadMap := make(map[string]beads.Bead)
+func TopologicalSort(graph *DependencyGraph, beadList []beans.Bean) ([]beans.Bean, error) {
+	beadMap := make(map[string]beans.Bean)
 	for _, bead := range beadList {
 		beadMap[bead.ID] = bead
 	}
@@ -70,7 +68,7 @@ func TopologicalSort(graph *DependencyGraph, beadList []beads.Bead) ([]beads.Bea
 		}
 	}
 
-	var result []beads.Bead
+	var result []beans.Bean
 	for len(queue) > 0 {
 		// Pop from queue
 		id := queue[0]

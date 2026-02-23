@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/control"
 	"github.com/sargehq/sarge/internal/feedback"
 	"github.com/sargehq/sarge/internal/github"
@@ -70,7 +70,7 @@ func runComplete(cmd *cobra.Command, args []string) error {
 		var closedBeanIDs []string
 		for _, beanID := range beanIDs {
 			// Check actual bead status in the beads system
-			bead, err := proj.Beads.GetBead(ctx, beanID)
+			bead, err := proj.Beads.GetBean(ctx, beanID)
 			if err != nil {
 				fmt.Printf("Warning: failed to get bead %s status: %v\n", beanID, err)
 				continue
@@ -81,7 +81,7 @@ func runComplete(cmd *cobra.Command, args []string) error {
 			}
 
 			// Only mark as completed if bead is actually closed
-			if bead.Status == beads.StatusClosed {
+			if bead.Status == beans.StatusCompleted {
 				if err := proj.DB.CompleteTaskBean(ctx, id, beanID); err != nil {
 					fmt.Printf("Warning: failed to mark bead %s as completed: %v\n", beanID, err)
 				} else {
@@ -141,7 +141,7 @@ func runComplete(cmd *cobra.Command, args []string) error {
 		}
 
 		// Close any parents whose children are all complete
-		if err := proj.Beads.CloseEligibleParents(ctx, proj.BeadsPath()); err != nil {
+		if err := proj.Beads.CloseEligibleParents(ctx, proj.BeansPath()); err != nil {
 			fmt.Printf("Warning: failed to close eligible parents: %v\n", err)
 		}
 		return nil
@@ -189,7 +189,7 @@ func runComplete(cmd *cobra.Command, args []string) error {
 			}
 
 			// Close any parents whose children are all complete
-			if err := proj.Beads.CloseEligibleParents(ctx, proj.BeadsPath()); err != nil {
+			if err := proj.Beads.CloseEligibleParents(ctx, proj.BeansPath()); err != nil {
 				fmt.Printf("Warning: failed to close eligible parents: %v\n", err)
 			}
 		}

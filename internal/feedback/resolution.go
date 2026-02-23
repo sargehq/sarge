@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/github"
 	"github.com/sargehq/sarge/internal/logging"
@@ -35,18 +35,18 @@ func CheckAndResolveComments(ctx context.Context, proj *project.Project, workID 
 		}
 
 		// Check if the bead is actually closed
-		bead, err := proj.Beads.GetBead(ctx, *fb.BeanID)
+		bead, err := proj.Beads.GetBean(ctx, *fb.BeanID)
 		if err != nil {
 			logging.Error("failed to get bead", "bead_id", *fb.BeanID, "error", err)
 			continue
 		}
 
-		if bead == nil || bead.Status != beads.StatusClosed {
+		if bead == nil || bead.Status != beans.StatusCompleted {
 			continue
 		}
 
 		// Resolve this feedback item
-		if err := resolveFeedbackItem(ctx, proj.DB, workID, fb, bead.CloseReason); err != nil {
+		if err := resolveFeedbackItem(ctx, proj.DB, workID, fb, ""); err != nil {
 			logging.Error("failed to resolve feedback", "feedback_id", fb.ID, "error", err)
 			continue
 		}
@@ -63,7 +63,7 @@ func CheckAndResolveComments(ctx context.Context, proj *project.Project, workID 
 // It checks the provided beads and posts resolution comments for any associated
 // unresolved feedback items. Uses the transactional outbox pattern: atomically marks
 // feedback as resolved and schedules comment tasks, then attempts optimistic execution.
-func ResolveFeedbackForBeans(ctx context.Context, database *db.DB, beadClient *beads.Client, workID string, closedBeanIDs []string) error {
+func ResolveFeedbackForBeans(ctx context.Context, database *db.DB, beadClient *beans.Client, workID string, closedBeanIDs []string) error {
 	if len(closedBeanIDs) == 0 {
 		return nil
 	}
@@ -86,7 +86,7 @@ func ResolveFeedbackForBeans(ctx context.Context, database *db.DB, beadClient *b
 		}
 
 		// Get bead details for close reason
-		bead, err := beadClient.GetBead(ctx, *fb.BeanID)
+		bead, err := beadClient.GetBean(ctx, *fb.BeanID)
 		if err != nil {
 			fmt.Printf("Warning: failed to get bead %s: %v\n", *fb.BeanID, err)
 			continue
@@ -96,7 +96,7 @@ func ResolveFeedbackForBeans(ctx context.Context, database *db.DB, beadClient *b
 			continue
 		}
 
-		if err := resolveFeedbackItem(ctx, database, workID, fb, bead.CloseReason); err != nil {
+		if err := resolveFeedbackItem(ctx, database, workID, fb, ""); err != nil {
 			fmt.Printf("Warning: failed to resolve feedback %s: %v\n", fb.ID, err)
 			continue
 		}

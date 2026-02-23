@@ -125,7 +125,7 @@ func checkConfigDryRun(configPath string, cfg *project.Config) (int, error) {
 }
 
 func checkMiseBeadsVersion(proj *project.Project) (int, error) {
-	requiredVersion := mise.RequiredBeadsVersion()
+	requiredVersion := mise.RequiredBeansVersion()
 	if requiredVersion == "" {
 		// No required version found in template — skip check
 		return 0, nil
@@ -148,7 +148,7 @@ func checkMiseBeadsVersion(proj *project.Project) (int, error) {
 		}
 		configPath := filepath.Join(d.path, configFile)
 
-		currentVersion, _, err := mise.ReadBeadsVersion(configPath)
+		currentVersion, _, err := mise.ReadBeansVersion(configPath)
 		if err != nil {
 			return 0, fmt.Errorf("failed to read beads version from %s: %w", configPath, err)
 		}
@@ -166,7 +166,7 @@ func checkMiseBeadsVersion(proj *project.Project) (int, error) {
 			fmt.Printf("   current: %s, required: %s (would be updated)\n", currentVersion, requiredVersion)
 			issues++
 		} else {
-			modified, err := mise.UpdateBeadsVersion(configPath, requiredVersion)
+			modified, err := mise.UpdateBeansVersion(configPath, requiredVersion)
 			if err != nil {
 				return 0, fmt.Errorf("failed to update beads version in %s: %w", configPath, err)
 			}

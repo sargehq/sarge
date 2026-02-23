@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/task"
 )
 
@@ -211,14 +211,14 @@ func (s *WorkService) createTasksFromWorkBeans(ctx context.Context, workID strin
 	}
 
 	// Get all issues with dependencies in one call
-	issuesResult, err := s.BeadsReader.GetBeadsWithDeps(ctx, beanIDs)
+	issuesResult, err := s.BeadsReader.GetBeansWithDeps(ctx, beanIDs)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get bead details: %w", err)
 	}
 
 	// Verify all beads were found
 	for _, beanID := range beanIDs {
-		if _, found := issuesResult.Beads[beanID]; !found {
+		if _, found := issuesResult.Beans[beanID]; !found {
 			return 0, fmt.Errorf("bead %s not found", beanID)
 		}
 	}
@@ -268,10 +268,10 @@ func (s *WorkService) createTasksFromWorkBeans(ctx context.Context, workID strin
 // planBeadsWithComplexity uses LLM complexity estimation to group beads.
 // If forceEstimate is true, re-estimates complexity even if cached values exist.
 // If s.TaskPlanner is set, uses it directly; otherwise creates a default planner.
-func (s *WorkService) planBeadsWithComplexity(ctx context.Context, issuesResult *beads.BeadsWithDepsResult, workID string, forceEstimate bool) ([][]string, error) {
+func (s *WorkService) planBeadsWithComplexity(ctx context.Context, issuesResult *beans.BeansWithDepsResult, workID string, forceEstimate bool) ([][]string, error) {
 	// Convert map to slice of beads
-	beadList := make([]beads.Bead, 0, len(issuesResult.Beads))
-	for _, b := range issuesResult.Beads {
+	beadList := make([]beans.Bean, 0, len(issuesResult.Beans))
+	for _, b := range issuesResult.Beans {
 		beadList = append(beadList, b)
 	}
 

@@ -3,24 +3,25 @@ package linear
 import (
 	"fmt"
 	"strings"
+
+	"github.com/sargehq/sarge/internal/beans"
 )
 
-// MapStatus converts Linear state type to Beads status
+// MapStatus converts Linear state type to beans status
 // Linear state types: "unstarted", "started", "completed", "canceled"
-// Beads statuses: "open", "in_progress", "closed"
+// Beans statuses: "todo", "in-progress", "completed", "scrapped"
 func MapStatus(state State) string {
 	switch strings.ToLower(state.Type) {
 	case "unstarted":
-		return "open"
+		return beans.StatusTodo
 	case "started":
-		return "in_progress"
+		return beans.StatusInProgress
 	case "completed":
-		return "closed"
+		return beans.StatusCompleted
 	case "canceled":
-		return "closed"
+		return beans.StatusScrapped
 	default:
-		// Default to open for unknown states
-		return "open"
+		return beans.StatusTodo
 	}
 }
 

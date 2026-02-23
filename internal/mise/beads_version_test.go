@@ -9,13 +9,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRequiredBeadsVersion(t *testing.T) {
-	v := RequiredBeadsVersion()
-	assert.NotEmpty(t, v, "should extract beads version from template")
+func TestRequiredBeansVersion(t *testing.T) {
+	v := RequiredBeansVersion()
+	assert.NotEmpty(t, v, "should extract beans version from template")
 	assert.True(t, len(v) > 1 && v[0] == 'v', "version should start with 'v': got %q", v)
 }
 
-func TestReadBeadsVersion(t *testing.T) {
+func TestReadBeansVersion(t *testing.T) {
 	tests := []struct {
 		name      string
 		content   string
@@ -24,21 +24,21 @@ func TestReadBeadsVersion(t *testing.T) {
 		wantFound bool
 	}{
 		{
-			name:      "active beads line",
-			content:   "[tools]\n\"aqua:steveyegge/beads\" = \"v0.49.6\"\ngh = \"latest\"\n",
+			name:      "active beans line",
+			content:   "[tools]\n\"aqua:mariozechner/beans\" = \"v0.49.6\"\ngh = \"latest\"\n",
 			wantVer:   "v0.49.6",
 			wantCom:   false,
 			wantFound: true,
 		},
 		{
-			name:      "commented beads line",
-			content:   "[tools]\n# \"aqua:steveyegge/beads\" = \"v0.48.0\"\n",
+			name:      "commented beans line",
+			content:   "[tools]\n# \"aqua:mariozechner/beans\" = \"v0.48.0\"\n",
 			wantVer:   "v0.48.0",
 			wantCom:   true,
 			wantFound: true,
 		},
 		{
-			name:      "no beads line",
+			name:      "no beans line",
 			content:   "[tools]\ngh = \"latest\"\n",
 			wantVer:   "",
 			wantCom:   false,
@@ -52,7 +52,7 @@ func TestReadBeadsVersion(t *testing.T) {
 			path := filepath.Join(dir, ".mise.toml")
 			require.NoError(t, os.WriteFile(path, []byte(tt.content), 0600))
 
-			ver, commented, err := ReadBeadsVersion(path)
+			ver, commented, err := ReadBeansVersion(path)
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantVer, ver)
 			assert.Equal(t, tt.wantCom, commented)
@@ -65,7 +65,7 @@ func TestReadBeadsVersion(t *testing.T) {
 	}
 }
 
-func TestUpdateBeadsVersion(t *testing.T) {
+func TestUpdateBeansVersion(t *testing.T) {
 	tests := []struct {
 		name       string
 		content    string
@@ -75,19 +75,19 @@ func TestUpdateBeadsVersion(t *testing.T) {
 	}{
 		{
 			name:       "update version",
-			content:    "[tools]\n\"aqua:steveyegge/beads\" = \"v0.48.0\"\ngh = \"latest\"\n",
+			content:    "[tools]\n\"aqua:mariozechner/beans\" = \"v0.48.0\"\ngh = \"latest\"\n",
 			newVersion: "v0.49.6",
 			wantMod:    true,
-			wantLine:   "\"aqua:steveyegge/beads\" = \"v0.49.6\"",
+			wantLine:   "\"aqua:mariozechner/beans\" = \"v0.49.6\"",
 		},
 		{
 			name:       "already correct",
-			content:    "[tools]\n\"aqua:steveyegge/beads\" = \"v0.49.6\"\n",
+			content:    "[tools]\n\"aqua:mariozechner/beans\" = \"v0.49.6\"\n",
 			newVersion: "v0.49.6",
 			wantMod:    false,
 		},
 		{
-			name:       "no beads line",
+			name:       "no beans line",
 			content:    "[tools]\ngh = \"latest\"\n",
 			newVersion: "v0.49.6",
 			wantMod:    false,
@@ -100,7 +100,7 @@ func TestUpdateBeadsVersion(t *testing.T) {
 			path := filepath.Join(dir, ".mise.toml")
 			require.NoError(t, os.WriteFile(path, []byte(tt.content), 0600))
 
-			modified, err := UpdateBeadsVersion(path, tt.newVersion)
+			modified, err := UpdateBeansVersion(path, tt.newVersion)
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantMod, modified)
 

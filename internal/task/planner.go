@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 )
 
 // DefaultPlanner implements the Planner interface using bin-packing.
@@ -27,8 +27,8 @@ type beadEstimate struct {
 // The budget represents the target tokens per task (e.g., 120000 for 120K tokens).
 func (p *DefaultPlanner) Plan(
 	ctx context.Context,
-	beadList []beads.Bead,
-	dependencies map[string][]beads.Dependency,
+	beadList []beans.Bean,
+	dependencies map[string][]beans.Dependency,
 	budget int,
 ) ([]Task, error) {
 	if len(beadList) == 0 {
@@ -65,7 +65,7 @@ func (p *DefaultPlanner) Plan(
 // Beads are processed in topological order (dependencies first) to ensure
 // task indices respect the dependency graph. Token estimates are used only
 // for selecting which existing task to place a bead in.
-func binPackBeads(sortedBeads []beads.Bead, estimates map[string]beadEstimate, graph *DependencyGraph, budget int) []Task {
+func binPackBeads(sortedBeads []beans.Bean, estimates map[string]beadEstimate, graph *DependencyGraph, budget int) []Task {
 	var tasks []Task
 	assigned := make(map[string]int) // bead ID -> task index
 
@@ -79,7 +79,7 @@ func binPackBeads(sortedBeads []beads.Bead, estimates map[string]beadEstimate, g
 			tasks = append(tasks, Task{
 				ID:              fmt.Sprintf("task-%d", taskIdx+1),
 				BeanIDs:         []string{},
-				Beads:           []beads.Bead{},
+				Beads:           []beans.Bean{},
 				Complexity:      0,
 				EstimatedTokens: 0,
 				Status:          StatusPending,

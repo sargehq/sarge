@@ -2,11 +2,11 @@ You are working on Estimation Task {{.TaskID}}.
 
 Instructions:
 1. First, check the task details with: sarge task show {{.TaskID}}
-   - This will show which beads need estimation and their current status
-2. For each bead that is NOT already completed:
-   - Use 'bd show <bead-id>' to examine the bead's details
+   - This will show which beans need estimation and their current status
+2. For each bean that is NOT already completed:
+   - Use 'bd show <bean-id>' to examine the bean's details
    - Estimate its complexity and token usage
-   - Run: sarge estimate <bead-id> --score <complexity> --tokens <estimated-tokens> --task {{.TaskID}}
+   - Run: sarge estimate <bean-id> --score <complexity> --tokens <estimated-tokens> --task {{.TaskID}}
 
 Complexity Scoring Guide:
 - 1 = Trivial change (typo fix, one-liner, config change)
@@ -44,4 +44,4 @@ Example: Moving 8000 LoC across 19 files
 - System overhead: 15K tokens
 - Total estimate: ~125K tokens
 
-The task will auto-complete when all beads are estimated. Do not stop until all beads have been estimated.
+The task will auto-complete when all beans are estimated. Do not stop until all beans have been estimated.

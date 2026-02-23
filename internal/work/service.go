@@ -3,7 +3,7 @@ package work
 import (
 	"path/filepath"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/git"
 	"github.com/sargehq/sarge/internal/github"
@@ -21,8 +21,8 @@ type WorkService struct {
 	Git                 git.Operations
 	Worktree            worktree.Operations
 	GitHubClient        github.ClientInterface
-	BeadsReader         beads.Reader
-	BeadsCLI            beads.CLI
+	BeadsReader         beans.Reader
+	BeadsCLI            beans.CLI
 	OrchestratorManager OrchestratorManager
 	TaskPlanner         task.Planner
 	NameGenerator       names.Generator
@@ -43,7 +43,7 @@ func NewWorkService(proj *project.Project) *WorkService {
 		Worktree:            worktree.NewOperations(),
 		GitHubClient:        github.NewClient(),
 		BeadsReader:         proj.Beads,
-		BeadsCLI:            beads.NewCLI(beadsDir),
+		BeadsCLI:            beans.NewCLI(beadsDir),
 		OrchestratorManager: NewOrchestratorManager(proj.DB, proj.Config),
 		TaskPlanner:         nil, // Planner needs specific initialization, set separately if needed
 		NameGenerator:       names.NewGenerator(),
@@ -61,8 +61,8 @@ type WorkServiceDeps struct {
 	Git                 git.Operations
 	Worktree            worktree.Operations
 	GitHubClient        github.ClientInterface
-	BeadsReader         beads.Reader
-	BeadsCLI            beads.CLI
+	BeadsReader         beans.Reader
+	BeadsCLI            beans.CLI
 	OrchestratorManager OrchestratorManager
 	TaskPlanner         task.Planner
 	NameGenerator       names.Generator

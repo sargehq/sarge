@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -38,12 +39,12 @@ func TestCreateBead(t *testing.T) {
 
 	assert.Equal(t, "bead-1", bead.ID)
 	assert.Equal(t, "Test Bead", bead.Title)
-	assert.Equal(t, "open", bead.Status)
+	assert.Equal(t, beans.StatusTodo, bead.Status)
 	assert.Equal(t, "task", bead.Type)
 
 	// Verify it's accessible through BeadsReader
 	ctx := context.Background()
-	retrieved, err := h.BeadsReader.GetBead(ctx, "bead-1")
+	retrieved, err := h.BeadsReader.GetBean(ctx, "bead-1")
 	require.NoError(t, err)
 	require.NotNil(t, retrieved)
 	assert.Equal(t, "bead-1", retrieved.ID)
@@ -61,7 +62,7 @@ func TestCreateEpicWithChildren(t *testing.T) {
 
 	// Verify children were created
 	ctx := context.Background()
-	children, err := h.BeadsReader.GetBeadWithChildren(ctx, "epic-1")
+	children, err := h.BeadsReader.GetBeanWithChildren(ctx, "epic-1")
 	require.NoError(t, err)
 	assert.Len(t, children, 3) // epic + 2 children
 }
@@ -75,10 +76,10 @@ func TestSetBeadDependency(t *testing.T) {
 	h.SetBeadDependency("bead-2", "bead-1") // bead-2 blocked by bead-1
 
 	ctx := context.Background()
-	bead2, err := h.BeadsReader.GetBead(ctx, "bead-2")
+	bead2, err := h.BeadsReader.GetBean(ctx, "bead-2")
 	require.NoError(t, err)
 	require.Len(t, bead2.Dependencies, 1)
-	assert.Equal(t, "bead-1", bead2.Dependencies[0].DependsOnID)
+	assert.Equal(t, "bead-1", bead2.Dependencies[0].BlockedByID)
 }
 
 func TestCreateWork(t *testing.T) {

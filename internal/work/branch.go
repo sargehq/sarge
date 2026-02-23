@@ -6,14 +6,14 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/git"
 )
 
 // GenerateBranchNameFromIssue creates a git-friendly branch name from an issue's title.
 // It converts the title to lowercase, replaces spaces with hyphens,
 // removes special characters, and prefixes with "feat/".
-func GenerateBranchNameFromIssue(issue *beads.Bead) string {
+func GenerateBranchNameFromIssue(issue *beans.Bean) string {
 	title := issue.Title
 
 	// Convert to lowercase
@@ -48,7 +48,7 @@ func GenerateBranchNameFromIssue(issue *beads.Bead) string {
 // GenerateBranchNameFromIssues creates a git-friendly branch name from multiple issues' titles.
 // For a single issue, it uses that issue's title.
 // For multiple issues, it combines titles (truncated) or uses a generic name if too long.
-func GenerateBranchNameFromIssues(issues []*beads.Bead) string {
+func GenerateBranchNameFromIssues(issues []*beans.Bean) string {
 	if len(issues) == 0 {
 		return "feat/automated-work"
 	}

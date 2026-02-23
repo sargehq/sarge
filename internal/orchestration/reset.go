@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/logging"
 	"github.com/sargehq/sarge/internal/project"
@@ -92,7 +92,7 @@ func ResetTaskBeadsWithProgress(ctx context.Context, proj *project.Project, task
 	}
 
 	// Get actual bead status from beads.jsonl
-	beadsResult, err := proj.Beads.GetBeadsWithDeps(ctx, beanIDs)
+	beadsResult, err := proj.Beads.GetBeansWithDeps(ctx, beanIDs)
 	if err != nil {
 		// If we can't check bead status, fall back to resetting all
 		logging.Warn("could not check bead status, falling back to full reset",
@@ -110,8 +110,8 @@ func ResetTaskBeadsWithProgress(ctx context.Context, proj *project.Project, task
 
 	for _, tb := range taskBeads {
 		// Check if the bead is closed in beads.jsonl
-		actualBead, found := beadsResult.Beads[tb.BeanID]
-		if found && actualBead.Status == beads.StatusClosed {
+		actualBead, found := beadsResult.Beans[tb.BeanID]
+		if found && actualBead.Status == beans.StatusCompleted {
 			// Bead is closed in beads.jsonl - mark it as completed in task_beads
 			if tb.Status != db.StatusCompleted {
 				if err := proj.DB.CompleteTaskBean(ctx, taskID, tb.BeanID); err != nil {

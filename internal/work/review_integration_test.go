@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/testutil"
 	"github.com/stretchr/testify/assert"
@@ -63,9 +63,9 @@ func TestReviewLoop_IssuesCreateFixTasks(t *testing.T) {
 	require.NoError(t, err)
 
 	// Review creates issues under the root issue
-	reviewIssues := []beads.Bead{
-		{ID: "fix-1", Title: "Fix security issue", Status: beads.StatusOpen, ExternalRef: "review-w-test.1"},
-		{ID: "fix-2", Title: "Fix performance issue", Status: beads.StatusOpen, ExternalRef: "review-w-test.1"},
+	reviewIssues := []beans.Bean{
+		{ID: "fix-1", Title: "Fix security issue", Status: beans.StatusTodo, Tags: []string{"review-w-test.1"}},
+		{ID: "fix-2", Title: "Fix performance issue", Status: beans.StatusTodo, Tags: []string{"review-w-test.1"}},
 	}
 	h.AddReviewIssues("root-1", reviewIssues)
 
@@ -136,8 +136,8 @@ func TestReviewLoop_MaxIterationsForcesPR(t *testing.T) {
 
 	// At max iterations, a PR task should be created regardless of issues
 	// Even if there are still issues, we proceed to PR after max iterations
-	reviewIssues := []beads.Bead{
-		{ID: "unresolved-1", Title: "Still open issue", Status: beads.StatusOpen, ExternalRef: "review-w-test.3"},
+	reviewIssues := []beans.Bean{
+		{ID: "unresolved-1", Title: "Still open issue", Status: beans.StatusTodo, Tags: []string{"review-w-test.3"}},
 	}
 	h.AddReviewIssues("root-1", reviewIssues)
 
@@ -179,8 +179,8 @@ func TestReviewLoop_ManualReviewSkipsAutomation(t *testing.T) {
 	require.NoError(t, err)
 
 	// Review creates issues, but manual review should skip automation
-	reviewIssues := []beads.Bead{
-		{ID: "fix-1", Title: "Fix issue", Status: beads.StatusOpen, ExternalRef: "review-w-test.1"},
+	reviewIssues := []beans.Bean{
+		{ID: "fix-1", Title: "Fix issue", Status: beans.StatusTodo, Tags: []string{"review-w-test.1"}},
 	}
 	h.AddReviewIssues("root-1", reviewIssues)
 
@@ -221,9 +221,9 @@ func TestReviewLoop_FixTaskDependencies(t *testing.T) {
 	require.NoError(t, err)
 
 	// Review creates issues
-	reviewIssues := []beads.Bead{
-		{ID: "fix-1", Title: "Fix issue 1", Status: beads.StatusOpen, ExternalRef: "review-w-test.1"},
-		{ID: "fix-2", Title: "Fix issue 2", Status: beads.StatusOpen, ExternalRef: "review-w-test.1"},
+	reviewIssues := []beans.Bean{
+		{ID: "fix-1", Title: "Fix issue 1", Status: beans.StatusTodo, Tags: []string{"review-w-test.1"}},
+		{ID: "fix-2", Title: "Fix issue 2", Status: beans.StatusTodo, Tags: []string{"review-w-test.1"}},
 	}
 	h.AddReviewIssues("root-1", reviewIssues)
 

@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/github"
 	"github.com/sargehq/sarge/internal/task"
@@ -482,9 +482,9 @@ func TestReviewIterationFlow_FullCycle(t *testing.T) {
 	require.NoError(t, err)
 
 	// Phase 3: Review finds issues
-	reviewIssues := []beads.Bead{
-		{ID: "fix-1", Title: "Add input validation", Status: beads.StatusOpen, ExternalRef: "review-" + reviewTaskID1},
-		{ID: "fix-2", Title: "Fix potential null pointer", Status: beads.StatusOpen, ExternalRef: "review-" + reviewTaskID1},
+	reviewIssues := []beans.Bean{
+		{ID: "fix-1", Title: "Add input validation", Status: beans.StatusTodo, Tags: []string{"review-" + reviewTaskID1}},
+		{ID: "fix-2", Title: "Fix potential null pointer", Status: beans.StatusTodo, Tags: []string{"review-" + reviewTaskID1}},
 	}
 	h.AddReviewIssues("root-1", reviewIssues)
 
@@ -605,8 +605,8 @@ func TestReviewIterationFlow_MaxIterationsForcesPR(t *testing.T) {
 
 		// Each review finds an issue
 		issueID := "issue-" + strconv.Itoa(i)
-		issues := []beads.Bead{
-			{ID: issueID, Title: "Issue " + strconv.Itoa(i), Status: beads.StatusOpen, ExternalRef: "review-" + reviewTask.ID},
+		issues := []beans.Bean{
+			{ID: issueID, Title: "Issue " + strconv.Itoa(i), Status: beans.StatusTodo, Tags: []string{"review-" + reviewTask.ID}},
 		}
 		h.AddReviewIssues("root-1", issues)
 
@@ -650,7 +650,7 @@ func TestTaskPlanning_PlansTasksFromBeads(t *testing.T) {
 	h.CreateBead("large-1", "Large task 1")
 
 	// Configure planner mock to group beads by budget
-	h.TaskPlanner.PlanFunc = func(ctx context.Context, beadList []beads.Bead, dependencies map[string][]beads.Dependency, budget int) ([]task.Task, error) {
+	h.TaskPlanner.PlanFunc = func(ctx context.Context, beadList []beans.Bean, dependencies map[string][]beans.Dependency, budget int) ([]task.Task, error) {
 		// Simulate planning: group small tasks together, large task separate
 		return []task.Task{
 			{
@@ -671,7 +671,7 @@ func TestTaskPlanning_PlansTasksFromBeads(t *testing.T) {
 	}
 
 	// Test planning through the interface
-	beadList := []beads.Bead{
+	beadList := []beans.Bean{
 		{ID: "small-1", Title: "Small task 1"},
 		{ID: "small-2", Title: "Small task 2"},
 		{ID: "large-1", Title: "Large task 1"},

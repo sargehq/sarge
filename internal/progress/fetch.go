@@ -34,7 +34,7 @@ func FetchTaskPollData(ctx context.Context, proj *project.Project, taskID string
 	}
 
 	// Batch fetch all bead details
-	beadsResult, err := proj.Beads.GetBeadsWithDeps(ctx, beanIDs)
+	beadsResult, err := proj.Beads.GetBeansWithDeps(ctx, beanIDs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get beads: %w", err)
 	}
@@ -49,9 +49,9 @@ func FetchTaskPollData(ctx context.Context, proj *project.Project, taskID string
 			status = db.StatusPending
 		}
 		bp := BeanProgress{ID: beanID, Status: status}
-		if bead := beadsResult.GetBead(beanID); bead != nil {
+		if bead := beadsResult.GetBean(beanID); bead != nil {
 			bp.Title = bead.Title
-			bp.Description = bead.Description
+			bp.Description = bead.Body
 			bp.BeanStatus = bead.Status
 		}
 		tp.Beads = append(tp.Beads, bp)
@@ -146,7 +146,7 @@ func FetchWorkProgress(ctx context.Context, proj *project.Project, work *db.Work
 	}
 
 	// Batch fetch all bead details
-	beadsResult, err := proj.Beads.GetBeadsWithDeps(ctx, beanIDs)
+	beadsResult, err := proj.Beads.GetBeansWithDeps(ctx, beanIDs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get beads: %w", err)
 	}
@@ -165,9 +165,9 @@ func FetchWorkProgress(ctx context.Context, proj *project.Project, work *db.Work
 				status = db.StatusPending
 			}
 			bp := BeanProgress{ID: tb.BeanID, Status: status}
-			if bead := beadsResult.GetBead(tb.BeanID); bead != nil {
+			if bead := beadsResult.GetBean(tb.BeanID); bead != nil {
 				bp.Title = bead.Title
-				bp.Description = bead.Description
+				bp.Description = bead.Body
 				bp.BeanStatus = bead.Status
 			}
 			tp.Beads = append(tp.Beads, bp)
@@ -178,9 +178,9 @@ func FetchWorkProgress(ctx context.Context, proj *project.Project, work *db.Work
 	// Populate work beads
 	for _, wb := range allWorkBeans {
 		bp := BeanProgress{ID: wb.BeanID}
-		if bead := beadsResult.GetBead(wb.BeanID); bead != nil {
+		if bead := beadsResult.GetBean(wb.BeanID); bead != nil {
 			bp.Title = bead.Title
-			bp.Description = bead.Description
+			bp.Description = bead.Body
 			bp.BeanStatus = bead.Status
 			bp.Priority = bead.Priority
 			bp.IssueType = bead.Type
@@ -198,11 +198,11 @@ func FetchWorkProgress(ctx context.Context, proj *project.Project, work *db.Work
 			}
 		}
 		if !rootFound {
-			if rootBead := beadsResult.GetBead(work.RootIssueID); rootBead != nil {
+			if rootBead := beadsResult.GetBean(work.RootIssueID); rootBead != nil {
 				bp := BeanProgress{
 					ID:          rootBead.ID,
 					Title:       rootBead.Title,
-					Description: rootBead.Description,
+					Description: rootBead.Body,
 					BeanStatus:  rootBead.Status,
 					Priority:    rootBead.Priority,
 					IssueType:   rootBead.Type,
@@ -220,9 +220,9 @@ func FetchWorkProgress(ctx context.Context, proj *project.Project, work *db.Work
 			continue
 		}
 		bp := BeanProgress{ID: wb.BeanID}
-		if bead := beadsResult.GetBead(wb.BeanID); bead != nil {
+		if bead := beadsResult.GetBean(wb.BeanID); bead != nil {
 			bp.Title = bead.Title
-			bp.Description = bead.Description
+			bp.Description = bead.Body
 			bp.BeanStatus = bead.Status
 			bp.Priority = bead.Priority
 			bp.IssueType = bead.Type

@@ -212,7 +212,7 @@ func (p *WorkTaskPanel) renderUnassignedBeadDetails(panelWidth int) string {
 	if bead.IssueType != "" {
 		fmt.Fprintf(&content, "Type: %s\n", bead.IssueType)
 	}
-	fmt.Fprintf(&content, "Priority: %d\n", bead.Priority)
+	fmt.Fprintf(&content, "Priority: %s\n", bead.Priority)
 	fmt.Fprintf(&content, "Status: %s\n", bead.BeanStatus)
 
 	if bead.Description != "" {

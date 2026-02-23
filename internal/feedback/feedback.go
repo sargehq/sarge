@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/github"
 	"github.com/sargehq/sarge/internal/project"
@@ -89,7 +89,7 @@ func processPRFeedbackInternal(ctx context.Context, proj *project.Project, datab
 
 	// Store feedback in database and create beads
 	createdBeads := []string{}
-	beadsPath := proj.BeadsPath()
+	beadsPath := proj.BeansPath()
 
 	for i, item := range feedbackItems {
 		// Check if this is a reply to an existing comment
@@ -123,7 +123,7 @@ func processPRFeedbackInternal(ctx context.Context, proj *project.Project, datab
 
 			// Add the reply as a comment to the existing bead
 			commentText := fmt.Sprintf("Reply from %s:\n\n%s", item.GetSourceName(), item.Description)
-			if err := beads.NewCLI(beadsPath).AddComment(ctx, *parentFeedback.BeanID, commentText); err != nil {
+			if err := beans.NewCLI(beadsPath).AddComment(ctx, *parentFeedback.BeanID, commentText); err != nil {
 				if !quiet {
 					fmt.Printf("%d. [ERROR] Failed to add comment to bead %s: %v\n", i+1, *parentFeedback.BeanID, err)
 				}
@@ -207,7 +207,7 @@ func processPRFeedbackInternal(ctx context.Context, proj *project.Project, datab
 			Title:       item.Title,
 			Description: item.Description,
 			Type:        GetBeadType(item.Type),
-			Priority:    item.Priority,
+			Priority:    beans.PriorityFromInt(item.Priority),
 			ParentID:    work.RootIssueID,
 			Labels:      []string{"from-pr-feedback"},
 			SourceURL:   item.Source.URL,

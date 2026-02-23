@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/sargehq/sarge/internal/agents"
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/execwatch"
 	"github.com/sargehq/sarge/internal/debug"
@@ -54,8 +54,8 @@ func runOrchestrate(cmd *cobra.Command, args []string) error {
 	// Apply hooks.env to current process - inherited by child processes (Claude)
 	applyHooksEnv(proj.Config.Hooks.Env)
 
-	// Set BEADS_DIR so bd commands work in Claude
-	_ = os.Setenv("BEADS_DIR", proj.BeadsPath())
+	// Set BEANS_DIR so bd commands work in Claude
+	_ = os.Setenv("BEANS_DIR", proj.BeansPath())
 
 	// Get theWork ID
 	workID := flagOrchestrateWork
@@ -389,21 +389,21 @@ func handlePostEstimation(proj *project.Project, estimateTask *db.Task, work *db
 	}
 
 	// Get issues with dependencies for planning
-	issuesResult, err := proj.Beads.GetBeadsWithDeps(ctx, beanIDs)
+	issuesResult, err := proj.Beads.GetBeansWithDeps(ctx, beanIDs)
 	if err != nil {
 		return fmt.Errorf("failed to get bead details: %w", err)
 	}
 
 	// Verify all beads were found
 	for _, beanID := range beanIDs {
-		if _, found := issuesResult.Beads[beanID]; !found {
+		if _, found := issuesResult.Beans[beanID]; !found {
 			return fmt.Errorf("bead %s not found", beanID)
 		}
 	}
 
 	// Convert map to slice
-	beadList := make([]beads.Bead, 0, len(issuesResult.Beads))
-	for _, b := range issuesResult.Beads {
+	beadList := make([]beans.Bean, 0, len(issuesResult.Beans))
+	for _, b := range issuesResult.Beans {
 		beadList = append(beadList, b)
 	}
 
@@ -462,7 +462,7 @@ func handlePostEstimation(proj *project.Project, estimateTask *db.Task, work *db
 			continue // bead not in our task set
 		}
 		for _, dep := range deps {
-			depTaskID, ok := beadToTask[dep.DependsOnID]
+			depTaskID, ok := beadToTask[dep.BlockedByID]
 			if !ok {
 				continue // dependency not in our task set
 			}
@@ -532,10 +532,10 @@ func handleReviewFixLoop(proj *project.Project, reviewTask *db.Task, work *db.Wo
 	}
 
 	// Check if the review created any issue beads under the root issue
-	var beadsToFix []beads.Bead
+	var beadsToFix []beans.Bean
 	if work.RootIssueID != "" {
 		// Get all children of the root issue
-		rootChildrenIssues, err := proj.Beads.GetBeadWithChildren(ctx, work.RootIssueID)
+		rootChildrenIssues, err := proj.Beads.GetBeanWithChildren(ctx, work.RootIssueID)
 		if err != nil {
 			return fmt.Errorf("failed to get children of root issue %s: %w", work.RootIssueID, err)
 		}
@@ -545,8 +545,8 @@ func handleReviewFixLoop(proj *project.Project, reviewTask *db.Task, work *db.Wo
 		expectedExternalRef := fmt.Sprintf("review-%s", reviewTask.ID)
 		for _, issue := range rootChildrenIssues {
 			if issue.ID != work.RootIssueID &&
-				beads.IsWorkableStatus(issue.Status) &&
-				issue.ExternalRef == expectedExternalRef {
+				beans.IsWorkableStatus(issue.Status) &&
+				beans.HasTagValue(issue.Tags, expectedExternalRef) {
 				beadsToFix = append(beadsToFix, issue)
 			}
 		}
@@ -564,12 +564,12 @@ func handleReviewFixLoop(proj *project.Project, reviewTask *db.Task, work *db.Wo
 			// Re-check for new beads from PR feedback
 			if work.RootIssueID != "" {
 				// Re-fetch children of root issue to see if feedback created new beads
-				rootChildrenIssues, err := proj.Beads.GetBeadWithChildren(ctx, work.RootIssueID)
+				rootChildrenIssues, err := proj.Beads.GetBeanWithChildren(ctx, work.RootIssueID)
 				if err == nil {
 					// Filter for any new open beads (not just review-created ones)
 					for _, issue := range rootChildrenIssues {
 						if issue.ID != work.RootIssueID &&
-							beads.IsWorkableStatus(issue.Status) {
+							beans.IsWorkableStatus(issue.Status) {
 							// Check if this bead is already in a task
 							inTask, _ := proj.DB.IsBeanInTask(ctx, work.ID, issue.ID)
 							if !inTask {

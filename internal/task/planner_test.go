@@ -4,22 +4,22 @@ import (
 	"context"
 	"testing"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/task"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestBuildDependencyGraph(t *testing.T) {
-	beadList := []beads.Bead{
+	beadList := []beans.Bean{
 		{ID: "a", Title: "A"},
 		{ID: "b", Title: "B"},
 		{ID: "c", Title: "C"},
 	}
 
-	dependencies := map[string][]beads.Dependency{
-		"b": {{IssueID: "b", DependsOnID: "a", Type: "blocks"}},
-		"c": {{IssueID: "c", DependsOnID: "b", Type: "blocks"}},
+	dependencies := map[string][]beans.Dependency{
+		"b": {{BeanID: "b", BlockedByID: "a"}},
+		"c": {{BeanID: "c", BlockedByID: "b"}},
 	}
 
 	graph := task.BuildDependencyGraph(beadList, dependencies)
@@ -38,13 +38,13 @@ func TestBuildDependencyGraph(t *testing.T) {
 }
 
 func TestBuildDependencyGraphIgnoresExternalDeps(t *testing.T) {
-	beadList := []beads.Bead{
+	beadList := []beans.Bean{
 		{ID: "a", Title: "A"},
 	}
 
 	// Dependencies on external beads (not in beads list) should be ignored
-	dependencies := map[string][]beads.Dependency{
-		"a": {{IssueID: "a", DependsOnID: "external", Type: "blocks"}},
+	dependencies := map[string][]beans.Dependency{
+		"a": {{BeanID: "a", BlockedByID: "external"}},
 	}
 
 	graph := task.BuildDependencyGraph(beadList, dependencies)
@@ -55,15 +55,15 @@ func TestBuildDependencyGraphIgnoresExternalDeps(t *testing.T) {
 }
 
 func TestTopologicalSort(t *testing.T) {
-	beadList := []beads.Bead{
+	beadList := []beans.Bean{
 		{ID: "c", Title: "C"},
 		{ID: "a", Title: "A"},
 		{ID: "b", Title: "B"},
 	}
 
-	dependencies := map[string][]beads.Dependency{
-		"c": {{IssueID: "c", DependsOnID: "b", Type: "blocks"}},
-		"b": {{IssueID: "b", DependsOnID: "a", Type: "blocks"}},
+	dependencies := map[string][]beans.Dependency{
+		"c": {{BeanID: "c", BlockedByID: "b"}},
+		"b": {{BeanID: "b", BlockedByID: "a"}},
 	}
 
 	graph := task.BuildDependencyGraph(beadList, dependencies)
@@ -81,14 +81,14 @@ func TestTopologicalSort(t *testing.T) {
 }
 
 func TestTopologicalSortDetectsCycle(t *testing.T) {
-	beadList := []beads.Bead{
+	beadList := []beans.Bean{
 		{ID: "a", Title: "A"},
 		{ID: "b", Title: "B"},
 	}
 
-	dependencies := map[string][]beads.Dependency{
-		"a": {{IssueID: "a", DependsOnID: "b", Type: "blocks"}},
-		"b": {{IssueID: "b", DependsOnID: "a", Type: "blocks"}},
+	dependencies := map[string][]beans.Dependency{
+		"a": {{BeanID: "a", BlockedByID: "b"}},
+		"b": {{BeanID: "b", BlockedByID: "a"}},
 	}
 
 	graph := task.BuildDependencyGraph(beadList, dependencies)
@@ -100,7 +100,7 @@ func TestPlanSimple(t *testing.T) {
 	ctx := context.Background()
 	scores := map[string]int{"a": 3, "b": 3, "c": 3}
 	estimator := &task.ComplexityEstimatorMock{
-		EstimateFunc: func(ctx context.Context, bead beads.Bead) (int, int, error) {
+		EstimateFunc: func(ctx context.Context, bead beans.Bean) (int, int, error) {
 			score := scores[bead.ID]
 			if score == 0 {
 				score = 5 // default
@@ -110,13 +110,13 @@ func TestPlanSimple(t *testing.T) {
 	}
 	planner := task.NewDefaultPlanner(estimator)
 
-	beadList := []beads.Bead{
+	beadList := []beans.Bean{
 		{ID: "a", Title: "A"},
 		{ID: "b", Title: "B"},
 		{ID: "c", Title: "C"},
 	}
 
-	dependencies := map[string][]beads.Dependency{}
+	dependencies := map[string][]beans.Dependency{}
 
 	// Token budget of 10000 should fit all beads (3000+3000+3000=9000 tokens)
 	tasks, err := planner.Plan(ctx, beadList, dependencies, 10000)
@@ -130,7 +130,7 @@ func TestPlanSplitByBudget(t *testing.T) {
 	ctx := context.Background()
 	scores := map[string]int{"a": 5, "b": 5, "c": 5}
 	estimator := &task.ComplexityEstimatorMock{
-		EstimateFunc: func(ctx context.Context, bead beads.Bead) (int, int, error) {
+		EstimateFunc: func(ctx context.Context, bead beans.Bean) (int, int, error) {
 			score := scores[bead.ID]
 			if score == 0 {
 				score = 5 // default
@@ -140,13 +140,13 @@ func TestPlanSplitByBudget(t *testing.T) {
 	}
 	planner := task.NewDefaultPlanner(estimator)
 
-	beadList := []beads.Bead{
+	beadList := []beans.Bean{
 		{ID: "a", Title: "A"},
 		{ID: "b", Title: "B"},
 		{ID: "c", Title: "C"},
 	}
 
-	dependencies := map[string][]beads.Dependency{}
+	dependencies := map[string][]beans.Dependency{}
 
 	// Token budget of 7000 should split into multiple tasks (each bead is 5000 tokens)
 	tasks, err := planner.Plan(ctx, beadList, dependencies, 7000)
@@ -166,7 +166,7 @@ func TestPlanRespectsDependencies(t *testing.T) {
 	ctx := context.Background()
 	scores := map[string]int{"a": 3, "b": 3}
 	estimator := &task.ComplexityEstimatorMock{
-		EstimateFunc: func(ctx context.Context, bead beads.Bead) (int, int, error) {
+		EstimateFunc: func(ctx context.Context, bead beans.Bean) (int, int, error) {
 			score := scores[bead.ID]
 			if score == 0 {
 				score = 5 // default
@@ -176,13 +176,13 @@ func TestPlanRespectsDependencies(t *testing.T) {
 	}
 	planner := task.NewDefaultPlanner(estimator)
 
-	beadList := []beads.Bead{
+	beadList := []beans.Bean{
 		{ID: "a", Title: "A"},
 		{ID: "b", Title: "B"},
 	}
 
-	dependencies := map[string][]beads.Dependency{
-		"b": {{IssueID: "b", DependsOnID: "a", Type: "blocks"}},
+	dependencies := map[string][]beans.Dependency{
+		"b": {{BeanID: "b", BlockedByID: "a"}},
 	}
 
 	// Small token budget to force multiple tasks (each bead is 3000 tokens)
@@ -206,7 +206,7 @@ func TestPlanEmpty(t *testing.T) {
 	estimator := &task.ComplexityEstimatorMock{}
 	planner := task.NewDefaultPlanner(estimator)
 
-	dependencies := map[string][]beads.Dependency{}
+	dependencies := map[string][]beans.Dependency{}
 
 	tasks, err := planner.Plan(ctx, nil, dependencies, 10000)
 	require.NoError(t, err, "Plan failed")
@@ -219,7 +219,7 @@ func TestPlanFirstFitDecreasing(t *testing.T) {
 	// Larger beads are assigned first (by token estimate)
 	scores := map[string]int{"small": 2, "medium": 4, "large": 6}
 	estimator := &task.ComplexityEstimatorMock{
-		EstimateFunc: func(ctx context.Context, bead beads.Bead) (int, int, error) {
+		EstimateFunc: func(ctx context.Context, bead beans.Bean) (int, int, error) {
 			score := scores[bead.ID]
 			if score == 0 {
 				score = 5 // default
@@ -229,13 +229,13 @@ func TestPlanFirstFitDecreasing(t *testing.T) {
 	}
 	planner := task.NewDefaultPlanner(estimator)
 
-	beadList := []beads.Bead{
+	beadList := []beans.Bean{
 		{ID: "small", Title: "Small"},
 		{ID: "medium", Title: "Medium"},
 		{ID: "large", Title: "Large"},
 	}
 
-	dependencies := map[string][]beads.Dependency{}
+	dependencies := map[string][]beans.Dependency{}
 
 	// Token budget of 10000: large (6000) goes first, then small (2000) fits, medium (4000) won't fit
 	// So we expect: task1=[large, small], task2=[medium]
@@ -250,7 +250,7 @@ func TestPlanChainDependencySplitAcrossTasks(t *testing.T) {
 	// Small budget to force each bead into separate task
 	scores := map[string]int{"a": 5, "b": 5, "c": 5}
 	estimator := &task.ComplexityEstimatorMock{
-		EstimateFunc: func(ctx context.Context, bead beads.Bead) (int, int, error) {
+		EstimateFunc: func(ctx context.Context, bead beans.Bean) (int, int, error) {
 			score := scores[bead.ID]
 			if score == 0 {
 				score = 5 // default
@@ -260,16 +260,16 @@ func TestPlanChainDependencySplitAcrossTasks(t *testing.T) {
 	}
 	planner := task.NewDefaultPlanner(estimator)
 
-	beadList := []beads.Bead{
+	beadList := []beans.Bean{
 		{ID: "a", Title: "A"},
 		{ID: "b", Title: "B"},
 		{ID: "c", Title: "C"},
 	}
 
 	// Chain: c depends on b, b depends on a
-	dependencies := map[string][]beads.Dependency{
-		"b": {{IssueID: "b", DependsOnID: "a", Type: "blocks"}},
-		"c": {{IssueID: "c", DependsOnID: "b", Type: "blocks"}},
+	dependencies := map[string][]beans.Dependency{
+		"b": {{BeanID: "b", BlockedByID: "a"}},
+		"c": {{BeanID: "c", BlockedByID: "b"}},
 	}
 
 	// Budget of 6000 allows one bead per task (each is 5000 tokens)
@@ -294,7 +294,7 @@ func TestPlanDiamondDependencySplitAcrossTasks(t *testing.T) {
 	ctx := context.Background()
 	scores := map[string]int{"a": 5, "b": 5, "c": 5, "d": 5}
 	estimator := &task.ComplexityEstimatorMock{
-		EstimateFunc: func(ctx context.Context, bead beads.Bead) (int, int, error) {
+		EstimateFunc: func(ctx context.Context, bead beans.Bean) (int, int, error) {
 			score := scores[bead.ID]
 			if score == 0 {
 				score = 5 // default
@@ -305,19 +305,19 @@ func TestPlanDiamondDependencySplitAcrossTasks(t *testing.T) {
 	planner := task.NewDefaultPlanner(estimator)
 
 	// Diamond: a and b are independent, c depends on both, d depends on c
-	beadList := []beads.Bead{
+	beadList := []beans.Bean{
 		{ID: "a", Title: "A"},
 		{ID: "b", Title: "B"},
 		{ID: "c", Title: "C"},
 		{ID: "d", Title: "D"},
 	}
 
-	dependencies := map[string][]beads.Dependency{
+	dependencies := map[string][]beans.Dependency{
 		"c": {
-			{IssueID: "c", DependsOnID: "a", Type: "blocks"},
-			{IssueID: "c", DependsOnID: "b", Type: "blocks"},
+			{BeanID: "c", BlockedByID: "a"},
+			{BeanID: "c", BlockedByID: "b"},
 		},
-		"d": {{IssueID: "d", DependsOnID: "c", Type: "blocks"}},
+		"d": {{BeanID: "d", BlockedByID: "c"}},
 	}
 
 	// Budget of 6000 allows one bead per task
@@ -344,7 +344,7 @@ func TestPlanSameTaskDependenciesNoSelfDep(t *testing.T) {
 	ctx := context.Background()
 	scores := map[string]int{"a": 2, "b": 2}
 	estimator := &task.ComplexityEstimatorMock{
-		EstimateFunc: func(ctx context.Context, bead beads.Bead) (int, int, error) {
+		EstimateFunc: func(ctx context.Context, bead beans.Bean) (int, int, error) {
 			score := scores[bead.ID]
 			if score == 0 {
 				score = 5 // default
@@ -354,14 +354,14 @@ func TestPlanSameTaskDependenciesNoSelfDep(t *testing.T) {
 	}
 	planner := task.NewDefaultPlanner(estimator)
 
-	beadList := []beads.Bead{
+	beadList := []beans.Bean{
 		{ID: "a", Title: "A"},
 		{ID: "b", Title: "B"},
 	}
 
 	// b depends on a
-	dependencies := map[string][]beads.Dependency{
-		"b": {{IssueID: "b", DependsOnID: "a", Type: "blocks"}},
+	dependencies := map[string][]beans.Dependency{
+		"b": {{BeanID: "b", BlockedByID: "a"}},
 	}
 
 	// Large budget to fit both beads in same task (each is 2000 tokens)

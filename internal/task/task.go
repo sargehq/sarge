@@ -5,7 +5,7 @@ package task
 import (
 	"context"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 )
 
 // Status constants for task tracking.
@@ -20,7 +20,7 @@ const (
 type Task struct {
 	ID              string       // Unique task identifier
 	BeanIDs         []string     // IDs of beads in this task
-	Beads           []beads.Bead // Full bead information
+	Beads           []beans.Bean // Full bead information
 	Complexity      int          // Sum of bead complexity scores
 	EstimatedTokens int          // Sum of estimated tokens for all beads
 	Status          string       // pending, processing, completed, failed
@@ -33,8 +33,8 @@ type Planner interface {
 	// Returns a list of tasks with beads grouped to respect dependencies and fit within budget.
 	Plan(
 		ctx context.Context,
-		beadList []beads.Bead,
-		dependencies map[string][]beads.Dependency,
+		beadList []beans.Bean,
+		dependencies map[string][]beans.Dependency,
 		budget int,
 	) ([]Task, error)
 }
@@ -42,7 +42,7 @@ type Planner interface {
 // ComplexityEstimator estimates the complexity of a bead.
 type ComplexityEstimator interface {
 	// Estimate returns a complexity score (1-10) and estimated context tokens for a bead.
-	Estimate(ctx context.Context, bead beads.Bead) (score int, tokens int, err error)
+	Estimate(ctx context.Context, bead beans.Bean) (score int, tokens int, err error)
 }
 
 // BeadComplexity holds complexity information for a single bead.

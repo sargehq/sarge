@@ -74,7 +74,7 @@ func runWorkImportPR(cmd *cobra.Command, args []string) error {
 	// Create a bead from PR metadata (user needs feedback on bead creation)
 	fmt.Printf("\nCreating bead from PR metadata...\n")
 	beadResult, err := workSvc.CreateBeadFromPR(ctx, metadata, &work.CreateBeadOptions{
-		BeadsDir:     proj.BeadsPath(),
+		BeadsDir:     proj.BeansPath(),
 		SkipIfExists: true,
 	})
 	if err != nil {

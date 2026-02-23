@@ -4,7 +4,7 @@ import (
 	"context"
 	"sort"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 )
 
 // buildBeadTree takes a flat list of beads and organizes them into a tree
@@ -12,7 +12,7 @@ import (
 // treeDepth set for each item.
 // Optional preserveIDs specifies bead IDs that should always be kept in results
 // regardless of the closed-item visibility filter (e.g., root issues).
-func buildBeadTree(ctx context.Context, items []beadItem, client *beads.Client, preserveIDs ...string) []beadItem {
+func buildBeadTree(ctx context.Context, items []beadItem, client *beans.Client, preserveIDs ...string) []beadItem {
 	if len(items) == 0 {
 		return items
 	}
@@ -28,13 +28,13 @@ func buildBeadTree(ctx context.Context, items []beadItem, client *beads.Client, 
 
 	// Helper to extract blocking dependency IDs from a beadItem
 	getBlockingDepIDs := func(item *beadItem) []string {
-		if item.BeadWithDeps == nil {
+		if item.BeanWithDeps == nil {
 			return nil
 		}
 		depIDs := make([]string, 0, len(item.Dependencies))
 		for _, dep := range item.Dependencies {
-			if dep.Type == "blocks" || dep.Type == "parent-child" {
-				depIDs = append(depIDs, dep.DependsOnID)
+			if dep.BlockedByID != "" {
+				depIDs = append(depIDs, dep.BlockedByID)
 			}
 		}
 		return depIDs
@@ -61,13 +61,13 @@ func buildBeadTree(ctx context.Context, items []beadItem, client *beads.Client, 
 			}
 
 			// Fetch missing parents in a single query
-			parentResult, err := client.GetBeadsWithDeps(ctx, missingParentIDs)
+			parentResult, err := client.GetBeansWithDeps(ctx, missingParentIDs)
 			if err == nil {
 				// Add missing parents to items
 				for _, parentID := range missingParentIDs {
-					if beadWithDeps := parentResult.GetBead(parentID); beadWithDeps != nil {
+					if beadWithDeps := parentResult.GetBean(parentID); beadWithDeps != nil {
 						parentBead := &beadItem{
-							BeadWithDeps:   beadWithDeps,
+							BeanWithDeps:   beadWithDeps,
 							isClosedParent: true,
 						}
 						items = append(items, *parentBead)
@@ -264,7 +264,7 @@ func buildBeadTree(ctx context.Context, items []beadItem, client *beads.Client, 
 		}
 
 		// Non-closed items are always visible
-		if item.Status != beads.StatusClosed {
+		if item.Status != beans.StatusCompleted {
 			visibilityCache[id] = true
 			return true
 		}

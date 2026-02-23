@@ -1,11 +1,11 @@
 ---
 # main-b9tx
 title: Update internal/linear/ fetcher (beads→beans)
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-02-23T02:06:50Z
-updated_at: 2026-02-23T02:06:50Z
+updated_at: 2026-02-23T02:52:33Z
 parent: main-3hea
 blocked_by:
     - main-1icu

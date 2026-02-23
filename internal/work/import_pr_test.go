@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/git"
 	"github.com/sargehq/sarge/internal/github"
 	"github.com/sargehq/sarge/internal/worktree"
@@ -591,24 +592,24 @@ func TestFormatBeadDescription(t *testing.T) {
 func TestParsePriority(t *testing.T) {
 	tests := []struct {
 		input    string
-		expected int
+		expected string
 	}{
-		{"P0", 0},
-		{"P1", 1},
-		{"P2", 2},
-		{"P3", 3},
-		{"P4", 4},
-		{"p0", 2},        // lowercase doesn't match, defaults to 2
-		{"", 2},          // empty defaults to 2
-		{"P5", 2},        // unknown P-level defaults to 2
-		{"invalid", 2},
-		{"P", 2},         // just P defaults to 2
-		{"Priority1", 2}, // doesn't start with P followed by digit
+		{"P0", beans.PriorityCritical},
+		{"P1", beans.PriorityHigh},
+		{"P2", beans.PriorityNormal},
+		{"P3", beans.PriorityLow},
+		{"P4", beans.PriorityDeferred},
+		{"p0", beans.PriorityNormal},        // lowercase doesn't match, defaults to normal
+		{"", beans.PriorityNormal},           // empty defaults to normal
+		{"P5", beans.PriorityNormal},         // unknown P-level defaults to normal
+		{"invalid", beans.PriorityNormal},
+		{"P", beans.PriorityNormal},          // just P defaults to normal
+		{"Priority1", beans.PriorityNormal},  // doesn't start with P followed by digit
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			result := parsePriority(tt.input)
+			result := parsePriorityToBeans(tt.input)
 			require.Equal(t, tt.expected, result)
 		})
 	}

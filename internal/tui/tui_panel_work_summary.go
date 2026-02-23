@@ -338,7 +338,7 @@ func (p *WorkSummaryPanel) renderFullContent(panelWidth int) string {
 		}
 
 		// Metadata line
-		fmt.Fprintf(&content, "%s  Type: %s  P%d  %s\n",
+		fmt.Fprintf(&content, "%s  Type: %s  P:%s  %s\n",
 			rootID,
 			rootBead.IssueType,
 			rootBead.Priority,

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/db"
 )
 
@@ -147,9 +147,9 @@ const (
 )
 
 // beadItem represents a bead in the beads panel with TUI-specific display state.
-// It embeds beads.BeadWithDeps to access domain data directly.
+// It embeds beans.BeanWithDeps to access domain data directly.
 type beadItem struct {
-	*beads.BeadWithDeps
+	*beans.BeanWithDeps
 
 	// TUI-specific display state
 	isReady bool // computed ready state
@@ -266,7 +266,7 @@ func styleButtonWithHover(text string, hovered bool) string {
 
 
 // fetchBeadsWithFilters fetches and filters beads based on provided filters
-func fetchBeadsWithFilters(ctx context.Context, beadsClient *beads.Client, _ string, filters beadFilters) ([]beadItem, error) {
+func fetchBeadsWithFilters(ctx context.Context, beadsClient *beans.Client, _ string, filters beadFilters) ([]beadItem, error) {
 	// For "ready" status, use bd ready command
 	if filters.status == "ready" {
 		return fetchReadyBeads(ctx, beadsClient, filters)
@@ -278,23 +278,23 @@ func fetchBeadsWithFilters(ctx context.Context, beadsClient *beads.Client, _ str
 	// Other values are passed directly as status filter
 	statusFilter := ""
 	filterOutClosed := false
-	if filters.status == beads.StatusOpen {
+	if filters.status == beans.StatusTodo {
 		// Fetch all and filter out closed
 		statusFilter = ""
 		filterOutClosed = true
 	} else if filters.status != "" && filters.status != "all" {
 		statusFilter = filters.status
 	}
-	issuesList, err := beadsClient.ListBeads(ctx, statusFilter)
+	issuesList, err := beadsClient.ListBeans(ctx, statusFilter)
 	if err != nil {
 		return nil, err
 	}
 
 	// Filter out closed issues if "open" filter was requested
 	if filterOutClosed {
-		filtered := make([]beads.Bead, 0, len(issuesList))
+		filtered := make([]beans.Bean, 0, len(issuesList))
 		for _, issue := range issuesList {
-			if issue.Status != beads.StatusClosed {
+			if issue.Status != beans.StatusCompleted {
 				filtered = append(filtered, issue)
 			}
 		}
@@ -304,7 +304,7 @@ func fetchBeadsWithFilters(ctx context.Context, beadsClient *beads.Client, _ str
 	// TODO: Apply label filter if needed (requires additional query support)
 
 	// Get ready issues to mark which ones are ready
-	readyIssues, _ := beadsClient.GetReadyBeads(ctx)
+	readyIssues, _ := beadsClient.GetReadyBeans(ctx)
 	readySet := make(map[string]bool)
 	for _, issue := range readyIssues {
 		readySet[issue.ID] = true
@@ -315,7 +315,7 @@ func fetchBeadsWithFilters(ctx context.Context, beadsClient *beads.Client, _ str
 	for _, issue := range issuesList {
 		issueIDs = append(issueIDs, issue.ID)
 	}
-	depsResult, err := beadsClient.GetBeadsWithDeps(ctx, issueIDs)
+	depsResult, err := beadsClient.GetBeansWithDeps(ctx, issueIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -327,19 +327,19 @@ func fetchBeadsWithFilters(ctx context.Context, beadsClient *beads.Client, _ str
 			searchLower := strings.ToLower(filters.searchText)
 			if !strings.Contains(strings.ToLower(issue.ID), searchLower) &&
 				!strings.Contains(strings.ToLower(issue.Title), searchLower) &&
-				!strings.Contains(strings.ToLower(issue.Description), searchLower) {
+				!strings.Contains(strings.ToLower(issue.Body), searchLower) {
 				continue
 			}
 		}
 
-		beadWithDeps := depsResult.GetBead(issue.ID)
+		beadWithDeps := depsResult.GetBean(issue.ID)
 		if beadWithDeps == nil {
-			// Fallback: create BeadWithDeps from the issue
+			// Fallback: create BeanWithDeps from the issue
 			bead := issue
-			beadWithDeps = &beads.BeadWithDeps{Bead: &bead}
+			beadWithDeps = &beans.BeanWithDeps{Bean: &bead}
 		}
 		items = append(items, beadItem{
-			BeadWithDeps: beadWithDeps,
+			BeanWithDeps: beadWithDeps,
 			isReady:      readySet[issue.ID],
 		})
 	}
@@ -350,9 +350,9 @@ func fetchBeadsWithFilters(ctx context.Context, beadsClient *beads.Client, _ str
 	return items, nil
 }
 
-func fetchReadyBeads(ctx context.Context, beadsClient *beads.Client, filters beadFilters) ([]beadItem, error) {
+func fetchReadyBeads(ctx context.Context, beadsClient *beans.Client, filters beadFilters) ([]beadItem, error) {
 	// Get ready issues
-	readyIssues, err := beadsClient.GetReadyBeads(ctx)
+	readyIssues, err := beadsClient.GetReadyBeans(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -362,7 +362,7 @@ func fetchReadyBeads(ctx context.Context, beadsClient *beads.Client, filters bea
 	for _, issue := range readyIssues {
 		issueIDs = append(issueIDs, issue.ID)
 	}
-	depsResult, err := beadsClient.GetBeadsWithDeps(ctx, issueIDs)
+	depsResult, err := beadsClient.GetBeansWithDeps(ctx, issueIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -374,19 +374,19 @@ func fetchReadyBeads(ctx context.Context, beadsClient *beads.Client, filters bea
 			searchLower := strings.ToLower(filters.searchText)
 			if !strings.Contains(strings.ToLower(issue.ID), searchLower) &&
 				!strings.Contains(strings.ToLower(issue.Title), searchLower) &&
-				!strings.Contains(strings.ToLower(issue.Description), searchLower) {
+				!strings.Contains(strings.ToLower(issue.Body), searchLower) {
 				continue
 			}
 		}
 
-		beadWithDeps := depsResult.GetBead(issue.ID)
+		beadWithDeps := depsResult.GetBean(issue.ID)
 		if beadWithDeps == nil {
-			// Fallback: create BeadWithDeps from the issue
+			// Fallback: create BeanWithDeps from the issue
 			bead := issue
-			beadWithDeps = &beads.BeadWithDeps{Bead: &bead}
+			beadWithDeps = &beans.BeanWithDeps{Bean: &bead}
 		}
 		items = append(items, beadItem{
-			BeadWithDeps: beadWithDeps,
+			BeanWithDeps: beadWithDeps,
 			isReady:      true,
 		})
 	}

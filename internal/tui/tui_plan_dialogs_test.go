@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,9 +24,9 @@ func TestMultiSelectionCloseConfirmation(t *testing.T) {
 		{
 			name: "Multiple selected beads",
 			beadItems: []beadItem{
-				testBeadItem("bead-1", "First task", "open", 2, "task"),
-				testBeadItem("bead-2", "Second task", "open", 2, "task"),
-				testBeadItem("bead-3", "Third task", "open", 2, "task"),
+				testBeadItem("bead-1", "First task", beans.StatusTodo, beans.PriorityNormal, "task"),
+				testBeadItem("bead-2", "Second task", beans.StatusTodo, beans.PriorityNormal, "task"),
+				testBeadItem("bead-3", "Third task", beans.StatusTodo, beans.PriorityNormal, "task"),
 			},
 			selectedBeads: map[string]bool{
 				"bead-1": true,
@@ -39,8 +40,8 @@ func TestMultiSelectionCloseConfirmation(t *testing.T) {
 		{
 			name: "No selected beads - uses cursor",
 			beadItems: []beadItem{
-				testBeadItem("bead-1", "First task", "open", 2, "task"),
-				testBeadItem("bead-2", "Second task", "open", 2, "task"),
+				testBeadItem("bead-1", "First task", beans.StatusTodo, beans.PriorityNormal, "task"),
+				testBeadItem("bead-2", "Second task", beans.StatusTodo, beans.PriorityNormal, "task"),
 			},
 			selectedBeads:    map[string]bool{},
 			cursorIndex:      1,
@@ -51,9 +52,9 @@ func TestMultiSelectionCloseConfirmation(t *testing.T) {
 		{
 			name: "All beads selected",
 			beadItems: []beadItem{
-				testBeadItem("bead-1", "First task", "open", 2, "task"),
-				testBeadItem("bead-2", "Second task", "open", 2, "task"),
-				testBeadItem("bead-3", "Third task", "open", 2, "task"),
+				testBeadItem("bead-1", "First task", beans.StatusTodo, beans.PriorityNormal, "task"),
+				testBeadItem("bead-2", "Second task", beans.StatusTodo, beans.PriorityNormal, "task"),
+				testBeadItem("bead-3", "Third task", beans.StatusTodo, beans.PriorityNormal, "task"),
 			},
 			selectedBeads: map[string]bool{
 				"bead-1": true,
@@ -68,13 +69,13 @@ func TestMultiSelectionCloseConfirmation(t *testing.T) {
 		{
 			name: "More than 5 beads selected",
 			beadItems: []beadItem{
-				testBeadItem("bead-1", "Task 1", "open", 2, "task"),
-				testBeadItem("bead-2", "Task 2", "open", 2, "task"),
-				testBeadItem("bead-3", "Task 3", "open", 2, "task"),
-				testBeadItem("bead-4", "Task 4", "open", 2, "task"),
-				testBeadItem("bead-5", "Task 5", "open", 2, "task"),
-				testBeadItem("bead-6", "Task 6", "open", 2, "task"),
-				testBeadItem("bead-7", "Task 7", "open", 2, "task"),
+				testBeadItem("bead-1", "Task 1", beans.StatusTodo, beans.PriorityNormal, "task"),
+				testBeadItem("bead-2", "Task 2", beans.StatusTodo, beans.PriorityNormal, "task"),
+				testBeadItem("bead-3", "Task 3", beans.StatusTodo, beans.PriorityNormal, "task"),
+				testBeadItem("bead-4", "Task 4", beans.StatusTodo, beans.PriorityNormal, "task"),
+				testBeadItem("bead-5", "Task 5", beans.StatusTodo, beans.PriorityNormal, "task"),
+				testBeadItem("bead-6", "Task 6", beans.StatusTodo, beans.PriorityNormal, "task"),
+				testBeadItem("bead-7", "Task 7", beans.StatusTodo, beans.PriorityNormal, "task"),
 			},
 			selectedBeads: map[string]bool{
 				"bead-1": true,
@@ -199,8 +200,8 @@ func TestUpdateCloseBeadConfirm(t *testing.T) {
 			// Create a mock planModel with selected beads
 			m := &planModel{
 				beadItems: []beadItem{
-					testBeadItem("bead-1", "Task 1", "open", 2, "task"),
-					testBeadItem("bead-2", "Task 2", "open", 2, "task"),
+					testBeadItem("bead-1", "Task 1", beans.StatusTodo, beans.PriorityNormal, "task"),
+					testBeadItem("bead-2", "Task 2", beans.StatusTodo, beans.PriorityNormal, "task"),
 				},
 				selectedBeads: map[string]bool{
 					"bead-1": true,
@@ -250,8 +251,8 @@ func TestCloseKeyHandlerWithSelection(t *testing.T) {
 		{
 			name: "With selected beads",
 			beadItems: []beadItem{
-				testBeadItem("bead-1", "Task 1", "open", 2, "task"),
-				testBeadItem("bead-2", "Task 2", "open", 2, "task"),
+				testBeadItem("bead-1", "Task 1", beans.StatusTodo, beans.PriorityNormal, "task"),
+				testBeadItem("bead-2", "Task 2", beans.StatusTodo, beans.PriorityNormal, "task"),
 			},
 			selectedBeads: map[string]bool{
 				"bead-1": true,
@@ -263,7 +264,7 @@ func TestCloseKeyHandlerWithSelection(t *testing.T) {
 		{
 			name: "Without selected beads but with cursor",
 			beadItems: []beadItem{
-				testBeadItem("bead-1", "Task 1", "open", 2, "task"),
+				testBeadItem("bead-1", "Task 1", beans.StatusTodo, beans.PriorityNormal, "task"),
 			},
 			selectedBeads:    map[string]bool{},
 			cursorIndex:      0,
@@ -350,7 +351,7 @@ func TestCloseConfirmationEdgeCases(t *testing.T) {
 			name: "Empty selection and invalid cursor",
 			setup: func() *planModel {
 				return &planModel{
-					beadItems:     []beadItem{testBeadItem("bead-1", "Task", "open", 2, "task")},
+					beadItems:     []beadItem{testBeadItem("bead-1", "Task", beans.StatusTodo, beans.PriorityNormal, "task")},
 					selectedBeads: map[string]bool{},
 					beadsCursor:   10, // Invalid cursor position
 					viewMode:      ViewCloseBeadConfirm,
@@ -363,8 +364,8 @@ func TestCloseConfirmationEdgeCases(t *testing.T) {
 			setup: func() *planModel {
 				return &planModel{
 					beadItems: []beadItem{
-						testBeadItem("bead-1", "Task 1", "closed", 2, "task"),
-						testBeadItem("bead-2", "Task 2", "open", 2, "task"),
+						testBeadItem("bead-1", "Task 1", "closed", beans.PriorityNormal, "task"),
+						testBeadItem("bead-2", "Task 2", beans.StatusTodo, beans.PriorityNormal, "task"),
 					},
 					selectedBeads: map[string]bool{
 						"bead-1": true, // Already closed
@@ -379,9 +380,9 @@ func TestCloseConfirmationEdgeCases(t *testing.T) {
 		{
 			name: "Mixed assigned and unassigned beads",
 			setup: func() *planModel {
-				item1 := testBeadItem("bead-1", "Task 1", "open", 2, "task")
+				item1 := testBeadItem("bead-1", "Task 1", beans.StatusTodo, beans.PriorityNormal, "task")
 				item1.assignedWorkID = "w-123"
-				item2 := testBeadItem("bead-2", "Task 2", "open", 2, "task")
+				item2 := testBeadItem("bead-2", "Task 2", beans.StatusTodo, beans.PriorityNormal, "task")
 				return &planModel{
 					beadItems: []beadItem{item1, item2},
 					selectedBeads: map[string]bool{
