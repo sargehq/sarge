@@ -318,7 +318,7 @@ func TestCloseKeyHandlerWithSelection(t *testing.T) {
 // TestBatchCloseFunction tests that multiple beans can be closed in a batch
 func TestBatchCloseFunction(t *testing.T) {
 	// This test validates that the closeBeans function is called with multiple IDs
-	// In a real test, we would mock the bd command execution
+	// In a real test, we would mock the beans command execution
 	beanIDs := []string{"bean-1", "bean-2", "bean-3"}
 
 	// Verify the function signature exists and accepts multiple IDs
@@ -335,8 +335,8 @@ func TestBatchCloseFunction(t *testing.T) {
 	// Verify the command is not nil
 	require.NotNil(t, cmd, "closeBeans should return a non-nil command")
 
-	// In a real scenario, we would verify that the bd command is called with all IDs:
-	// Expected: bd close bean-1 bean-2 bean-3
+	// In a real scenario, we would verify that the beans command is called with all IDs:
+	// Expected: beans close bean-1 bean-2 bean-3
 	// This would require mocking exec.CommandContext or using an interface
 }
 

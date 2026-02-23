@@ -15,13 +15,13 @@ sql:
         overrides:
           - db_type: "DATETIME"
             go_type: "time.Time"
-  - schema: "internal/beads/schema.sql"
-    queries: "internal/beads/queries"
+  - schema: "internal/beans/schema.sql"
+    queries: "internal/beans/queries"
     engine: "sqlite"
     gen:
       go:
         package: "queries"
-        out: "internal/beads/queries"
+        out: "internal/beans/queries"
         emit_json_tags: true
         emit_prepared_queries: false
         emit_interface: true

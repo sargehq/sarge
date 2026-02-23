@@ -54,7 +54,7 @@ func runOrchestrate(cmd *cobra.Command, args []string) error {
 	// Apply hooks.env to current process - inherited by child processes (Claude)
 	applyHooksEnv(proj.Config.Hooks.Env)
 
-	// Set BEANS_DIR so bd commands work in Claude
+	// Set BEANS_DIR so beans commands work in Claude
 	_ = os.Setenv("BEANS_DIR", proj.BeansPath())
 
 	// Get theWork ID

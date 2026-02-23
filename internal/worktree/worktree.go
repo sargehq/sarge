@@ -72,7 +72,7 @@ func (c *CLIOperations) CreateFromExisting(ctx context.Context, repoPath, worktr
 
 // setMiseTrustedPaths configures the MISE_TRUSTED_CONFIG_PATHS environment variable
 // on a command so that mise trusts config files in the worktree path. This prevents
-// git post-checkout hooks from failing when they invoke mise-managed tools (like bd)
+// git post-checkout hooks from failing when they invoke mise-managed tools (like beans)
 // in the newly created worktree before `mise trust` has been run.
 func setMiseTrustedPaths(cmd *exec.Cmd, worktreePath string) {
 	// Trust the worktree directory and its parent (the project root).

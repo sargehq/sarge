@@ -54,7 +54,7 @@
   - PR URL (if exists)
   - Orchestrator health
   - Task list with statuses
-  - Unassigned beads
+  - Unassigned beans
 
 ### Test 4.2: Status Bar Context Updates
 **Implementation Status**: ✓ VERIFIED

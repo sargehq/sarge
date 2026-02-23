@@ -48,7 +48,7 @@ func runControlPlane(cmd *cobra.Command, args []string) error {
 	// Apply hooks.env to current process - inherited by child processes
 	applyHooksEnv(proj.Config.Hooks.Env)
 
-	// Set BEANS_DIR so bd commands work in any spawned processes
+	// Set BEANS_DIR so beans commands work in any spawned processes
 	_ = os.Setenv("BEANS_DIR", proj.BeansPath())
 
 	// Register this control plane process for heartbeat monitoring

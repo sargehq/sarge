@@ -91,7 +91,7 @@ linters:
           - errcheck
         text: "KillProcess"
 
-      # Beads cache flush - best effort
+      # beans cache flush - best effort
       - linters:
           - errcheck
         text: "FlushCache"
@@ -213,8 +213,8 @@ linters:
           - staticcheck
         text: "ST1000"
 
-      # G204: bd CLI calls with controlled arguments
-      - path: internal/beads/
+      # G204: beans CLI calls with controlled arguments
+      - path: internal/beans/
         linters:
           - gosec
         text: "G204"
@@ -269,8 +269,8 @@ linters:
           - gosec
         text: "G104.*(Close|MarkFlagRequired)"
 
-      # G104: Cleanup in beads client
-      - path: internal/beads/client\.go
+      # G104: Cleanup in beans client
+      - path: internal/beans/client\.go
         linters:
           - gosec
         text: "G104"

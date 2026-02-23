@@ -17,25 +17,25 @@ go test ./...
 - `cmd/proj.go` - Project management (create/destroy/status)
 - `cmd/work.go` - Work management (create/list/show/destroy/pr/review)
 - `cmd/work_automated.go` - Automated bead-to-PR workflow
-- `cmd/work_feedback.go` - PR feedback processing (fetch feedback, create beads)
+- `cmd/work_feedback.go` - PR feedback processing (fetch feedback, create beans)
 - `cmd/task.go` - Task management (list/show/delete/reset/set-review-epic)
 - `cmd/run.go` - Run command (execute pending tasks or works)
-- `cmd/list.go` - List command (list tracked beads)
+- `cmd/list.go` - List command (list tracked beans)
 - `cmd/status.go` - Status command (show bead tracking status)
 - `cmd/poll.go` - Poll command (monitor progress with text output)
 - `cmd/sync.go` - Sync command (pull from upstream)
 - `cmd/linear.go` - Linear integration commands (import issues from Linear)
 
 ### Agent Commands (called by Claude/orchestration)
-- `cmd/complete.go` - [Agent] Mark beads/tasks as done or failed
-- `cmd/estimate.go` - [Agent] Report complexity estimates for beads
+- `cmd/complete.go` - [Agent] Mark beans/tasks as done or failed
+- `cmd/estimate.go` - [Agent] Report complexity estimates for beans
 
 ### Internal/Hidden Commands (spawned automatically)
 - `cmd/orchestrate.go` - [Hidden] Execute tasks for a work unit (zellij tab)
 - `cmd/control_plane.go` - [Hidden] Background task execution (zellij tab)
 
 ### Internal Packages
-- `internal/beads/` - Beads database client (bd CLI wrapper)
+- `internal/beans/` - Beans database client (beans CLI wrapper)
 - `internal/linear/` - Linear MCP client and import logic
 - `internal/agents/` - Coding agent invocation (Claude, pi)
   - `internal/agents/claude/` - Claude Code agent templates and args
@@ -53,13 +53,13 @@ go test ./...
 
 ## External Dependencies
 
-Uses CLI tools: `bd`, `claude`, `gh`, `git`, `mise` (optional), `zellij`
+Uses CLI tools: `beans`, `claude`, `gh`, `git`, `mise` (optional), `zellij`
 
-**Important**: The beads (`bd`) version in `mise.toml` must stay aligned with the version in `internal/mise/template/mise.tmpl`. Sarge queries the beads database directly via sqlc and expects specific schema columns. Version mismatches cause errors like "no such column: owner".
+**Important**: The beans (`beans`) version in `mise.toml` must stay aligned with the version in `internal/mise/template/mise.tmpl`. Sarge queries the beans database directly via sqlc and expects specific schema columns. Version mismatches cause errors like "no such column: owner".
 
-### Updating the Beads Version
+### Updating the beans Version
 
-When upgrading beads, update **all three** of these files:
+When upgrading beans, update **all three** of these files:
 
 1. **`mise.toml`** — the project's mise tool version (used locally)
 2. **`internal/mise/template/mise.tmpl`** — the embedded template (used by `sarge doctor` and new project setup)
@@ -121,7 +121,7 @@ logging.Error("operation failed", "error", err, "context", ctx)
 
 // Get logger for custom use
 logger := logging.Logger()
-logger.With("component", "beads").Debug("message")
+logger.With("component", "beans").Debug("message")
 ```
 
 ### Viewing Logs
@@ -186,7 +186,7 @@ Mocks are generated in their respective package directories:
 - `internal/worktree/worktree_mock.go` - Git worktree operations (`WorktreeOperationsMock`)
 - `internal/mise/mise_mock.go` - Mise tool operations (`MiseOperationsMock`)
 - `internal/zellij/zellij_mock.go` - Zellij session management (`SessionManagerMock`, `SessionMock`)
-- `internal/beads/beads_mock.go` - Beads CLI and reader interfaces (`BeadsCLIMock`, `BeadsReaderMock`)
+- `internal/beans/beads_mock.go` - beans CLI and reader interfaces (`BeadsCLIMock`, `BeadsReaderMock`)
 - `internal/github/github_mock.go` - GitHub API client (`GitHubClientMock`)
 - `internal/agents/agents_mock.go` - Agent interface (`AgentMock`)
 - `internal/process/process_mock.go` - Process lister/killer (`ProcessListerMock`, `ProcessKillerMock`)
@@ -282,7 +282,7 @@ This regenerates the Go code in `internal/db/sqlc/` from the SQL query definitio
 
 ## PR Feedback Integration
 
-The system integrates with GitHub to automatically process PR feedback and create actionable beads.
+The system integrates with GitHub to automatically process PR feedback and create actionable beans.
 
 ### Architecture
 
@@ -314,7 +314,7 @@ CREATE TABLE pr_feedback (
 Located in `internal/github/`, the integration provides:
 
 - `FetchAndStoreFeedback()`: Fetches PR status checks, workflow runs, comments
-- `CreateBeadFromFeedback()`: Creates beads using the bd CLI
+- `CreateBeadFromFeedback()`: Creates beans using the beans CLI
 
 Feedback types processed:
 - **CI/Build failures**: Failed status checks and workflow runs
@@ -329,7 +329,7 @@ PR feedback polling is handled by the control plane (`cmd/control_plane.go`), no
 The control plane manages all scheduled background tasks via a database-driven event loop:
 
 - **PR Feedback Task**: Polls GitHub for new PR comments, CI failures, and reviews
-- **Comment Resolution Task**: Posts resolution comments when beads are closed
+- **Comment Resolution Task**: Posts resolution comments when beans are closed
 
 Feedback polling is scheduled when a PR is first created (via `sarge complete --pr <url>`),
 not when work goes idle. This ensures feedback is monitored immediately, even while
@@ -343,9 +343,9 @@ other tasks are still running.
    - Queries GitHub API for PR data
    - Filters actionable items based on rules
    - Stores in pr_feedback table
-   - Creates beads under work's root issue
-   - Optionally adds beads to work for immediate execution
-4. Claude addresses feedback beads in subsequent tasks
+   - Creates beans under work's root issue
+   - Optionally adds beans to work for immediate execution
+4. Claude addresses feedback beans in subsequent tasks
 5. When bead is closed, resolution comment is posted to GitHub
 
 ### Commands
@@ -355,23 +355,23 @@ other tasks are still running.
 Processes PR feedback for a work unit:
 
 Options:
-- `--dry-run`: Preview without creating beads
-- `--auto-add`: Automatically add created beads to work
-- `--min-priority N`: Set minimum priority for created beads (0-4)
+- `--dry-run`: Preview without creating beans
+- `--auto-add`: Automatically add created beans to work
+- `--min-priority N`: Set minimum priority for created beans (0-4)
 
 The command:
 1. Fetches PR status, comments, and workflow runs from GitHub
 2. Filters for actionable feedback based on configured rules
-3. Creates beads for each feedback item
+3. Creates beans for each feedback item
 4. Stores feedback in database for tracking
-5. Optionally adds beads to work for immediate execution
+5. Optionally adds beans to work for immediate execution
 
 ### TUI Integration
 
 The TUI (`sarge`) provides:
 - F5 key binding for manual feedback polling
 - Visual feedback indicator showing polling status
-- Automatic refresh when new beads are created from feedback
+- Automatic refresh when new beans are created from feedback
 
 ### Log Parser Configuration
 
@@ -388,10 +388,10 @@ This is fast, free, and works offline but only supports recognized patterns.
 
 #### Claude-Based Parser
 
-When enabled, Claude analyzes CI logs directly and creates beads for each failure found. This approach:
+When enabled, Claude analyzes CI logs directly and creates beans for each failure found. This approach:
 - Handles any programming language or test framework
 - Provides detailed error context and file locations
-- Creates beads with appropriate priorities (P0-P3)
+- Creates beans with appropriate priorities (P0-P3)
 - Works with complex, multi-line error messages
 
 Enable in `.co/config.toml`:
@@ -455,24 +455,24 @@ All commands require a project context. Projects are created with `sarge proj cr
 ├── .co/
 │   ├── config.toml      # Project configuration
 │   ├── tracking.db      # SQLite coordination database
-│   └── .beads/          # Beads (if project-local)
+│   └── .beans/          # beans (if project-local)
 ├── main/                # Symlink (local) or clone (GitHub)
-│   └── .beads/          # Beads (if repo has beads)
+│   └── .beans/          # beans (if repo has beans)
 └── <work-id>/           # Work subdirectory (e.g., w-abc, w-xyz)
     └── tree/            # Git worktree for this work
 ```
 
-Beads location is determined at project creation:
-- **Repo beads** (`main/.beads/`): Used when the repository already has beads initialized. Git hooks are installed for sync.
-- **Project-local beads** (`.co/.beads/`): Used when the repository doesn't have beads. No hooks or sync (standalone).
+beans location is determined at project creation:
+- **Repo beans** (`main/.beans/`): Used when the repository already has beans initialized. Git hooks are installed for sync.
+- **Project-local beans** (`.co/.beans/`): Used when the repository doesn't have beans. No hooks or sync (standalone).
 
 ## Work Concept (3-Tier Hierarchy)
 
-The system uses a 3-tier hierarchy: **Work → Tasks → Beads**
+The system uses a 3-tier hierarchy: **Work → Tasks → beans**
 
 - **Work**: Controls git worktree, feature branch, and zellij tab
 - **Tasks**: Run as Claude Code sessions sequentially within work's tab
-- **Beads**: Individual issues solved within tasks
+- **beans**: Individual issues solved within tasks
 
 ## Work Status State Machine
 
@@ -521,29 +521,29 @@ Works have the following status states:
 Two-phase workflow: **work** → **run**.
 
 1. Create project: `sarge proj create <dir> <repo>`
-   - Initializes beads: `bd init` and `bd hooks install`
+   - Initializes beans: `beans init` and `beans hooks install`
    - If mise enabled (`.mise.toml` or `.tool-versions`): runs `mise trust`, `mise install`
    - If mise `setup` task defined: runs `mise run setup` (use for npm/pnpm install)
 
 2. Create work unit from a bead: `sarge work create <bead-id>`
    - Auto-generates work ID (w-abc, w-xyz, etc.)
    - Generates branch name from bead titles, prompts for confirmation
-   - Expands epics to include all child beads with transitive dependencies
+   - Expands epics to include all child beans with transitive dependencies
    - Creates subdirectory with git worktree: `<project>/<work-id>/tree/`
    - Use `--auto` for full automated workflow (implement, review/fix loop, PR)
 
 3. Execute work: `sarge run`
    - From work directory: `cd <work-id> && sarge run`
    - Or explicitly: `sarge run --work <work-id>`
-   - Automatically creates tasks from unassigned work beads
-   - Use `--plan` for LLM complexity estimation to auto-group beads
+   - Automatically creates tasks from unassigned work beans
+   - Use `--plan` for LLM complexity estimation to auto-group beans
    - Use `--auto` for full automated workflow (implement, review/fix loop, PR)
    - Executes all tasks in the work sequentially:
      - Creates single zellij tab for the work
      - Tasks run in sequence within the work's tab
      - All tasks share the same worktree
      - Claude Code implements changes in the work's worktree
-     - Closes beads with `bd close <id> --reason "..."`
+     - Closes beans with `beans close <id> --reason "..."`
    - Worktree persists (managed at work level, not task level)
 
 Zellij sessions are named `sarge-<project-name>` for isolation between projects.
@@ -553,7 +553,7 @@ Zellij sessions are named `sarge-<project-name>` for isolation between projects.
 ### `sarge work create <bead-id>`
 Creates a new work unit from a bead:
 - Generates branch name from bead titles, prompts for confirmation
-- Expands epics to include all child beads with transitive dependencies
+- Expands epics to include all child beans with transitive dependencies
 - Auto-generates work ID (w-abc, w-xyz, etc.)
 - Creates subdirectory: `<project>/<work-id>/`
 - Creates git worktree: `<project>/<work-id>/tree/`
@@ -564,17 +564,17 @@ Creates a new work unit from a bead:
 - Use `--auto` for full automated workflow (implement, review/fix loop, PR)
 
 ### `sarge work add <bead-ids...>`
-Adds beads to an existing work:
+Adds beans to an existing work:
 - Syntax: `sarge work add bead-4 bead-5 [--work=<id>]`
 - Detects work from current directory or uses `--work` flag
-- Expands epics to include all child beads
-- Cannot add beads already assigned to a task
+- Expands epics to include all child beans
+- Cannot add beans already assigned to a task
 
 ### `sarge work remove <bead-ids...>`
-Removes beads from an existing work:
+Removes beans from an existing work:
 - Syntax: `sarge work remove bead-4 bead-5 [--work=<id>]`
 - Detects work from current directory or uses `--work` flag
-- Cannot remove beads already assigned to a pending/processing task
+- Cannot remove beans already assigned to a pending/processing task
 
 ### `sarge work list`
 Lists all work units with their status:
@@ -585,7 +585,7 @@ Lists all work units with their status:
 Shows detailed information about a work:
 - If no ID provided, detects from current directory
 - Displays status, branch, worktree path, PR URL
-- Lists associated beads and tasks with their status
+- Lists associated beans and tasks with their status
 
 ### `sarge work destroy <id>`
 Destroys a work unit and its resources:
@@ -611,14 +611,14 @@ Explicitly marks an idle work as completed:
 
 ### `sarge task list`
 Lists all tasks with their status:
-- Shows ID, status, type, budget, creation time, and associated beads
+- Shows ID, status, type, budget, creation time, and associated beans
 - Filter by status: `--status pending|processing|completed|failed`
 - Filter by type: `--type estimate|implement`
 
 ### `sarge task show <id>`
 Shows detailed information about a task:
 - Displays status, type, budget, timestamps
-- Lists associated beads and their completion status
+- Lists associated beans and their completion status
 - Shows worktree path, zellij session/pane if applicable
 
 ### `sarge task delete <id>...`
@@ -641,14 +641,14 @@ Associates a review epic with a review task:
 ## Additional User Commands
 
 ### `sarge list`
-Lists tracked beads in the database:
+Lists tracked beans in the database:
 - Filter by status with `--status` (pending, processing, completed, failed)
 - Shows ID, status, title, and PR URL
 
 ### `sarge status [bead-id]`
 Shows bead tracking status:
 - With a bead ID: shows detailed status including zellij session/pane info
-- Without ID: shows all beads currently processing with their session/pane
+- Without ID: shows all beans currently processing with their session/pane
 
 ### `sarge poll [work-id|task-id]`
 Monitors work/task progress with simple text output:
@@ -661,7 +661,7 @@ Monitors work/task progress with simple text output:
 ### `sarge sync`
 Pulls from upstream in all repositories:
 - Runs git pull in each worktree (main and all work worktrees)
-- Skips internal beads worktrees
+- Skips internal beans worktrees
 
 ### `sarge work pr [<id>]`
 Creates a PR task for Claude to generate a pull request:

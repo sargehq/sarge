@@ -29,7 +29,7 @@ The following issues already exist. Before creating a new bean, check if any fai
    b. If it matches an existing issue: **skip it** (already tracked, no action needed)
    c. If it's a new failure: create a bean{{if .RootIssueID}} under the root issue{{end}}:
    ```
-   bd create "<issue title>"{{if .RootIssueID}} --parent {{.RootIssueID}}{{end}} --type <bug|task> \
+   beans create "<issue title>"{{if .RootIssueID}} --parent {{.RootIssueID}}{{end}} --type <bug|task> \
      --priority <priority> \
      --description "<detailed description>"
    ```
@@ -48,17 +48,17 @@ The following issues already exist. Before creating a new bean, check if any fai
 6. Examples:
    ```
    # Test failure
-   bd create "Fix TestUserAuthentication failure"{{if .RootIssueID}} --parent {{.RootIssueID}}{{end}} --type bug \
+   beans create "Fix TestUserAuthentication failure"{{if .RootIssueID}} --parent {{.RootIssueID}}{{end}} --type bug \
      --priority 2 \
      --description "Test failed at internal/auth/user_test.go:145. Expected token to be valid but got expired error."
 
    # Build error
-   bd create "Fix undefined reference in handler"{{if .RootIssueID}} --parent {{.RootIssueID}}{{end}} --type bug \
+   beans create "Fix undefined reference in handler"{{if .RootIssueID}} --parent {{.RootIssueID}}{{end}} --type bug \
      --priority 1 \
      --description "Compilation error at cmd/server/handler.go:89 - undefined: processRequest"
 
    # Lint issue
-   bd create "Fix golint warning in utils"{{if .RootIssueID}} --parent {{.RootIssueID}}{{end}} --type task \
+   beans create "Fix golint warning in utils"{{if .RootIssueID}} --parent {{.RootIssueID}}{{end}} --type task \
      --priority 2 \
      --description "Lint error at internal/utils/helper.go:23 - exported function should have comment"
    ```
