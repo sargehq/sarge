@@ -672,10 +672,10 @@ func (db *DB) GetNextTaskNumber(ctx context.Context, workID string) (int, error)
 
 // DeleteWork deletes a work and all associated records.
 // This includes:
-// - Task beads associations for all tasks in the work
+// - Task beans associations for all tasks in the work
 // - Tasks belonging to the work
 // - Work-task relationships
-// - Work-bead associations
+// - Work-bean associations
 // - Scheduled tasks for this work
 // - The work record itself
 func (db *DB) DeleteWork(ctx context.Context, workID string) error {
@@ -688,9 +688,9 @@ func (db *DB) DeleteWork(ctx context.Context, workID string) error {
 
 	qtx := db.queries.WithTx(tx)
 
-	// Delete task_beads entries for all tasks in this work
-	if _, err := qtx.DeleteTaskBeadsForWork(ctx, workID); err != nil {
-		return fmt.Errorf("failed to delete task beads for work %s: %w", workID, err)
+	// Delete task_beans entries for all tasks in this work
+	if _, err := qtx.DeleteTaskBeansForWork(ctx, workID); err != nil {
+		return fmt.Errorf("failed to delete task beans for work %s: %w", workID, err)
 	}
 
 	// Delete work_tasks relationships
@@ -703,9 +703,9 @@ func (db *DB) DeleteWork(ctx context.Context, workID string) error {
 		return fmt.Errorf("failed to delete tasks for work %s: %w", workID, err)
 	}
 
-	// Delete work_beads associations
-	if _, err := qtx.DeleteWorkBeads(ctx, workID); err != nil {
-		return fmt.Errorf("failed to delete work beads for work %s: %w", workID, err)
+	// Delete work_beans associations
+	if _, err := qtx.DeleteWorkBeans(ctx, workID); err != nil {
+		return fmt.Errorf("failed to delete work beans for work %s: %w", workID, err)
 	}
 
 	// Delete scheduled tasks for this work
@@ -826,22 +826,22 @@ func (db *DB) GetWorksWithPRs(ctx context.Context) ([]*Work, error) {
 	return result, nil
 }
 
-// AddBeadToWork associates a bead with a work.
-// The bead is added at the next available position.
-func (db *DB) AddBeadToWork(ctx context.Context, workID, beadID string) error {
+// AddBeanToWork associates a bean with a work.
+// The bean is added at the next available position.
+func (db *DB) AddBeanToWork(ctx context.Context, workID, beanID string) error {
 	// Get the current max position
-	maxPos, err := db.queries.GetMaxWorkBeadPosition(ctx, workID)
+	maxPos, err := db.queries.GetMaxWorkBeanPosition(ctx, workID)
 	if err != nil {
 		return fmt.Errorf("failed to get max position for work %s: %w", workID, err)
 	}
 
-	err = db.queries.AddWorkBead(ctx, sqlc.AddWorkBeadParams{
+	err = db.queries.AddWorkBean(ctx, sqlc.AddWorkBeanParams{
 		WorkID:   workID,
-		BeadID:   beadID,
+		BeanID:   beanID,
 		Position: maxPos + 1,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to add bead %s to work %s: %w", beadID, workID, err)
+		return fmt.Errorf("failed to add bean %s to work %s: %w", beanID, workID, err)
 	}
 	return nil
 }

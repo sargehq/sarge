@@ -8,24 +8,24 @@ import (
 	"github.com/sargehq/sarge/internal/db/sqlc"
 )
 
-// CacheComplexity stores a complexity estimate for a bead in the cache.
-func (db *DB) CacheComplexity(ctx context.Context, beadID, descHash string, score, tokens int) error {
+// CacheComplexity stores a complexity estimate for a bean in the cache.
+func (db *DB) CacheComplexity(ctx context.Context, beanID, descHash string, score, tokens int) error {
 	err := db.queries.CacheComplexity(ctx, sqlc.CacheComplexityParams{
-		BeadID:          beadID,
+		BeanID:          beanID,
 		DescriptionHash: descHash,
 		ComplexityScore: int64(score),
 		EstimatedTokens: int64(tokens),
 	})
 	if err != nil {
-		return fmt.Errorf("failed to cache complexity for %s: %w", beadID, err)
+		return fmt.Errorf("failed to cache complexity for %s: %w", beanID, err)
 	}
 	return nil
 }
 
-// GetCachedComplexity retrieves cached complexity for a bead if it exists and the description hash matches.
-func (db *DB) GetCachedComplexity(ctx context.Context, beadID, descHash string) (score, tokens int, found bool, err error) {
+// GetCachedComplexity retrieves cached complexity for a bean if it exists and the description hash matches.
+func (db *DB) GetCachedComplexity(ctx context.Context, beanID, descHash string) (score, tokens int, found bool, err error) {
 	row, err := db.queries.GetCachedComplexity(ctx, sqlc.GetCachedComplexityParams{
-		BeadID:          beadID,
+		BeanID:          beanID,
 		DescriptionHash: descHash,
 	})
 	if err != nil {
@@ -47,7 +47,7 @@ func (db *DB) GetAllCachedComplexity(ctx context.Context) (map[string]struct{ Sc
 
 	result := make(map[string]struct{ Score, Tokens int })
 	for _, row := range rows {
-		result[row.BeadID] = struct{ Score, Tokens int }{
+		result[row.BeanID] = struct{ Score, Tokens int }{
 			Score:  int(row.ComplexityScore),
 			Tokens: int(row.EstimatedTokens),
 		}
@@ -61,16 +61,16 @@ func HashDescription(description string) string {
 	return fmt.Sprintf("%x", h)
 }
 
-// AreAllBeadsEstimated checks if all beads in the list have complexity estimates.
-func (db *DB) AreAllBeadsEstimated(ctx context.Context, beadIDs []string) (bool, error) {
-	if len(beadIDs) == 0 {
+// AreAllBeansEstimated checks if all beans in the list have complexity estimates.
+func (db *DB) AreAllBeansEstimated(ctx context.Context, beanIDs []string) (bool, error) {
+	if len(beanIDs) == 0 {
 		return true, nil
 	}
 
-	count, err := db.queries.CountEstimatedBeads(ctx, beadIDs)
+	count, err := db.queries.CountEstimatedBeans(ctx, beanIDs)
 	if err != nil {
-		return false, fmt.Errorf("failed to count estimated beads: %w", err)
+		return false, fmt.Errorf("failed to count estimated beans: %w", err)
 	}
 
-	return int(count) == len(beadIDs), nil
+	return int(count) == len(beanIDs), nil
 }

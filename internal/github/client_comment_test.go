@@ -58,7 +58,7 @@ func TestPostReplyToComment(t *testing.T) {
 }
 
 func TestCommentIntegration(t *testing.T) {
-	// This test demonstrates the full flow of creating a bead from a comment
+	// This test demonstrates the full flow of creating a bean from a comment
 	// and posting back an acknowledgment
 
 	// Skip if not in manual test mode
@@ -72,17 +72,17 @@ func TestCommentIntegration(t *testing.T) {
 	client := NewClient()
 	ctx := context.Background()
 
-	// Simulate creating a bead from feedback
-	beadID := "beads-test-123"
+	// Simulate creating a bean from feedback
+	beanID := "beans-test-123"
 	feedbackTitle := "Fix test failure in authentication module"
 	priority := 2
 
 	// Post acknowledgment message
 	ackMessage := fmt.Sprintf("✅ Created tracking issue **%s** for this feedback.\n\nTitle: %s\nPriority: P%d",
-		beadID, feedbackTitle, priority)
+		beanID, feedbackTitle, priority)
 
 	err := client.PostPRComment(ctx, prURL, ackMessage)
 	require.NoError(t, err, "Failed to post acknowledgment")
 
-	t.Log("Successfully posted bead acknowledgment to PR")
+	t.Log("Successfully posted bean acknowledgment to PR")
 }

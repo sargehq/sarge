@@ -255,9 +255,9 @@ func TestOpenPath(t *testing.T) {
 
 	// Verify migrations were run by checking for tables
 	var count int
-	err = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='beads'").Scan(&count)
-	require.NoError(t, err, "Failed to check for beads table")
-	assert.Equal(t, 1, count, "Expected beads table to exist after OpenPath")
+	err = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='beans'").Scan(&count)
+	require.NoError(t, err, "Failed to check for beans table")
+	assert.Equal(t, 1, count, "Expected beans table to exist after OpenPath")
 
 	// Verify we can use the queries
 	assert.NotNil(t, db.queries, "Expected queries to be initialized")

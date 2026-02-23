@@ -31,8 +31,8 @@ func convertPrFeedback(f sqlc.PrFeedback) PRFeedback {
 	if f.SourceID.Valid {
 		result.SourceID = &f.SourceID.String
 	}
-	if f.BeadID.Valid {
-		result.BeadID = &f.BeadID.String
+	if f.BeanID.Valid {
+		result.BeanID = &f.BeanID.String
 	}
 	if f.ProcessedAt.Valid {
 		result.ProcessedAt = &f.ProcessedAt.Time
@@ -74,7 +74,7 @@ type PRFeedback struct {
 	SourceName   string                  // Human-readable name (check name, workflow name, reviewer)
 	Context      *github.FeedbackContext // Structured context data
 	Priority     int
-	BeadID       *string
+	BeanID       *string
 	CreatedAt    time.Time
 	ProcessedAt  *time.Time
 	ResolvedAt   *time.Time // When the GitHub comment was resolved
@@ -164,10 +164,10 @@ func (db *DB) GetUnprocessedFeedback(ctx context.Context, workID string) ([]PRFe
 	return result, nil
 }
 
-// MarkFeedbackProcessed marks feedback as processed and associates it with a bead.
-func (db *DB) MarkFeedbackProcessed(ctx context.Context, feedbackID, beadID string) error {
+// MarkFeedbackProcessed marks feedback as processed and associates it with a bean.
+func (db *DB) MarkFeedbackProcessed(ctx context.Context, feedbackID, beanID string) error {
 	err := db.queries.MarkPRFeedbackProcessed(ctx, sqlc.MarkPRFeedbackProcessedParams{
-		BeadID: sql.NullString{String: beadID, Valid: beadID != ""},
+		BeanID: sql.NullString{String: beanID, Valid: beanID != ""},
 		ID:     feedbackID,
 	})
 	if err != nil {
@@ -176,7 +176,7 @@ func (db *DB) MarkFeedbackProcessed(ctx context.Context, feedbackID, beadID stri
 	return nil
 }
 
-// CountUnresolvedFeedbackForWork returns the count of PR feedback items that have beads
+// CountUnresolvedFeedbackForWork returns the count of PR feedback items that have beans
 // which are not yet assigned to any task and not resolved/closed.
 func (db *DB) CountUnresolvedFeedbackForWork(ctx context.Context, workID string) (int, error) {
 	count, err := db.queries.CountUnassignedFeedbackForWork(ctx, workID)
@@ -186,12 +186,12 @@ func (db *DB) CountUnresolvedFeedbackForWork(ctx context.Context, workID string)
 	return int(count), nil
 }
 
-// GetUnassignedFeedbackBeadIDs returns bead IDs from PR feedback items that are not yet
+// GetUnassignedFeedbackBeanIDs returns bean IDs from PR feedback items that are not yet
 // assigned to any task and not resolved/closed.
-func (db *DB) GetUnassignedFeedbackBeadIDs(ctx context.Context, workID string) ([]string, error) {
-	nullStrings, err := db.queries.GetUnassignedFeedbackBeadIDs(ctx, workID)
+func (db *DB) GetUnassignedFeedbackBeanIDs(ctx context.Context, workID string) ([]string, error) {
+	nullStrings, err := db.queries.GetUnassignedFeedbackBeanIDs(ctx, workID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get unassigned feedback bead IDs: %w", err)
+		return nil, fmt.Errorf("failed to get unassigned feedback bean IDs: %w", err)
 	}
 	result := make([]string, 0, len(nullStrings))
 	for _, ns := range nullStrings {
@@ -202,14 +202,14 @@ func (db *DB) GetUnassignedFeedbackBeadIDs(ctx context.Context, workID string) (
 	return result, nil
 }
 
-// GetFeedbackByBeadID returns the feedback associated with a bead.
-func (db *DB) GetFeedbackByBeadID(ctx context.Context, beadID string) (*PRFeedback, error) {
-	f, err := db.queries.GetPRFeedbackByBead(ctx, sql.NullString{String: beadID, Valid: true})
+// GetFeedbackByBeanID returns the feedback associated with a bean.
+func (db *DB) GetFeedbackByBeanID(ctx context.Context, beanID string) (*PRFeedback, error) {
+	f, err := db.queries.GetPRFeedbackByBean(ctx, sql.NullString{String: beanID, Valid: true})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to query feedback by bead ID: %w", err)
+		return nil, fmt.Errorf("failed to query feedback by bean ID: %w", err)
 	}
 
 	result := convertPrFeedback(f)
@@ -279,22 +279,22 @@ func (db *DB) GetUnresolvedFeedbackForWork(ctx context.Context, workID string) (
 	return result, nil
 }
 
-// GetUnresolvedFeedbackForBeads returns feedback items for specific beads that are not yet resolved on GitHub.
-func (db *DB) GetUnresolvedFeedbackForBeads(ctx context.Context, beadIDs []string) ([]PRFeedback, error) {
-	if len(beadIDs) == 0 {
+// GetUnresolvedFeedbackForBeans returns feedback items for specific beans that are not yet resolved on GitHub.
+func (db *DB) GetUnresolvedFeedbackForBeans(ctx context.Context, beanIDs []string) ([]PRFeedback, error) {
+	if len(beanIDs) == 0 {
 		return nil, nil
 	}
 
 	// Convert string slice to sql.NullString slice for sqlc
-	nullBeadIDs := make([]sql.NullString, len(beadIDs))
-	for i, beadID := range beadIDs {
-		nullBeadIDs[i] = sql.NullString{String: beadID, Valid: true}
+	nullBeanIDs := make([]sql.NullString, len(beanIDs))
+	for i, beanID := range beanIDs {
+		nullBeanIDs[i] = sql.NullString{String: beanID, Valid: true}
 	}
 
 	// Use sqlc generated query
-	feedbacks, err := db.queries.GetUnresolvedFeedbackForBeads(ctx, nullBeadIDs)
+	feedbacks, err := db.queries.GetUnresolvedFeedbackForBeans(ctx, nullBeanIDs)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query unresolved feedback for beads: %w", err)
+		return nil, fmt.Errorf("failed to query unresolved feedback for beans: %w", err)
 	}
 
 	result := make([]PRFeedback, len(feedbacks))

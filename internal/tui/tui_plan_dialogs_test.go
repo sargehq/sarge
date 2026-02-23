@@ -6,89 +6,90 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/stretchr/testify/require"
 )
 
-// TestMultiSelectionCloseConfirmation tests the close confirmation dialog with multiple selected beads
+// TestMultiSelectionCloseConfirmation tests the close confirmation dialog with multiple selected beans
 func TestMultiSelectionCloseConfirmation(t *testing.T) {
 	tests := []struct {
 		name             string
-		beadItems        []beadItem
-		selectedBeads    map[string]bool
+		beanItems        []beanItem
+		selectedBeans    map[string]bool
 		cursorIndex      int
-		expectedCount    int  // Expected number of beads to be closed
-		expectedInDialog bool // Whether beads should appear in dialog
+		expectedCount    int  // Expected number of beans to be closed
+		expectedInDialog bool // Whether beans should appear in dialog
 		description      string
 	}{
 		{
-			name: "Multiple selected beads",
-			beadItems: []beadItem{
-				testBeadItem("bead-1", "First task", "open", 2, "task"),
-				testBeadItem("bead-2", "Second task", "open", 2, "task"),
-				testBeadItem("bead-3", "Third task", "open", 2, "task"),
+			name: "Multiple selected beans",
+			beanItems: []beanItem{
+				testBeanItem("bean-1", "First task", beans.StatusTodo, beans.PriorityNormal, "task"),
+				testBeanItem("bean-2", "Second task", beans.StatusTodo, beans.PriorityNormal, "task"),
+				testBeanItem("bean-3", "Third task", beans.StatusTodo, beans.PriorityNormal, "task"),
 			},
-			selectedBeads: map[string]bool{
-				"bead-1": true,
-				"bead-2": true,
+			selectedBeans: map[string]bool{
+				"bean-1": true,
+				"bean-2": true,
 			},
 			cursorIndex:      0,
 			expectedCount:    2,
 			expectedInDialog: true,
-			description:      "Should show and close 2 selected beads",
+			description:      "Should show and close 2 selected beans",
 		},
 		{
-			name: "No selected beads - uses cursor",
-			beadItems: []beadItem{
-				testBeadItem("bead-1", "First task", "open", 2, "task"),
-				testBeadItem("bead-2", "Second task", "open", 2, "task"),
+			name: "No selected beans - uses cursor",
+			beanItems: []beanItem{
+				testBeanItem("bean-1", "First task", beans.StatusTodo, beans.PriorityNormal, "task"),
+				testBeanItem("bean-2", "Second task", beans.StatusTodo, beans.PriorityNormal, "task"),
 			},
-			selectedBeads:    map[string]bool{},
+			selectedBeans:    map[string]bool{},
 			cursorIndex:      1,
 			expectedCount:    1,
 			expectedInDialog: true,
-			description:      "Should use cursor bead when no selection",
+			description:      "Should use cursor bean when no selection",
 		},
 		{
-			name: "All beads selected",
-			beadItems: []beadItem{
-				testBeadItem("bead-1", "First task", "open", 2, "task"),
-				testBeadItem("bead-2", "Second task", "open", 2, "task"),
-				testBeadItem("bead-3", "Third task", "open", 2, "task"),
+			name: "All beans selected",
+			beanItems: []beanItem{
+				testBeanItem("bean-1", "First task", beans.StatusTodo, beans.PriorityNormal, "task"),
+				testBeanItem("bean-2", "Second task", beans.StatusTodo, beans.PriorityNormal, "task"),
+				testBeanItem("bean-3", "Third task", beans.StatusTodo, beans.PriorityNormal, "task"),
 			},
-			selectedBeads: map[string]bool{
-				"bead-1": true,
-				"bead-2": true,
-				"bead-3": true,
+			selectedBeans: map[string]bool{
+				"bean-1": true,
+				"bean-2": true,
+				"bean-3": true,
 			},
 			cursorIndex:      0,
 			expectedCount:    3,
 			expectedInDialog: true,
-			description:      "Should show and close all 3 selected beads",
+			description:      "Should show and close all 3 selected beans",
 		},
 		{
-			name: "More than 5 beads selected",
-			beadItems: []beadItem{
-				testBeadItem("bead-1", "Task 1", "open", 2, "task"),
-				testBeadItem("bead-2", "Task 2", "open", 2, "task"),
-				testBeadItem("bead-3", "Task 3", "open", 2, "task"),
-				testBeadItem("bead-4", "Task 4", "open", 2, "task"),
-				testBeadItem("bead-5", "Task 5", "open", 2, "task"),
-				testBeadItem("bead-6", "Task 6", "open", 2, "task"),
-				testBeadItem("bead-7", "Task 7", "open", 2, "task"),
+			name: "More than 5 beans selected",
+			beanItems: []beanItem{
+				testBeanItem("bean-1", "Task 1", beans.StatusTodo, beans.PriorityNormal, "task"),
+				testBeanItem("bean-2", "Task 2", beans.StatusTodo, beans.PriorityNormal, "task"),
+				testBeanItem("bean-3", "Task 3", beans.StatusTodo, beans.PriorityNormal, "task"),
+				testBeanItem("bean-4", "Task 4", beans.StatusTodo, beans.PriorityNormal, "task"),
+				testBeanItem("bean-5", "Task 5", beans.StatusTodo, beans.PriorityNormal, "task"),
+				testBeanItem("bean-6", "Task 6", beans.StatusTodo, beans.PriorityNormal, "task"),
+				testBeanItem("bean-7", "Task 7", beans.StatusTodo, beans.PriorityNormal, "task"),
 			},
-			selectedBeads: map[string]bool{
-				"bead-1": true,
-				"bead-2": true,
-				"bead-3": true,
-				"bead-4": true,
-				"bead-5": true,
-				"bead-6": true,
-				"bead-7": true,
+			selectedBeans: map[string]bool{
+				"bean-1": true,
+				"bean-2": true,
+				"bean-3": true,
+				"bean-4": true,
+				"bean-5": true,
+				"bean-6": true,
+				"bean-7": true,
 			},
 			cursorIndex:      0,
 			expectedCount:    7,
 			expectedInDialog: true,
-			description:      "Should show first 5 beads and ellipsis for remaining",
+			description:      "Should show first 5 beans and ellipsis for remaining",
 		},
 	}
 
@@ -96,39 +97,39 @@ func TestMultiSelectionCloseConfirmation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a mock planModel
 			m := &planModel{
-				beadItems:     tt.beadItems,
-				selectedBeads: tt.selectedBeads,
-				beadsCursor:   tt.cursorIndex,
-				viewMode:      ViewCloseBeadConfirm,
+				beanItems:     tt.beanItems,
+				selectedBeans: tt.selectedBeans,
+				beansCursor:   tt.cursorIndex,
+				viewMode:      ViewCloseBeanConfirm,
 			}
 
 			// Test the dialog content rendering
-			dialogContent := m.renderCloseBeadConfirmContent()
+			dialogContent := m.renderCloseBeanConfirmContent()
 
-			// Check if the dialog shows the correct number of beads
+			// Check if the dialog shows the correct number of beans
 			if tt.expectedCount == 1 {
-				// For single bead, check title shows "Close Issue"
+				// For single bean, check title shows "Close Issue"
 				require.True(t, strings.Contains(dialogContent, "Close Issue"),
-					"%s: Expected 'Close Issue' in dialog for single bead", tt.description)
+					"%s: Expected 'Close Issue' in dialog for single bean", tt.description)
 			} else {
-				// For multiple beads, check title shows correct count
+				// For multiple beans, check title shows correct count
 				if tt.expectedCount > 1 {
 					require.True(t, strings.Contains(dialogContent, "Issues"),
-						"%s: Expected 'Issues' (plural) in dialog for multiple beads", tt.description)
+						"%s: Expected 'Issues' (plural) in dialog for multiple beans", tt.description)
 				}
 			}
 
-			// Check if selected bead IDs appear in the dialog
+			// Check if selected bean IDs appear in the dialog
 			if tt.expectedInDialog {
 				selectedCount := 0
 				shownCount := 0
-				for _, item := range tt.beadItems {
-					if tt.selectedBeads[item.ID] {
+				for _, item := range tt.beanItems {
+					if tt.selectedBeans[item.ID] {
 						selectedCount++
-						// Only first 5 beads should be shown
+						// Only first 5 beans should be shown
 						if shownCount < 5 {
 							require.True(t, strings.Contains(dialogContent, item.ID),
-								"%s: Expected bead ID '%s' to appear in dialog (one of first 5)", tt.description, item.ID)
+								"%s: Expected bean ID '%s' to appear in dialog (one of first 5)", tt.description, item.ID)
 							shownCount++
 						}
 					}
@@ -137,7 +138,7 @@ func TestMultiSelectionCloseConfirmation(t *testing.T) {
 				// If more than 5 selected, check for ellipsis
 				if selectedCount > 5 {
 					require.True(t, strings.Contains(dialogContent, "and") || strings.Contains(dialogContent, "more"),
-						"%s: Expected '... and X more' for more than 5 selected beads", tt.description)
+						"%s: Expected '... and X more' for more than 5 selected beans", tt.description)
 				}
 			}
 
@@ -148,8 +149,8 @@ func TestMultiSelectionCloseConfirmation(t *testing.T) {
 	}
 }
 
-// TestUpdateCloseBeadConfirm tests the keyboard handling for close confirmation
-func TestUpdateCloseBeadConfirm(t *testing.T) {
+// TestUpdateCloseBeanConfirm tests the keyboard handling for close confirmation
+func TestUpdateCloseBeanConfirm(t *testing.T) {
 	tests := []struct {
 		name         string
 		key          string
@@ -196,18 +197,18 @@ func TestUpdateCloseBeadConfirm(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a mock planModel with selected beads
+			// Create a mock planModel with selected beans
 			m := &planModel{
-				beadItems: []beadItem{
-					testBeadItem("bead-1", "Task 1", "open", 2, "task"),
-					testBeadItem("bead-2", "Task 2", "open", 2, "task"),
+				beanItems: []beanItem{
+					testBeanItem("bean-1", "Task 1", beans.StatusTodo, beans.PriorityNormal, "task"),
+					testBeanItem("bean-2", "Task 2", beans.StatusTodo, beans.PriorityNormal, "task"),
 				},
-				selectedBeads: map[string]bool{
-					"bead-1": true,
-					"bead-2": true,
+				selectedBeans: map[string]bool{
+					"bean-1": true,
+					"bean-2": true,
 				},
-				beadsCursor: 0,
-				viewMode:    ViewCloseBeadConfirm,
+				beansCursor: 0,
+				viewMode:    ViewCloseBeanConfirm,
 			}
 
 			// Create the key message
@@ -219,7 +220,7 @@ func TestUpdateCloseBeadConfirm(t *testing.T) {
 			}
 
 			// Update the model
-			newModel, cmd := m.updateCloseBeadConfirm(keyMsg)
+			newModel, cmd := m.updateCloseBeanConfirm(keyMsg)
 			updatedModel := newModel.(*planModel)
 
 			// Check if view mode changed back to normal
@@ -241,42 +242,42 @@ func TestUpdateCloseBeadConfirm(t *testing.T) {
 func TestCloseKeyHandlerWithSelection(t *testing.T) {
 	tests := []struct {
 		name             string
-		beadItems        []beadItem
-		selectedBeads    map[string]bool
+		beanItems        []beanItem
+		selectedBeans    map[string]bool
 		cursorIndex      int
 		shouldShowDialog bool
 		description      string
 	}{
 		{
-			name: "With selected beads",
-			beadItems: []beadItem{
-				testBeadItem("bead-1", "Task 1", "open", 2, "task"),
-				testBeadItem("bead-2", "Task 2", "open", 2, "task"),
+			name: "With selected beans",
+			beanItems: []beanItem{
+				testBeanItem("bean-1", "Task 1", beans.StatusTodo, beans.PriorityNormal, "task"),
+				testBeanItem("bean-2", "Task 2", beans.StatusTodo, beans.PriorityNormal, "task"),
 			},
-			selectedBeads: map[string]bool{
-				"bead-1": true,
+			selectedBeans: map[string]bool{
+				"bean-1": true,
 			},
 			cursorIndex:      0,
 			shouldShowDialog: true,
-			description:      "Should show dialog when beads are selected",
+			description:      "Should show dialog when beans are selected",
 		},
 		{
-			name: "Without selected beads but with cursor",
-			beadItems: []beadItem{
-				testBeadItem("bead-1", "Task 1", "open", 2, "task"),
+			name: "Without selected beans but with cursor",
+			beanItems: []beanItem{
+				testBeanItem("bean-1", "Task 1", beans.StatusTodo, beans.PriorityNormal, "task"),
 			},
-			selectedBeads:    map[string]bool{},
+			selectedBeans:    map[string]bool{},
 			cursorIndex:      0,
 			shouldShowDialog: true,
-			description:      "Should show dialog when cursor is on a bead",
+			description:      "Should show dialog when cursor is on a bean",
 		},
 		{
-			name:             "No beads available",
-			beadItems:        []beadItem{},
-			selectedBeads:    map[string]bool{},
+			name:             "No beans available",
+			beanItems:        []beanItem{},
+			selectedBeans:    map[string]bool{},
 			cursorIndex:      0,
 			shouldShowDialog: false,
-			description:      "Should not show dialog when no beads available",
+			description:      "Should not show dialog when no beans available",
 		},
 	}
 
@@ -284,58 +285,58 @@ func TestCloseKeyHandlerWithSelection(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a mock planModel
 			m := &planModel{
-				beadItems:     tt.beadItems,
-				selectedBeads: tt.selectedBeads,
-				beadsCursor:   tt.cursorIndex,
+				beanItems:     tt.beanItems,
+				selectedBeans: tt.selectedBeans,
+				beansCursor:   tt.cursorIndex,
 				viewMode:      ViewNormal,
 				ctx:           context.Background(),
 			}
 
 			// Simulate pressing 'x' key - extract the relevant logic
-			if len(m.beadItems) > 0 {
+			if len(m.beanItems) > 0 {
 				hasSelection := false
-				for _, item := range m.beadItems {
-					if m.selectedBeads[item.ID] {
+				for _, item := range m.beanItems {
+					if m.selectedBeans[item.ID] {
 						hasSelection = true
 						break
 					}
 				}
-				// If we have selected beads or a cursor bead, show confirmation
-				if hasSelection || m.beadsCursor < len(m.beadItems) {
-					m.viewMode = ViewCloseBeadConfirm
+				// If we have selected beans or a cursor bean, show confirmation
+				if hasSelection || m.beansCursor < len(m.beanItems) {
+					m.viewMode = ViewCloseBeanConfirm
 				}
 			}
 
 			// Check if dialog was shown as expected
-			dialogShown := m.viewMode == ViewCloseBeadConfirm
+			dialogShown := m.viewMode == ViewCloseBeanConfirm
 			require.Equal(t, tt.shouldShowDialog, dialogShown,
 				"%s: dialog shown state mismatch", tt.description)
 		})
 	}
 }
 
-// TestBatchCloseFunction tests that multiple beads can be closed in a batch
+// TestBatchCloseFunction tests that multiple beans can be closed in a batch
 func TestBatchCloseFunction(t *testing.T) {
-	// This test validates that the closeBeads function is called with multiple IDs
+	// This test validates that the closeBeans function is called with multiple IDs
 	// In a real test, we would mock the bd command execution
-	beadIDs := []string{"bead-1", "bead-2", "bead-3"}
+	beanIDs := []string{"bean-1", "bean-2", "bean-3"}
 
 	// Verify the function signature exists and accepts multiple IDs
 	m := &planModel{
 		ctx:                context.Background(),
-		beadItems:          []beadItem{},
-		selectedBeads:      map[string]bool{},
-		activeBeadSessions: map[string]bool{},
+		beanItems:          []beanItem{},
+		selectedBeans:      map[string]bool{},
+		activeBeanSessions: map[string]bool{},
 	}
 
-	// The closeBeads function should accept a slice of bead IDs
-	cmd := m.closeBeads(beadIDs)
+	// The closeBeans function should accept a slice of bean IDs
+	cmd := m.closeBeans(beanIDs)
 
 	// Verify the command is not nil
-	require.NotNil(t, cmd, "closeBeads should return a non-nil command")
+	require.NotNil(t, cmd, "closeBeans should return a non-nil command")
 
 	// In a real scenario, we would verify that the bd command is called with all IDs:
-	// Expected: bd close bead-1 bead-2 bead-3
+	// Expected: bd close bean-1 bean-2 bean-3
 	// This would require mocking exec.CommandContext or using an interface
 }
 
@@ -350,49 +351,49 @@ func TestCloseConfirmationEdgeCases(t *testing.T) {
 			name: "Empty selection and invalid cursor",
 			setup: func() *planModel {
 				return &planModel{
-					beadItems:     []beadItem{testBeadItem("bead-1", "Task", "open", 2, "task")},
-					selectedBeads: map[string]bool{},
-					beadsCursor:   10, // Invalid cursor position
-					viewMode:      ViewCloseBeadConfirm,
+					beanItems:     []beanItem{testBeanItem("bean-1", "Task", beans.StatusTodo, beans.PriorityNormal, "task")},
+					selectedBeans: map[string]bool{},
+					beansCursor:   10, // Invalid cursor position
+					viewMode:      ViewCloseBeanConfirm,
 				}
 			},
 			expectedBehavior: "Should handle gracefully without panic",
 		},
 		{
-			name: "Already closed beads in selection",
+			name: "Already closed beans in selection",
 			setup: func() *planModel {
 				return &planModel{
-					beadItems: []beadItem{
-						testBeadItem("bead-1", "Task 1", "closed", 2, "task"),
-						testBeadItem("bead-2", "Task 2", "open", 2, "task"),
+					beanItems: []beanItem{
+						testBeanItem("bean-1", "Task 1", "closed", beans.PriorityNormal, "task"),
+						testBeanItem("bean-2", "Task 2", beans.StatusTodo, beans.PriorityNormal, "task"),
 					},
-					selectedBeads: map[string]bool{
-						"bead-1": true, // Already closed
-						"bead-2": true,
+					selectedBeans: map[string]bool{
+						"bean-1": true, // Already closed
+						"bean-2": true,
 					},
-					beadsCursor: 0,
-					viewMode:    ViewCloseBeadConfirm,
+					beansCursor: 0,
+					viewMode:    ViewCloseBeanConfirm,
 				}
 			},
-			expectedBehavior: "Should still show both beads in confirmation",
+			expectedBehavior: "Should still show both beans in confirmation",
 		},
 		{
-			name: "Mixed assigned and unassigned beads",
+			name: "Mixed assigned and unassigned beans",
 			setup: func() *planModel {
-				item1 := testBeadItem("bead-1", "Task 1", "open", 2, "task")
+				item1 := testBeanItem("bean-1", "Task 1", beans.StatusTodo, beans.PriorityNormal, "task")
 				item1.assignedWorkID = "w-123"
-				item2 := testBeadItem("bead-2", "Task 2", "open", 2, "task")
+				item2 := testBeanItem("bean-2", "Task 2", beans.StatusTodo, beans.PriorityNormal, "task")
 				return &planModel{
-					beadItems: []beadItem{item1, item2},
-					selectedBeads: map[string]bool{
-						"bead-1": true, // Already assigned to work
-						"bead-2": true,
+					beanItems: []beanItem{item1, item2},
+					selectedBeans: map[string]bool{
+						"bean-1": true, // Already assigned to work
+						"bean-2": true,
 					},
-					beadsCursor: 0,
-					viewMode:    ViewCloseBeadConfirm,
+					beansCursor: 0,
+					viewMode:    ViewCloseBeanConfirm,
 				}
 			},
-			expectedBehavior: "Should show both beads regardless of assignment",
+			expectedBehavior: "Should show both beans regardless of assignment",
 		},
 	}
 
@@ -402,13 +403,13 @@ func TestCloseConfirmationEdgeCases(t *testing.T) {
 
 			// Test dialog rendering doesn't panic
 			require.NotPanics(t, func() {
-				_ = m.renderCloseBeadConfirmContent()
+				_ = m.renderCloseBeanConfirmContent()
 			}, "%s: Panic occurred during dialog rendering", tt.name)
 
 			// Test update function doesn't panic when confirming
 			require.NotPanics(t, func() {
 				keyMsg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("y")}
-				_, _ = m.updateCloseBeadConfirm(keyMsg)
+				_, _ = m.updateCloseBeanConfirm(keyMsg)
 			}, "%s: Panic on confirm", tt.name)
 		})
 	}

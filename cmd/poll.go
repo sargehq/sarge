@@ -187,17 +187,17 @@ func printWorkProgress(wp *progress.WorkProgress) {
 
 		fmt.Printf("    %s %s [%s]\n", taskSymbol, tp.Task.ID, taskType)
 
-		for _, bp := range tp.Beads {
-			beadSymbol := "○"
+		for _, bp := range tp.Beans {
+			beanSymbol := "○"
 			switch bp.Status {
 			case db.StatusCompleted:
-				beadSymbol = "✓"
+				beanSymbol = "✓"
 			case db.StatusProcessing:
-				beadSymbol = "●"
+				beanSymbol = "●"
 			case db.StatusFailed:
-				beadSymbol = "✗"
+				beanSymbol = "✗"
 			}
-			fmt.Printf("      %s %s\n", beadSymbol, bp.ID)
+			fmt.Printf("      %s %s\n", beanSymbol, bp.ID)
 		}
 
 		if tp.Task.Status == db.StatusFailed && tp.Task.ErrorMessage != "" {

@@ -2,8 +2,8 @@
 INSERT INTO tasks (id, status, task_type, complexity_budget, work_id, task_number)
 VALUES (?, 'pending', ?, ?, ?, ?);
 
--- name: CreateTaskBead :exec
-INSERT INTO task_beads (task_id, bead_id, status)
+-- name: CreateTaskBean :exec
+INSERT INTO task_beans (task_id, bean_id, status)
 VALUES (?, ?, 'pending');
 
 -- name: StartTask :execrows
@@ -51,30 +51,30 @@ SELECT id, status,
 FROM tasks
 WHERE id = ?;
 
--- name: GetTaskBeads :many
-SELECT bead_id
-FROM task_beads
+-- name: GetTaskBeans :many
+SELECT bean_id
+FROM task_beans
 WHERE task_id = ?;
 
--- name: GetTaskForBead :one
+-- name: GetTaskForBean :one
 SELECT task_id
-FROM task_beads
-WHERE bead_id = ?;
+FROM task_beans
+WHERE bean_id = ?;
 
--- name: CompleteTaskBead :execrows
-UPDATE task_beads
+-- name: CompleteTaskBean :execrows
+UPDATE task_beans
 SET status = 'completed'
-WHERE task_id = ? AND bead_id = ?;
+WHERE task_id = ? AND bean_id = ?;
 
--- name: FailTaskBead :execrows
-UPDATE task_beads
+-- name: FailTaskBean :execrows
+UPDATE task_beans
 SET status = 'failed'
-WHERE task_id = ? AND bead_id = ?;
+WHERE task_id = ? AND bean_id = ?;
 
--- name: CountTaskBeadStatuses :one
+-- name: CountTaskBeanStatuses :one
 SELECT COUNT(*) as total,
        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed
-FROM task_beads
+FROM task_beans
 WHERE task_id = ?;
 
 -- name: ListTasks :many
@@ -112,8 +112,8 @@ FROM tasks
 WHERE status = ?
 ORDER BY created_at DESC;
 
--- name: DeleteTaskBeadsForWork :execrows
-DELETE FROM task_beads
+-- name: DeleteTaskBeansForWork :execrows
+DELETE FROM task_beans
 WHERE task_id IN (
     SELECT task_id FROM work_tasks WHERE work_id = ?
 );
@@ -122,37 +122,37 @@ WHERE task_id IN (
 DELETE FROM tasks
 WHERE work_id = ?;
 
--- name: GetTaskBeadStatus :one
+-- name: GetTaskBeanStatus :one
 SELECT status
-FROM task_beads
-WHERE task_id = ? AND bead_id = ?;
+FROM task_beans
+WHERE task_id = ? AND bean_id = ?;
 
 -- name: DeleteWorkTaskByTask :execrows
 DELETE FROM work_tasks
 WHERE task_id = ?;
 
--- name: DeleteTaskBeadsByTask :execrows
-DELETE FROM task_beads
+-- name: DeleteTaskBeansByTask :execrows
+DELETE FROM task_beans
 WHERE task_id = ?;
 
 -- name: DeleteTask :execrows
 DELETE FROM tasks
 WHERE id = ?;
 
--- name: ResetTaskBeadStatuses :execrows
-UPDATE task_beads
+-- name: ResetTaskBeanStatuses :execrows
+UPDATE task_beans
 SET status = 'pending'
 WHERE task_id = ?;
 
--- name: GetTaskBeadsWithStatus :many
-SELECT task_id, bead_id, status
-FROM task_beads
+-- name: GetTaskBeansWithStatus :many
+SELECT task_id, bean_id, status
+FROM task_beans
 WHERE task_id = ?;
 
--- name: ResetTaskBeadStatus :execrows
-UPDATE task_beads
+-- name: ResetTaskBeanStatus :execrows
+UPDATE task_beans
 SET status = 'pending'
-WHERE task_id = ? AND bead_id = ?;
+WHERE task_id = ? AND bean_id = ?;
 
 -- name: SpawnTask :execrows
 UPDATE tasks
@@ -165,9 +165,9 @@ UPDATE tasks
 SET last_activity = ?
 WHERE id = ? AND status = 'processing';
 
--- name: GetTaskBeadsForWork :many
-SELECT tb.task_id, tb.bead_id, tb.status
-FROM task_beads tb
+-- name: GetTaskBeansForWork :many
+SELECT tb.task_id, tb.bean_id, tb.status
+FROM task_beans tb
 JOIN tasks t ON tb.task_id = t.id
 WHERE t.work_id = ?;
 

@@ -31,13 +31,13 @@ path = {{.RepoPath | tomlString}}
 # base_branch = "develop"
 
 # =============================================================================
-# Beads Configuration
+# Beans Configuration
 # =============================================================================
-[beads]
-# Path to beads directory (relative to project root)
-# "main/.beads" = Uses beads in repository (synced with git)
-# ".co/.beads" = Project-local beads (standalone, not synced)
-path = {{.BeadsPath | tomlString}}
+[beans]
+# Path to beans directory (relative to project root)
+# "main/.beans" = Uses beans in repository (synced with git)
+# ".co/.beans" = Project-local beans (standalone, not synced)
+path = {{.BeansPath | tomlString}}
 
 # =============================================================================
 # Hooks Configuration (Optional)

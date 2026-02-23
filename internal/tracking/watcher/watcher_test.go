@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/sargehq/sarge/internal/beads/pubsub"
+	"github.com/sargehq/sarge/internal/beans/pubsub"
 	"github.com/sargehq/sarge/internal/tracking/watcher"
 )
 

@@ -180,7 +180,7 @@ func (p *FeedbackProcessor) createLogAnalysisTask(ctx context.Context, workflow 
 	}
 	taskID := fmt.Sprintf("%s.%d", p.workID, taskNum)
 
-	// Create the task (no beads - the agent will create them)
+	// Create the task (no beans - the agent will create them)
 	if err := p.proj.DB.CreateTask(ctx, taskID, "log_analysis", nil, 0, p.workID, taskNum); err != nil {
 		return "", fmt.Errorf("failed to create log_analysis task: %w", err)
 	}

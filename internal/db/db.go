@@ -10,7 +10,7 @@ import (
 	"github.com/sargehq/sarge/internal/db/sqlc"
 )
 
-// Status constants for bead tracking.
+// Status constants for bean tracking.
 const (
 	StatusPending    = "pending"
 	StatusProcessing = "processing"

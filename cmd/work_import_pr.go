@@ -17,7 +17,7 @@ var workImportPRCmd = &cobra.Command{
 This command fetches the PR's branch, creates a worktree, and sets up the work
 for further development or review. The PR's branch becomes the work's feature branch.
 
-A bead is automatically created from the PR metadata to track the work in the beads system.
+A bean is automatically created from the PR metadata to track the work in the beans system.
 
 Examples:
   sarge work import-pr https://github.com/owner/repo/pull/123
@@ -71,21 +71,21 @@ func runWorkImportPR(cmd *cobra.Command, args []string) error {
 		branchName = metadata.HeadRefName
 	}
 
-	// Create a bead from PR metadata (user needs feedback on bead creation)
-	fmt.Printf("\nCreating bead from PR metadata...\n")
-	beadResult, err := workSvc.CreateBeadFromPR(ctx, metadata, &work.CreateBeadOptions{
-		BeadsDir:     proj.BeadsPath(),
+	// Create a bean from PR metadata (user needs feedback on bean creation)
+	fmt.Printf("\nCreating bean from PR metadata...\n")
+	beanResult, err := workSvc.CreateBeanFromPR(ctx, metadata, &work.CreateBeanOptions{
+		BeansDir:     proj.BeansPath(),
 		SkipIfExists: true,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create bead: %w", err)
+		return fmt.Errorf("failed to create bean: %w", err)
 	}
-	if beadResult.Created {
-		fmt.Printf("Created bead: %s\n", beadResult.BeadID)
+	if beanResult.Created {
+		fmt.Printf("Created bean: %s\n", beanResult.BeanID)
 	} else {
-		fmt.Printf("Bead already exists: %s (%s)\n", beadResult.BeadID, beadResult.SkipReason)
+		fmt.Printf("Bean already exists: %s (%s)\n", beanResult.BeanID, beanResult.SkipReason)
 	}
-	rootIssueID := beadResult.BeadID
+	rootIssueID := beanResult.BeanID
 
 	// Schedule PR import via control plane (handles worktree, git, mise)
 	fmt.Printf("\nScheduling PR import...\n")

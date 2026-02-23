@@ -11,12 +11,12 @@ import (
 )
 
 const cacheComplexity = `-- name: CacheComplexity :exec
-REPLACE INTO complexity_cache (bead_id, description_hash, complexity_score, estimated_tokens)
+REPLACE INTO complexity_cache (bean_id, description_hash, complexity_score, estimated_tokens)
 VALUES (?, ?, ?, ?)
 `
 
 type CacheComplexityParams struct {
-	BeadID          string `json:"bead_id"`
+	BeanID          string `json:"bean_id"`
 	DescriptionHash string `json:"description_hash"`
 	ComplexityScore int64  `json:"complexity_score"`
 	EstimatedTokens int64  `json:"estimated_tokens"`
@@ -24,7 +24,7 @@ type CacheComplexityParams struct {
 
 func (q *Queries) CacheComplexity(ctx context.Context, arg CacheComplexityParams) error {
 	_, err := q.db.ExecContext(ctx, cacheComplexity,
-		arg.BeadID,
+		arg.BeanID,
 		arg.DescriptionHash,
 		arg.ComplexityScore,
 		arg.EstimatedTokens,
@@ -32,22 +32,22 @@ func (q *Queries) CacheComplexity(ctx context.Context, arg CacheComplexityParams
 	return err
 }
 
-const countEstimatedBeads = `-- name: CountEstimatedBeads :one
-SELECT COUNT(DISTINCT bead_id) as count
+const countEstimatedBeans = `-- name: CountEstimatedBeans :one
+SELECT COUNT(DISTINCT bean_id) as count
 FROM complexity_cache
-WHERE bead_id IN (/*SLICE:bead_ids*/?)
+WHERE bean_id IN (/*SLICE:bean_ids*/?)
 `
 
-func (q *Queries) CountEstimatedBeads(ctx context.Context, beadIds []string) (int64, error) {
-	query := countEstimatedBeads
+func (q *Queries) CountEstimatedBeans(ctx context.Context, beanIds []string) (int64, error) {
+	query := countEstimatedBeans
 	var queryParams []interface{}
-	if len(beadIds) > 0 {
-		for _, v := range beadIds {
+	if len(beanIds) > 0 {
+		for _, v := range beanIds {
 			queryParams = append(queryParams, v)
 		}
-		query = strings.Replace(query, "/*SLICE:bead_ids*/?", strings.Repeat(",?", len(beadIds))[1:], 1)
+		query = strings.Replace(query, "/*SLICE:bean_ids*/?", strings.Repeat(",?", len(beanIds))[1:], 1)
 	} else {
-		query = strings.Replace(query, "/*SLICE:bead_ids*/?", "NULL", 1)
+		query = strings.Replace(query, "/*SLICE:bean_ids*/?", "NULL", 1)
 	}
 	row := q.db.QueryRowContext(ctx, query, queryParams...)
 	var count int64
@@ -56,12 +56,12 @@ func (q *Queries) CountEstimatedBeads(ctx context.Context, beadIds []string) (in
 }
 
 const getAllCachedComplexity = `-- name: GetAllCachedComplexity :many
-SELECT bead_id, complexity_score, estimated_tokens
+SELECT bean_id, complexity_score, estimated_tokens
 FROM complexity_cache
 `
 
 type GetAllCachedComplexityRow struct {
-	BeadID          string `json:"bead_id"`
+	BeanID          string `json:"bean_id"`
 	ComplexityScore int64  `json:"complexity_score"`
 	EstimatedTokens int64  `json:"estimated_tokens"`
 }
@@ -75,7 +75,7 @@ func (q *Queries) GetAllCachedComplexity(ctx context.Context) ([]GetAllCachedCom
 	items := []GetAllCachedComplexityRow{}
 	for rows.Next() {
 		var i GetAllCachedComplexityRow
-		if err := rows.Scan(&i.BeadID, &i.ComplexityScore, &i.EstimatedTokens); err != nil {
+		if err := rows.Scan(&i.BeanID, &i.ComplexityScore, &i.EstimatedTokens); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -92,11 +92,11 @@ func (q *Queries) GetAllCachedComplexity(ctx context.Context) ([]GetAllCachedCom
 const getCachedComplexity = `-- name: GetCachedComplexity :one
 SELECT complexity_score, estimated_tokens
 FROM complexity_cache
-WHERE bead_id = ? AND description_hash = ?
+WHERE bean_id = ? AND description_hash = ?
 `
 
 type GetCachedComplexityParams struct {
-	BeadID          string `json:"bead_id"`
+	BeanID          string `json:"bean_id"`
 	DescriptionHash string `json:"description_hash"`
 }
 
@@ -106,7 +106,7 @@ type GetCachedComplexityRow struct {
 }
 
 func (q *Queries) GetCachedComplexity(ctx context.Context, arg GetCachedComplexityParams) (GetCachedComplexityRow, error) {
-	row := q.db.QueryRowContext(ctx, getCachedComplexity, arg.BeadID, arg.DescriptionHash)
+	row := q.db.QueryRowContext(ctx, getCachedComplexity, arg.BeanID, arg.DescriptionHash)
 	var i GetCachedComplexityRow
 	err := row.Scan(&i.ComplexityScore, &i.EstimatedTokens)
 	return i, err

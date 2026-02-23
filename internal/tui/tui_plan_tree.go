@@ -4,21 +4,21 @@ import (
 	"context"
 	"sort"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 )
 
-// buildBeadTree takes a flat list of beads and organizes them into a tree
+// buildBeanTree takes a flat list of beans and organizes them into a tree
 // based on dependency relationships. Returns the items in tree order with
 // treeDepth set for each item.
-// Optional preserveIDs specifies bead IDs that should always be kept in results
+// Optional preserveIDs specifies bean IDs that should always be kept in results
 // regardless of the closed-item visibility filter (e.g., root issues).
-func buildBeadTree(ctx context.Context, items []beadItem, client *beads.Client, preserveIDs ...string) []beadItem {
+func buildBeanTree(ctx context.Context, items []beanItem, client *beans.Client, preserveIDs ...string) []beanItem {
 	if len(items) == 0 {
 		return items
 	}
 
-	// Build a map of ID -> beadItem for quick lookup
-	itemMap := make(map[string]*beadItem)
+	// Build a map of ID -> beanItem for quick lookup
+	itemMap := make(map[string]*beanItem)
 	for i := range items {
 		itemMap[items[i].ID] = &items[i]
 	}
@@ -26,21 +26,28 @@ func buildBeadTree(ctx context.Context, items []beadItem, client *beads.Client, 
 	// Collect all issue IDs (used in getBlockingDepIDs closure below)
 	_ = len(items) // issueIDs would be used for dependency lookups if needed
 
-	// Helper to extract blocking dependency IDs from a beadItem
-	getBlockingDepIDs := func(item *beadItem) []string {
-		if item.BeadWithDeps == nil {
+	// Helper to extract parent/dependency IDs from a beanItem.
+	// Includes the ParentID (beans parent-child relationship) and all
+	// blocking dependencies. ParentID takes priority for tree structure.
+	getBlockingDepIDs := func(item *beanItem) []string {
+		if item.BeanWithDeps == nil {
 			return nil
+		}
+		// If the bean has a parent, use that as the sole tree parent
+		// to avoid duplicate tree edges.
+		if item.ParentID != "" {
+			return []string{item.ParentID}
 		}
 		depIDs := make([]string, 0, len(item.Dependencies))
 		for _, dep := range item.Dependencies {
-			if dep.Type == "blocks" || dep.Type == "parent-child" {
-				depIDs = append(depIDs, dep.DependsOnID)
+			if dep.BlockedByID != "" {
+				depIDs = append(depIDs, dep.BlockedByID)
 			}
 		}
 		return depIDs
 	}
 
-	// Identify and fetch missing parent beads (dependencies not in our item list)
+	// Identify and fetch missing parent beans (dependencies not in our item list)
 	// to preserve tree structure. Loop until no more missing parents are found
 	// to handle multiple levels of closed ancestors.
 	if client != nil {
@@ -61,17 +68,17 @@ func buildBeadTree(ctx context.Context, items []beadItem, client *beads.Client, 
 			}
 
 			// Fetch missing parents in a single query
-			parentResult, err := client.GetBeadsWithDeps(ctx, missingParentIDs)
+			parentResult, err := client.GetBeansWithDeps(ctx, missingParentIDs)
 			if err == nil {
 				// Add missing parents to items
 				for _, parentID := range missingParentIDs {
-					if beadWithDeps := parentResult.GetBead(parentID); beadWithDeps != nil {
-						parentBead := &beadItem{
-							BeadWithDeps:   beadWithDeps,
+					if beanWithDeps := parentResult.GetBean(parentID); beanWithDeps != nil {
+						parentBean := &beanItem{
+							BeanWithDeps:   beanWithDeps,
 							isClosedParent: true,
 						}
-						items = append(items, *parentBead)
-						itemMap[parentBead.ID] = &items[len(items)-1]
+						items = append(items, *parentBean)
+						itemMap[parentBean.ID] = &items[len(items)-1]
 					}
 				}
 			} else {
@@ -80,7 +87,7 @@ func buildBeadTree(ctx context.Context, items []beadItem, client *beads.Client, 
 		}
 
 		// Rebuild itemMap to fix stale pointers.
-		itemMap = make(map[string]*beadItem)
+		itemMap = make(map[string]*beanItem)
 		for i := range items {
 			itemMap[items[i].ID] = &items[i]
 		}
@@ -102,7 +109,7 @@ func buildBeadTree(ctx context.Context, items []beadItem, client *beads.Client, 
 	}
 
 	// Find root nodes (items with no visible dependencies within our set)
-	// A bead is a root if it has no dependencies, OR if none of its dependencies
+	// A bean is a root if it has no dependencies, OR if none of its dependencies
 	// are in our visible set (e.g., all dependencies were deleted or unavailable)
 	roots := []string{}
 	for i := range items {
@@ -133,7 +140,7 @@ func buildBeadTree(ctx context.Context, items []beadItem, client *beads.Client, 
 	})
 
 	// DFS to build tree order
-	var result []beadItem
+	var result []beanItem
 	visited := make(map[string]bool)
 
 	// ancestorPattern tracks the prefix pattern for ancestor continuation lines.
@@ -225,7 +232,7 @@ func buildBeadTree(ctx context.Context, items []beadItem, client *beads.Client, 
 
 	// Filter out closed items that have no open descendants.
 	// Build a map of ID -> item for quick lookup
-	resultMap := make(map[string]*beadItem)
+	resultMap := make(map[string]*beanItem)
 	for i := range result {
 		resultMap[result[i].ID] = &result[i]
 	}
@@ -264,7 +271,7 @@ func buildBeadTree(ctx context.Context, items []beadItem, client *beads.Client, 
 		}
 
 		// Non-closed items are always visible
-		if item.Status != beads.StatusClosed {
+		if item.Status != beans.StatusCompleted {
 			visibilityCache[id] = true
 			return true
 		}
@@ -284,7 +291,7 @@ func buildBeadTree(ctx context.Context, items []beadItem, client *beads.Client, 
 	}
 
 	// Filter based on computed visibility
-	var filtered []beadItem
+	var filtered []beanItem
 	for _, item := range result {
 		if isVisible(item.ID) {
 			filtered = append(filtered, item)

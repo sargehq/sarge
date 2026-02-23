@@ -68,7 +68,7 @@ func listTaskRowToLocal(id string, status string, taskType string, complexityBud
 	return task
 }
 
-// Task represents a virtual task (group of beads) in the database.
+// Task represents a virtual task (group of beans) in the database.
 type Task struct {
 	ID               string
 	Status           string
@@ -86,15 +86,15 @@ type Task struct {
 	SpawnStatus      string
 }
 
-// TaskBead represents a bead within a task.
-type TaskBead struct {
+// TaskBean represents a bean within a task.
+type TaskBean struct {
 	TaskID string
-	BeadID string
+	BeanID string
 	Status string
 }
 
-// CreateTask creates a new task with the given beads.
-func (db *DB) CreateTask(ctx context.Context, id string, taskType string, beadIDs []string, complexityBudget int, workID string, taskNumber int) error {
+// CreateTask creates a new task with the given beans.
+func (db *DB) CreateTask(ctx context.Context, id string, taskType string, beanIDs []string, complexityBudget int, workID string, taskNumber int) error {
 	// Use a transaction for atomicity
 	tx, err := db.Begin()
 	if err != nil {
@@ -116,14 +116,14 @@ func (db *DB) CreateTask(ctx context.Context, id string, taskType string, beadID
 		return fmt.Errorf("failed to create task %s: %w", id, err)
 	}
 
-	// Insert task_beads
-	for _, beadID := range beadIDs {
-		err = qtx.CreateTaskBead(ctx, sqlc.CreateTaskBeadParams{
+	// Insert task_beans
+	for _, beanID := range beanIDs {
+		err = qtx.CreateTaskBean(ctx, sqlc.CreateTaskBeanParams{
 			TaskID: id,
-			BeadID: beadID,
+			BeanID: beanID,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to add bead %s to task %s: %w", beadID, id, err)
+			return fmt.Errorf("failed to add bean %s to task %s: %w", beanID, id, err)
 		}
 	}
 
@@ -224,99 +224,99 @@ func (db *DB) GetTask(ctx context.Context, id string) (*Task, error) {
 	return taskRowToLocal(&task), nil
 }
 
-// GetTaskBeads returns the list of bead IDs for a task.
-func (db *DB) GetTaskBeads(ctx context.Context, taskID string) ([]string, error) {
-	beadIDs, err := db.queries.GetTaskBeads(ctx, taskID)
+// GetTaskBeans returns the list of bean IDs for a task.
+func (db *DB) GetTaskBeans(ctx context.Context, taskID string) ([]string, error) {
+	beanIDs, err := db.queries.GetTaskBeans(ctx, taskID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get task beads: %w", err)
+		return nil, fmt.Errorf("failed to get task beans: %w", err)
 	}
-	return beadIDs, nil
+	return beanIDs, nil
 }
 
-// GetTaskForBead returns the task ID that contains a specific bead.
-func (db *DB) GetTaskForBead(ctx context.Context, beadID string) (string, error) {
-	taskID, err := db.queries.GetTaskForBead(ctx, beadID)
+// GetTaskForBean returns the task ID that contains a specific bean.
+func (db *DB) GetTaskForBean(ctx context.Context, beanID string) (string, error) {
+	taskID, err := db.queries.GetTaskForBean(ctx, beanID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", nil
 		}
-		return "", fmt.Errorf("failed to get task for bead: %w", err)
+		return "", fmt.Errorf("failed to get task for bean: %w", err)
 	}
 	return taskID, nil
 }
 
-// CompleteTaskBead marks a specific bead within a task as completed.
-func (db *DB) CompleteTaskBead(ctx context.Context, taskID, beadID string) error {
-	rows, err := db.queries.CompleteTaskBead(ctx, sqlc.CompleteTaskBeadParams{
+// CompleteTaskBean marks a specific bean within a task as completed.
+func (db *DB) CompleteTaskBean(ctx context.Context, taskID, beanID string) error {
+	rows, err := db.queries.CompleteTaskBean(ctx, sqlc.CompleteTaskBeanParams{
 		TaskID: taskID,
-		BeadID: beadID,
+		BeanID: beanID,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to complete task bead: %w", err)
+		return fmt.Errorf("failed to complete task bean: %w", err)
 	}
 	if rows == 0 {
-		return fmt.Errorf("task bead %s/%s not found", taskID, beadID)
+		return fmt.Errorf("task bean %s/%s not found", taskID, beanID)
 	}
 	return nil
 }
 
-// FailTaskBead marks a specific bead within a task as failed.
-func (db *DB) FailTaskBead(ctx context.Context, taskID, beadID string) error {
-	rows, err := db.queries.FailTaskBead(ctx, sqlc.FailTaskBeadParams{
+// FailTaskBean marks a specific bean within a task as failed.
+func (db *DB) FailTaskBean(ctx context.Context, taskID, beanID string) error {
+	rows, err := db.queries.FailTaskBean(ctx, sqlc.FailTaskBeanParams{
 		TaskID: taskID,
-		BeadID: beadID,
+		BeanID: beanID,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to fail task bead: %w", err)
+		return fmt.Errorf("failed to fail task bean: %w", err)
 	}
 	if rows == 0 {
-		return fmt.Errorf("task bead %s/%s not found", taskID, beadID)
+		return fmt.Errorf("task bean %s/%s not found", taskID, beanID)
 	}
 	return nil
 }
 
-// CountTaskBeadStatuses returns the total and completed count of beads in a task.
-func (db *DB) CountTaskBeadStatuses(ctx context.Context, taskID string) (total int, completed int, err error) {
-	row, err := db.queries.CountTaskBeadStatuses(ctx, taskID)
+// CountTaskBeanStatuses returns the total and completed count of beans in a task.
+func (db *DB) CountTaskBeanStatuses(ctx context.Context, taskID string) (total int, completed int, err error) {
+	row, err := db.queries.CountTaskBeanStatuses(ctx, taskID)
 	if err != nil {
-		return 0, 0, fmt.Errorf("failed to count task bead statuses: %w", err)
+		return 0, 0, fmt.Errorf("failed to count task bean statuses: %w", err)
 	}
 	return int(row.Total), int(row.Completed), nil
 }
 
-// GetTaskBeadStatus returns the status of a specific bead within a task.
-func (db *DB) GetTaskBeadStatus(ctx context.Context, taskID, beadID string) (string, error) {
-	status, err := db.queries.GetTaskBeadStatus(ctx, sqlc.GetTaskBeadStatusParams{
+// GetTaskBeanStatus returns the status of a specific bean within a task.
+func (db *DB) GetTaskBeanStatus(ctx context.Context, taskID, beanID string) (string, error) {
+	status, err := db.queries.GetTaskBeanStatus(ctx, sqlc.GetTaskBeanStatusParams{
 		TaskID: taskID,
-		BeadID: beadID,
+		BeanID: beanID,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "", fmt.Errorf("task bead %s/%s not found", taskID, beadID)
+			return "", fmt.Errorf("task bean %s/%s not found", taskID, beanID)
 		}
-		return "", fmt.Errorf("failed to get task bead status: %w", err)
+		return "", fmt.Errorf("failed to get task bean status: %w", err)
 	}
 	return status, nil
 }
 
-// TaskBeadInfo represents a task bead with its status.
-type TaskBeadInfo struct {
+// TaskBeanInfo represents a task bean with its status.
+type TaskBeanInfo struct {
 	TaskID string
-	BeadID string
+	BeanID string
 	Status string
 }
 
-// GetTaskBeadsForWork returns all task beads for a work in a single query.
-func (db *DB) GetTaskBeadsForWork(ctx context.Context, workID string) ([]TaskBeadInfo, error) {
-	rows, err := db.queries.GetTaskBeadsForWork(ctx, workID)
+// GetTaskBeansForWork returns all task beans for a work in a single query.
+func (db *DB) GetTaskBeansForWork(ctx context.Context, workID string) ([]TaskBeanInfo, error) {
+	rows, err := db.queries.GetTaskBeansForWork(ctx, workID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get task beads for work: %w", err)
+		return nil, fmt.Errorf("failed to get task beans for work: %w", err)
 	}
-	result := make([]TaskBeadInfo, len(rows))
+	result := make([]TaskBeanInfo, len(rows))
 	for i, row := range rows {
-		result[i] = TaskBeadInfo{
+		result[i] = TaskBeanInfo{
 			TaskID: row.TaskID,
-			BeadID: row.BeadID,
+			BeanID: row.BeanID,
 			Status: row.Status,
 		}
 	}
@@ -389,10 +389,10 @@ func (db *DB) DeleteTask(ctx context.Context, taskID string) error {
 		return fmt.Errorf("failed to delete work_tasks for task %s: %w", taskID, err)
 	}
 
-	// Delete task_beads (foreign key constraint)
-	_, err = qtx.DeleteTaskBeadsByTask(ctx, taskID)
+	// Delete task_beans (foreign key constraint)
+	_, err = qtx.DeleteTaskBeansByTask(ctx, taskID)
 	if err != nil {
-		return fmt.Errorf("failed to delete task_beads for task %s: %w", taskID, err)
+		return fmt.Errorf("failed to delete task_beans for task %s: %w", taskID, err)
 	}
 
 	// Delete the task itself
@@ -410,44 +410,44 @@ func (db *DB) DeleteTask(ctx context.Context, taskID string) error {
 	return nil
 }
 
-// ResetTaskBeadStatuses resets all bead statuses for a task to pending.
-func (db *DB) ResetTaskBeadStatuses(ctx context.Context, taskID string) error {
-	_, err := db.queries.ResetTaskBeadStatuses(ctx, taskID)
+// ResetTaskBeanStatuses resets all bean statuses for a task to pending.
+func (db *DB) ResetTaskBeanStatuses(ctx context.Context, taskID string) error {
+	_, err := db.queries.ResetTaskBeanStatuses(ctx, taskID)
 	if err != nil {
-		return fmt.Errorf("failed to reset task bead statuses: %w", err)
+		return fmt.Errorf("failed to reset task bean statuses: %w", err)
 	}
 	return nil
 }
 
-// GetTaskBeadsWithStatus returns all beads in a task with their status.
-func (db *DB) GetTaskBeadsWithStatus(ctx context.Context, taskID string) ([]TaskBeadInfo, error) {
-	rows, err := db.queries.GetTaskBeadsWithStatus(ctx, taskID)
+// GetTaskBeansWithStatus returns all beans in a task with their status.
+func (db *DB) GetTaskBeansWithStatus(ctx context.Context, taskID string) ([]TaskBeanInfo, error) {
+	rows, err := db.queries.GetTaskBeansWithStatus(ctx, taskID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get task beads with status: %w", err)
+		return nil, fmt.Errorf("failed to get task beans with status: %w", err)
 	}
 
-	result := make([]TaskBeadInfo, len(rows))
+	result := make([]TaskBeanInfo, len(rows))
 	for i, row := range rows {
-		result[i] = TaskBeadInfo{
+		result[i] = TaskBeanInfo{
 			TaskID: row.TaskID,
-			BeadID: row.BeadID,
+			BeanID: row.BeanID,
 			Status: row.Status,
 		}
 	}
 	return result, nil
 }
 
-// ResetTaskBeadStatus resets a single bead's status in a task to pending.
-func (db *DB) ResetTaskBeadStatus(ctx context.Context, taskID, beadID string) error {
-	rows, err := db.queries.ResetTaskBeadStatus(ctx, sqlc.ResetTaskBeadStatusParams{
+// ResetTaskBeanStatus resets a single bean's status in a task to pending.
+func (db *DB) ResetTaskBeanStatus(ctx context.Context, taskID, beanID string) error {
+	rows, err := db.queries.ResetTaskBeanStatus(ctx, sqlc.ResetTaskBeanStatusParams{
 		TaskID: taskID,
-		BeadID: beadID,
+		BeanID: beanID,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to reset task bead status: %w", err)
+		return fmt.Errorf("failed to reset task bean status: %w", err)
 	}
 	if rows == 0 {
-		return fmt.Errorf("task bead %s/%s not found", taskID, beadID)
+		return fmt.Errorf("task bean %s/%s not found", taskID, beanID)
 	}
 	return nil
 }
@@ -464,16 +464,16 @@ func (db *DB) UpdateTaskActivity(ctx context.Context, taskID string, timestamp t
 	return nil
 }
 
-// CheckAndCompleteTask checks if all beads in a task are completed and marks the task as complete if so.
-// Returns true if the task was auto-completed, false if it still has pending beads.
+// CheckAndCompleteTask checks if all beans in a task are completed and marks the task as complete if so.
+// Returns true if the task was auto-completed, false if it still has pending beans.
 func (db *DB) CheckAndCompleteTask(ctx context.Context, taskID string, prURL string) (bool, error) {
-	// Count the bead statuses
-	total, completed, err := db.CountTaskBeadStatuses(ctx, taskID)
+	// Count the bean statuses
+	total, completed, err := db.CountTaskBeanStatuses(ctx, taskID)
 	if err != nil {
 		return false, err
 	}
 
-	// If all beads are complete, mark the task as complete
+	// If all beans are complete, mark the task as complete
 	if total > 0 && total == completed {
 		if err := db.CompleteTask(ctx, taskID, prURL); err != nil {
 			return false, err

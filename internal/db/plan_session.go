@@ -10,54 +10,54 @@ import (
 	"time"
 )
 
-// PlanSession represents a running plan mode Claude session for a specific bead.
+// PlanSession represents a running plan mode Claude session for a specific bean.
 type PlanSession struct {
-	BeadID        string
+	BeanID        string
 	ZellijSession string
 	TabName       string
 	PID           int
 	StartedAt     time.Time
 }
 
-// TabNameForBead returns the zellij tab name for a bead's planning session.
-func TabNameForBead(beadID string) string {
-	return fmt.Sprintf("plan-%s", beadID)
+// TabNameForBean returns the zellij tab name for a bean's planning session.
+func TabNameForBean(beanID string) string {
+	return fmt.Sprintf("plan-%s", beanID)
 }
 
-// RegisterPlanSession registers a plan session for a specific bead.
+// RegisterPlanSession registers a plan session for a specific bean.
 // It also cleans up any stale sessions (where the process is no longer running).
-func (db *DB) RegisterPlanSession(ctx context.Context, beadID, zellijSession, tabName string, pid int) error {
+func (db *DB) RegisterPlanSession(ctx context.Context, beanID, zellijSession, tabName string, pid int) error {
 	// First, clean up stale sessions
 	if err := db.CleanupStalePlanSessions(ctx); err != nil {
 		return err
 	}
 
 	_, err := db.ExecContext(ctx, `
-		INSERT OR REPLACE INTO plan_sessions (bead_id, zellij_session, tab_name, pid, started_at)
+		INSERT OR REPLACE INTO plan_sessions (bean_id, zellij_session, tab_name, pid, started_at)
 		VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-	`, beadID, zellijSession, tabName, pid)
+	`, beanID, zellijSession, tabName, pid)
 	return err
 }
 
-// UnregisterPlanSession removes a plan session by bead ID.
-func (db *DB) UnregisterPlanSession(ctx context.Context, beadID string) error {
+// UnregisterPlanSession removes a plan session by bean ID.
+func (db *DB) UnregisterPlanSession(ctx context.Context, beanID string) error {
 	_, err := db.ExecContext(ctx, `
-		DELETE FROM plan_sessions WHERE bead_id = ?
-	`, beadID)
+		DELETE FROM plan_sessions WHERE bean_id = ?
+	`, beanID)
 	return err
 }
 
-// GetPlanSession gets the plan session for a specific bead.
+// GetPlanSession gets the plan session for a specific bean.
 // Returns nil if no session is registered.
-func (db *DB) GetPlanSession(ctx context.Context, beadID string) (*PlanSession, error) {
+func (db *DB) GetPlanSession(ctx context.Context, beanID string) (*PlanSession, error) {
 	row := db.QueryRowContext(ctx, `
-		SELECT bead_id, zellij_session, tab_name, pid, started_at
+		SELECT bean_id, zellij_session, tab_name, pid, started_at
 		FROM plan_sessions
-		WHERE bead_id = ?
-	`, beadID)
+		WHERE bean_id = ?
+	`, beanID)
 
 	var ps PlanSession
-	err := row.Scan(&ps.BeadID, &ps.ZellijSession, &ps.TabName, &ps.PID, &ps.StartedAt)
+	err := row.Scan(&ps.BeanID, &ps.ZellijSession, &ps.TabName, &ps.PID, &ps.StartedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -67,10 +67,10 @@ func (db *DB) GetPlanSession(ctx context.Context, beadID string) (*PlanSession, 
 	return &ps, nil
 }
 
-// IsPlanSessionRunning checks if a plan session is running for the given bead.
+// IsPlanSessionRunning checks if a plan session is running for the given bean.
 // It also validates that the registered process is still alive.
-func (db *DB) IsPlanSessionRunning(ctx context.Context, beadID string) (bool, error) {
-	ps, err := db.GetPlanSession(ctx, beadID)
+func (db *DB) IsPlanSessionRunning(ctx context.Context, beanID string) (bool, error) {
+	ps, err := db.GetPlanSession(ctx, beanID)
 	if err != nil {
 		return false, err
 	}
@@ -81,7 +81,7 @@ func (db *DB) IsPlanSessionRunning(ctx context.Context, beadID string) (bool, er
 	// Check if the process is still alive
 	if !isProcessAlive(ps.PID) {
 		// Process is dead, clean up the stale registration
-		_ = db.UnregisterPlanSession(ctx, beadID)
+		_ = db.UnregisterPlanSession(ctx, beanID)
 		return false, nil
 	}
 
@@ -91,7 +91,7 @@ func (db *DB) IsPlanSessionRunning(ctx context.Context, beadID string) (bool, er
 // ListPlanSessions returns all plan sessions for a zellij session.
 func (db *DB) ListPlanSessions(ctx context.Context, zellijSession string) ([]*PlanSession, error) {
 	rows, err := db.QueryContext(ctx, `
-		SELECT bead_id, zellij_session, tab_name, pid, started_at
+		SELECT bean_id, zellij_session, tab_name, pid, started_at
 		FROM plan_sessions
 		WHERE zellij_session = ?
 	`, zellijSession)
@@ -103,7 +103,7 @@ func (db *DB) ListPlanSessions(ctx context.Context, zellijSession string) ([]*Pl
 	var sessions []*PlanSession
 	for rows.Next() {
 		var ps PlanSession
-		if err := rows.Scan(&ps.BeadID, &ps.ZellijSession, &ps.TabName, &ps.PID, &ps.StartedAt); err != nil {
+		if err := rows.Scan(&ps.BeanID, &ps.ZellijSession, &ps.TabName, &ps.PID, &ps.StartedAt); err != nil {
 			return nil, err
 		}
 		sessions = append(sessions, &ps)
@@ -112,9 +112,9 @@ func (db *DB) ListPlanSessions(ctx context.Context, zellijSession string) ([]*Pl
 	return sessions, rows.Err()
 }
 
-// GetBeadsWithActiveSessions returns a map of bead IDs that have active planning sessions.
+// GetBeansWithActiveSessions returns a map of bean IDs that have active planning sessions.
 // It validates that processes are still alive and cleans up stale sessions.
-func (db *DB) GetBeadsWithActiveSessions(ctx context.Context, zellijSession string) (map[string]bool, error) {
+func (db *DB) GetBeansWithActiveSessions(ctx context.Context, zellijSession string) (map[string]bool, error) {
 	sessions, err := db.ListPlanSessions(ctx, zellijSession)
 	if err != nil {
 		return nil, err
@@ -123,10 +123,10 @@ func (db *DB) GetBeadsWithActiveSessions(ctx context.Context, zellijSession stri
 	result := make(map[string]bool)
 	for _, ps := range sessions {
 		if isProcessAlive(ps.PID) {
-			result[ps.BeadID] = true
+			result[ps.BeanID] = true
 		} else {
 			// Clean up stale session
-			_ = db.UnregisterPlanSession(ctx, ps.BeadID)
+			_ = db.UnregisterPlanSession(ctx, ps.BeanID)
 		}
 	}
 
@@ -135,7 +135,7 @@ func (db *DB) GetBeadsWithActiveSessions(ctx context.Context, zellijSession stri
 
 // CleanupStalePlanSessions removes registrations for processes that are no longer running.
 func (db *DB) CleanupStalePlanSessions(ctx context.Context) error {
-	rows, err := db.QueryContext(ctx, `SELECT bead_id, pid FROM plan_sessions`)
+	rows, err := db.QueryContext(ctx, `SELECT bean_id, pid FROM plan_sessions`)
 	if err != nil {
 		return err
 	}
@@ -143,18 +143,18 @@ func (db *DB) CleanupStalePlanSessions(ctx context.Context) error {
 
 	var stale []string
 	for rows.Next() {
-		var beadID string
+		var beanID string
 		var pid int
-		if err := rows.Scan(&beadID, &pid); err != nil {
+		if err := rows.Scan(&beanID, &pid); err != nil {
 			return err
 		}
 		if !isProcessAlive(pid) {
-			stale = append(stale, beadID)
+			stale = append(stale, beanID)
 		}
 	}
 
-	for _, beadID := range stale {
-		if err := db.UnregisterPlanSession(ctx, beadID); err != nil {
+	for _, beanID := range stale {
+		if err := db.UnregisterPlanSession(ctx, beanID); err != nil {
 			return err
 		}
 	}

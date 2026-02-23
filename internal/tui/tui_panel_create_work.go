@@ -23,7 +23,7 @@ const (
 // CreateWorkResult contains form values when submitted
 type CreateWorkResult struct {
 	BranchName        string
-	BeadID            string
+	BeanID            string
 	UseExistingBranch bool
 }
 
@@ -37,7 +37,7 @@ type CreateWorkPanel struct {
 	focused bool
 
 	// Form state (owned directly)
-	beadID      string
+	beanID      string
 	branchInput textinput.Model
 	fieldIdx    int // 0=mode toggle, 1=branch input/selector, 2=buttons
 	buttonIdx   int // 0=Execute, 1=Auto, 2=Cancel
@@ -77,8 +77,8 @@ func (p *CreateWorkPanel) Init() tea.Cmd {
 }
 
 // Reset resets the form to initial state
-func (p *CreateWorkPanel) Reset(beadID string, branchName string) {
-	p.beadID = beadID
+func (p *CreateWorkPanel) Reset(beanID string, branchName string) {
+	p.beanID = beanID
 	p.branchInput.SetValue(branchName)
 	p.branchInput.Focus()
 	p.fieldIdx = 0
@@ -248,14 +248,14 @@ func (p *CreateWorkPanel) getSelectedBranchName() string {
 func (p *CreateWorkPanel) GetResult() CreateWorkResult {
 	return CreateWorkResult{
 		BranchName:        p.getSelectedBranchName(),
-		BeadID:            p.beadID,
+		BeanID:            p.beanID,
 		UseExistingBranch: p.useExistingBranch,
 	}
 }
 
-// GetBeadID returns the bead ID for this work
-func (p *CreateWorkPanel) GetBeadID() string {
-	return p.beadID
+// GetBeanID returns the bean ID for this work
+func (p *CreateWorkPanel) GetBeanID() string {
+	return p.beanID
 }
 
 // Blur removes focus from the input
@@ -281,7 +281,7 @@ func (p *CreateWorkPanel) IsFocused() bool {
 
 // SetFormState updates the form state (deprecated - panel owns its state now)
 func (p *CreateWorkPanel) SetFormState(
-	beadID string,
+	beanID string,
 	branchInput *textinput.Model,
 	fieldIdx int,
 	buttonIdx int,
@@ -303,9 +303,9 @@ func (p *CreateWorkPanel) Render() string {
 	content.WriteString(tuiSuccessStyle.Render("Create Work"))
 	content.WriteString("\n\n")
 
-	// Show bead info
-	beadInfo := fmt.Sprintf("Creating work from issue: %s", issueIDStyle.Render(p.beadID))
-	content.WriteString(beadInfo)
+	// Show bean info
+	beanInfo := fmt.Sprintf("Creating work from issue: %s", issueIDStyle.Render(p.beanID))
+	content.WriteString(beanInfo)
 	content.WriteString("\n\n")
 
 	// Mode toggle

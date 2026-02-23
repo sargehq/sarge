@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,32 +17,32 @@ func TestMapStatus(t *testing.T) {
 		{
 			name:  "unstarted to open",
 			state: State{Type: "unstarted"},
-			want:  "open",
+			want:  beans.StatusTodo,
 		},
 		{
 			name:  "started to in_progress",
 			state: State{Type: "started"},
-			want:  "in_progress",
+			want:  beans.StatusInProgress,
 		},
 		{
 			name:  "completed to closed",
 			state: State{Type: "completed"},
-			want:  "closed",
+			want:  beans.StatusCompleted,
 		},
 		{
-			name:  "canceled to closed",
+			name:  "canceled to scrapped",
 			state: State{Type: "canceled"},
-			want:  "closed",
+			want:  beans.StatusScrapped,
 		},
 		{
 			name:  "unknown to open",
 			state: State{Type: "unknown"},
-			want:  "open",
+			want:  beans.StatusTodo,
 		},
 		{
 			name:  "case insensitive",
 			state: State{Type: "STARTED"},
-			want:  "in_progress",
+			want:  beans.StatusInProgress,
 		},
 	}
 
@@ -168,7 +169,7 @@ func TestMapType(t *testing.T) {
 	}
 }
 
-func TestMapIssueToBeadCreate(t *testing.T) {
+func TestMapIssueToBeanCreate(t *testing.T) {
 	estimate := 3.5
 	issue := &Issue{
 		Identifier:  "ENG-123",
@@ -183,12 +184,12 @@ func TestMapIssueToBeadCreate(t *testing.T) {
 		Estimate:    &estimate,
 	}
 
-	opts := MapIssueToBeadCreate(issue)
+	opts := MapIssueToBeanCreate(issue)
 
 	require.Equal(t, "Fix authentication bug", opts.Title)
 	require.Equal(t, "bug", opts.Type)
 	require.Equal(t, "P1", opts.Priority)
-	require.Equal(t, "in_progress", opts.Status)
+	require.Equal(t, beans.StatusInProgress, opts.Status)
 	require.Equal(t, "john@example.com", opts.Assignee)
 	require.Len(t, opts.Labels, 2)
 	require.Equal(t, "ENG-123", opts.Metadata["linear_id"])
@@ -197,7 +198,7 @@ func TestMapIssueToBeadCreate(t *testing.T) {
 	require.Equal(t, "3.5", opts.Metadata["linear_estimate"])
 }
 
-func TestFormatBeadDescription(t *testing.T) {
+func TestFormatBeanDescription(t *testing.T) {
 	estimate := 2.0
 	issue := &Issue{
 		Identifier:  "ENG-456",
@@ -210,7 +211,7 @@ func TestFormatBeadDescription(t *testing.T) {
 		Assignee:    &User{Name: "Jane Smith"},
 	}
 
-	desc := FormatBeadDescription(issue)
+	desc := FormatBeanDescription(issue)
 
 	// Check that it contains key elements
 	require.True(t, strings.Contains(desc, "Original description"), "Description should contain original description")

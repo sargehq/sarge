@@ -8,8 +8,8 @@ INSERT INTO pr_feedback (
 -- name: GetPRFeedback :one
 SELECT * FROM pr_feedback WHERE id = ?;
 
--- name: GetPRFeedbackByBead :one
-SELECT * FROM pr_feedback WHERE bead_id = ? LIMIT 1;
+-- name: GetPRFeedbackByBean :one
+SELECT * FROM pr_feedback WHERE bean_id = ? LIMIT 1;
 
 -- name: ListPRFeedback :many
 SELECT * FROM pr_feedback WHERE work_id = ? ORDER BY created_at DESC;
@@ -22,21 +22,21 @@ ORDER BY priority ASC, created_at ASC;
 -- name: GetUnresolvedFeedbackForWork :many
 SELECT * FROM pr_feedback
 WHERE work_id = ?
-  AND bead_id IS NOT NULL
+  AND bean_id IS NOT NULL
   AND resolved_at IS NULL
   AND source_id IS NOT NULL
 ORDER BY created_at ASC;
 
--- name: GetUnresolvedFeedbackForBeads :many
+-- name: GetUnresolvedFeedbackForBeans :many
 SELECT * FROM pr_feedback
-WHERE bead_id IN (sqlc.slice('bead_ids'))
+WHERE bean_id IN (sqlc.slice('bean_ids'))
   AND resolved_at IS NULL
   AND source_id IS NOT NULL
 ORDER BY created_at ASC;
 
 -- name: MarkPRFeedbackProcessed :exec
 UPDATE pr_feedback
-SET processed_at = CURRENT_TIMESTAMP, bead_id = ?
+SET processed_at = CURRENT_TIMESTAMP, bean_id = ?
 WHERE id = ?;
 
 -- name: MarkPRFeedbackResolved :exec
@@ -60,34 +60,34 @@ WHERE work_id = ? AND source_id = ?
 LIMIT 1;
 
 -- name: CountUnassignedFeedbackForWork :one
--- Count PR feedback items that have beads which are not yet assigned to any task and not resolved/closed.
+-- Count PR feedback items that have beans which are not yet assigned to any task and not resolved/closed.
 SELECT COUNT(*) as count FROM pr_feedback pf
 WHERE pf.work_id = ?
-  AND pf.bead_id IS NOT NULL
+  AND pf.bean_id IS NOT NULL
   AND pf.resolved_at IS NULL
   AND NOT EXISTS (
-    SELECT 1 FROM task_beads tb
+    SELECT 1 FROM task_beans tb
     JOIN tasks t ON tb.task_id = t.id
-    WHERE tb.bead_id = pf.bead_id
+    WHERE tb.bean_id = pf.bean_id
       AND t.work_id = pf.work_id
   );
 
--- name: GetUnassignedFeedbackBeadIDs :many
--- Get bead IDs from PR feedback items that are not yet assigned to any task and not resolved/closed.
-SELECT pf.bead_id FROM pr_feedback pf
+-- name: GetUnassignedFeedbackBeanIDs :many
+-- Get bean IDs from PR feedback items that are not yet assigned to any task and not resolved/closed.
+SELECT pf.bean_id FROM pr_feedback pf
 WHERE pf.work_id = ?
-  AND pf.bead_id IS NOT NULL
+  AND pf.bean_id IS NOT NULL
   AND pf.resolved_at IS NULL
   AND NOT EXISTS (
-    SELECT 1 FROM task_beads tb
+    SELECT 1 FROM task_beans tb
     JOIN tasks t ON tb.task_id = t.id
-    WHERE tb.bead_id = pf.bead_id
+    WHERE tb.bean_id = pf.bean_id
       AND t.work_id = pf.work_id
   )
 ORDER BY pf.created_at ASC;
 
 -- name: HasExistingFeedbackBySourceID :one
--- Only consider feedback "existing" if a bead was actually created.
--- This allows retry if bead creation failed on a previous attempt.
+-- Only consider feedback "existing" if a bean was actually created.
+-- This allows retry if bean creation failed on a previous attempt.
 SELECT COUNT(*) as count FROM pr_feedback
-WHERE work_id = ? AND source_id = ? AND bead_id IS NOT NULL;
+WHERE work_id = ? AND source_id = ? AND bean_id IS NOT NULL;

@@ -42,9 +42,9 @@ func (m *planModel) renderFocusedWorkSplitView() string {
 	// Select the right panel based on view mode
 	var detailsPanel string
 	switch m.viewMode {
-	case ViewCreateBead, ViewCreateBeadInline, ViewAddChildBead, ViewEditBead:
-		m.beadFormPanel.SetSize(detailsWidth, planPanelHeight)
-		detailsPanel = m.beadFormPanel.RenderWithPanel(planPanelHeight)
+	case ViewCreateBean, ViewCreateBeanInline, ViewAddChildBean, ViewEditBean:
+		m.beanFormPanel.SetSize(detailsWidth, planPanelHeight)
+		detailsPanel = m.beanFormPanel.RenderWithPanel(planPanelHeight)
 	case ViewLinearImportInline:
 		m.linearImportPanel.SetSize(detailsWidth, planPanelHeight)
 		detailsPanel = m.linearImportPanel.RenderWithPanel(planPanelHeight)
@@ -82,8 +82,8 @@ func (m *planModel) renderTwoColumnLayout() string {
 	// Select the right panel based on view mode
 	var rightPanel string
 	switch m.viewMode {
-	case ViewCreateBead, ViewCreateBeadInline, ViewAddChildBead, ViewEditBead:
-		rightPanel = m.beadFormPanel.RenderWithPanel(contentHeight)
+	case ViewCreateBean, ViewCreateBeanInline, ViewAddChildBean, ViewEditBean:
+		rightPanel = m.beanFormPanel.RenderWithPanel(contentHeight)
 	case ViewLinearImportInline:
 		rightPanel = m.linearImportPanel.RenderWithPanel(contentHeight)
 	case ViewPRImportInline:
@@ -105,7 +105,7 @@ func (m *planModel) detectCommandsBarButton(msg tea.MouseMsg) string {
 }
 
 // detectHoveredIssue determines which issue is at the mouse position using bubblezone
-// Returns the absolute index in m.beadItems, or -1 if not over an issue
+// Returns the absolute index in m.beanItems, or -1 if not over an issue
 func (m *planModel) detectHoveredIssue(msg tea.MouseMsg) int {
 	return m.issuesPanel.DetectHoveredIssue(msg)
 }
@@ -201,8 +201,8 @@ func (m *planModel) detectClickedPanel(msg tea.MouseMsg) string {
 // is visible at a time. If multiple simultaneous dialogs are needed, add zone.NewPrefix().
 func (m *planModel) detectDialogButton(msg tea.MouseMsg) string {
 	// Dialog buttons only visible in form modes, Linear import mode, PR import mode, and work creation mode
-	if m.viewMode != ViewCreateBead && m.viewMode != ViewCreateBeadInline &&
-		m.viewMode != ViewAddChildBead && m.viewMode != ViewEditBead &&
+	if m.viewMode != ViewCreateBean && m.viewMode != ViewCreateBeanInline &&
+		m.viewMode != ViewAddChildBean && m.viewMode != ViewEditBean &&
 		m.viewMode != ViewLinearImportInline && m.viewMode != ViewPRImportInline && m.viewMode != ViewCreateWork {
 		return ""
 	}
@@ -380,12 +380,12 @@ func (m *planModel) handleMouseWheel(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 
 		// Mouse is in issues area below work panel
 		if scrollUp {
-			if m.beadsCursor > 0 {
-				m.beadsCursor--
+			if m.beansCursor > 0 {
+				m.beansCursor--
 			}
 		} else {
-			if m.beadsCursor < len(m.beadItems)-1 {
-				m.beadsCursor++
+			if m.beansCursor < len(m.beanItems)-1 {
+				m.beansCursor++
 			}
 		}
 		return m, nil
@@ -397,12 +397,12 @@ func (m *planModel) handleMouseWheel(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	if msg.X <= leftPanelWidth+2 {
 		// Issues panel - move cursor
 		if scrollUp {
-			if m.beadsCursor > 0 {
-				m.beadsCursor--
+			if m.beansCursor > 0 {
+				m.beansCursor--
 			}
 		} else {
-			if m.beadsCursor < len(m.beadItems)-1 {
-				m.beadsCursor++
+			if m.beansCursor < len(m.beanItems)-1 {
+				m.beansCursor++
 			}
 		}
 		return m, nil

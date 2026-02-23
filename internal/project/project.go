@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/git"
 	"github.com/sargehq/sarge/internal/logging"
@@ -61,7 +61,7 @@ type Project struct {
 	Root   string        // Project directory path
 	Config *Config       // Parsed config.toml
 	DB     *db.DB        // Tracking database (lazy loaded)
-	Beads  *beads.Client // Beads database client (for issue tracking)
+	Beans  *beans.Client // Beans client (for issue tracking)
 }
 
 // Find finds a project from a flag value or current directory.
@@ -121,15 +121,15 @@ func load(ctx context.Context, root string) (*Project, error) {
 	}
 	proj.DB = database
 
-	// Open the beads client automatically
-	// Use the configured beads path (relative to project root)
-	beadsDBPath := filepath.Join(root, cfg.Beads.Path, "beads.db")
-	beadsClient, err := beads.NewClient(ctx, beads.DefaultClientConfig(beadsDBPath))
+	// Open the beans client automatically
+	// Use the configured beans path (relative to project root)
+	beansDir := filepath.Join(root, cfg.Beans.Path)
+	beansClient, err := beans.NewClient(ctx, beans.ClientConfig{BeansDir: beansDir})
 	if err != nil {
 		database.Close() // Clean up the already-opened DB
-		return nil, fmt.Errorf("failed to open beads database: %w", err)
+		return nil, fmt.Errorf("failed to open beans client: %w", err)
 	}
-	proj.Beads = beadsClient
+	proj.Beans = beansClient
 
 	// Initialize logging to .co/debug.log
 	if err := logging.Init(root); err != nil {
@@ -179,7 +179,7 @@ func CreateWithSelections(ctx context.Context, dir, repoSource string, agentType
 	// 3. Generate mise config and run mise install
 	setupMise(absDir, mainPath, toolSelections)
 
-	// 4. Create config (before beads init, so config exists)
+	// 4. Create config (before beans init, so config exists)
 	cfg := &Config{
 		Project: ProjectConfig{
 			Name:      filepath.Base(absDir),
@@ -196,7 +196,7 @@ func CreateWithSelections(ctx context.Context, dir, repoSource string, agentType
 		Multiplexer: MultiplexerConfig{
 			Type: toolSelections.MultiplexerType,
 		},
-		// Beads path will be set after setupBeads
+		// Beans path will be set after setupBeans
 	}
 
 	// Save config with comprehensive documentation
@@ -206,16 +206,16 @@ func CreateWithSelections(ctx context.Context, dir, repoSource string, agentType
 		return nil, err
 	}
 
-	// 5. Initialize beads (after mise, so bd CLI is available)
-	beadsPath, err := setupBeads(ctx, repoSource, absDir, mainPath)
+	// 5. Initialize beans (after mise, so bd CLI is available)
+	beansPath, err := setupBeans(ctx, repoSource, absDir, mainPath)
 	if err != nil {
 		os.RemoveAll(absDir)
 		return nil, err
 	}
 
-	// Update config with beads path and save again
-	cfg.Beads = BeadsConfig{
-		Path: beadsPath,
+	// Update config with beans path and save again
+	cfg.Beans = BeansConfig{
+		Path: beansPath,
 	}
 	if err := cfg.SaveDocumentedConfig(configPath); err != nil {
 		os.RemoveAll(absDir)
@@ -237,11 +237,11 @@ func CreateWithSelections(ctx context.Context, dir, repoSource string, agentType
 	}, nil
 }
 
-// BeadsPathRepo is the path for beads in the repository (synced with git).
-const BeadsPathRepo = "main/.beads"
+// BeansPathRepo is the path for beans in the repository (synced with git).
+const BeansPathRepo = "main/.beans"
 
-// BeadsPathProject is the path for project-local beads (standalone, not synced).
-const BeadsPathProject = ".co/.beads"
+// BeansPathProject is the path for project-local beans (standalone, not synced).
+const BeansPathProject = ".co/.beans"
 
 // cloneRepo sets up the main/ directory based on the repo source.
 // It only handles cloning/symlinking the repository.
@@ -277,41 +277,31 @@ func cloneRepo(ctx context.Context, source, mainPath string) (repoType string, e
 	return RepoTypeLocal, nil
 }
 
-// setupBeads initializes or connects to beads for the project.
-// Returns the beads path (relative to project root).
-func setupBeads(ctx context.Context, source, projectRoot, mainPath string) (beadsPath string, err error) {
-	// Check if repo already has beads
-	repoBeadsPath := filepath.Join(mainPath, ".beads")
-	if _, err := os.Stat(repoBeadsPath); err == nil {
-		// Repo already has beads - use them
-		fmt.Printf("Using existing beads in %s\n", repoBeadsPath)
-		beadsPath = BeadsPathRepo
-
-		// Regenerate the database from existing JSONL files
-		if err := beads.Reinit(ctx, mainPath); err != nil {
-			return "", fmt.Errorf("failed to initialize beads: %w", err)
-		}
-
-		// Install hooks for repo-based beads
-		if err := beads.InstallHooks(ctx, mainPath); err != nil {
-			return "", fmt.Errorf("failed to install beads hooks: %w", err)
-		}
+// setupBeans initializes or connects to beans for the project.
+// Returns the beans path (relative to project root).
+func setupBeans(ctx context.Context, source, projectRoot, mainPath string) (beansPath string, err error) {
+	// Check if repo already has beans
+	repoBeansPath := filepath.Join(mainPath, ".beans")
+	if _, err := os.Stat(repoBeansPath); err == nil {
+		// Repo already has beans - use them
+		fmt.Printf("Using existing beans in %s\n", repoBeansPath)
+		beansPath = BeansPathRepo
 	} else {
-		// No beads in repo - create project-local beads
-		projectBeadsPath := filepath.Join(projectRoot, ConfigDir, ".beads")
-		fmt.Printf("Initializing project-local beads in %s\n", projectBeadsPath)
-		beadsPath = BeadsPathProject
+		// No beans in repo - create project-local beans
+		projectBeansPath := filepath.Join(projectRoot, ConfigDir, ".beans")
+		fmt.Printf("Initializing project-local beans in %s\n", projectBeansPath)
+		beansPath = BeansPathProject
 
 		// Derive prefix from repo name
 		prefix := repoNameFromSource(source)
 
-		// Initialize beads in project directory (skip hooks - not synced to git)
-		if err := beads.Init(ctx, projectBeadsPath, prefix); err != nil {
-			return "", fmt.Errorf("failed to initialize beads: %w", err)
+		// Initialize beans in project directory
+		if err := beans.Init(ctx, projectBeansPath, prefix); err != nil {
+			return "", fmt.Errorf("failed to initialize beans: %w", err)
 		}
 	}
 
-	return beadsPath, nil
+	return beansPath, nil
 }
 
 // setupMise generates mise config and runs mise install.
@@ -378,9 +368,9 @@ func (p *Project) MainRepoPath() string {
 	return filepath.Join(p.Root, MainDir)
 }
 
-// BeadsPath returns the path to the beads directory.
-func (p *Project) BeadsPath() string {
-	return filepath.Join(p.Root, p.Config.Beads.Path)
+// BeansPath returns the path to the beans directory.
+func (p *Project) BeansPath() string {
+	return filepath.Join(p.Root, p.Config.Beans.Path)
 }
 
 // WorktreePath returns the path where a task's worktree should be created.
@@ -388,12 +378,12 @@ func (p *Project) WorktreePath(taskID string) string {
 	return filepath.Join(p.Root, taskID)
 }
 
-// Close closes any open resources (database and beads client).
+// Close closes any open resources (database and beans client).
 func (p *Project) Close() error {
 	var errs []error
-	if p.Beads != nil {
-		if err := p.Beads.Close(); err != nil {
-			errs = append(errs, fmt.Errorf("closing beads client: %w", err))
+	if p.Beans != nil {
+		if err := p.Beans.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("closing beans client: %w", err))
 		}
 	}
 	if p.DB != nil {

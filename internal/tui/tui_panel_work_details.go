@@ -17,7 +17,7 @@ const (
 	WorkDetailActionRun                                  // Run work (r)
 	WorkDetailActionReview                               // Create review task (v)
 	WorkDetailActionPR                                   // Create PR task (p)
-	WorkDetailActionPlan                                 // Start planning session for bead (p when unassigned bead selected)
+	WorkDetailActionPlan                                 // Start planning session for bean (p when unassigned bean selected)
 	WorkDetailActionNavigateUp                           // Navigate up (k/up)
 	WorkDetailActionNavigateDown                         // Navigate down (j/down)
 	WorkDetailActionRestartOrchestrator                  // Restart orchestrator (o)
@@ -43,7 +43,7 @@ type WorkDetailsPanel struct {
 	// Sub-panels
 	overviewPanel *WorkOverviewPanel // Left panel: work info + tasks list
 	summaryPanel  *WorkSummaryPanel  // Right panel: work overview (when root selected)
-	taskPanel     *WorkTaskPanel     // Right panel: task/bead details
+	taskPanel     *WorkTaskPanel     // Right panel: task/bean details
 
 	// Data reference (shared with sub-panels)
 	focusedWork *progress.WorkProgress
@@ -127,11 +127,11 @@ func (p *WorkDetailsPanel) syncTaskPanel() {
 		return
 	}
 
-	// Check if unassigned bead is selected
+	// Check if unassigned bean is selected
 	unassignedIdx := selectedIndex - tasksEndIdx
-	if unassignedIdx >= 0 && unassignedIdx < len(p.focusedWork.UnassignedBeads) {
-		bead := p.focusedWork.UnassignedBeads[unassignedIdx]
-		p.taskPanel.SetUnassignedBead(&bead)
+	if unassignedIdx >= 0 && unassignedIdx < len(p.focusedWork.UnassignedBeans) {
+		bean := p.focusedWork.UnassignedBeans[unassignedIdx]
+		p.taskPanel.SetUnassignedBean(&bean)
 		return
 	}
 
@@ -222,9 +222,9 @@ func (p *WorkDetailsPanel) GetSelectedTaskID() string {
 	return p.overviewPanel.GetSelectedTaskID()
 }
 
-// GetSelectedBeadIDs returns the bead IDs that should be shown based on current selection.
-func (p *WorkDetailsPanel) GetSelectedBeadIDs() []string {
-	return p.overviewPanel.GetSelectedBeadIDs()
+// GetSelectedBeanIDs returns the bean IDs that should be shown based on current selection.
+func (p *WorkDetailsPanel) GetSelectedBeanIDs() []string {
+	return p.overviewPanel.GetSelectedBeanIDs()
 }
 
 // IsTaskSelected returns true if a task is currently selected (vs root issue)
@@ -237,14 +237,14 @@ func (p *WorkDetailsPanel) IsSelectedTaskFailed() bool {
 	return p.overviewPanel.IsSelectedTaskFailed()
 }
 
-// IsUnassignedBeadSelected returns true if an unassigned bead is currently selected
-func (p *WorkDetailsPanel) IsUnassignedBeadSelected() bool {
-	return p.overviewPanel.IsUnassignedBeadSelected()
+// IsUnassignedBeanSelected returns true if an unassigned bean is currently selected
+func (p *WorkDetailsPanel) IsUnassignedBeanSelected() bool {
+	return p.overviewPanel.IsUnassignedBeanSelected()
 }
 
-// GetSelectedUnassignedBeadID returns the ID of the selected unassigned bead
-func (p *WorkDetailsPanel) GetSelectedUnassignedBeadID() string {
-	return p.overviewPanel.GetSelectedUnassignedBeadID()
+// GetSelectedUnassignedBeanID returns the ID of the selected unassigned bean
+func (p *WorkDetailsPanel) GetSelectedUnassignedBeanID() string {
+	return p.overviewPanel.GetSelectedUnassignedBeanID()
 }
 
 // SetSelectedTaskID sets selection to the task with given ID
@@ -342,7 +342,7 @@ func (p *WorkDetailsPanel) renderRightPanel(_, panelWidth int) string {
 		return p.summaryPanel.Render(panelWidth)
 	}
 
-	// Show task or unassigned bead details using task panel
+	// Show task or unassigned bean details using task panel
 	return p.taskPanel.Render(panelWidth)
 }
 
@@ -387,8 +387,8 @@ func (p *WorkDetailsPanel) Update(msg tea.KeyMsg) (tea.Cmd, WorkDetailAction) {
 		case "v":
 			return cmd, WorkDetailActionReview
 		case "p":
-			// 'p' = plan when unassigned bead selected, PR otherwise
-			if p.IsUnassignedBeadSelected() {
+			// 'p' = plan when unassigned bean selected, PR otherwise
+			if p.IsUnassignedBeanSelected() {
 				return cmd, WorkDetailActionPlan
 			}
 			return cmd, WorkDetailActionPR
@@ -438,8 +438,8 @@ func (p *WorkDetailsPanel) Update(msg tea.KeyMsg) (tea.Cmd, WorkDetailAction) {
 	case "v":
 		return nil, WorkDetailActionReview
 	case "p":
-		// 'p' = plan when unassigned bead selected, PR otherwise
-		if p.IsUnassignedBeadSelected() {
+		// 'p' = plan when unassigned bean selected, PR otherwise
+		if p.IsUnassignedBeanSelected() {
 			return nil, WorkDetailActionPlan
 		}
 		return nil, WorkDetailActionPR
@@ -488,7 +488,7 @@ func (p *WorkDetailsPanel) DetectClickedTask(msg tea.MouseMsg) string {
 }
 
 // DetectHoveredItem determines which item is at the mouse position for hover detection.
-// Returns the absolute index (0 = root, 1+ = tasks, N+ = unassigned beads), or -1 if not over an item.
+// Returns the absolute index (0 = root, 1+ = tasks, N+ = unassigned beans), or -1 if not over an item.
 func (p *WorkDetailsPanel) DetectHoveredItem(msg tea.MouseMsg) int {
 	return p.overviewPanel.DetectHoveredItem(msg)
 }

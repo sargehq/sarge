@@ -7,7 +7,7 @@ import (
 
 	"github.com/sargehq/sarge/internal/agents"
 	agenttypes "github.com/sargehq/sarge/internal/agents/types"
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/project"
 	"github.com/sargehq/sarge/internal/worktree"
@@ -42,20 +42,20 @@ func taskInputForTask(ctx context.Context, proj *project.Project, task *db.Task,
 
 	switch task.TaskType {
 	case "estimate":
-		beadIDs, err := beadIDsForTask(ctx, proj, task.ID)
+		beanIDs, err := beanIDsForTask(ctx, proj, task.ID)
 		if err != nil {
 			return nil, err
 		}
 		params.Type = agenttypes.TaskTypeEstimate
-		params.BeadIDs = beadIDs
+		params.BeanIDs = beanIDs
 
 	case "implement":
-		beadIDs, err := beadIDsForTask(ctx, proj, task.ID)
+		beanIDs, err := beanIDsForTask(ctx, proj, task.ID)
 		if err != nil {
 			return nil, err
 		}
 		params.Type = agenttypes.TaskTypeImplement
-		params.BeadIDs = beadIDs
+		params.BeanIDs = beanIDs
 
 	case "review":
 		params.Type = agenttypes.TaskTypeReview
@@ -130,8 +130,8 @@ func logAnalysisInputFromMetadata(ctx context.Context, proj *project.Project, ta
 	}
 	_ = logFile.Close()
 
-	// Fetch existing open beads for this work to help Claude match against them
-	existingBeads := fetchExistingBeadSummaries(ctx, proj, work.ID)
+	// Fetch existing open beans for this work to help Claude match against them
+	existingBeans := fetchExistingBeanSummaries(ctx, proj, work.ID)
 
 	return &TaskInput{
 		Params: agenttypes.TaskParams{
@@ -143,90 +143,90 @@ func logAnalysisInputFromMetadata(ctx context.Context, proj *project.Project, ta
 			WorkflowName:  workflowName,
 			JobName:       jobName,
 			LogFilePath:   logFile.Name(),
-			ExistingBeads: existingBeads,
+			ExistingBeans: existingBeans,
 		},
 		TempFilePath: logFile.Name(),
 	}, nil
 }
 
-// fetchExistingBeadSummaries fetches open beads for the given work and converts them to summaries for matching.
-func fetchExistingBeadSummaries(ctx context.Context, proj *project.Project, workID string) []agenttypes.BeadSummary {
-	// Get bead IDs assigned to this work
-	workBeads, err := proj.DB.GetWorkBeads(ctx, workID)
+// fetchExistingBeanSummaries fetches open beans for the given work and converts them to summaries for matching.
+func fetchExistingBeanSummaries(ctx context.Context, proj *project.Project, workID string) []agenttypes.BeanSummary {
+	// Get bean IDs assigned to this work
+	workBeans, err := proj.DB.GetWorkBeans(ctx, workID)
 	if err != nil {
-		fmt.Printf("Warning: failed to fetch work beads for deduplication: %v\n", err)
+		fmt.Printf("Warning: failed to fetch work beans for deduplication: %v\n", err)
 		return nil
 	}
 
-	if len(workBeads) == 0 {
+	if len(workBeans) == 0 {
 		return nil
 	}
 
-	// Extract bead IDs
-	beadIDs := make([]string, len(workBeads))
-	for i, wb := range workBeads {
-		beadIDs[i] = wb.BeadID
+	// Extract bean IDs
+	beanIDs := make([]string, len(workBeans))
+	for i, wb := range workBeans {
+		beanIDs[i] = wb.BeanID
 	}
 
-	// Fetch bead details from beads database
-	result, err := proj.Beads.GetBeadsWithDeps(ctx, beadIDs)
+	// Fetch bean details from beans database
+	result, err := proj.Beans.GetBeansWithDeps(ctx, beanIDs)
 	if err != nil {
-		fmt.Printf("Warning: failed to fetch bead details for deduplication: %v\n", err)
+		fmt.Printf("Warning: failed to fetch bean details for deduplication: %v\n", err)
 		return nil
 	}
 
-	// Filter to only open beads and convert to summaries
-	summaries := make([]agenttypes.BeadSummary, 0, len(beadIDs))
-	for _, beadID := range beadIDs {
-		if bwd := result.GetBead(beadID); bwd != nil && bwd.Bead.Status == beads.StatusOpen {
-			summaries = append(summaries, agenttypes.BeadSummary{
-				ID:          bwd.Bead.ID,
-				Title:       bwd.Bead.Title,
-				Description: bwd.Bead.Description,
+	// Filter to only open beans and convert to summaries
+	summaries := make([]agenttypes.BeanSummary, 0, len(beanIDs))
+	for _, beanID := range beanIDs {
+		if bwd := result.GetBean(beanID); bwd != nil && bwd.Bean.Status == beans.StatusTodo {
+			summaries = append(summaries, agenttypes.BeanSummary{
+				ID:          bwd.Bean.ID,
+				Title:       bwd.Bean.Title,
+				Body: bwd.Bean.Body,
 			})
 		}
 	}
 	return summaries
 }
 
-// beadIDsForTask returns the bead IDs associated with a task, resolving them through
-// the beads database to get full details and extracting just the IDs.
-func beadIDsForTask(ctx context.Context, proj *project.Project, taskID string) ([]string, error) {
-	beadList, err := getBeadsForTask(ctx, proj, taskID)
+// beanIDsForTask returns the bean IDs associated with a task, resolving them through
+// the beans database to get full details and extracting just the IDs.
+func beanIDsForTask(ctx context.Context, proj *project.Project, taskID string) ([]string, error) {
+	beanList, err := getBeansForTask(ctx, proj, taskID)
 	if err != nil {
 		return nil, err
 	}
-	ids := make([]string, len(beadList))
-	for i, b := range beadList {
+	ids := make([]string, len(beanList))
+	for i, b := range beanList {
 		ids[i] = b.ID
 	}
 	return ids, nil
 }
 
-// getBeadsForTask retrieves the beads associated with a task.
-func getBeadsForTask(ctx context.Context, proj *project.Project, taskID string) ([]beads.Bead, error) {
-	beadIDs, err := proj.DB.GetTaskBeads(ctx, taskID)
+// getBeansForTask retrieves the beans associated with a task.
+func getBeansForTask(ctx context.Context, proj *project.Project, taskID string) ([]beans.Bean, error) {
+	beanIDs, err := proj.DB.GetTaskBeans(ctx, taskID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get task beads: %w", err)
+		return nil, fmt.Errorf("failed to get task beans: %w", err)
 	}
 
-	// Get beads with dependencies
-	result, err := proj.Beads.GetBeadsWithDeps(ctx, beadIDs)
+	// Get beans with dependencies
+	result, err := proj.Beans.GetBeansWithDeps(ctx, beanIDs)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get beads: %w", err)
+		return nil, fmt.Errorf("failed to get beans: %w", err)
 	}
 
-	// Convert map to slice in order of beadIDs
-	var beadList []beads.Bead
-	for _, beadID := range beadIDs {
-		if b, ok := result.Beads[beadID]; ok {
-			beadList = append(beadList, b)
+	// Convert map to slice in order of beanIDs
+	var beanList []beans.Bean
+	for _, beanID := range beanIDs {
+		if b, ok := result.Beans[beanID]; ok {
+			beanList = append(beanList, b)
 		} else {
-			fmt.Printf("Warning: bead %s not found\n", beadID)
+			fmt.Printf("Warning: bean %s not found\n", beanID)
 		}
 	}
 
-	return beadList, nil
+	return beanList, nil
 }
 
 // processTask processes a single task by ID using inline execution.

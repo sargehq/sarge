@@ -43,11 +43,11 @@ func TestCacheComplexity(t *testing.T) {
 	ctx := context.Background()
 
 	// Cache a complexity estimate
-	err := database.CacheComplexity(ctx, "bead-1", "hash123", 5, 10000)
+	err := database.CacheComplexity(ctx, "bean-1", "hash123", 5, 10000)
 	require.NoError(t, err, "CacheComplexity failed")
 
 	// Retrieve it
-	score, tokens, found, err := database.GetCachedComplexity(ctx, "bead-1", "hash123")
+	score, tokens, found, err := database.GetCachedComplexity(ctx, "bean-1", "hash123")
 	require.NoError(t, err, "GetCachedComplexity failed")
 
 	assert.True(t, found, "expected to find cached complexity")
@@ -55,7 +55,7 @@ func TestCacheComplexity(t *testing.T) {
 	assert.Equal(t, 10000, tokens, "expected tokens 10000")
 
 	// Different hash should not match
-	_, _, found, err = database.GetCachedComplexity(ctx, "bead-1", "differenthash")
+	_, _, found, err = database.GetCachedComplexity(ctx, "bean-1", "differenthash")
 	require.NoError(t, err, "GetCachedComplexity failed")
 	assert.False(t, found, "expected no result for different hash")
 }
@@ -66,18 +66,18 @@ func TestCacheUpdate(t *testing.T) {
 	ctx := context.Background()
 
 	// Cache initial estimate
-	database.CacheComplexity(ctx, "bead-1", "hash1", 3, 5000)
+	database.CacheComplexity(ctx, "bean-1", "hash1", 3, 5000)
 
 	// Update with new hash (description changed)
-	err := database.CacheComplexity(ctx, "bead-1", "hash2", 7, 15000)
+	err := database.CacheComplexity(ctx, "bean-1", "hash2", 7, 15000)
 	require.NoError(t, err, "CacheComplexity update failed")
 
 	// Old hash should not match
-	_, _, found, _ := database.GetCachedComplexity(ctx, "bead-1", "hash1")
+	_, _, found, _ := database.GetCachedComplexity(ctx, "bean-1", "hash1")
 	assert.False(t, found, "old hash should not match after update")
 
 	// New hash should match
-	score, tokens, found, err := database.GetCachedComplexity(ctx, "bead-1", "hash2")
+	score, tokens, found, err := database.GetCachedComplexity(ctx, "bean-1", "hash2")
 	require.NoError(t, err, "GetCachedComplexity failed")
 	assert.True(t, found, "expected to find updated complexity")
 	assert.Equal(t, 7, score, "expected score 7")

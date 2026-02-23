@@ -33,7 +33,7 @@ func TestGenerateConfigWithSelections_DefaultSelections(t *testing.T) {
 	assert.NotContains(t, s, "# gh = \"latest\"")
 	assert.Contains(t, s, "zellij = \"latest\"")
 	assert.NotContains(t, s, "# zellij = \"latest\"")
-	assert.Contains(t, s, "beads")
+	assert.Contains(t, s, "beans")
 }
 
 func TestGenerateConfigWithSelections_AgentClaudeActive(t *testing.T) {
@@ -172,7 +172,7 @@ func TestGenerateConfigWithSelections_AllCommented(t *testing.T) {
 	require.NoError(t, err)
 
 	s := string(readMiseConfig(t, dir))
-	assert.Contains(t, s, "beads")
+	assert.Contains(t, s, "beans")
 	assert.Contains(t, s, "# claude = \"latest\"")
 	assert.Contains(t, s, "# gh = \"latest\"")
 	assert.Contains(t, s, "# zellij = \"latest\"")

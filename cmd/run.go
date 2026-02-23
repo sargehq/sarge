@@ -26,13 +26,13 @@ var (
 var runCmd = &cobra.Command{
 	Use:   "run [work-id]",
 	Short: "Execute pending tasks for a work unit",
-	Long: `Run creates tasks from work beads and executes them.
+	Long: `Run creates tasks from work beans and executes them.
 
-Before spawning the orchestrator, any unassigned beads in work_beads
+Before spawning the orchestrator, any unassigned beans in work_beans
 are automatically converted to tasks based on their grouping.
 
 Flags:
-  --plan     Use LLM complexity estimation to auto-group beads into tasks
+  --plan     Use LLM complexity estimation to auto-group beans into tasks
   --auto     Run full automated workflow (implement, review/fix loop, PR)
 
 Without arguments:
@@ -50,7 +50,7 @@ func init() {
 	runCmd.Flags().StringVar(&flagProject, "project", "", "project directory (default: auto-detect from cwd)")
 	runCmd.Flags().StringVar(&flagWork, "work", "", "work ID to run (default: auto-detect from cwd)")
 	runCmd.Flags().BoolVar(&flagAutoClose, "auto-close", false, "automatically close tabs after task completion")
-	runCmd.Flags().BoolVar(&flagRunPlan, "plan", false, "use LLM complexity estimation to auto-group beads")
+	runCmd.Flags().BoolVar(&flagRunPlan, "plan", false, "use LLM complexity estimation to auto-group beans")
 	runCmd.Flags().BoolVar(&flagRunAuto, "auto", false, "run full automated workflow (implement, review/fix, PR)")
 	runCmd.Flags().BoolVar(&flagForceEstimate, "force-estimate", false, "force re-estimation of complexity (with --plan)")
 }
@@ -112,7 +112,7 @@ func runTasks(cmd *cobra.Command, args []string) error {
 
 	// Validate that work has a root issue
 	if workRecord.RootIssueID == "" {
-		return fmt.Errorf("work %s has no root issue associated. Create work with a bead ID using 'sarge work create <bead-id>'", workRecord.ID)
+		return fmt.Errorf("work %s has no root issue associated. Create work with a bean ID using 'sarge work create <bean-id>'", workRecord.ID)
 	}
 
 	// Check if worktree exists
@@ -149,7 +149,7 @@ func runTasks(cmd *cobra.Command, args []string) error {
 	}
 
 	if result.TasksCreated > 0 {
-		fmt.Printf("\nCreated %d task(s) from work beads.\n", result.TasksCreated)
+		fmt.Printf("\nCreated %d task(s) from work beans.\n", result.TasksCreated)
 	}
 
 	if result.OrchestratorSpawned {

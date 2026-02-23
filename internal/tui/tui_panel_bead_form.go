@@ -9,49 +9,58 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	zone "github.com/lrstanley/bubblezone"
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 )
 
-// BeadFormMode indicates which mode the form is in
-type BeadFormMode int
+// BeanFormMode indicates which mode the form is in
+type BeanFormMode int
 
 const (
-	BeadFormModeCreate BeadFormMode = iota
-	BeadFormModeAddChild
-	BeadFormModeEdit
+	BeanFormModeCreate BeanFormMode = iota
+	BeanFormModeAddChild
+	BeanFormModeEdit
 )
 
-// BeadFormAction represents an action result from the panel
-type BeadFormAction int
+// BeanFormAction represents an action result from the panel
+type BeanFormAction int
 
 const (
-	BeadFormActionNone BeadFormAction = iota
-	BeadFormActionCancel
-	BeadFormActionSubmit
+	BeanFormActionNone BeanFormAction = iota
+	BeanFormActionCancel
+	BeanFormActionSubmit
 )
 
-// beadStatuses is the list of valid bead statuses for editing
-var beadStatuses = []string{
-	beads.StatusOpen,
-	beads.StatusInProgress,
-	beads.StatusBlocked,
-	beads.StatusDeferred,
-	beads.StatusClosed,
+// beanStatuses is the list of valid bean statuses for editing
+var beanStatuses = []string{
+	beans.StatusTodo,
+	beans.StatusInProgress,
+	beans.StatusDraft,
+	beans.StatusScrapped,
+	beans.StatusCompleted,
 }
 
-// BeadFormResult contains form values when submitted
-type BeadFormResult struct {
+// beanPriorities is the ordered list of bean priority values for the form.
+var beanPriorities = []string{
+	beans.PriorityCritical,
+	beans.PriorityHigh,
+	beans.PriorityNormal,
+	beans.PriorityLow,
+	beans.PriorityDeferred,
+}
+
+// BeanFormResult contains form values when submitted
+type BeanFormResult struct {
 	Title       string
 	Description string
-	BeadType    string
-	Priority    int
+	BeanType    string
+	Priority    string
 	Status      string // Only used in edit mode
-	EditBeadID  string // Non-empty when editing
+	EditBeanID  string // Non-empty when editing
 	ParentID    string // Non-empty when adding child
 }
 
-// BeadFormPanel renders the bead create/edit form.
-type BeadFormPanel struct {
+// BeanFormPanel renders the bean create/edit form.
+type BeanFormPanel struct {
 	// Dimensions
 	width  int
 	height int
@@ -60,24 +69,24 @@ type BeadFormPanel struct {
 	focused bool
 
 	// Form mode
-	mode       BeadFormMode
-	editBeadID string
+	mode       BeanFormMode
+	editBeanID string
 	parentID   string
 
 	// Form state (owned directly)
 	titleInput   textinput.Model
 	descTextarea textarea.Model
-	beadType     int
+	beanType     int
 	priority     int
-	status       int // Index into beadStatuses
+	status       int // Index into beanStatuses
 	focusIdx     int
 
 	// Mouse state
 	hoveredButton string
 }
 
-// NewBeadFormPanel creates a new BeadFormPanel
-func NewBeadFormPanel() *BeadFormPanel {
+// NewBeanFormPanel creates a new BeanFormPanel
+func NewBeanFormPanel() *BeanFormPanel {
 	titleInput := textinput.New()
 	titleInput.Placeholder = "Enter title..."
 	titleInput.CharLimit = 100
@@ -89,7 +98,7 @@ func NewBeadFormPanel() *BeadFormPanel {
 	descTextarea.SetWidth(60)
 	descTextarea.SetHeight(4)
 
-	return &BeadFormPanel{
+	return &BeanFormPanel{
 		width:        60,
 		height:       20,
 		priority:     2,
@@ -99,44 +108,51 @@ func NewBeadFormPanel() *BeadFormPanel {
 }
 
 // Init initializes the panel and returns any initial command
-func (p *BeadFormPanel) Init() tea.Cmd {
+func (p *BeanFormPanel) Init() tea.Cmd {
 	p.titleInput.Focus()
 	return textinput.Blink
 }
 
-// Reset resets the form to initial state for creating a new bead
-func (p *BeadFormPanel) Reset() {
+// Reset resets the form to initial state for creating a new bean
+func (p *BeanFormPanel) Reset() {
 	p.titleInput.Reset()
 	p.titleInput.Focus()
 	p.descTextarea.Reset()
-	p.beadType = 0
+	p.beanType = 0
 	p.priority = 2
 	p.focusIdx = 0
-	p.mode = BeadFormModeCreate
-	p.editBeadID = ""
+	p.mode = BeanFormModeCreate
+	p.editBeanID = ""
 	p.parentID = ""
 }
 
-// SetEditMode configures the form for editing an existing bead
-func (p *BeadFormPanel) SetEditMode(beadID, title, description, beadType string, priority int, status string) {
-	p.mode = BeadFormModeEdit
-	p.editBeadID = beadID
+// SetEditMode configures the form for editing an existing bean
+func (p *BeanFormPanel) SetEditMode(beanID, title, description, beanType string, priority string, status string) {
+	p.mode = BeanFormModeEdit
+	p.editBeanID = beanID
 	p.parentID = ""
 	p.titleInput.SetValue(title)
 	p.titleInput.Focus()
 	p.descTextarea.SetValue(description)
 	// Find the type index
-	p.beadType = 0
-	for i, t := range beadTypes {
-		if t == beadType {
-			p.beadType = i
+	p.beanType = 0
+	for i, t := range beanTypes {
+		if t == beanType {
+			p.beanType = i
 			break
 		}
 	}
-	p.priority = priority
+	// Find the priority index
+	p.priority = 2 // default to normal
+	for i, pr := range beanPriorities {
+		if pr == priority {
+			p.priority = i
+			break
+		}
+	}
 	// Find the status index
 	p.status = 0
-	for i, s := range beadStatuses {
+	for i, s := range beanStatuses {
 		if s == status {
 			p.status = i
 			break
@@ -145,20 +161,20 @@ func (p *BeadFormPanel) SetEditMode(beadID, title, description, beadType string,
 	p.focusIdx = 0
 }
 
-// SetAddChildMode configures the form for adding a child bead
-func (p *BeadFormPanel) SetAddChildMode(parentID string) {
+// SetAddChildMode configures the form for adding a child bean
+func (p *BeanFormPanel) SetAddChildMode(parentID string) {
 	p.Reset()
-	p.mode = BeadFormModeAddChild
+	p.mode = BeanFormModeAddChild
 	p.parentID = parentID
 }
 
 // Update handles key events and returns an action
-func (p *BeadFormPanel) Update(msg tea.KeyMsg) (tea.Cmd, BeadFormAction) {
+func (p *BeanFormPanel) Update(msg tea.KeyMsg) (tea.Cmd, BeanFormAction) {
 	// Check escape/cancel keys
 	if msg.Type == tea.KeyEsc || msg.String() == "esc" {
 		p.titleInput.Blur()
 		p.descTextarea.Blur()
-		return nil, BeadFormActionCancel
+		return nil, BeanFormActionCancel
 	}
 
 	// Focus indices:
@@ -168,7 +184,7 @@ func (p *BeadFormPanel) Update(msg tea.KeyMsg) (tea.Cmd, BeadFormAction) {
 	descIdx := 3
 	okIdx := 4
 	cancelIdx := 5
-	if p.mode == BeadFormModeEdit {
+	if p.mode == BeanFormModeEdit {
 		maxFocusIdx = 6
 		descIdx = 4
 		okIdx = 5
@@ -192,7 +208,7 @@ func (p *BeadFormPanel) Update(msg tea.KeyMsg) (tea.Cmd, BeadFormAction) {
 		} else if p.focusIdx == descIdx {
 			p.descTextarea.Focus()
 		}
-		return nil, BeadFormActionNone
+		return nil, BeanFormActionNone
 	}
 
 	// Shift+Tab goes backwards
@@ -215,7 +231,7 @@ func (p *BeadFormPanel) Update(msg tea.KeyMsg) (tea.Cmd, BeadFormAction) {
 		} else if p.focusIdx == descIdx {
 			p.descTextarea.Focus()
 		}
-		return nil, BeadFormActionNone
+		return nil, BeanFormActionNone
 	}
 
 	// Enter key handling depends on focused element
@@ -225,22 +241,22 @@ func (p *BeadFormPanel) Update(msg tea.KeyMsg) (tea.Cmd, BeadFormAction) {
 			if p.focusIdx != descIdx {
 				title := strings.TrimSpace(p.titleInput.Value())
 				if title != "" {
-					return nil, BeadFormActionSubmit
+					return nil, BeanFormActionSubmit
 				}
-				return nil, BeadFormActionNone
+				return nil, BeanFormActionNone
 			}
 		}
 		if p.focusIdx == okIdx { // Ok button - submit form
 			title := strings.TrimSpace(p.titleInput.Value())
 			if title != "" {
-				return nil, BeadFormActionSubmit
+				return nil, BeanFormActionSubmit
 			}
-			return nil, BeadFormActionNone
+			return nil, BeanFormActionNone
 		}
 		if p.focusIdx == cancelIdx { // Cancel button - cancel form
 			p.titleInput.Blur()
 			p.descTextarea.Blur()
-			return nil, BeadFormActionCancel
+			return nil, BeanFormActionCancel
 		}
 		// For description textarea, Enter adds a newline (handled below)
 	}
@@ -249,15 +265,15 @@ func (p *BeadFormPanel) Update(msg tea.KeyMsg) (tea.Cmd, BeadFormAction) {
 	if msg.String() == "ctrl+enter" && p.focusIdx == descIdx {
 		title := strings.TrimSpace(p.titleInput.Value())
 		if title != "" {
-			return nil, BeadFormActionSubmit
+			return nil, BeanFormActionSubmit
 		}
-		return nil, BeadFormActionNone
+		return nil, BeanFormActionNone
 	}
 
 	// Handle input based on focused element
 	// In edit mode, status is at index 3, otherwise description is at index 3
 	statusIdx := -1 // Not available in create/add-child modes
-	if p.mode == BeadFormModeEdit {
+	if p.mode == BeanFormModeEdit {
 		statusIdx = 3
 	}
 
@@ -265,24 +281,24 @@ func (p *BeadFormPanel) Update(msg tea.KeyMsg) (tea.Cmd, BeadFormAction) {
 	case 0: // Title input
 		var cmd tea.Cmd
 		p.titleInput, cmd = p.titleInput.Update(msg)
-		return cmd, BeadFormActionNone
+		return cmd, BeanFormActionNone
 
 	case 1: // Type selector
 		switch msg.String() {
 		case "j", "down", "right":
-			p.beadType = (p.beadType + 1) % len(beadTypes)
+			p.beanType = (p.beanType + 1) % len(beanTypes)
 		case "k", "up", "left":
-			p.beadType--
-			if p.beadType < 0 {
-				p.beadType = len(beadTypes) - 1
+			p.beanType--
+			if p.beanType < 0 {
+				p.beanType = len(beanTypes) - 1
 			}
 		}
-		return nil, BeadFormActionNone
+		return nil, BeanFormActionNone
 
 	case 2: // Priority
 		switch msg.String() {
 		case "j", "down", "right", "-":
-			if p.priority < 4 {
+			if p.priority < len(beanPriorities)-1 {
 				p.priority++
 			}
 		case "k", "up", "left", "+", "=":
@@ -290,7 +306,7 @@ func (p *BeadFormPanel) Update(msg tea.KeyMsg) (tea.Cmd, BeadFormAction) {
 				p.priority--
 			}
 		}
-		return nil, BeadFormActionNone
+		return nil, BeanFormActionNone
 
 	default:
 		// Handle dynamic indices based on mode
@@ -298,21 +314,21 @@ func (p *BeadFormPanel) Update(msg tea.KeyMsg) (tea.Cmd, BeadFormAction) {
 			// Status selector (edit mode only)
 			switch msg.String() {
 			case "j", "down", "right":
-				p.status = (p.status + 1) % len(beadStatuses)
+				p.status = (p.status + 1) % len(beanStatuses)
 			case "k", "up", "left":
 				p.status--
 				if p.status < 0 {
-					p.status = len(beadStatuses) - 1
+					p.status = len(beanStatuses) - 1
 				}
 			}
-			return nil, BeadFormActionNone
+			return nil, BeanFormActionNone
 		}
 
 		if p.focusIdx == descIdx {
 			// Description textarea
 			var cmd tea.Cmd
 			p.descTextarea, cmd = p.descTextarea.Update(msg)
-			return cmd, BeadFormActionNone
+			return cmd, BeanFormActionNone
 		}
 
 		if p.focusIdx == okIdx {
@@ -320,10 +336,10 @@ func (p *BeadFormPanel) Update(msg tea.KeyMsg) (tea.Cmd, BeadFormAction) {
 			if msg.String() == " " {
 				title := strings.TrimSpace(p.titleInput.Value())
 				if title != "" {
-					return nil, BeadFormActionSubmit
+					return nil, BeanFormActionSubmit
 				}
 			}
-			return nil, BeadFormActionNone
+			return nil, BeanFormActionNone
 		}
 
 		if p.focusIdx == cancelIdx {
@@ -331,67 +347,67 @@ func (p *BeadFormPanel) Update(msg tea.KeyMsg) (tea.Cmd, BeadFormAction) {
 			if msg.String() == " " {
 				p.titleInput.Blur()
 				p.descTextarea.Blur()
-				return nil, BeadFormActionCancel
+				return nil, BeanFormActionCancel
 			}
-			return nil, BeadFormActionNone
+			return nil, BeanFormActionNone
 		}
 	}
 
-	return nil, BeadFormActionNone
+	return nil, BeanFormActionNone
 }
 
 // GetResult returns the current form values
-func (p *BeadFormPanel) GetResult() BeadFormResult {
-	return BeadFormResult{
+func (p *BeanFormPanel) GetResult() BeanFormResult {
+	return BeanFormResult{
 		Title:       strings.TrimSpace(p.titleInput.Value()),
 		Description: strings.TrimSpace(p.descTextarea.Value()),
-		BeadType:    beadTypes[p.beadType],
-		Priority:    p.priority,
-		Status:      beadStatuses[p.status],
-		EditBeadID:  p.editBeadID,
+		BeanType:    beanTypes[p.beanType],
+		Priority:    beanPriorities[p.priority],
+		Status:      beanStatuses[p.status],
+		EditBeanID:  p.editBeanID,
 		ParentID:    p.parentID,
 	}
 }
 
 // GetMode returns the current form mode
-func (p *BeadFormPanel) GetMode() BeadFormMode {
+func (p *BeanFormPanel) GetMode() BeanFormMode {
 	return p.mode
 }
 
 // Blur removes focus from all inputs
-func (p *BeadFormPanel) Blur() {
+func (p *BeanFormPanel) Blur() {
 	p.titleInput.Blur()
 	p.descTextarea.Blur()
 }
 
 // SetSize updates the panel dimensions
-func (p *BeadFormPanel) SetSize(width, height int) {
+func (p *BeanFormPanel) SetSize(width, height int) {
 	p.width = width
 	p.height = height
 }
 
 // SetFocus updates the focus state
-func (p *BeadFormPanel) SetFocus(focused bool) {
+func (p *BeanFormPanel) SetFocus(focused bool) {
 	p.focused = focused
 }
 
 // IsFocused returns whether the panel is focused
-func (p *BeadFormPanel) IsFocused() bool {
+func (p *BeanFormPanel) IsFocused() bool {
 	return p.focused
 }
 
 // SetMode updates the form mode (deprecated - use Reset/SetEditMode/SetAddChildMode)
-func (p *BeadFormPanel) SetMode(mode BeadFormMode, editBeadID, parentID string) {
+func (p *BeanFormPanel) SetMode(mode BeanFormMode, editBeanID, parentID string) {
 	p.mode = mode
-	p.editBeadID = editBeadID
+	p.editBeanID = editBeanID
 	p.parentID = parentID
 }
 
 // SetFormState updates the form state (deprecated - panel owns its state now)
-func (p *BeadFormPanel) SetFormState(
+func (p *BeanFormPanel) SetFormState(
 	titleInput *textinput.Model,
 	descTextarea *textarea.Model,
-	beadType int,
+	beanType int,
 	priority int,
 	focusIdx int,
 ) {
@@ -400,12 +416,12 @@ func (p *BeadFormPanel) SetFormState(
 }
 
 // SetHoveredButton updates which button is hovered
-func (p *BeadFormPanel) SetHoveredButton(button string) {
+func (p *BeanFormPanel) SetHoveredButton(button string) {
 	p.hoveredButton = button
 }
 
-// Render returns the bead form content
-func (p *BeadFormPanel) Render(visibleLines int) string {
+// Render returns the bean form content
+func (p *BeanFormPanel) Render(visibleLines int) string {
 	var content strings.Builder
 
 	// Adapt input widths to available space
@@ -426,7 +442,7 @@ func (p *BeadFormPanel) Render(visibleLines int) string {
 	descIdx := 3
 	okIdx := 4
 	cancelIdx := 5
-	if p.mode == BeadFormModeEdit {
+	if p.mode == BeanFormModeEdit {
 		statusIdx = 3
 		descIdx = 4
 		okIdx = 5
@@ -439,7 +455,7 @@ func (p *BeadFormPanel) Render(visibleLines int) string {
 	descFocused := p.focusIdx == descIdx
 
 	// Type rotator display
-	currentType := beadTypes[p.beadType]
+	currentType := beanTypes[p.beanType]
 	var typeDisplay string
 	if typeFocused {
 		typeDisplay = fmt.Sprintf("< %s >", tuiValueStyle.Render(currentType))
@@ -448,18 +464,18 @@ func (p *BeadFormPanel) Render(visibleLines int) string {
 	}
 
 	// Priority display
-	priorityLabels := []string{"P0 (critical)", "P1 (high)", "P2 (medium)", "P3 (low)", "P4 (backlog)"}
+	currentPriority := beanPriorities[p.priority]
 	var priorityDisplay string
 	if priorityFocused {
-		priorityDisplay = fmt.Sprintf("< %s >", tuiValueStyle.Render(priorityLabels[p.priority]))
+		priorityDisplay = fmt.Sprintf("< %s >", tuiValueStyle.Render(currentPriority))
 	} else {
-		priorityDisplay = priorityLabels[p.priority]
+		priorityDisplay = currentPriority
 	}
 
 	// Status display (edit mode only)
 	var statusDisplay string
-	if p.mode == BeadFormModeEdit {
-		currentStatus := beadStatuses[p.status]
+	if p.mode == BeanFormModeEdit {
+		currentStatus := beanStatuses[p.status]
 		if statusFocused {
 			statusDisplay = fmt.Sprintf("< %s >", tuiValueStyle.Render(currentStatus))
 		} else {
@@ -492,9 +508,9 @@ func (p *BeadFormPanel) Render(visibleLines int) string {
 	// Determine mode and render appropriate header
 	var header string
 	switch p.mode {
-	case BeadFormModeEdit:
-		header = "Edit Issue " + issueIDStyle.Render(p.editBeadID)
-	case BeadFormModeAddChild:
+	case BeanFormModeEdit:
+		header = "Edit Issue " + issueIDStyle.Render(p.editBeanID)
+	case BeanFormModeAddChild:
 		// Include parent on same line to save vertical space
 		header = "Add Child to " + tuiValueStyle.Render(p.parentID)
 	default:
@@ -516,7 +532,7 @@ func (p *BeadFormPanel) Render(visibleLines int) string {
 	content.WriteString("\n")
 
 	// Show status field only in edit mode
-	if p.mode == BeadFormModeEdit {
+	if p.mode == BeanFormModeEdit {
 		content.WriteString(statusLabel + " " + statusDisplay)
 		content.WriteString("\n")
 	}
@@ -541,7 +557,7 @@ func (p *BeadFormPanel) Render(visibleLines int) string {
 }
 
 // RenderWithPanel returns the panel with border styling
-func (p *BeadFormPanel) RenderWithPanel(contentHeight int) string {
+func (p *BeanFormPanel) RenderWithPanel(contentHeight int) string {
 	panelContent := p.Render(contentHeight - 3)
 
 	panelStyle := tuiPanelStyle.Width(p.width).Height(contentHeight - 2)
@@ -552,9 +568,9 @@ func (p *BeadFormPanel) RenderWithPanel(contentHeight int) string {
 	// Determine title based on mode
 	var title string
 	switch p.mode {
-	case BeadFormModeEdit:
+	case BeanFormModeEdit:
 		title = "Edit Issue"
-	case BeadFormModeAddChild:
+	case BeanFormModeAddChild:
 		title = "Add Child"
 	default:
 		title = "Create Issue"

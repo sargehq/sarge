@@ -31,8 +31,8 @@ CREATE TABLE works (
 CREATE INDEX idx_works_status ON works(status);
 CREATE INDEX idx_works_root_issue_id ON works(root_issue_id);
 
--- Beads table: tracks individual beads
-CREATE TABLE beads (
+-- Beans table: tracks individual beans
+CREATE TABLE beans (
     id TEXT PRIMARY KEY,
     status TEXT NOT NULL DEFAULT 'pending',
     title TEXT NOT NULL DEFAULT '',
@@ -47,9 +47,9 @@ CREATE TABLE beads (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_beads_status ON beads(status);
+CREATE INDEX idx_beans_status ON beans(status);
 
--- Tasks table: tracks virtual tasks (groups of beads)
+-- Tasks table: tracks virtual tasks (groups of beans)
 CREATE TABLE tasks (
     id TEXT PRIMARY KEY,
     status TEXT NOT NULL DEFAULT 'pending',
@@ -72,21 +72,21 @@ CREATE TABLE tasks (
 CREATE INDEX idx_tasks_status ON tasks(status);
 CREATE INDEX idx_tasks_work_id ON tasks(work_id);
 
--- Task-beads junction table: links tasks to their beads
-CREATE TABLE task_beads (
+-- Task-beans junction table: links tasks to their beans
+CREATE TABLE task_beans (
     task_id TEXT NOT NULL,
-    bead_id TEXT NOT NULL,
+    bean_id TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending',
-    PRIMARY KEY (task_id, bead_id),
+    PRIMARY KEY (task_id, bean_id),
     FOREIGN KEY (task_id) REFERENCES tasks(id)
 );
 
-CREATE INDEX idx_task_beads_task_id ON task_beads(task_id);
-CREATE INDEX idx_task_beads_bead_id ON task_beads(bead_id);
+CREATE INDEX idx_task_beans_task_id ON task_beans(task_id);
+CREATE INDEX idx_task_beans_bean_id ON task_beans(bean_id);
 
 -- Complexity cache: stores LLM complexity estimates
 CREATE TABLE complexity_cache (
-    bead_id TEXT PRIMARY KEY,
+    bean_id TEXT PRIMARY KEY,
     description_hash TEXT NOT NULL,
     complexity_score INT NOT NULL,
     estimated_tokens INT NOT NULL,
@@ -142,17 +142,17 @@ CREATE TABLE task_dependencies (
 CREATE INDEX idx_task_dependencies_task_id ON task_dependencies(task_id);
 CREATE INDEX idx_task_dependencies_depends_on ON task_dependencies(depends_on_task_id);
 
--- Work beads table: beads assigned to work
-CREATE TABLE work_beads (
+-- Work beans table: beans assigned to work
+CREATE TABLE work_beans (
     work_id TEXT NOT NULL REFERENCES works(id) ON DELETE CASCADE,
-    bead_id TEXT NOT NULL,
+    bean_id TEXT NOT NULL,
     position INTEGER NOT NULL DEFAULT 0,  -- ordering within work
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (work_id, bead_id)
+    PRIMARY KEY (work_id, bean_id)
 );
 
-CREATE INDEX idx_work_beads_work_id ON work_beads(work_id);
-CREATE INDEX idx_work_beads_bead_id ON work_beads(bead_id);
+CREATE INDEX idx_work_beans_work_id ON work_beans(work_id);
+CREATE INDEX idx_work_beans_bean_id ON work_beans(bean_id);
 
 -- Schema migrations table: tracks applied database migrations
 CREATE TABLE schema_migrations (
@@ -162,9 +162,9 @@ CREATE TABLE schema_migrations (
     down_sql TEXT NOT NULL DEFAULT ''
 );
 
--- Plan sessions table: tracks running plan mode Claude sessions per bead
+-- Plan sessions table: tracks running plan mode Claude sessions per bean
 CREATE TABLE plan_sessions (
-    bead_id TEXT PRIMARY KEY,
+    bean_id TEXT PRIMARY KEY,
     zellij_session TEXT NOT NULL,
     tab_name TEXT NOT NULL,
     pid INTEGER NOT NULL,
@@ -187,17 +187,17 @@ CREATE TABLE pr_feedback (
     source_name TEXT, -- Human-readable name (check name, workflow name, reviewer username)
     context TEXT, -- JSON: structured context data (FeedbackContext)
     priority INTEGER NOT NULL DEFAULT 2, -- 0-4 (0=critical, 4=backlog)
-    bead_id TEXT, -- ID of the bead created from this feedback (null if not created yet)
+    bean_id TEXT, -- ID of the bean created from this feedback (null if not created yet)
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    processed_at DATETIME, -- When the feedback was processed to create a bead
+    processed_at DATETIME, -- When the feedback was processed to create a bean
     resolved_at DATETIME, -- When the feedback was resolved on GitHub
     FOREIGN KEY (work_id) REFERENCES works(id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_pr_feedback_work_id ON pr_feedback(work_id);
-CREATE INDEX idx_pr_feedback_bead_id ON pr_feedback(bead_id);
+CREATE INDEX idx_pr_feedback_bean_id ON pr_feedback(bean_id);
 CREATE INDEX idx_pr_feedback_processed ON pr_feedback(processed_at);
-CREATE INDEX idx_pr_feedback_resolution ON pr_feedback(bead_id, resolved_at);
+CREATE INDEX idx_pr_feedback_resolution ON pr_feedback(bean_id, resolved_at);
 CREATE INDEX idx_pr_feedback_source_type ON pr_feedback(source_type);
 
 -- Scheduler table: manages scheduled tasks like PR feedback checks

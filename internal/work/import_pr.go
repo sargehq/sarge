@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/github"
 	"github.com/sargehq/sarge/internal/logging"
 )
@@ -68,11 +68,11 @@ func (s *WorkService) SetupWorktreeFromPR(ctx context.Context, repoPath, prURLOr
 	return metadata, worktreePath, nil
 }
 
-// CreateBeadOptions contains options for creating a bead from a PR.
-type CreateBeadOptions struct {
-	// BeadsDir is the directory containing the beads database.
-	BeadsDir string
-	// SkipIfExists skips creation if a bead with the same PR URL already exists.
+// CreateBeanOptions contains options for creating a bean from a PR.
+type CreateBeanOptions struct {
+	// BeansDir is the directory containing the beans database.
+	BeansDir string
+	// SkipIfExists skips creation if a bean with the same PR URL already exists.
 	SkipIfExists bool
 	// OverrideTitle allows overriding the PR title.
 	OverrideTitle string
@@ -82,98 +82,88 @@ type CreateBeadOptions struct {
 	OverridePriority string
 }
 
-// CreateBeadResult contains the result of creating a bead from a PR.
-type CreateBeadResult struct {
-	BeadID     string
+// CreateBeanResult contains the result of creating a bean from a PR.
+type CreateBeanResult struct {
+	BeanID     string
 	Created    bool
 	SkipReason string
 }
 
-// CreateBeadFromPR creates a bead from PR metadata.
-// This allows users to optionally track imported PRs in the beads system.
-func (s *WorkService) CreateBeadFromPR(ctx context.Context, metadata *github.PRMetadata, opts *CreateBeadOptions) (*CreateBeadResult, error) {
-	logging.Info("creating bead from PR",
+// CreateBeanFromPR creates a bean from PR metadata.
+// This allows users to optionally track imported PRs in the beans system.
+func (s *WorkService) CreateBeanFromPR(ctx context.Context, metadata *github.PRMetadata, opts *CreateBeanOptions) (*CreateBeanResult, error) {
+	logging.Info("creating bean from PR",
 		"prNumber", metadata.Number,
 		"prTitle", metadata.Title,
-		"beadsDir", opts.BeadsDir)
+		"beansDir", opts.BeansDir)
 
-	result := &CreateBeadResult{}
+	result := &CreateBeanResult{}
 
-	// Check for existing bead if requested
+	// Check for existing bean if requested
 	if opts.SkipIfExists {
-		existingID, err := s.findBeadByExternalRef(ctx, metadata.URL)
+		existingID, err := s.findBeanByExternalRef(ctx, metadata.URL)
 		if err != nil {
-			logging.Warn("failed to check for existing bead", "error", err)
+			logging.Warn("failed to check for existing bean", "error", err)
 			// Continue anyway - we'll try to create
 		} else if existingID != "" {
-			result.BeadID = existingID
+			result.BeanID = existingID
 			result.Created = false
-			result.SkipReason = "bead already exists for this PR"
-			logging.Info("found existing bead for PR", "beadID", existingID)
+			result.SkipReason = "bean already exists for this PR"
+			logging.Info("found existing bean for PR", "beanID", existingID)
 			return result, nil
 		}
 	}
 
-	// Map PR to bead options
-	beadOpts := mapPRToBeadCreate(metadata)
+	// Map PR to bean options
+	beanOpts := mapPRToBeanCreate(metadata)
 
 	// Apply overrides
 	if opts.OverrideTitle != "" {
-		beadOpts.title = opts.OverrideTitle
+		beanOpts.title = opts.OverrideTitle
 	}
 	if opts.OverrideType != "" {
-		beadOpts.issueType = opts.OverrideType
+		beanOpts.issueType = opts.OverrideType
 	}
 	if opts.OverridePriority != "" {
-		beadOpts.priority = opts.OverridePriority
+		beanOpts.priority = opts.OverridePriority
 	}
 
-	// Format description with PR metadata
-	beadOpts.description = formatBeadDescription(metadata)
+	// Format body with PR metadata
+	beanOpts.description = formatBeanDescription(metadata)
 
-	// Convert priority string (P0-P4) to int (0-4)
-	priority := parsePriority(beadOpts.priority)
+	// Convert priority string (P0-P4) to beans priority
+	priority := parsePriorityToBeans(beanOpts.priority)
 
-	// Create the bead
-	createOpts := beads.CreateOptions{
-		Title:       beadOpts.title,
-		Description: beadOpts.description,
-		Type:        beadOpts.issueType,
-		Priority:    priority,
+	// Build tags from labels plus PR URL for deduplication
+	tags := append(beanOpts.labels, "pr:"+metadata.URL)
+
+	// Create the bean
+	createOpts := beans.CreateOptions{
+		Title:    beanOpts.title,
+		Body:     beanOpts.description,
+		Type:     beanOpts.issueType,
+		Priority: priority,
+		Tags:     tags,
 	}
 
-	cli := beads.NewCLI(opts.BeadsDir)
-	beadID, err := cli.Create(ctx, createOpts)
+	cli := beans.NewCLI(opts.BeansDir)
+	beanID, err := cli.Create(ctx, createOpts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create bead: %w", err)
+		return nil, fmt.Errorf("failed to create bean: %w", err)
 	}
 
-	// Set external reference to PR URL for deduplication
-	if err := cli.SetExternalRef(ctx, beadID, metadata.URL); err != nil {
-		logging.Warn("failed to set external ref on bead", "error", err, "beadID", beadID)
-		// Continue - bead was created successfully
-	}
-
-	// Add labels if present
-	if len(beadOpts.labels) > 0 {
-		if err := cli.AddLabels(ctx, beadID, beadOpts.labels); err != nil {
-			logging.Warn("failed to add labels to bead", "error", err, "beadID", beadID)
-			// Continue - bead was created successfully
-		}
-	}
-
-	result.BeadID = beadID
+	result.BeanID = beanID
 	result.Created = true
 
-	logging.Info("successfully created bead from PR",
-		"beadID", beadID,
+	logging.Info("successfully created bean from PR",
+		"beanID", beanID,
 		"prNumber", metadata.Number)
 
 	return result, nil
 }
 
-// beadCreateOptions represents internal options for creating a bead from a PR.
-type beadCreateOptions struct {
+// beanCreateOptions represents internal options for creating a bean from a PR.
+type beanCreateOptions struct {
 	title       string
 	description string
 	issueType   string   // task, bug, feature
@@ -183,9 +173,9 @@ type beadCreateOptions struct {
 	metadata    map[string]string
 }
 
-// mapPRToBeadCreate converts PR metadata to bead creation options.
-func mapPRToBeadCreate(pr *github.PRMetadata) *beadCreateOptions {
-	opts := &beadCreateOptions{
+// mapPRToBeanCreate converts PR metadata to bean creation options.
+func mapPRToBeanCreate(pr *github.PRMetadata) *beanCreateOptions {
+	opts := &beanCreateOptions{
 		title:       pr.Title,
 		description: pr.Body,
 		issueType:   mapPRType(pr),
@@ -206,7 +196,7 @@ func mapPRToBeadCreate(pr *github.PRMetadata) *beadCreateOptions {
 	return opts
 }
 
-// mapPRType infers a bead issue type from PR labels and title.
+// mapPRType infers a bean issue type from PR labels and title.
 // Returns: "task", "bug", or "feature"
 func mapPRType(pr *github.PRMetadata) string {
 	// Check labels for type hints
@@ -256,7 +246,7 @@ func mapPRPriority(pr *github.PRMetadata) string {
 	return "P2"
 }
 
-// mapPRStatus converts PR state to bead status.
+// mapPRStatus converts PR state to bean status.
 func mapPRStatus(pr *github.PRMetadata) string {
 	if pr.Merged {
 		return "closed"
@@ -276,8 +266,8 @@ func mapPRStatus(pr *github.PRMetadata) string {
 	}
 }
 
-// formatBeadDescription formats a bead description with PR metadata.
-func formatBeadDescription(pr *github.PRMetadata) string {
+// formatBeanDescription formats a bean description with PR metadata.
+func formatBeanDescription(pr *github.PRMetadata) string {
 	var builder strings.Builder
 
 	// Add the original PR body
@@ -308,37 +298,39 @@ func formatBeadDescription(pr *github.PRMetadata) string {
 	return builder.String()
 }
 
-// findBeadByExternalRef checks if a bead already exists with the given external ref.
-func (s *WorkService) findBeadByExternalRef(ctx context.Context, externalRef string) (string, error) {
-	beadsList, err := s.BeadsReader.ListBeads(ctx, "")
+// findBeanByExternalRef checks if a bean already exists with the given PR URL as a tag.
+func (s *WorkService) findBeanByExternalRef(ctx context.Context, externalRef string) (string, error) {
+	beansList, err := s.BeansReader.ListBeans(ctx, "")
 	if err != nil {
-		return "", fmt.Errorf("failed to list beads: %w", err)
+		return "", fmt.Errorf("failed to list beans: %w", err)
 	}
 
-	for _, bead := range beadsList {
-		if bead.ExternalRef == externalRef {
-			return bead.ID, nil
+	prTag := "pr:" + externalRef
+	for _, bean := range beansList {
+		for _, tag := range bean.Tags {
+			if tag == prTag {
+				return bean.ID, nil
+			}
 		}
 	}
 
 	return "", nil
 }
 
-// parsePriority converts priority string (P0-P4) to int (0-4).
-func parsePriority(priority string) int {
-	if len(priority) >= 2 && priority[0] == 'P' {
-		switch priority[1] {
-		case '0':
-			return 0
-		case '1':
-			return 1
-		case '2':
-			return 2
-		case '3':
-			return 3
-		case '4':
-			return 4
-		}
+// parsePriorityToBeans converts priority string (P0-P4) to beans priority string.
+func parsePriorityToBeans(priority string) string {
+	switch priority {
+	case "P0":
+		return beans.PriorityCritical
+	case "P1":
+		return beans.PriorityHigh
+	case "P2":
+		return beans.PriorityNormal
+	case "P3":
+		return beans.PriorityLow
+	case "P4":
+		return beans.PriorityDeferred
+	default:
+		return beans.PriorityNormal
 	}
-	return 2 // default to medium
 }

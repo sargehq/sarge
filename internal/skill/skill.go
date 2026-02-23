@@ -1,4 +1,4 @@
-// Package skill provides beads skill detection and installation for coding agents.
+// Package skill provides beans skill detection and installation for coding agents.
 package skill
 
 import (
@@ -10,34 +10,34 @@ import (
 	"path/filepath"
 )
 
-//go:embed beads/SKILL.md beads/resources/*.md
-var beadsSkillFS embed.FS
+//go:embed beans/SKILL.md beans/resources/*.md
+var beansSkillFS embed.FS
 
 //go:embed extensions/sarge-complete.ts
 var sargeCompleteExtension []byte
 
-// PiSkillInstalled checks whether the pi beads skill exists in the given repo directory.
+// PiSkillInstalled checks whether the pi beans skill exists in the given repo directory.
 func PiSkillInstalled(repoDir string) bool {
-	skillPath := filepath.Join(repoDir, ".pi", "skills", "beads", "SKILL.md")
+	skillPath := filepath.Join(repoDir, ".pi", "skills", "beans", "SKILL.md")
 	_, err := os.Stat(skillPath)
 	return err == nil
 }
 
-// InstallPiSkill copies the embedded beads skill files into the repo's .pi/skills/beads/ directory.
+// InstallPiSkill copies the embedded beans skill files into the repo's .pi/skills/beans/ directory.
 func InstallPiSkill(repoDir string) error {
-	return fs.WalkDir(beadsSkillFS, "beads", func(path string, d fs.DirEntry, err error) error {
+	return fs.WalkDir(beansSkillFS, "beans", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
-		// Map "beads/..." to ".pi/skills/beads/..."
+		// Map "beans/..." to ".pi/skills/beans/..."
 		destPath := filepath.Join(repoDir, ".pi", "skills", path)
 
 		if d.IsDir() {
 			return os.MkdirAll(destPath, 0o750)
 		}
 
-		data, err := beadsSkillFS.ReadFile(path)
+		data, err := beansSkillFS.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("reading embedded %s: %w", path, err)
 		}
@@ -68,13 +68,13 @@ func InstallPiExtension(repoDir string) error {
 	return os.WriteFile(destPath, sargeCompleteExtension, 0o600)
 }
 
-// ClaudePluginInstalled checks whether the beads plugin is installed for Claude Code.
-// It reads ~/.claude/plugins/installed_plugins.json and looks for the "beads@beads-marketplace" key.
+// ClaudePluginInstalled checks whether the beans plugin is installed for Claude Code.
+// It reads ~/.claude/plugins/installed_plugins.json and looks for the "beans@beans-marketplace" key.
 func ClaudePluginInstalled() bool {
 	return claudePluginInstalledFromFile(claudePluginsPath())
 }
 
-// claudePluginInstalledFromFile checks a specific installed_plugins.json file for the beads plugin.
+// claudePluginInstalledFromFile checks a specific installed_plugins.json file for the beans plugin.
 func claudePluginInstalledFromFile(path string) bool {
 	if path == "" {
 		return false
@@ -93,15 +93,15 @@ func claudePluginInstalledFromFile(path string) bool {
 		return false
 	}
 
-	_, ok := installed.Plugins["beads@beads-marketplace"]
+	_, ok := installed.Plugins["beans@beans-marketplace"]
 	return ok
 }
 
-// ClaudeInstallInstructions returns the user-facing instructions for installing the beads plugin in Claude Code.
+// ClaudeInstallInstructions returns the user-facing instructions for installing the beans plugin in Claude Code.
 func ClaudeInstallInstructions() string {
 	return `Open Claude Code and run:
-   /plugin marketplace add steveyegge/beads
-   /plugin install beads`
+   /plugin marketplace add steveyegge/beans
+   /plugin install beans`
 }
 
 // claudePluginsPath returns the path to the Claude plugins file.

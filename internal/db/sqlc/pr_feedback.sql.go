@@ -14,17 +14,17 @@ import (
 const countUnassignedFeedbackForWork = `-- name: CountUnassignedFeedbackForWork :one
 SELECT COUNT(*) as count FROM pr_feedback pf
 WHERE pf.work_id = ?
-  AND pf.bead_id IS NOT NULL
+  AND pf.bean_id IS NOT NULL
   AND pf.resolved_at IS NULL
   AND NOT EXISTS (
-    SELECT 1 FROM task_beads tb
+    SELECT 1 FROM task_beans tb
     JOIN tasks t ON tb.task_id = t.id
-    WHERE tb.bead_id = pf.bead_id
+    WHERE tb.bean_id = pf.bean_id
       AND t.work_id = pf.work_id
   )
 `
 
-// Count PR feedback items that have beads which are not yet assigned to any task and not resolved/closed.
+// Count PR feedback items that have beans which are not yet assigned to any task and not resolved/closed.
 func (q *Queries) CountUnassignedFeedbackForWork(ctx context.Context, workID string) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countUnassignedFeedbackForWork, workID)
 	var count int64
@@ -92,7 +92,7 @@ func (q *Queries) DeletePRFeedbackForWork(ctx context.Context, workID string) er
 }
 
 const getPRFeedback = `-- name: GetPRFeedback :one
-SELECT id, work_id, pr_url, feedback_type, title, description, source_url, source_id, source_type, source_name, context, priority, bead_id, created_at, processed_at, resolved_at FROM pr_feedback WHERE id = ?
+SELECT id, work_id, pr_url, feedback_type, title, description, source_url, source_id, source_type, source_name, context, priority, bean_id, created_at, processed_at, resolved_at FROM pr_feedback WHERE id = ?
 `
 
 func (q *Queries) GetPRFeedback(ctx context.Context, id string) (PrFeedback, error) {
@@ -111,7 +111,7 @@ func (q *Queries) GetPRFeedback(ctx context.Context, id string) (PrFeedback, err
 		&i.SourceName,
 		&i.Context,
 		&i.Priority,
-		&i.BeadID,
+		&i.BeanID,
 		&i.CreatedAt,
 		&i.ProcessedAt,
 		&i.ResolvedAt,
@@ -119,12 +119,12 @@ func (q *Queries) GetPRFeedback(ctx context.Context, id string) (PrFeedback, err
 	return i, err
 }
 
-const getPRFeedbackByBead = `-- name: GetPRFeedbackByBead :one
-SELECT id, work_id, pr_url, feedback_type, title, description, source_url, source_id, source_type, source_name, context, priority, bead_id, created_at, processed_at, resolved_at FROM pr_feedback WHERE bead_id = ? LIMIT 1
+const getPRFeedbackByBean = `-- name: GetPRFeedbackByBean :one
+SELECT id, work_id, pr_url, feedback_type, title, description, source_url, source_id, source_type, source_name, context, priority, bean_id, created_at, processed_at, resolved_at FROM pr_feedback WHERE bean_id = ? LIMIT 1
 `
 
-func (q *Queries) GetPRFeedbackByBead(ctx context.Context, beadID sql.NullString) (PrFeedback, error) {
-	row := q.db.QueryRowContext(ctx, getPRFeedbackByBead, beadID)
+func (q *Queries) GetPRFeedbackByBean(ctx context.Context, beanID sql.NullString) (PrFeedback, error) {
+	row := q.db.QueryRowContext(ctx, getPRFeedbackByBean, beanID)
 	var i PrFeedback
 	err := row.Scan(
 		&i.ID,
@@ -139,7 +139,7 @@ func (q *Queries) GetPRFeedbackByBead(ctx context.Context, beadID sql.NullString
 		&i.SourceName,
 		&i.Context,
 		&i.Priority,
-		&i.BeadID,
+		&i.BeanID,
 		&i.CreatedAt,
 		&i.ProcessedAt,
 		&i.ResolvedAt,
@@ -148,7 +148,7 @@ func (q *Queries) GetPRFeedbackByBead(ctx context.Context, beadID sql.NullString
 }
 
 const getPRFeedbackBySourceID = `-- name: GetPRFeedbackBySourceID :one
-SELECT id, work_id, pr_url, feedback_type, title, description, source_url, source_id, source_type, source_name, context, priority, bead_id, created_at, processed_at, resolved_at FROM pr_feedback
+SELECT id, work_id, pr_url, feedback_type, title, description, source_url, source_id, source_type, source_name, context, priority, bean_id, created_at, processed_at, resolved_at FROM pr_feedback
 WHERE work_id = ? AND source_id = ?
 LIMIT 1
 `
@@ -174,7 +174,7 @@ func (q *Queries) GetPRFeedbackBySourceID(ctx context.Context, arg GetPRFeedback
 		&i.SourceName,
 		&i.Context,
 		&i.Priority,
-		&i.BeadID,
+		&i.BeanID,
 		&i.CreatedAt,
 		&i.ProcessedAt,
 		&i.ResolvedAt,
@@ -182,34 +182,34 @@ func (q *Queries) GetPRFeedbackBySourceID(ctx context.Context, arg GetPRFeedback
 	return i, err
 }
 
-const getUnassignedFeedbackBeadIDs = `-- name: GetUnassignedFeedbackBeadIDs :many
-SELECT pf.bead_id FROM pr_feedback pf
+const getUnassignedFeedbackBeanIDs = `-- name: GetUnassignedFeedbackBeanIDs :many
+SELECT pf.bean_id FROM pr_feedback pf
 WHERE pf.work_id = ?
-  AND pf.bead_id IS NOT NULL
+  AND pf.bean_id IS NOT NULL
   AND pf.resolved_at IS NULL
   AND NOT EXISTS (
-    SELECT 1 FROM task_beads tb
+    SELECT 1 FROM task_beans tb
     JOIN tasks t ON tb.task_id = t.id
-    WHERE tb.bead_id = pf.bead_id
+    WHERE tb.bean_id = pf.bean_id
       AND t.work_id = pf.work_id
   )
 ORDER BY pf.created_at ASC
 `
 
-// Get bead IDs from PR feedback items that are not yet assigned to any task and not resolved/closed.
-func (q *Queries) GetUnassignedFeedbackBeadIDs(ctx context.Context, workID string) ([]sql.NullString, error) {
-	rows, err := q.db.QueryContext(ctx, getUnassignedFeedbackBeadIDs, workID)
+// Get bean IDs from PR feedback items that are not yet assigned to any task and not resolved/closed.
+func (q *Queries) GetUnassignedFeedbackBeanIDs(ctx context.Context, workID string) ([]sql.NullString, error) {
+	rows, err := q.db.QueryContext(ctx, getUnassignedFeedbackBeanIDs, workID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	items := []sql.NullString{}
 	for rows.Next() {
-		var bead_id sql.NullString
-		if err := rows.Scan(&bead_id); err != nil {
+		var bean_id sql.NullString
+		if err := rows.Scan(&bean_id); err != nil {
 			return nil, err
 		}
-		items = append(items, bead_id)
+		items = append(items, bean_id)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -220,24 +220,24 @@ func (q *Queries) GetUnassignedFeedbackBeadIDs(ctx context.Context, workID strin
 	return items, nil
 }
 
-const getUnresolvedFeedbackForBeads = `-- name: GetUnresolvedFeedbackForBeads :many
-SELECT id, work_id, pr_url, feedback_type, title, description, source_url, source_id, source_type, source_name, context, priority, bead_id, created_at, processed_at, resolved_at FROM pr_feedback
-WHERE bead_id IN (/*SLICE:bead_ids*/?)
+const getUnresolvedFeedbackForBeans = `-- name: GetUnresolvedFeedbackForBeans :many
+SELECT id, work_id, pr_url, feedback_type, title, description, source_url, source_id, source_type, source_name, context, priority, bean_id, created_at, processed_at, resolved_at FROM pr_feedback
+WHERE bean_id IN (/*SLICE:bean_ids*/?)
   AND resolved_at IS NULL
   AND source_id IS NOT NULL
 ORDER BY created_at ASC
 `
 
-func (q *Queries) GetUnresolvedFeedbackForBeads(ctx context.Context, beadIds []sql.NullString) ([]PrFeedback, error) {
-	query := getUnresolvedFeedbackForBeads
+func (q *Queries) GetUnresolvedFeedbackForBeans(ctx context.Context, beanIds []sql.NullString) ([]PrFeedback, error) {
+	query := getUnresolvedFeedbackForBeans
 	var queryParams []interface{}
-	if len(beadIds) > 0 {
-		for _, v := range beadIds {
+	if len(beanIds) > 0 {
+		for _, v := range beanIds {
 			queryParams = append(queryParams, v)
 		}
-		query = strings.Replace(query, "/*SLICE:bead_ids*/?", strings.Repeat(",?", len(beadIds))[1:], 1)
+		query = strings.Replace(query, "/*SLICE:bean_ids*/?", strings.Repeat(",?", len(beanIds))[1:], 1)
 	} else {
-		query = strings.Replace(query, "/*SLICE:bead_ids*/?", "NULL", 1)
+		query = strings.Replace(query, "/*SLICE:bean_ids*/?", "NULL", 1)
 	}
 	rows, err := q.db.QueryContext(ctx, query, queryParams...)
 	if err != nil {
@@ -260,7 +260,7 @@ func (q *Queries) GetUnresolvedFeedbackForBeads(ctx context.Context, beadIds []s
 			&i.SourceName,
 			&i.Context,
 			&i.Priority,
-			&i.BeadID,
+			&i.BeanID,
 			&i.CreatedAt,
 			&i.ProcessedAt,
 			&i.ResolvedAt,
@@ -279,9 +279,9 @@ func (q *Queries) GetUnresolvedFeedbackForBeads(ctx context.Context, beadIds []s
 }
 
 const getUnresolvedFeedbackForWork = `-- name: GetUnresolvedFeedbackForWork :many
-SELECT id, work_id, pr_url, feedback_type, title, description, source_url, source_id, source_type, source_name, context, priority, bead_id, created_at, processed_at, resolved_at FROM pr_feedback
+SELECT id, work_id, pr_url, feedback_type, title, description, source_url, source_id, source_type, source_name, context, priority, bean_id, created_at, processed_at, resolved_at FROM pr_feedback
 WHERE work_id = ?
-  AND bead_id IS NOT NULL
+  AND bean_id IS NOT NULL
   AND resolved_at IS NULL
   AND source_id IS NOT NULL
 ORDER BY created_at ASC
@@ -309,7 +309,7 @@ func (q *Queries) GetUnresolvedFeedbackForWork(ctx context.Context, workID strin
 			&i.SourceName,
 			&i.Context,
 			&i.Priority,
-			&i.BeadID,
+			&i.BeanID,
 			&i.CreatedAt,
 			&i.ProcessedAt,
 			&i.ResolvedAt,
@@ -353,7 +353,7 @@ func (q *Queries) HasExistingFeedback(ctx context.Context, arg HasExistingFeedba
 
 const hasExistingFeedbackBySourceID = `-- name: HasExistingFeedbackBySourceID :one
 SELECT COUNT(*) as count FROM pr_feedback
-WHERE work_id = ? AND source_id = ? AND bead_id IS NOT NULL
+WHERE work_id = ? AND source_id = ? AND bean_id IS NOT NULL
 `
 
 type HasExistingFeedbackBySourceIDParams struct {
@@ -361,8 +361,8 @@ type HasExistingFeedbackBySourceIDParams struct {
 	SourceID sql.NullString `json:"source_id"`
 }
 
-// Only consider feedback "existing" if a bead was actually created.
-// This allows retry if bead creation failed on a previous attempt.
+// Only consider feedback "existing" if a bean was actually created.
+// This allows retry if bean creation failed on a previous attempt.
 func (q *Queries) HasExistingFeedbackBySourceID(ctx context.Context, arg HasExistingFeedbackBySourceIDParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, hasExistingFeedbackBySourceID, arg.WorkID, arg.SourceID)
 	var count int64
@@ -371,7 +371,7 @@ func (q *Queries) HasExistingFeedbackBySourceID(ctx context.Context, arg HasExis
 }
 
 const listPRFeedback = `-- name: ListPRFeedback :many
-SELECT id, work_id, pr_url, feedback_type, title, description, source_url, source_id, source_type, source_name, context, priority, bead_id, created_at, processed_at, resolved_at FROM pr_feedback WHERE work_id = ? ORDER BY created_at DESC
+SELECT id, work_id, pr_url, feedback_type, title, description, source_url, source_id, source_type, source_name, context, priority, bean_id, created_at, processed_at, resolved_at FROM pr_feedback WHERE work_id = ? ORDER BY created_at DESC
 `
 
 func (q *Queries) ListPRFeedback(ctx context.Context, workID string) ([]PrFeedback, error) {
@@ -396,7 +396,7 @@ func (q *Queries) ListPRFeedback(ctx context.Context, workID string) ([]PrFeedba
 			&i.SourceName,
 			&i.Context,
 			&i.Priority,
-			&i.BeadID,
+			&i.BeanID,
 			&i.CreatedAt,
 			&i.ProcessedAt,
 			&i.ResolvedAt,
@@ -415,7 +415,7 @@ func (q *Queries) ListPRFeedback(ctx context.Context, workID string) ([]PrFeedba
 }
 
 const listUnprocessedPRFeedback = `-- name: ListUnprocessedPRFeedback :many
-SELECT id, work_id, pr_url, feedback_type, title, description, source_url, source_id, source_type, source_name, context, priority, bead_id, created_at, processed_at, resolved_at FROM pr_feedback
+SELECT id, work_id, pr_url, feedback_type, title, description, source_url, source_id, source_type, source_name, context, priority, bean_id, created_at, processed_at, resolved_at FROM pr_feedback
 WHERE work_id = ? AND processed_at IS NULL
 ORDER BY priority ASC, created_at ASC
 `
@@ -442,7 +442,7 @@ func (q *Queries) ListUnprocessedPRFeedback(ctx context.Context, workID string) 
 			&i.SourceName,
 			&i.Context,
 			&i.Priority,
-			&i.BeadID,
+			&i.BeanID,
 			&i.CreatedAt,
 			&i.ProcessedAt,
 			&i.ResolvedAt,
@@ -462,17 +462,17 @@ func (q *Queries) ListUnprocessedPRFeedback(ctx context.Context, workID string) 
 
 const markPRFeedbackProcessed = `-- name: MarkPRFeedbackProcessed :exec
 UPDATE pr_feedback
-SET processed_at = CURRENT_TIMESTAMP, bead_id = ?
+SET processed_at = CURRENT_TIMESTAMP, bean_id = ?
 WHERE id = ?
 `
 
 type MarkPRFeedbackProcessedParams struct {
-	BeadID sql.NullString `json:"bead_id"`
+	BeanID sql.NullString `json:"bean_id"`
 	ID     string         `json:"id"`
 }
 
 func (q *Queries) MarkPRFeedbackProcessed(ctx context.Context, arg MarkPRFeedbackProcessedParams) error {
-	_, err := q.db.ExecContext(ctx, markPRFeedbackProcessed, arg.BeadID, arg.ID)
+	_, err := q.db.ExecContext(ctx, markPRFeedbackProcessed, arg.BeanID, arg.ID)
 	return err
 }
 

@@ -21,8 +21,8 @@ var doctorCmd = &cobra.Command{
 
 Checks include:
   - Config update: ensures config.toml has all available sections
-  - Mise beads version: ensures the mise config has the correct beads version
-  - Beads skill: ensures the coding agent has the beads skill installed
+  - Mise beans version: ensures the mise config has the correct beans version
+  - Beans skill: ensures the coding agent has the beans skill installed
   - Sarge extension (pi): ensures the sarge-complete extension is installed
 
 Use --dry-run to preview changes without applying them.`,
@@ -56,17 +56,17 @@ func runDoctor(proj *project.Project) error {
 	}
 	issues += configIssues
 
-	// Check 2: Mise beads version
-	miseIssues, err := checkMiseBeadsVersion(proj)
+	// Check 2: Mise beans version
+	miseIssues, err := checkMiseBeansVersion(proj)
 	if err != nil {
-		return fmt.Errorf("mise beads version check failed: %w", err)
+		return fmt.Errorf("mise beans version check failed: %w", err)
 	}
 	issues += miseIssues
 
-	// Check 3: Beads skill for the configured agent
-	skillIssues, err := checkBeadsSkill(proj)
+	// Check 3: Beans skill for the configured agent
+	skillIssues, err := checkBeansSkill(proj)
 	if err != nil {
-		return fmt.Errorf("beads skill check failed: %w", err)
+		return fmt.Errorf("beans skill check failed: %w", err)
 	}
 	issues += skillIssues
 
@@ -124,8 +124,8 @@ func checkConfigDryRun(configPath string, cfg *project.Config) (int, error) {
 	return 1, nil
 }
 
-func checkMiseBeadsVersion(proj *project.Project) (int, error) {
-	requiredVersion := mise.RequiredBeadsVersion()
+func checkMiseBeansVersion(proj *project.Project) (int, error) {
+	requiredVersion := mise.RequiredBeansVersion()
 	if requiredVersion == "" {
 		// No required version found in template — skip check
 		return 0, nil
@@ -148,30 +148,30 @@ func checkMiseBeadsVersion(proj *project.Project) (int, error) {
 		}
 		configPath := filepath.Join(d.path, configFile)
 
-		currentVersion, _, err := mise.ReadBeadsVersion(configPath)
+		currentVersion, _, err := mise.ReadBeansVersion(configPath)
 		if err != nil {
-			return 0, fmt.Errorf("failed to read beads version from %s: %w", configPath, err)
+			return 0, fmt.Errorf("failed to read beans version from %s: %w", configPath, err)
 		}
 		if currentVersion == "" {
-			// No beads line in this config — skip
+			// No beans line in this config — skip
 			continue
 		}
 		if currentVersion == requiredVersion {
-			fmt.Printf("🔧 Mise beads (%s): up to date (%s)\n", d.label, currentVersion)
+			fmt.Printf("🔧 Mise beans (%s): up to date (%s)\n", d.label, currentVersion)
 			continue
 		}
 
 		if doctorDryRun {
-			fmt.Printf("🔧 Mise beads (%s): version mismatch\n", d.label)
+			fmt.Printf("🔧 Mise beans (%s): version mismatch\n", d.label)
 			fmt.Printf("   current: %s, required: %s (would be updated)\n", currentVersion, requiredVersion)
 			issues++
 		} else {
-			modified, err := mise.UpdateBeadsVersion(configPath, requiredVersion)
+			modified, err := mise.UpdateBeansVersion(configPath, requiredVersion)
 			if err != nil {
-				return 0, fmt.Errorf("failed to update beads version in %s: %w", configPath, err)
+				return 0, fmt.Errorf("failed to update beans version in %s: %w", configPath, err)
 			}
 			if modified {
-				fmt.Printf("🔧 Mise beads (%s): updated %s → %s\n", d.label, currentVersion, requiredVersion)
+				fmt.Printf("🔧 Mise beans (%s): updated %s → %s\n", d.label, currentVersion, requiredVersion)
 				issues++
 			}
 		}
@@ -179,7 +179,7 @@ func checkMiseBeadsVersion(proj *project.Project) (int, error) {
 	return issues, nil
 }
 
-func checkBeadsSkill(proj *project.Project) (int, error) {
+func checkBeansSkill(proj *project.Project) (int, error) {
 	agentType := proj.Config.Agent.Type
 	if agentType == "" {
 		agentType = "claude" // default
@@ -187,42 +187,42 @@ func checkBeadsSkill(proj *project.Project) (int, error) {
 
 	switch agentType {
 	case "pi":
-		return checkPiBeadsSkill(proj)
+		return checkPiBeansSkill(proj)
 	case "claude":
-		return checkClaudeBeadsPlugin()
+		return checkClaudeBeansPlugin()
 	default:
 		// Unknown or "none" agent — skip
 		return 0, nil
 	}
 }
 
-func checkPiBeadsSkill(proj *project.Project) (int, error) {
+func checkPiBeansSkill(proj *project.Project) (int, error) {
 	repoDir := proj.MainRepoPath()
 	if skill.PiSkillInstalled(repoDir) {
-		fmt.Println("🧩 Beads skill (pi): installed")
+		fmt.Println("🧩 Beans skill (pi): installed")
 		return 0, nil
 	}
 
 	if doctorDryRun {
-		fmt.Println("🧩 Beads skill (pi): missing")
-		fmt.Println("   Would install .pi/skills/beads/ in main repo")
+		fmt.Println("🧩 Beans skill (pi): missing")
+		fmt.Println("   Would install .pi/skills/beans/ in main repo")
 		return 1, nil
 	}
 
 	if err := skill.InstallPiSkill(repoDir); err != nil {
-		return 0, fmt.Errorf("failed to install pi beads skill: %w", err)
+		return 0, fmt.Errorf("failed to install pi beans skill: %w", err)
 	}
-	fmt.Println("🧩 Beads skill (pi): installed .pi/skills/beads/ in main repo")
+	fmt.Println("🧩 Beans skill (pi): installed .pi/skills/beans/ in main repo")
 	return 1, nil
 }
 
-func checkClaudeBeadsPlugin() (int, error) {
+func checkClaudeBeansPlugin() (int, error) {
 	if skill.ClaudePluginInstalled() {
-		fmt.Println("🧩 Beads skill (claude): installed")
+		fmt.Println("🧩 Beans skill (claude): installed")
 		return 0, nil
 	}
 
-	fmt.Println("🧩 Beads skill (claude): not found")
+	fmt.Println("🧩 Beans skill (claude): not found")
 	fmt.Println("   " + skill.ClaudeInstallInstructions())
 	return 1, nil
 }

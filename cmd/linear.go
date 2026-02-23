@@ -17,8 +17,8 @@ var linearCmd = &cobra.Command{
 
 var linearImportCmd = &cobra.Command{
 	Use:   "import <issue-id-or-url>...",
-	Short: "Import issues from Linear into beads",
-	Long: `Import one or more Linear issues into the beads issue tracker.
+	Short: "Import issues from Linear into beans",
+	Long: `Import one or more Linear issues into the beans issue tracker.
 
 Examples:
   # Import single issue by ID
@@ -33,7 +33,7 @@ Examples:
   # Import with dependencies
   sarge linear import ENG-123 --create-deps
 
-  # Update existing bead from Linear
+  # Update existing bean from Linear
   sarge linear import ENG-123 --update
 
   # Dry run (preview without creating)
@@ -45,7 +45,7 @@ Authentication:
   2. [linear] api_key in .co/config.toml
 
 Environment Variables:
-  BEADS_DIR          Beads directory (default: auto-detect)
+  BEANS_DIR          Beans directory (default: auto-detect)
 `,
 	Args: cobra.MinimumNArgs(1),
 	RunE: runLinearImport,
@@ -53,7 +53,7 @@ Environment Variables:
 
 var (
 	linearAPIKey       string
-	linearBeadsDir     string
+	linearBeansDir     string
 	linearDryRun       bool
 	linearUpdateExist  bool
 	linearCreateDeps   bool
@@ -69,9 +69,9 @@ func init() {
 
 	// Import command flags
 	linearImportCmd.Flags().StringVar(&linearAPIKey, "api-key", "", "Linear API key (or set [linear] api_key in config.toml)")
-	linearImportCmd.Flags().StringVar(&linearBeadsDir, "beads-dir", "", "Beads directory (default: auto-detect)")
-	linearImportCmd.Flags().BoolVar(&linearDryRun, "dry-run", false, "Preview import without creating beads")
-	linearImportCmd.Flags().BoolVar(&linearUpdateExist, "update", false, "Update existing beads if already imported")
+	linearImportCmd.Flags().StringVar(&linearBeansDir, "beans-dir", "", "Beans directory (default: auto-detect)")
+	linearImportCmd.Flags().BoolVar(&linearDryRun, "dry-run", false, "Preview import without creating beans")
+	linearImportCmd.Flags().BoolVar(&linearUpdateExist, "update", false, "Update existing beans if already imported")
 	linearImportCmd.Flags().BoolVar(&linearCreateDeps, "create-deps", false, "Import blocking issues as dependencies")
 	linearImportCmd.Flags().IntVar(&linearMaxDepDepth, "max-dep-depth", 1, "Maximum dependency depth to import")
 	linearImportCmd.Flags().StringVar(&linearStatusFilter, "status-filter", "", "Only import issues with this status")
@@ -94,18 +94,18 @@ func runLinearImport(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("linear API key is required (set via --api-key flag or [linear] api_key in config.toml)")
 	}
 
-	// Get beads directory
-	beadsDir := linearBeadsDir
-	if beadsDir == "" {
-		beadsDir = os.Getenv("BEADS_DIR")
+	// Get beans directory
+	beansDir := linearBeansDir
+	if beansDir == "" {
+		beansDir = os.Getenv("BEANS_DIR")
 	}
-	if beadsDir == "" {
-		// Auto-detect: look for .beads directory in current or parent directories
-		beadsDir = "."
+	if beansDir == "" {
+		// Auto-detect: look for .beans directory in current or parent directories
+		beansDir = "."
 	}
 
 	// Create fetcher
-	fetcher, err := linear.NewFetcher(apiKey, beadsDir)
+	fetcher, err := linear.NewFetcher(apiKey, beansDir)
 	if err != nil {
 		return fmt.Errorf("failed to create Linear fetcher: %w", err)
 	}
@@ -149,14 +149,14 @@ func printImportResult(result *linear.ImportResult) {
 
 	if result.SkipReason != "" {
 		fmt.Printf("○ %s: %s\n", result.LinearID, result.SkipReason)
-		if result.BeadID != "" {
-			fmt.Printf("  Bead: %s\n", result.BeadID)
+		if result.BeanID != "" {
+			fmt.Printf("  Bean: %s\n", result.BeanID)
 		}
 		return
 	}
 
 	if result.Success {
-		fmt.Printf("✓ Imported %s -> %s\n", result.LinearID, result.BeadID)
+		fmt.Printf("✓ Imported %s -> %s\n", result.LinearID, result.BeanID)
 		if result.LinearURL != "" {
 			fmt.Printf("  URL: %s\n", result.LinearURL)
 		}
@@ -177,7 +177,7 @@ func printBatchResults(results []*linear.ImportResult) {
 			fmt.Printf("○ %s: %s\n", result.LinearID, result.SkipReason)
 		} else if result.Success {
 			successCount++
-			fmt.Printf("✓ %s -> %s\n", result.LinearID, result.BeadID)
+			fmt.Printf("✓ %s -> %s\n", result.LinearID, result.BeanID)
 		}
 	}
 

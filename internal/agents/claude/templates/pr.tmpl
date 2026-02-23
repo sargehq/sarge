@@ -7,13 +7,13 @@ Instructions:
 1. First, check the work details: sarge work show {{.WorkID}}
    - This will show all tasks and their completion status
 2. For each completed task, check what was implemented:
-   - sarge task show <task-id> to see the beads that were completed
+   - sarge task show <task-id> to see the beans that were completed
 3. Review the git log to understand all changes made in this work
 4. Use 'git diff origin/{{.BaseBranch}}...{{.BranchName}}' to see all changes (use origin/ to ensure comparison against upstream)
 5. Create a comprehensive PR that includes:
    - Clear title summarizing the work
    - Detailed description of changes
-   - List of issues/beads resolved
+   - List of issues/beans resolved
    - Any breaking changes or important notes
    - Testing performed or recommended
 6. Use 'gh pr create --base {{.BaseBranch}}' to create the PR with your crafted title and description

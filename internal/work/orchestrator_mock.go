@@ -35,7 +35,7 @@ var _ OrchestratorManager = &OrchestratorManagerMock{}
 //			OpenConsoleFunc: func(ctx context.Context, workID string, projName string, workDir string, friendlyName string, hooksEnv []string, w io.Writer) error {
 //				panic("mock out the OpenConsole method")
 //			},
-//			SpawnPlanSessionFunc: func(ctx context.Context, beadID string, projName string, mainRepoPath string, w io.Writer) error {
+//			SpawnPlanSessionFunc: func(ctx context.Context, beanID string, projName string, mainRepoPath string, w io.Writer) error {
 //				panic("mock out the SpawnPlanSession method")
 //			},
 //			SpawnWorkOrchestratorFunc: func(ctx context.Context, workID string, projName string, workDir string, friendlyName string, w io.Writer) error {
@@ -67,7 +67,7 @@ type OrchestratorManagerMock struct {
 	OpenConsoleFunc func(ctx context.Context, workID string, projName string, workDir string, friendlyName string, hooksEnv []string, w io.Writer) error
 
 	// SpawnPlanSessionFunc mocks the SpawnPlanSession method.
-	SpawnPlanSessionFunc func(ctx context.Context, beadID string, projName string, mainRepoPath string, w io.Writer) error
+	SpawnPlanSessionFunc func(ctx context.Context, beanID string, projName string, mainRepoPath string, w io.Writer) error
 
 	// SpawnWorkOrchestratorFunc mocks the SpawnWorkOrchestrator method.
 	SpawnWorkOrchestratorFunc func(ctx context.Context, workID string, projName string, workDir string, friendlyName string, w io.Writer) error
@@ -148,8 +148,8 @@ type OrchestratorManagerMock struct {
 		SpawnPlanSession []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// BeadID is the beadID argument value.
-			BeadID string
+			// BeanID is the beanID argument value.
+			BeanID string
 			// ProjName is the projName argument value.
 			ProjName string
 			// MainRepoPath is the mainRepoPath argument value.
@@ -456,16 +456,16 @@ func (mock *OrchestratorManagerMock) OpenConsoleCalls() []struct {
 }
 
 // SpawnPlanSession calls SpawnPlanSessionFunc.
-func (mock *OrchestratorManagerMock) SpawnPlanSession(ctx context.Context, beadID string, projName string, mainRepoPath string, w io.Writer) error {
+func (mock *OrchestratorManagerMock) SpawnPlanSession(ctx context.Context, beanID string, projName string, mainRepoPath string, w io.Writer) error {
 	callInfo := struct {
 		Ctx          context.Context
-		BeadID       string
+		BeanID       string
 		ProjName     string
 		MainRepoPath string
 		W            io.Writer
 	}{
 		Ctx:          ctx,
-		BeadID:       beadID,
+		BeanID:       beanID,
 		ProjName:     projName,
 		MainRepoPath: mainRepoPath,
 		W:            w,
@@ -479,7 +479,7 @@ func (mock *OrchestratorManagerMock) SpawnPlanSession(ctx context.Context, beadI
 		)
 		return errOut
 	}
-	return mock.SpawnPlanSessionFunc(ctx, beadID, projName, mainRepoPath, w)
+	return mock.SpawnPlanSessionFunc(ctx, beanID, projName, mainRepoPath, w)
 }
 
 // SpawnPlanSessionCalls gets all the calls that were made to SpawnPlanSession.
@@ -488,14 +488,14 @@ func (mock *OrchestratorManagerMock) SpawnPlanSession(ctx context.Context, beadI
 //	len(mockedOrchestratorManager.SpawnPlanSessionCalls())
 func (mock *OrchestratorManagerMock) SpawnPlanSessionCalls() []struct {
 	Ctx          context.Context
-	BeadID       string
+	BeanID       string
 	ProjName     string
 	MainRepoPath string
 	W            io.Writer
 } {
 	var calls []struct {
 		Ctx          context.Context
-		BeadID       string
+		BeanID       string
 		ProjName     string
 		MainRepoPath string
 		W            io.Writer

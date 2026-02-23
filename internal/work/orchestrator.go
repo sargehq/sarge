@@ -76,8 +76,8 @@ type OrchestratorManager interface {
 	// TerminateWorkTabs terminates all zellij tabs associated with a work unit.
 	TerminateWorkTabs(ctx context.Context, workID, projName string, w io.Writer) error
 
-	// SpawnPlanSession creates a zellij tab and runs the plan command for a bead.
-	SpawnPlanSession(ctx context.Context, beadID, projName, mainRepoPath string, w io.Writer) error
+	// SpawnPlanSession creates a zellij tab and runs the plan command for a bean.
+	SpawnPlanSession(ctx context.Context, beanID, projName, mainRepoPath string, w io.Writer) error
 
 	// OpenConsole creates a zellij tab with a shell in the work's worktree.
 	OpenConsole(ctx context.Context, workID, projName, workDir, friendlyName string, hooksEnv []string, w io.Writer) error

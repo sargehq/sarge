@@ -121,12 +121,12 @@ func (a *Agent) resolveTemplate(params types.TaskParams) (*template.Template, an
 	case types.TaskTypeImplement:
 		return a.templates[tmplImplement], struct {
 			TaskID     string
-			BeadIDs    []string
+			BeanIDs    []string
 			BranchName string
 			BaseBranch string
 		}{
 			TaskID:     params.TaskID,
-			BeadIDs:    params.BeadIDs,
+			BeanIDs:    params.BeanIDs,
 			BranchName: params.BranchName,
 			BaseBranch: params.BaseBranch,
 		}, nil
@@ -134,10 +134,10 @@ func (a *Agent) resolveTemplate(params types.TaskParams) (*template.Template, an
 	case types.TaskTypeEstimate:
 		return a.templates[tmplEstimate], struct {
 			TaskID  string
-			BeadIDs []string
+			BeanIDs []string
 		}{
 			TaskID:  params.TaskID,
-			BeadIDs: params.BeadIDs,
+			BeanIDs: params.BeanIDs,
 		}, nil
 
 	case types.TaskTypePR:
@@ -185,9 +185,9 @@ func (a *Agent) resolveTemplate(params types.TaskParams) (*template.Template, an
 
 	case types.TaskTypePlan:
 		return a.templates[tmplPlan], struct {
-			BeadID string
+			BeanID string
 		}{
-			BeadID: params.BeadID,
+			BeanID: params.BeanID,
 		}, nil
 
 	case types.TaskTypeLogAnalysis:
@@ -199,7 +199,7 @@ func (a *Agent) resolveTemplate(params types.TaskParams) (*template.Template, an
 			WorkflowName  string
 			JobName       string
 			LogFilePath   string
-			ExistingBeads []types.BeadSummary
+			ExistingBeans []types.BeanSummary
 		}{
 			TaskID:        params.TaskID,
 			WorkID:        params.WorkID,
@@ -208,7 +208,7 @@ func (a *Agent) resolveTemplate(params types.TaskParams) (*template.Template, an
 			WorkflowName:  params.WorkflowName,
 			JobName:       params.JobName,
 			LogFilePath:   params.LogFilePath,
-			ExistingBeads: params.ExistingBeads,
+			ExistingBeans: params.ExistingBeans,
 		}, nil
 
 	default:

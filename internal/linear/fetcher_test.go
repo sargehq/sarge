@@ -14,8 +14,8 @@ func TestFetcherErrorHandling(t *testing.T) {
 	t.Run("invalid URL format", func(t *testing.T) {
 		fetcher := &Fetcher{
 			client:     nil, // Won't be called
-			beadsDir:   ".",
-			beadsCache: make(map[string]string),
+			beansDir:   ".",
+			beansCache: make(map[string]string),
 		}
 
 		result, err := fetcher.FetchAndImport(ctx, "https://not-linear.com/issue/123", nil)
@@ -27,8 +27,8 @@ func TestFetcherErrorHandling(t *testing.T) {
 	t.Run("empty input", func(t *testing.T) {
 		fetcher := &Fetcher{
 			client:     nil,
-			beadsDir:   ".",
-			beadsCache: make(map[string]string),
+			beansDir:   ".",
+			beansCache: make(map[string]string),
 		}
 
 		result, err := fetcher.FetchAndImport(ctx, "", nil)
@@ -39,8 +39,8 @@ func TestFetcherErrorHandling(t *testing.T) {
 	t.Run("whitespace only input", func(t *testing.T) {
 		fetcher := &Fetcher{
 			client:     nil,
-			beadsDir:   ".",
-			beadsCache: make(map[string]string),
+			beansDir:   ".",
+			beansCache: make(map[string]string),
 		}
 
 		result, err := fetcher.FetchAndImport(ctx, "   ", nil)
@@ -51,8 +51,8 @@ func TestFetcherErrorHandling(t *testing.T) {
 	t.Run("invalid issue ID format", func(t *testing.T) {
 		fetcher := &Fetcher{
 			client:     nil,
-			beadsDir:   ".",
-			beadsCache: make(map[string]string),
+			beansDir:   ".",
+			beansCache: make(map[string]string),
 		}
 
 		invalidIDs := []string{
@@ -75,16 +75,16 @@ func TestFetcherErrorHandling(t *testing.T) {
 	t.Run("cached result returns immediately", func(t *testing.T) {
 		fetcher := &Fetcher{
 			client:   nil, // Won't be called since it's cached
-			beadsDir: ".",
-			beadsCache: map[string]string{
-				"ENG-123": "beads-abc",
+			beansDir: ".",
+			beansCache: map[string]string{
+				"ENG-123": "beans-abc",
 			},
 		}
 
 		result, err := fetcher.FetchAndImport(ctx, "ENG-123", nil)
 		require.NoError(t, err)
 		assert.True(t, result.Success, "expected success for cached result")
-		assert.Equal(t, "beads-abc", result.BeadID)
+		assert.Equal(t, "beans-abc", result.BeanID)
 		assert.Equal(t, "already imported (cached)", result.SkipReason)
 	})
 }
@@ -103,34 +103,34 @@ func TestFetcherFiltering(t *testing.T) {
 
 	t.Run("filter by status - match", func(t *testing.T) {
 		// This test demonstrates the filtering logic
-		// In a real test, we would need to mock the beads client as well
-		t.Skip("Requires beads client mocking")
+		// In a real test, we would need to mock the beans client as well
+		t.Skip("Requires beans client mocking")
 	})
 
 	t.Run("filter by status - no match", func(t *testing.T) {
 		// This test demonstrates the filtering logic
-		t.Skip("Requires beads client mocking")
+		t.Skip("Requires beans client mocking")
 	})
 
 	t.Run("filter by priority - match", func(t *testing.T) {
-		t.Skip("Requires beads client mocking")
+		t.Skip("Requires beans client mocking")
 	})
 
 	t.Run("filter by priority - no match", func(t *testing.T) {
-		t.Skip("Requires beads client mocking")
+		t.Skip("Requires beans client mocking")
 	})
 
 	t.Run("filter by assignee - match", func(t *testing.T) {
-		t.Skip("Requires beads client mocking")
+		t.Skip("Requires beans client mocking")
 	})
 
 	t.Run("filter by assignee - no match", func(t *testing.T) {
-		t.Skip("Requires beads client mocking")
+		t.Skip("Requires beans client mocking")
 	})
 
 	t.Run("filter by assignee - no assignee", func(t *testing.T) {
 		// Issue has no assignee, filter should not match
-		t.Skip("Requires beads client mocking")
+		t.Skip("Requires beans client mocking")
 	})
 
 	// Silence unused variable warning
@@ -138,8 +138,8 @@ func TestFetcherFiltering(t *testing.T) {
 }
 
 func TestFetcherDryRun(t *testing.T) {
-	t.Run("dry run skips bead creation", func(t *testing.T) {
-		// This test would verify that dry run mode doesn't create beads
+	t.Run("dry run skips bean creation", func(t *testing.T) {
+		// This test would verify that dry run mode doesn't create beans
 		t.Skip("Requires full mock setup")
 	})
 }
@@ -150,8 +150,8 @@ func TestFetchBatchErrorHandling(t *testing.T) {
 	t.Run("empty batch", func(t *testing.T) {
 		fetcher := &Fetcher{
 			client:     nil,
-			beadsDir:   ".",
-			beadsCache: make(map[string]string),
+			beansDir:   ".",
+			beansCache: make(map[string]string),
 		}
 
 		results, err := fetcher.FetchBatch(ctx, []string{}, nil)
@@ -166,8 +166,8 @@ func TestFetchBatchErrorHandling(t *testing.T) {
 
 		fetcher := &Fetcher{
 			client:     nil,
-			beadsDir:   ".",
-			beadsCache: make(map[string]string),
+			beansDir:   ".",
+			beansCache: make(map[string]string),
 		}
 
 		ids := []string{"ENG-123", "INVALID", "ENG-456"}
@@ -184,8 +184,8 @@ func TestFetchBatchErrorHandling(t *testing.T) {
 
 		fetcher := &Fetcher{
 			client:     nil,
-			beadsDir:   ".",
-			beadsCache: make(map[string]string),
+			beansDir:   ".",
+			beansCache: make(map[string]string),
 		}
 
 		// Create a cancelled context
@@ -207,7 +207,7 @@ func TestNewFetcher(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, fetcher)
 		assert.NotNil(t, fetcher.client, "expected client to be initialized")
-		assert.NotNil(t, fetcher.beadsCache, "expected beadsCache to be initialized")
+		assert.NotNil(t, fetcher.beansCache, "expected beansCache to be initialized")
 	})
 
 	t.Run("fails with empty API key", func(t *testing.T) {

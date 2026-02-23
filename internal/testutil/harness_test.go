@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,8 +18,8 @@ func TestNewTestHarness(t *testing.T) {
 	assert.NotNil(t, h.DB)
 	assert.NotNil(t, h.Git)
 	assert.NotNil(t, h.Worktree)
-	assert.NotNil(t, h.Beads)
-	assert.NotNil(t, h.BeadsReader)
+	assert.NotNil(t, h.Beans)
+	assert.NotNil(t, h.BeansReader)
 	assert.NotNil(t, h.OrchestratorManager)
 	assert.NotNil(t, h.NameGenerator)
 	assert.NotNil(t, h.TaskPlanner)
@@ -30,23 +31,23 @@ func TestNewTestHarness(t *testing.T) {
 	assert.Equal(t, "main", h.Config.Repo.GetBaseBranch())
 }
 
-func TestCreateBead(t *testing.T) {
+func TestCreateBean(t *testing.T) {
 	h := NewTestHarness(t)
 	defer h.Cleanup()
 
-	bead := h.CreateBead("bead-1", "Test Bead")
+	bean := h.CreateBean("bean-1", "Test Bean")
 
-	assert.Equal(t, "bead-1", bead.ID)
-	assert.Equal(t, "Test Bead", bead.Title)
-	assert.Equal(t, "open", bead.Status)
-	assert.Equal(t, "task", bead.Type)
+	assert.Equal(t, "bean-1", bean.ID)
+	assert.Equal(t, "Test Bean", bean.Title)
+	assert.Equal(t, beans.StatusTodo, bean.Status)
+	assert.Equal(t, "task", bean.Type)
 
-	// Verify it's accessible through BeadsReader
+	// Verify it's accessible through BeansReader
 	ctx := context.Background()
-	retrieved, err := h.BeadsReader.GetBead(ctx, "bead-1")
+	retrieved, err := h.BeansReader.GetBean(ctx, "bean-1")
 	require.NoError(t, err)
 	require.NotNil(t, retrieved)
-	assert.Equal(t, "bead-1", retrieved.ID)
+	assert.Equal(t, "bean-1", retrieved.ID)
 }
 
 func TestCreateEpicWithChildren(t *testing.T) {
@@ -61,24 +62,24 @@ func TestCreateEpicWithChildren(t *testing.T) {
 
 	// Verify children were created
 	ctx := context.Background()
-	children, err := h.BeadsReader.GetBeadWithChildren(ctx, "epic-1")
+	children, err := h.BeansReader.GetBeanWithChildren(ctx, "epic-1")
 	require.NoError(t, err)
 	assert.Len(t, children, 3) // epic + 2 children
 }
 
-func TestSetBeadDependency(t *testing.T) {
+func TestSetBeanDependency(t *testing.T) {
 	h := NewTestHarness(t)
 	defer h.Cleanup()
 
-	h.CreateBead("bead-1", "First")
-	h.CreateBead("bead-2", "Second")
-	h.SetBeadDependency("bead-2", "bead-1") // bead-2 blocked by bead-1
+	h.CreateBean("bean-1", "First")
+	h.CreateBean("bean-2", "Second")
+	h.SetBeanDependency("bean-2", "bean-1") // bean-2 blocked by bean-1
 
 	ctx := context.Background()
-	bead2, err := h.BeadsReader.GetBead(ctx, "bead-2")
+	bean2, err := h.BeansReader.GetBean(ctx, "bean-2")
 	require.NoError(t, err)
-	require.Len(t, bead2.Dependencies, 1)
-	assert.Equal(t, "bead-1", bead2.Dependencies[0].DependsOnID)
+	require.Len(t, bean2.Dependencies, 1)
+	assert.Equal(t, "bean-1", bean2.Dependencies[0].BlockedByID)
 }
 
 func TestCreateWork(t *testing.T) {
@@ -99,18 +100,18 @@ func TestCreateTask(t *testing.T) {
 	// Create work first
 	h.CreateWork("w-test", "feat/test")
 
-	// Create task with beads
-	task := h.CreateTask("w-test.1", "w-test", []string{"bead-1", "bead-2"})
+	// Create task with beans
+	task := h.CreateTask("w-test.1", "w-test", []string{"bean-1", "bean-2"})
 
 	assert.Equal(t, "w-test.1", task.ID)
 	assert.Equal(t, "w-test", task.WorkID)
 	assert.Equal(t, "pending", task.Status)
 
-	// Verify beads are associated
+	// Verify beans are associated
 	ctx := context.Background()
-	beadIDs, err := h.DB.GetTaskBeads(ctx, "w-test.1")
+	beanIDs, err := h.DB.GetTaskBeans(ctx, "w-test.1")
 	require.NoError(t, err)
-	assert.Len(t, beadIDs, 2)
+	assert.Len(t, beanIDs, 2)
 }
 
 func TestCompleteAndFailTask(t *testing.T) {
@@ -118,7 +119,7 @@ func TestCompleteAndFailTask(t *testing.T) {
 	defer h.Cleanup()
 
 	h.CreateWork("w-test", "feat/test")
-	h.CreateTask("w-test.1", "w-test", []string{"bead-1"})
+	h.CreateTask("w-test.1", "w-test", []string{"bean-1"})
 
 	// Complete the task
 	h.CompleteTask("w-test.1")
@@ -129,7 +130,7 @@ func TestCompleteAndFailTask(t *testing.T) {
 	assert.Equal(t, "completed", task.Status)
 
 	// Create and fail another task
-	h.CreateTask("w-test.2", "w-test", []string{"bead-2"})
+	h.CreateTask("w-test.2", "w-test", []string{"bean-2"})
 	h.FailTask("w-test.2", "test failure")
 
 	task2, err := h.DB.GetTask(ctx, "w-test.2")

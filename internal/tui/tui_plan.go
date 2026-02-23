@@ -13,8 +13,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/sargehq/sarge/internal/beads"
-	beadswatcher "github.com/sargehq/sarge/internal/beads/watcher"
+	"github.com/sargehq/sarge/internal/beans"
+	beanswatcher "github.com/sargehq/sarge/internal/beans/watcher"
 	"github.com/sargehq/sarge/internal/git"
 	"github.com/sargehq/sarge/internal/progress"
 	"github.com/sargehq/sarge/internal/project"
@@ -24,13 +24,13 @@ import (
 	"github.com/sargehq/sarge/internal/zmx"
 )
 
-// watcherEventMsg wraps beads watcher events for tea.Msg
-type watcherEventMsg beadswatcher.WatcherEvent
+// watcherEventMsg wraps beans watcher events for tea.Msg
+type watcherEventMsg beanswatcher.WatcherEvent
 
 // trackingWatcherEventMsg wraps tracking watcher events for tea.Msg
 type trackingWatcherEventMsg trackingwatcher.WatcherEvent
 
-// planModel is the Plan Mode model focused on issue/bead management
+// planModel is the Plan Mode model focused on issue/bean management
 type planModel struct {
 	ctx         context.Context
 	proj        *project.Project
@@ -46,7 +46,7 @@ type planModel struct {
 	workTabsBar       *WorkTabsBar
 	linearImportPanel *LinearImportPanel
 	prImportPanel     *PRImportPanel
-	beadFormPanel     *BeadFormPanel
+	beanFormPanel     *BeanFormPanel
 	createWorkPanel   *CreateWorkPanel
 
 	// Zmx session picker
@@ -54,12 +54,12 @@ type planModel struct {
 
 	// Panel state
 	activePanel Panel
-	beadsCursor int
+	beansCursor int
 
 	// Data
-	beadItems     []beadItem
-	filters       beadFilters
-	beadsExpanded bool
+	beanItems     []beanItem
+	filters       beanFilters
+	beansExpanded bool
 
 	// UI state
 	viewMode      ViewMode
@@ -75,10 +75,10 @@ type planModel struct {
 	pendingWorkSelectIndex int             // Index of work to select after tiles load (-1 = none)
 	workTiles              []*progress.WorkProgress // Cached work tiles for the tabs bar
 	workDetailsFocusLeft   bool            // Whether left panel has focus in work details (true=left, false=right)
-	addChildToWorkID       string          // Work ID to add newly created child bead to (for add-child-and-run flow)
+	addChildToWorkID       string          // Work ID to add newly created child bean to (for add-child-and-run flow)
 
 	// Multi-select state
-	selectedBeads map[string]bool // beadID -> is selected
+	selectedBeans map[string]bool // beanID -> is selected
 
 	// Loading state
 	loading bool
@@ -86,8 +86,8 @@ type planModel struct {
 	// Search sequence tracking to handle async refresh race conditions
 	searchSeq uint64 // Incremented on each search change
 
-	// Per-bead session tracking
-	activeBeadSessions map[string]bool // beadID -> has active session
+	// Per-bean session tracking
+	activeBeanSessions map[string]bool // beanID -> has active session
 	zj                 zellij.SessionManager
 	zmxClient          zmx.Client
 
@@ -105,11 +105,11 @@ type planModel struct {
 	hoveredTabID        string    // which work tab is hovered
 
 	// Database watcher for cache invalidation
-	beadsWatcher    *beadswatcher.Watcher
+	beansWatcher    *beanswatcher.Watcher
 	trackingWatcher *trackingwatcher.Watcher
 
-	// New bead animation tracking
-	newBeads map[string]time.Time // beadID -> creation timestamp for animation
+	// New bean animation tracking
+	newBeans map[string]time.Time // beanID -> creation timestamp for animation
 }
 
 // newPlanModel creates a new Plan Mode model
@@ -123,18 +123,18 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 	ti.CharLimit = 100
 	ti.Width = 40
 
-	// Initialize beads database watcher
-	beadsDBPath := filepath.Join(proj.BeadsPath(), "beads.db")
-	beadsWatcher, err := beadswatcher.New(beadswatcher.DefaultConfig(beadsDBPath))
+	// Initialize beans database watcher
+	beansDir := proj.BeansPath()
+	beansWatcher, err := beanswatcher.New(beanswatcher.DefaultConfig(beansDir))
 	if err != nil {
 		// Log error but continue without watcher
-		fmt.Fprintf(os.Stderr, "Warning: Failed to initialize beads watcher: %v\n", err)
-		beadsWatcher = nil
+		fmt.Fprintf(os.Stderr, "Warning: Failed to initialize beans watcher: %v\n", err)
+		beansWatcher = nil
 	} else {
-		if err := beadsWatcher.Start(); err != nil {
+		if err := beansWatcher.Start(); err != nil {
 			// Log error and disable watcher
-			fmt.Fprintf(os.Stderr, "Warning: Failed to start beads watcher: %v\n", err)
-			beadsWatcher = nil
+			fmt.Fprintf(os.Stderr, "Warning: Failed to start beans watcher: %v\n", err)
+			beansWatcher = nil
 		}
 	}
 
@@ -162,9 +162,9 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 		activePanel:            PanelLeft,
 		spinner:                s,
 		textInput:              ti,
-		activeBeadSessions:     make(map[string]bool),
-		selectedBeads:          make(map[string]bool),
-		newBeads:               make(map[string]time.Time),
+		activeBeanSessions:     make(map[string]bool),
+		selectedBeans:          make(map[string]bool),
+		newBeans:               make(map[string]time.Time),
 		zj:                     zellij.New(),
 		zmxClient:              zmx.New(),
 		columnRatio:            0.4,  // Default 40/60 split (issues/details)
@@ -172,10 +172,10 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 		hoveredWorkItem:        -1,   // No work item hovered initially
 		pendingWorkSelectIndex: -1,   // No pending work selection
 		workDetailsFocusLeft:   true, // Start with left panel focused
-		beadsWatcher:           beadsWatcher,
+		beansWatcher:           beansWatcher,
 		trackingWatcher:        trackingWatcher,
-		filters: beadFilters{
-			status: "open",
+		filters: beanFilters{
+			status: beans.StatusTodo,
 			sortBy: "default",
 		},
 	}
@@ -188,15 +188,15 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 	m.workTabsBar = NewWorkTabsBar()
 	m.linearImportPanel = NewLinearImportPanel()
 	m.prImportPanel = NewPRImportPanel()
-	m.beadFormPanel = NewBeadFormPanel()
+	m.beanFormPanel = NewBeanFormPanel()
 	m.createWorkPanel = NewCreateWorkPanel()
 	m.zmxPicker = NewZmxPickerPanel()
 
 	// Set up status bar data providers
 	m.statusBar.SetDataProviders(
-		func() []beadItem { return m.beadItems },
-		func() int { return m.beadsCursor },
-		func() map[string]bool { return m.activeBeadSessions },
+		func() []beanItem { return m.beanItems },
+		func() int { return m.beansCursor },
+		func() map[string]bool { return m.activeBeanSessions },
 		func() ViewMode { return m.viewMode },
 		func() string { return m.textInput.View() },
 	)
@@ -250,7 +250,7 @@ func (m *planModel) Init() tea.Cmd {
 	}
 
 	// Subscribe to watcher events if watcher is available
-	if m.beadsWatcher != nil {
+	if m.beansWatcher != nil {
 		cmds = append(cmds, m.waitForWatcherEvent())
 	}
 
@@ -264,12 +264,12 @@ func (m *planModel) Init() tea.Cmd {
 
 // waitForWatcherEvent waits for a watcher event and returns it as a tea.Msg
 func (m *planModel) waitForWatcherEvent() tea.Cmd {
-	if m.beadsWatcher == nil {
+	if m.beansWatcher == nil {
 		return nil
 	}
 
 	return func() tea.Msg {
-		sub := m.beadsWatcher.Broker().Subscribe(m.ctx)
+		sub := m.beansWatcher.Broker().Subscribe(m.ctx)
 
 		evt, ok := <-sub
 		if !ok {
@@ -303,14 +303,14 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case watcherEventMsg:
 		// Handle watcher events
-		if msg.Type == beadswatcher.DBChanged {
+		if msg.Type == beanswatcher.BeansChanged {
 			// Flush cache and trigger data reload
-			if m.proj.Beads != nil {
-				_ = m.proj.Beads.FlushCache(m.ctx)
+			if m.proj.Beans != nil {
+				_ = m.proj.Beans.FlushCache(m.ctx)
 			}
 			// Trigger data reload and wait for next watcher event
 			return m, tea.Batch(m.refreshData(), m.waitForWatcherEvent())
-		} else if msg.Type == beadswatcher.WatcherError {
+		} else if msg.Type == beanswatcher.WatcherError {
 			// Log error and continue waiting for events
 			return m, m.waitForWatcherEvent()
 		}
@@ -478,23 +478,23 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						}
 						return m, nil
 					} else {
-						// Submit bead form - inline the logic
-						result := m.beadFormPanel.GetResult()
+						// Submit bean form - inline the logic
+						result := m.beanFormPanel.GetResult()
 						if result.Title == "" {
 							return m, nil
 						}
 						m.viewMode = ViewNormal
-						m.beadFormPanel.Blur()
+						m.beanFormPanel.Blur()
 
 						// Determine mode and call appropriate action
-						if result.EditBeadID != "" {
+						if result.EditBeanID != "" {
 							// Edit mode
-							return m, m.saveBeadEdit(result.EditBeadID, result.Title, result.Description, result.BeadType, result.Status)
+							return m, m.saveBeanEdit(result.EditBeanID, result.Title, result.Description, result.BeanType, result.Status)
 						}
 
 						// Create or add-child mode
-						isEpic := result.BeadType == "epic"
-						return m, m.createBead(result.Title, result.BeadType, result.Priority, isEpic, result.Description, result.ParentID)
+						isEpic := result.BeanType == "epic"
+						return m, m.createBean(result.Title, result.BeanType, result.Priority, isEpic, result.Description, result.ParentID)
 					}
 				} else if clickedDialogButton == "cancel" {
 					// Cancel the form
@@ -503,7 +503,7 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					} else if m.viewMode == ViewCreateWork {
 						m.createWorkPanel.Blur()
 					} else {
-						m.beadFormPanel.Blur()
+						m.beanFormPanel.Blur()
 					}
 					m.viewMode = ViewNormal
 					return m, nil
@@ -517,8 +517,8 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							return m, nil
 						}
 						m.viewMode = ViewNormal
-						m.selectedBeads = make(map[string]bool)
-						return m, m.executeCreateWork(result.BeadID, result.BranchName, false, result.UseExistingBranch)
+						m.selectedBeans = make(map[string]bool)
+						return m, m.executeCreateWork(result.BeanID, result.BranchName, false, result.UseExistingBranch)
 					}
 				} else if clickedDialogButton == "auto" {
 					// Handle auto button for work creation
@@ -530,8 +530,8 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							return m, nil
 						}
 						m.viewMode = ViewNormal
-						m.selectedBeads = make(map[string]bool)
-						return m, m.executeCreateWork(result.BeadID, result.BranchName, true, result.UseExistingBranch)
+						m.selectedBeans = make(map[string]bool)
+						return m, m.executeCreateWork(result.BeanID, result.BranchName, true, result.UseExistingBranch)
 					}
 				}
 
@@ -545,7 +545,7 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						if clickedItem >= 0 {
 							m.workDetails.SetSelectedIndex(clickedItem)
 							m.activePanel = PanelWorkDetails
-							// Update filter to show beads for clicked item
+							// Update filter to show beans for clicked item
 							return m, m.updateWorkSelectionFilter()
 						}
 						m.activePanel = PanelWorkDetails
@@ -556,8 +556,8 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					case "issues-left":
 						// Check if clicking on an issue
 						clickedIssue := m.detectHoveredIssue(msg)
-						if clickedIssue >= 0 && clickedIssue < len(m.beadItems) {
-							m.beadsCursor = clickedIssue
+						if clickedIssue >= 0 && clickedIssue < len(m.beanItems) {
+							m.beansCursor = clickedIssue
 						}
 						m.activePanel = PanelLeft
 						return m, nil
@@ -568,8 +568,8 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					// Normal mode - just check for issue clicks
 					clickedIssue := m.detectHoveredIssue(msg)
-					if clickedIssue >= 0 && clickedIssue < len(m.beadItems) {
-						m.beadsCursor = clickedIssue
+					if clickedIssue >= 0 && clickedIssue < len(m.beanItems) {
+						m.beansCursor = clickedIssue
 						m.activePanel = PanelLeft
 					} else if msg.X > m.width/2 {
 						// Clicked on right side - switch to details panel
@@ -589,24 +589,24 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var expireCmds []tea.Cmd
 		now := time.Now()
 
-		// Detect new beads by comparing with existing list
-		if len(m.beadItems) > 0 {
+		// Detect new beans by comparing with existing list
+		if len(m.beanItems) > 0 {
 			existingIDs := make(map[string]bool)
-			for _, bead := range m.beadItems {
-				existingIDs[bead.ID] = true
+			for _, bean := range m.beanItems {
+				existingIDs[bean.ID] = true
 			}
-			for _, bead := range msg.beads {
+			for _, bean := range msg.beans {
 				// Mark as new if not in existing list and not already animated
-				if !existingIDs[bead.ID] && m.newBeads[bead.ID].IsZero() {
-					m.newBeads[bead.ID] = now
-					expireCmds = append(expireCmds, scheduleNewBeadExpire(bead.ID))
+				if !existingIDs[bean.ID] && m.newBeans[bean.ID].IsZero() {
+					m.newBeans[bean.ID] = now
+					expireCmds = append(expireCmds, scheduleNewBeanExpire(bean.ID))
 				}
 			}
 		}
 
-		m.beadItems = msg.beads
+		m.beanItems = msg.beans
 		if msg.activeSessions != nil {
-			m.activeBeadSessions = msg.activeSessions
+			m.activeBeanSessions = msg.activeSessions
 		}
 		m.loading = false
 		m.lastUpdate = time.Now()
@@ -616,20 +616,20 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Ensure cursor stays within bounds after filter changes
-		if m.beadsCursor >= len(m.beadItems) {
-			if len(m.beadItems) > 0 {
-				m.beadsCursor = len(m.beadItems) - 1
+		if m.beansCursor >= len(m.beanItems) {
+			if len(m.beanItems) > 0 {
+				m.beansCursor = len(m.beanItems) - 1
 			} else {
-				m.beadsCursor = 0
+				m.beansCursor = 0
 			}
 		}
 
-		// Check if we need to add a newly created bead to a work (add-child-and-run flow)
-		if m.addChildToWorkID != "" && msg.createdBeadID != "" {
+		// Check if we need to add a newly created bean to a work (add-child-and-run flow)
+		if m.addChildToWorkID != "" && msg.createdBeanID != "" {
 			workID := m.addChildToWorkID
-			beadID := msg.createdBeadID
-			// Don't clear addChildToWorkID yet - wait for beadAddedToWorkMsg
-			cmds := append(expireCmds, m.addBeadsToWork([]string{beadID}, workID))
+			beanID := msg.createdBeanID
+			// Don't clear addChildToWorkID yet - wait for beanAddedToWorkMsg
+			cmds := append(expireCmds, m.addBeansToWork([]string{beanID}, workID))
 			return m, tea.Batch(cmds...)
 		}
 
@@ -649,13 +649,13 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.statusMessage = fmt.Sprintf("Failed: %v", msg.err)
 			m.statusIsError = true
 		} else if msg.resumed {
-			m.statusMessage = fmt.Sprintf("Resumed session for %s", msg.beadID)
+			m.statusMessage = fmt.Sprintf("Resumed session for %s", msg.beanID)
 			m.statusIsError = false
 		} else if msg.sessionCreated && !m.proj.Config.Multiplexer.IsZmx() {
-			m.statusMessage = fmt.Sprintf("Started session for %s | Zellij: zellij attach %s", msg.beadID, msg.sessionName)
+			m.statusMessage = fmt.Sprintf("Started session for %s | Zellij: zellij attach %s", msg.beanID, msg.sessionName)
 			m.statusIsError = false
 		} else {
-			m.statusMessage = fmt.Sprintf("Started session for %s", msg.beadID)
+			m.statusMessage = fmt.Sprintf("Started session for %s", msg.beanID)
 			m.statusIsError = false
 		}
 		// Refresh to update session indicators
@@ -669,27 +669,27 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.sessionCreated && !m.proj.Config.Multiplexer.IsZmx() {
 				m.statusMessage = fmt.Sprintf("Created work %s | Zellij: zellij attach %s", msg.workID, msg.sessionName)
 			} else {
-				m.statusMessage = fmt.Sprintf("Created work %s from %s", msg.workID, msg.beadID)
+				m.statusMessage = fmt.Sprintf("Created work %s from %s", msg.workID, msg.beanID)
 			}
 			m.statusIsError = false
 		}
 		// Refresh work tiles to show the new work in the tabs bar
 		return m, tea.Batch(m.refreshData(), m.loadWorkTiles())
 
-	case beadAddedToWorkMsg:
+	case beanAddedToWorkMsg:
 		m.viewMode = ViewNormal
 		if msg.err != nil {
 			m.statusMessage = fmt.Sprintf("Failed to add issue: %v", msg.err)
 			m.statusIsError = true
 			m.addChildToWorkID = "" // Clear on error
 		} else {
-			m.statusMessage = fmt.Sprintf("Added %s to work %s", msg.beadID, msg.workID)
+			m.statusMessage = fmt.Sprintf("Added %s to work %s", msg.beanID, msg.workID)
 			m.statusIsError = false
 
 			// Check if we should run the work (add-child-and-run flow)
 			if m.addChildToWorkID != "" && m.addChildToWorkID == msg.workID {
 				m.addChildToWorkID = "" // Clear before running
-				// Run the work in single-bead mode
+				// Run the work in single-bean mode
 				return m, tea.Batch(m.refreshData(), m.loadWorkTiles(), m.runFocusedWork(false))
 			}
 		}
@@ -775,7 +775,7 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if health, ok := msg.orchestratorHealth[m.focusedWorkID]; ok {
 				m.workDetails.SetOrchestratorHealth(health)
 			}
-			// Rebuild the filter to reflect any changes in work beads
+			// Rebuild the filter to reflect any changes in work beans
 			// BUT skip if user manually cleared the filter (e.g., pressed '*')
 			if !m.workSelectionCleared {
 				return m, m.updateWorkSelectionFilter()
@@ -821,18 +821,18 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		} else if msg.skipReason != "" {
 			// Single import skipped
-			if len(msg.beadIDs) == 1 {
-				m.statusMessage = fmt.Sprintf("%s: %s", msg.skipReason, msg.beadIDs[0])
+			if len(msg.beanIDs) == 1 {
+				m.statusMessage = fmt.Sprintf("%s: %s", msg.skipReason, msg.beanIDs[0])
 			} else {
 				m.statusMessage = msg.skipReason
 			}
 			m.statusIsError = false
 		} else {
 			// Single import success or legacy format
-			if len(msg.beadIDs) == 1 {
-				m.statusMessage = fmt.Sprintf("Successfully imported %s", msg.beadIDs[0])
-			} else if len(msg.beadIDs) > 1 {
-				m.statusMessage = fmt.Sprintf("Successfully imported %d issues", len(msg.beadIDs))
+			if len(msg.beanIDs) == 1 {
+				m.statusMessage = fmt.Sprintf("Successfully imported %s", msg.beanIDs[0])
+			} else if len(msg.beanIDs) > 1 {
+				m.statusMessage = fmt.Sprintf("Successfully imported %d issues", len(msg.beanIDs))
 			} else {
 				m.statusMessage = "Import completed (no new issues)"
 			}
@@ -878,9 +878,9 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.statusIsError = false
 		return m, nil
 
-	case newBeadExpireMsg:
-		// Remove the bead from the newBeads map to stop animation
-		delete(m.newBeads, msg.beadID)
+	case newBeanExpireMsg:
+		// Remove the bean from the newBeans map to stop animation
+		delete(m.newBeans, msg.beanID)
 		return m, nil
 
 	case tea.KeyMsg:
@@ -926,11 +926,11 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // planDataMsg is sent when data is refreshed
 type planDataMsg struct {
-	beads          []beadItem
+	beans          []beanItem
 	activeSessions map[string]bool
 	err            error
 	searchSeq      uint64 // Sequence number to detect stale results
-	createdBeadID  string // ID of newly created bead (for add-child-and-run flow)
+	createdBeanID  string // ID of newly created bean (for add-child-and-run flow)
 }
 
 // planStatusMsg is sent to update status text
@@ -941,25 +941,25 @@ type planStatusMsg struct {
 
 // planSessionSpawnedMsg indicates a planning session was spawned or resumed
 type planSessionSpawnedMsg struct {
-	beadID         string
+	beanID         string
 	resumed        bool
 	err            error
 	sessionCreated bool   // true if a new zellij session was created
 	sessionName    string // e.g., 'co-myproject'
 }
 
-// planWorkCreatedMsg indicates work was created from a bead
+// planWorkCreatedMsg indicates work was created from a bean
 type planWorkCreatedMsg struct {
-	beadID         string
+	beanID         string
 	workID         string
 	err            error
 	sessionCreated bool   // true if a new zellij session was created
 	sessionName    string // e.g., 'co-myproject'
 }
 
-// beadAddedToWorkMsg indicates a bead was added to a work
-type beadAddedToWorkMsg struct {
-	beadID string
+// beanAddedToWorkMsg indicates a bean was added to a work
+type beanAddedToWorkMsg struct {
+	beanID string
 	workID string
 	err    error
 }
@@ -969,7 +969,7 @@ type editorFinishedMsg struct{}
 
 // linearImportCompleteMsg is sent when a Linear import completes
 type linearImportCompleteMsg struct {
-	beadIDs      []string // IDs of imported beads
+	beanIDs      []string // IDs of imported beans
 	err          error
 	skipReason   string   // For single import: reason for skipping
 	successCount int      // For batch import: number of successful imports
@@ -996,9 +996,9 @@ func clearStatusAfter(d time.Duration) tea.Cmd {
 	})
 }
 
-// newBeadExpireMsg is sent when the animation for a new bead should expire
-type newBeadExpireMsg struct {
-	beadID string
+// newBeanExpireMsg is sent when the animation for a new bean should expire
+type newBeanExpireMsg struct {
+	beanID string
 }
 
 // workCommandMsg indicates a work command completed
@@ -1008,13 +1008,13 @@ type workCommandMsg struct {
 	err    error
 }
 
-// newBeadAnimationDuration is how long newly created beads are highlighted
-const newBeadAnimationDuration = 5 * time.Second
+// newBeanAnimationDuration is how long newly created beans are highlighted
+const newBeanAnimationDuration = 5 * time.Second
 
-// scheduleNewBeadExpire returns a command that expires a new bead animation after the duration
-func scheduleNewBeadExpire(beadID string) tea.Cmd {
-	return tea.Tick(newBeadAnimationDuration, func(t time.Time) tea.Msg {
-		return newBeadExpireMsg{beadID: beadID}
+// scheduleNewBeanExpire returns a command that expires a new bean animation after the duration
+func scheduleNewBeanExpire(beanID string) tea.Cmd {
+	return tea.Tick(newBeanAnimationDuration, func(t time.Time) tea.Msg {
+		return newBeanExpireMsg{beanID: beanID}
 	})
 }
 
@@ -1033,33 +1033,33 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Handle dialog-specific input
 	switch m.viewMode {
-	case ViewCreateBead, ViewCreateBeadInline, ViewAddChildBead, ViewEditBead:
-		// Delegate to bead form panel and handle returned action
-		cmd, action := m.beadFormPanel.Update(msg)
+	case ViewCreateBean, ViewCreateBeanInline, ViewAddChildBean, ViewEditBean:
+		// Delegate to bean form panel and handle returned action
+		cmd, action := m.beanFormPanel.Update(msg)
 
 		switch action {
-		case BeadFormActionCancel:
+		case BeanFormActionCancel:
 			m.viewMode = ViewNormal
 			return m, cmd
 
-		case BeadFormActionSubmit:
-			result := m.beadFormPanel.GetResult()
+		case BeanFormActionSubmit:
+			result := m.beanFormPanel.GetResult()
 			if result.Title == "" {
 				return m, cmd
 			}
 
 			m.viewMode = ViewNormal
-			m.beadFormPanel.Blur()
+			m.beanFormPanel.Blur()
 
 			// Determine mode and call appropriate action
-			if result.EditBeadID != "" {
+			if result.EditBeanID != "" {
 				// Edit mode
-				return m, m.saveBeadEdit(result.EditBeadID, result.Title, result.Description, result.BeadType, result.Status)
+				return m, m.saveBeanEdit(result.EditBeanID, result.Title, result.Description, result.BeanType, result.Status)
 			}
 
 			// Create or add-child mode
-			isEpic := result.BeadType == "epic"
-			return m, m.createBead(result.Title, result.BeadType, result.Priority, isEpic, result.Description, result.ParentID)
+			isEpic := result.BeanType == "epic"
+			return m, m.createBean(result.Title, result.BeanType, result.Priority, isEpic, result.Description, result.ParentID)
 		}
 
 		return m, cmd
@@ -1081,8 +1081,8 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			m.viewMode = ViewNormal
 			// Clear selections after work creation
-			m.selectedBeads = make(map[string]bool)
-			return m, m.executeCreateWork(result.BeadID, result.BranchName, false, result.UseExistingBranch)
+			m.selectedBeans = make(map[string]bool)
+			return m, m.executeCreateWork(result.BeanID, result.BranchName, false, result.UseExistingBranch)
 
 		case CreateWorkActionAuto:
 			result := m.createWorkPanel.GetResult()
@@ -1093,19 +1093,19 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			m.viewMode = ViewNormal
 			// Clear selections after work creation
-			m.selectedBeads = make(map[string]bool)
-			return m, m.executeCreateWork(result.BeadID, result.BranchName, true, result.UseExistingBranch)
+			m.selectedBeans = make(map[string]bool)
+			return m, m.executeCreateWork(result.BeanID, result.BranchName, true, result.UseExistingBranch)
 		}
 
 		return m, cmd
-	case ViewBeadSearch:
-		return m.updateBeadSearch(msg)
+	case ViewBeanSearch:
+		return m.updateBeanSearch(msg)
 	case ViewLabelFilter:
 		return m.updateLabelFilter(msg)
-	case ViewCloseBeadConfirm:
-		return m.updateCloseBeadConfirm(msg)
-	case ViewDeleteBeadConfirm:
-		return m.updateDeleteBeadConfirm(msg)
+	case ViewCloseBeanConfirm:
+		return m.updateCloseBeanConfirm(msg)
+	case ViewDeleteBeanConfirm:
+		return m.updateDeleteBeanConfirm(msg)
 	case ViewLinearImportInline:
 		// Delegate to linear import panel and handle returned action
 		cmd, action := m.linearImportPanel.Update(msg)
@@ -1235,9 +1235,9 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// When a work is focused, route work action keys regardless of active panel.
 	// This allows work actions (t, c, i, r, o, f, g, v, p, d, x, a) to fire
 	// even when the issues panel is active.
-	// Note: 'd' is NOT intercepted here - it conflicts with [d]elete bead.
+	// Note: 'd' is NOT intercepted here - it conflicts with [d]elete bean.
 	// 'd' does [d]estroy when work details/tabs panel is focused,
-	// and [d]elete bead when issues panel is focused.
+	// and [d]elete bean when issues panel is focused.
 	if m.focusedWorkID != "" {
 		isWorkActionKey := false
 		switch msg.String() {
@@ -1245,7 +1245,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			isWorkActionKey = true
 		case "d":
 			// 'd' is panel-aware: destroy work when work panel is focused,
-			// delete bead when issues panel is focused
+			// delete bean when issues panel is focused
 			if m.activePanel == PanelWorkDetails || m.activePanel == PanelWorkTabs {
 				isWorkActionKey = true
 			}
@@ -1268,7 +1268,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.statusMessage = fmt.Sprintf("Running work %s...", m.focusedWorkID)
 				m.statusIsError = false
 				focusedWork := m.workDetails.GetFocusedWork()
-				useAutoGroup := focusedWork != nil && len(focusedWork.UnassignedBeads) > 1
+				useAutoGroup := focusedWork != nil && len(focusedWork.UnassignedBeans) > 1
 				return m, m.runFocusedWork(useAutoGroup)
 			case WorkDetailActionReview:
 				return m, m.createReviewTask()
@@ -1297,10 +1297,17 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			case WorkDetailActionAddChildIssue:
 				focusedWork := m.workDetails.GetFocusedWork()
 				if focusedWork != nil && focusedWork.Work.RootIssueID != "" {
+					// Check if root issue type supports children
+					rootBean := m.findBeanByID(focusedWork.Work.RootIssueID)
+					if rootBean != nil && !beans.CanBeParent(rootBean.Type) {
+						m.statusMessage = fmt.Sprintf("Cannot add child — root issue %s (type %q) cannot have children", rootBean.ID, rootBean.Type)
+						m.statusIsError = true
+						return m, nil
+					}
 					m.addChildToWorkID = focusedWork.Work.ID
-					m.beadFormPanel.SetAddChildMode(focusedWork.Work.RootIssueID)
-					m.viewMode = ViewAddChildBead
-					return m, m.beadFormPanel.Init()
+					m.beanFormPanel.SetAddChildMode(focusedWork.Work.RootIssueID)
+					m.viewMode = ViewAddChildBean
+					return m, m.beanFormPanel.Init()
 				}
 				return m, nil
 			case WorkDetailActionResetTask:
@@ -1308,9 +1315,9 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			case WorkDetailActionAttachTerminal:
 				return m, m.listZmxSessions()
 			case WorkDetailActionPlan:
-				beadID := m.workDetails.GetSelectedUnassignedBeadID()
-				if beadID != "" {
-					return m, m.spawnPlanSession(beadID)
+				beanID := m.workDetails.GetSelectedUnassignedBeanID()
+				if beanID != "" {
+					return m, m.spawnPlanSession(beanID)
 				}
 				return m, nil
 			case WorkDetailActionNone:
@@ -1410,63 +1417,63 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "j", "down":
 		// Navigate down in current list (work details is handled above)
-		if m.beadsCursor < len(m.beadItems)-1 {
-			m.beadsCursor++
+		if m.beansCursor < len(m.beanItems)-1 {
+			m.beansCursor++
 		}
 		return m, nil
 
 	case "k", "up":
 		// Navigate up in current list (work details is handled above)
-		if m.beadsCursor > 0 {
-			m.beadsCursor--
+		if m.beansCursor > 0 {
+			m.beansCursor--
 		}
 		return m, nil
 
 	case "n":
-		// Create new bead inline
-		m.viewMode = ViewCreateBeadInline
-		m.beadFormPanel.Reset()
-		return m, m.beadFormPanel.Init()
+		// Create new bean inline
+		m.viewMode = ViewCreateBeanInline
+		m.beanFormPanel.Reset()
+		return m, m.beanFormPanel.Init()
 
 	case "x":
-		// Close selected bead(s)
-		if len(m.beadItems) > 0 {
-			// Check if we have any selected beads
+		// Close selected bean(s)
+		if len(m.beanItems) > 0 {
+			// Check if we have any selected beans
 			hasSelection := false
-			for _, item := range m.beadItems {
-				if m.selectedBeads[item.ID] {
+			for _, item := range m.beanItems {
+				if m.selectedBeans[item.ID] {
 					hasSelection = true
 					break
 				}
 			}
-			// If we have selected beads or a cursor bead, show confirmation
-			if hasSelection || m.beadsCursor < len(m.beadItems) {
-				m.viewMode = ViewCloseBeadConfirm
+			// If we have selected beans or a cursor bean, show confirmation
+			if hasSelection || m.beansCursor < len(m.beanItems) {
+				m.viewMode = ViewCloseBeanConfirm
 			}
 		}
 		return m, nil
 
 	case "d":
-		// Delete selected bead(s) permanently
-		if len(m.beadItems) > 0 {
-			// Check if we have any selected beads
+		// Delete selected bean(s) permanently
+		if len(m.beanItems) > 0 {
+			// Check if we have any selected beans
 			hasSelection := false
-			for _, item := range m.beadItems {
-				if m.selectedBeads[item.ID] {
+			for _, item := range m.beanItems {
+				if m.selectedBeans[item.ID] {
 					hasSelection = true
 					break
 				}
 			}
-			// If we have selected beads or a cursor bead, show confirmation
-			if hasSelection || m.beadsCursor < len(m.beadItems) {
-				m.viewMode = ViewDeleteBeadConfirm
+			// If we have selected beans or a cursor bean, show confirmation
+			if hasSelection || m.beansCursor < len(m.beanItems) {
+				m.viewMode = ViewDeleteBeanConfirm
 			}
 		}
 		return m, nil
 
 	case "/":
 		// Search
-		m.viewMode = ViewBeadSearch
+		m.viewMode = ViewBeanSearch
 		m.textInput.Reset()
 		m.textInput.SetValue(m.filters.searchText)
 		m.textInput.Focus()
@@ -1489,11 +1496,11 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.refreshData()
 
 	case "O":
-		m.filters.status = beads.StatusOpen
+		m.filters.status = beans.StatusTodo
 		return m, m.refreshData()
 
 	case "C":
-		m.filters.status = beads.StatusClosed
+		m.filters.status = beans.StatusCompleted
 		return m, m.refreshData()
 
 	case "R":
@@ -1513,7 +1520,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.refreshData()
 
 	case "V":
-		m.beadsExpanded = !m.beadsExpanded
+		m.beansExpanded = !m.beansExpanded
 		return m, nil
 
 	case "[":
@@ -1537,40 +1544,40 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case " ":
-		// Toggle bead selection for multi-select
-		if len(m.beadItems) > 0 && m.beadsCursor < len(m.beadItems) {
-			bead := m.beadItems[m.beadsCursor]
-			// Prevent selecting already-assigned beads
-			if bead.assignedWorkID != "" {
-				m.statusMessage = fmt.Sprintf("Cannot select: already assigned to %s", bead.assignedWorkID)
+		// Toggle bean selection for multi-select
+		if len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
+			bean := m.beanItems[m.beansCursor]
+			// Prevent selecting already-assigned beans
+			if bean.assignedWorkID != "" {
+				m.statusMessage = fmt.Sprintf("Cannot select: already assigned to %s", bean.assignedWorkID)
 				m.statusIsError = true
 				return m, nil
 			}
-			m.selectedBeads[bead.ID] = !m.selectedBeads[bead.ID]
+			m.selectedBeans[bean.ID] = !m.selectedBeans[bean.ID]
 		}
 		return m, nil
 
 	case "p":
-		// Spawn/resume planning session for selected bead (work details panel handles 'p' for Plan)
-		if len(m.beadItems) > 0 && m.beadsCursor < len(m.beadItems) {
-			beadID := m.beadItems[m.beadsCursor].ID
-			return m, m.spawnPlanSession(beadID)
+		// Spawn/resume planning session for selected bean (work details panel handles 'p' for Plan)
+		if len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
+			beanID := m.beanItems[m.beansCursor].ID
+			return m, m.spawnPlanSession(beanID)
 		}
 		return m, nil
 
 	case "w":
-		// Create work from cursor bead - show dialog
-		if len(m.beadItems) > 0 && m.beadsCursor < len(m.beadItems) {
-			bead := m.beadItems[m.beadsCursor]
-			if bead.assignedWorkID != "" {
-				m.statusMessage = fmt.Sprintf("Cannot create work: %s already assigned to %s", bead.ID, bead.assignedWorkID)
+		// Create work from cursor bean - show dialog
+		if len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
+			bean := m.beanItems[m.beansCursor]
+			if bean.assignedWorkID != "" {
+				m.statusMessage = fmt.Sprintf("Cannot create work: %s already assigned to %s", bean.ID, bean.assignedWorkID)
 				m.statusIsError = true
 				return m, nil
 			}
-			// Generate proposed branch name from cursor bead
-			branchBeads := []*beadsForBranch{{ID: bead.ID, Title: bead.Title}}
-			branchName := generateBranchNameFromBeadsForBranch(branchBeads)
-			m.createWorkPanel.Reset(bead.ID, branchName)
+			// Generate proposed branch name from cursor bean
+			branchBeans := []*beansForBranch{{ID: bean.ID, Title: bean.Title}}
+			branchName := generateBranchNameFromBeansForBranch(branchBeans)
+			m.createWorkPanel.Reset(bean.ID, branchName)
 			// Load available branches for the "existing branch" mode
 			if branches, err := git.NewOperations().ListBranches(m.ctx, m.proj.MainRepoPath()); err == nil {
 				m.createWorkPanel.SetBranches(branches)
@@ -1582,28 +1589,34 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "a":
 		// Add child issue to selected issue
-		if len(m.beadItems) > 0 && m.beadsCursor < len(m.beadItems) {
-			m.beadFormPanel.SetAddChildMode(m.beadItems[m.beadsCursor].ID)
-			m.viewMode = ViewAddChildBead
-			return m, m.beadFormPanel.Init()
+		if len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
+			parent := m.beanItems[m.beansCursor]
+			if !beans.CanBeParent(parent.Type) {
+				m.statusMessage = fmt.Sprintf("Cannot add child to %s (type %q) — only milestone, epic, and feature beans can have children", parent.ID, parent.Type)
+				m.statusIsError = true
+				return m, nil
+			}
+			m.beanFormPanel.SetAddChildMode(parent.ID)
+			m.viewMode = ViewAddChildBean
+			return m, m.beanFormPanel.Init()
 		}
 		return m, nil
 
 	case "e":
-		// Edit selected issue using the unified bead form
-		if len(m.beadItems) > 0 && m.beadsCursor < len(m.beadItems) {
-			bead := m.beadItems[m.beadsCursor]
-			m.beadFormPanel.SetEditMode(bead.ID, bead.Title, bead.Description, bead.Type, bead.Priority, bead.Status)
-			m.viewMode = ViewEditBead
-			return m, m.beadFormPanel.Init()
+		// Edit selected issue using the unified bean form
+		if len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
+			bean := m.beanItems[m.beansCursor]
+			m.beanFormPanel.SetEditMode(bean.ID, bean.Title, bean.Body, bean.Type, bean.Priority, bean.Status)
+			m.viewMode = ViewEditBean
+			return m, m.beanFormPanel.Init()
 		}
 		return m, nil
 
 	case "E":
 		// Edit selected issue in external editor
-		if len(m.beadItems) > 0 && m.beadsCursor < len(m.beadItems) {
-			bead := m.beadItems[m.beadsCursor]
-			return m, m.openInEditor(bead.ID)
+		if len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
+			bean := m.beanItems[m.beansCursor]
+			return m, m.openInEditor(bean.ID)
 		}
 		return m, nil
 
@@ -1635,12 +1648,12 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.statusIsError = true
 			return m, nil
 		}
-		if len(m.beadItems) > 0 {
-			// Collect selected beads or use cursor bead
-			var beadsToAdd []string
+		if len(m.beanItems) > 0 {
+			// Collect selected beans or use cursor bean
+			var beansToAdd []string
 			hasSelection := false
-			for _, item := range m.beadItems {
-				if m.selectedBeads[item.ID] {
+			for _, item := range m.beanItems {
+				if m.selectedBeans[item.ID] {
 					hasSelection = true
 					// Check if already assigned
 					if item.assignedWorkID != "" {
@@ -1648,25 +1661,25 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 						m.statusIsError = true
 						return m, nil
 					}
-					beadsToAdd = append(beadsToAdd, item.ID)
+					beansToAdd = append(beansToAdd, item.ID)
 				}
 			}
 
-			// If no selection, use cursor bead
-			if !hasSelection && m.beadsCursor < len(m.beadItems) {
-				bead := m.beadItems[m.beadsCursor]
-				if bead.assignedWorkID != "" {
-					m.statusMessage = fmt.Sprintf("Issue %s already assigned to %s", bead.ID, bead.assignedWorkID)
+			// If no selection, use cursor bean
+			if !hasSelection && m.beansCursor < len(m.beanItems) {
+				bean := m.beanItems[m.beansCursor]
+				if bean.assignedWorkID != "" {
+					m.statusMessage = fmt.Sprintf("Issue %s already assigned to %s", bean.ID, bean.assignedWorkID)
 					m.statusIsError = true
 					return m, nil
 				}
-				beadsToAdd = append(beadsToAdd, bead.ID)
+				beansToAdd = append(beansToAdd, bean.ID)
 			}
 
-			if len(beadsToAdd) > 0 {
+			if len(beansToAdd) > 0 {
 				// Add issues directly to the focused work
-				m.selectedBeads = make(map[string]bool) // Clear selection after adding
-				return m, m.addBeadsToWork(beadsToAdd, m.focusedWorkID)
+				m.selectedBeans = make(map[string]bool) // Clear selection after adding
+				return m, m.addBeansToWork(beansToAdd, m.focusedWorkID)
 			}
 		}
 		return m, nil
@@ -1686,11 +1699,11 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // cleanup releases resources when the TUI exits
 func (m *planModel) cleanup() {
-	// Stop the beads watcher if it's running
-	if m.beadsWatcher != nil {
-		_ = m.beadsWatcher.Stop()
+	// Stop the beans watcher if it's running
+	if m.beansWatcher != nil {
+		_ = m.beansWatcher.Stop()
 	}
-	// Note: m.proj.Beads is owned by the Project and closed by proj.Close()
+	// Note: m.proj.Beans is owned by the Project and closed by proj.Close()
 	// which is deferred in runTUI. Do not close it here to avoid double-close.
 }
 
@@ -1721,13 +1734,13 @@ func (m *planModel) syncPanels() {
 	m.issuesPanel.SetSize(issuesWidth, m.height)
 	m.issuesPanel.SetFocus(m.activePanel == PanelLeft)
 	m.issuesPanel.SetData(
-		m.beadItems,
-		m.beadsCursor,
+		m.beanItems,
+		m.beansCursor,
 		m.filters,
-		m.beadsExpanded,
-		m.selectedBeads,
-		m.activeBeadSessions,
-		m.newBeads,
+		m.beansExpanded,
+		m.selectedBeans,
+		m.activeBeanSessions,
+		m.newBeans,
 	)
 	m.issuesPanel.SetWorkContext(m.focusedWorkID)
 	m.issuesPanel.SetHoveredIssue(m.hoveredIssue)
@@ -1735,19 +1748,19 @@ func (m *planModel) syncPanels() {
 	// Sync details panel
 	m.detailsPanel.SetSize(detailsWidth, m.height)
 	m.detailsPanel.SetFocus(m.activePanel == PanelRight)
-	// Get focused bead and build child lookup map
-	var focusedBead *beadItem
+	// Get focused bean and build child lookup map
+	var focusedBean *beanItem
 	var hasActiveSession bool
-	childBeadMap := make(map[string]*beadItem)
-	if len(m.beadItems) > 0 && m.beadsCursor < len(m.beadItems) {
-		focusedBead = &m.beadItems[m.beadsCursor]
-		hasActiveSession = m.activeBeadSessions[focusedBead.ID]
+	childBeanMap := make(map[string]*beanItem)
+	if len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
+		focusedBean = &m.beanItems[m.beansCursor]
+		hasActiveSession = m.activeBeanSessions[focusedBean.ID]
 		// Build map for child lookup
-		for i := range m.beadItems {
-			childBeadMap[m.beadItems[i].ID] = &m.beadItems[i]
+		for i := range m.beanItems {
+			childBeanMap[m.beanItems[i].ID] = &m.beanItems[i]
 		}
 	}
-	m.detailsPanel.SetData(focusedBead, hasActiveSession, childBeadMap)
+	m.detailsPanel.SetData(focusedBean, hasActiveSession, childBeanMap)
 
 	// Sync work tabs bar
 	m.workTabsBar.SetSize(m.width)
@@ -1781,10 +1794,10 @@ func (m *planModel) syncPanels() {
 	m.prImportPanel.SetFocus(m.activePanel == PanelRight && m.viewMode == ViewPRImportInline)
 	m.prImportPanel.SetHoveredButton(m.hoveredDialogButton)
 
-	// Sync bead form panel
-	m.beadFormPanel.SetSize(detailsWidth, m.height)
-	m.beadFormPanel.SetFocus(m.activePanel == PanelRight)
-	m.beadFormPanel.SetHoveredButton(m.hoveredDialogButton)
+	// Sync bean form panel
+	m.beanFormPanel.SetSize(detailsWidth, m.height)
+	m.beanFormPanel.SetFocus(m.activePanel == PanelRight)
+	m.beanFormPanel.SetHoveredButton(m.hoveredDialogButton)
 
 	// Sync create work panel
 	m.createWorkPanel.SetSize(detailsWidth, m.height)
@@ -1796,21 +1809,21 @@ func (m *planModel) syncPanels() {
 func (m *planModel) View() string {
 	// Handle dialogs
 	switch m.viewMode {
-	case ViewCreateBead, ViewCreateBeadInline, ViewAddChildBead, ViewEditBead:
-		// All bead form modes render inline in the details panel
+	case ViewCreateBean, ViewCreateBeanInline, ViewAddChildBean, ViewEditBean:
+		// All bean form modes render inline in the details panel
 		// Fall through to normal rendering
 	case ViewCreateWork:
 		// Create work now renders inline in the details panel
 		// Fall through to normal rendering
-	case ViewBeadSearch:
+	case ViewBeanSearch:
 		// Inline search mode - render normal view with search bar in status area
 		// Fall through to normal rendering
 	case ViewLabelFilter:
 		return m.renderWithDialog(m.renderLabelFilterDialogContent())
-	case ViewCloseBeadConfirm:
-		return m.renderWithDialog(m.renderCloseBeadConfirmContent())
-	case ViewDeleteBeadConfirm:
-		return m.renderWithDialog(m.renderDeleteBeadConfirmContent())
+	case ViewCloseBeanConfirm:
+		return m.renderWithDialog(m.renderCloseBeanConfirmContent())
+	case ViewDeleteBeanConfirm:
+		return m.renderWithDialog(m.renderDeleteBeanConfirmContent())
 	case ViewDestroyConfirm:
 		return m.renderWithDialog(m.renderDestroyConfirmContent())
 	case ViewZmxSessionPicker:
@@ -1843,20 +1856,20 @@ func (m *planModel) View() string {
 	return lipgloss.JoinVertical(lipgloss.Left, workTabsBar, content, statusBar)
 }
 
-// beadsForBranch is a minimal struct for branch name generation
-type beadsForBranch struct {
+// beansForBranch is a minimal struct for branch name generation
+type beansForBranch struct {
 	ID    string
 	Title string
 }
 
-// generateBranchNameFromBeadsForBranch generates a branch name from beads
-func generateBranchNameFromBeadsForBranch(beads []*beadsForBranch) string {
-	if len(beads) == 0 {
+// generateBranchNameFromBeansForBranch generates a branch name from beans
+func generateBranchNameFromBeansForBranch(beans []*beansForBranch) string {
+	if len(beans) == 0 {
 		return ""
 	}
-	// Use the same logic as generateBranchNameFromBeads but with local struct
+	// Use the same logic as generateBranchNameFromBeans but with local struct
 	var titles []string
-	for _, b := range beads {
+	for _, b := range beans {
 		titles = append(titles, b.Title)
 	}
 	combined := strings.Join(titles, " ")
@@ -1878,7 +1891,7 @@ func generateBranchNameFromBeadsForBranch(beads []*beadsForBranch) string {
 	return "feat/" + branchName
 }
 
-// updateWorkSelectionFilter updates the bead filter based on the current work details selection
+// updateWorkSelectionFilter updates the bean filter based on the current work details selection
 // and triggers a data refresh
 func (m *planModel) updateWorkSelectionFilter() tea.Cmd {
 	// Save old filter values to detect actual changes
@@ -1911,7 +1924,7 @@ func (m *planModel) updateWorkSelectionFilter() tea.Cmd {
 	}
 
 	if m.workDetails.IsTaskSelected() {
-		// Task selected - set task filter to show beads assigned to that task
+		// Task selected - set task filter to show beans assigned to that task
 		selectedTaskID := m.workDetails.GetSelectedTaskID()
 		if selectedTaskID != "" {
 			m.filters.task = selectedTaskID
@@ -1925,7 +1938,7 @@ func (m *planModel) updateWorkSelectionFilter() tea.Cmd {
 
 	// Only reset cursor when filter actually changes (not on every refresh)
 	if m.filters.task != oldTask || m.filters.children != oldChildren || m.filters.rootIssue != oldRootIssue {
-		m.beadsCursor = 0
+		m.beansCursor = 0
 	}
 
 	return m.refreshData()
@@ -1995,6 +2008,15 @@ func (m *planModel) findWorkByID(id string) *progress.WorkProgress {
 	for _, work := range m.workTiles {
 		if work != nil && work.Work.ID == id {
 			return work
+		}
+	}
+	return nil
+}
+
+func (m *planModel) findBeanByID(id string) *beans.BeanWithDeps {
+	for _, item := range m.beanItems {
+		if item.ID == id {
+			return item.BeanWithDeps
 		}
 	}
 	return nil

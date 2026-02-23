@@ -21,9 +21,9 @@ Instructions:
    - Any security concerns
 
 5. **Creating Issues for Review Findings**:
-   If you find issues that need to be addressed, create beads for them{{if .RootIssueID}} as subtasks under the root issue{{end}}:
+   If you find issues that need to be addressed, create beans for them{{if .RootIssueID}} as subtasks under the root issue{{end}}:
 
-   For each issue found, create a bead{{if .RootIssueID}} under the root issue{{end}}:
+   For each issue found, create a bean{{if .RootIssueID}} under the root issue{{end}}:
    ```
    bd create "<issue title>"{{if .RootIssueID}} --parent {{.RootIssueID}}{{end}} --type <bug|task> \
      --external-ref "review-{{.TaskID}}" \

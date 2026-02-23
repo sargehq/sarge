@@ -15,7 +15,7 @@ import (
 
 // WorkOverviewPanel renders the left side of the work details view.
 // It displays the work header, branch info, progress, orchestrator health,
-// and a selectable list of tasks and unassigned beads.
+// and a selectable list of tasks and unassigned beans.
 type WorkOverviewPanel struct {
 	// Dimensions
 	width  int
@@ -26,8 +26,8 @@ type WorkOverviewPanel struct {
 
 	// Data
 	focusedWork         *progress.WorkProgress
-	selectedIndex       int  // 0 = root issue, 1+ = tasks, N+ = unassigned beads
-	hoveredIndex        int  // -1 = none, 0 = root issue, 1+ = tasks/unassigned beads
+	selectedIndex       int  // 0 = root issue, 1+ = tasks, N+ = unassigned beans
+	hoveredIndex        int  // -1 = none, 0 = root issue, 1+ = tasks/unassigned beans
 	orchestratorHealthy bool // Whether the orchestrator process is running
 
 	// Zone prefix for unique zone IDs
@@ -60,8 +60,8 @@ func (p *WorkOverviewPanel) SetFocusedWork(focusedWork *progress.WorkProgress) {
 	p.focusedWork = focusedWork
 	// Validate current selection still exists
 	if focusedWork != nil {
-		// 0 = root, 1..n = tasks, n+1..m = unassigned beads
-		maxIndex := len(focusedWork.Tasks) + len(focusedWork.UnassignedBeads)
+		// 0 = root, 1..n = tasks, n+1..m = unassigned beans
+		maxIndex := len(focusedWork.Tasks) + len(focusedWork.UnassignedBeans)
 		if p.selectedIndex > maxIndex {
 			p.selectedIndex = 0 // Reset to root issue
 		}
@@ -117,47 +117,47 @@ func (p *WorkOverviewPanel) GetSelectedTaskID() string {
 	return ""
 }
 
-// GetSelectedBeadIDs returns the bead IDs that should be shown based on current selection.
-// - If root issue is selected (index 0): returns all work beads (root + dependents)
-// - If a task is selected: returns only the beads assigned to that task
-// - If an unassigned bead is selected: returns just that bead's ID
+// GetSelectedBeanIDs returns the bean IDs that should be shown based on current selection.
+// - If root issue is selected (index 0): returns all work beans (root + dependents)
+// - If a task is selected: returns only the beans assigned to that task
+// - If an unassigned bean is selected: returns just that bean's ID
 // Returns nil if no work is focused.
-func (p *WorkOverviewPanel) GetSelectedBeadIDs() []string {
+func (p *WorkOverviewPanel) GetSelectedBeanIDs() []string {
 	if p.focusedWork == nil {
 		return nil
 	}
 
 	if p.selectedIndex == 0 {
-		// Root issue selected - return all work beads
-		var beadIDs []string
-		for _, bp := range p.focusedWork.WorkBeads {
-			beadIDs = append(beadIDs, bp.ID)
+		// Root issue selected - return all work beans
+		var beanIDs []string
+		for _, bp := range p.focusedWork.WorkBeans {
+			beanIDs = append(beanIDs, bp.ID)
 		}
-		return beadIDs
+		return beanIDs
 	}
 
 	tasksEndIdx := 1 + len(p.focusedWork.Tasks)
 
-	// Task selected - return only task's beads
+	// Task selected - return only task's beans
 	taskIdx := p.selectedIndex - 1
 	if taskIdx >= 0 && taskIdx < len(p.focusedWork.Tasks) {
-		var beadIDs []string
-		for _, bp := range p.focusedWork.Tasks[taskIdx].Beads {
-			beadIDs = append(beadIDs, bp.ID)
+		var beanIDs []string
+		for _, bp := range p.focusedWork.Tasks[taskIdx].Beans {
+			beanIDs = append(beanIDs, bp.ID)
 		}
-		return beadIDs
+		return beanIDs
 	}
 
-	// Unassigned bead selected - return just that bead
+	// Unassigned bean selected - return just that bean
 	unassignedIdx := p.selectedIndex - tasksEndIdx
-	if unassignedIdx >= 0 && unassignedIdx < len(p.focusedWork.UnassignedBeads) {
-		return []string{p.focusedWork.UnassignedBeads[unassignedIdx].ID}
+	if unassignedIdx >= 0 && unassignedIdx < len(p.focusedWork.UnassignedBeans) {
+		return []string{p.focusedWork.UnassignedBeans[unassignedIdx].ID}
 	}
 
 	return nil
 }
 
-// IsTaskSelected returns true if a task is currently selected (vs root issue or unassigned bead)
+// IsTaskSelected returns true if a task is currently selected (vs root issue or unassigned bean)
 func (p *WorkOverviewPanel) IsTaskSelected() bool {
 	if p.selectedIndex == 0 || p.focusedWork == nil {
 		return false
@@ -178,25 +178,25 @@ func (p *WorkOverviewPanel) IsSelectedTaskFailed() bool {
 	return false
 }
 
-// IsUnassignedBeadSelected returns true if an unassigned bead is currently selected
-func (p *WorkOverviewPanel) IsUnassignedBeadSelected() bool {
+// IsUnassignedBeanSelected returns true if an unassigned bean is currently selected
+func (p *WorkOverviewPanel) IsUnassignedBeanSelected() bool {
 	if p.focusedWork == nil {
 		return false
 	}
 	tasksEndIdx := 1 + len(p.focusedWork.Tasks)
 	unassignedIdx := p.selectedIndex - tasksEndIdx
-	return unassignedIdx >= 0 && unassignedIdx < len(p.focusedWork.UnassignedBeads)
+	return unassignedIdx >= 0 && unassignedIdx < len(p.focusedWork.UnassignedBeans)
 }
 
-// GetSelectedUnassignedBeadID returns the ID of the selected unassigned bead, or empty if none selected
-func (p *WorkOverviewPanel) GetSelectedUnassignedBeadID() string {
-	if !p.IsUnassignedBeadSelected() {
+// GetSelectedUnassignedBeanID returns the ID of the selected unassigned bean, or empty if none selected
+func (p *WorkOverviewPanel) GetSelectedUnassignedBeanID() string {
+	if !p.IsUnassignedBeanSelected() {
 		return ""
 	}
 	tasksEndIdx := 1 + len(p.focusedWork.Tasks)
 	unassignedIdx := p.selectedIndex - tasksEndIdx
-	if unassignedIdx >= 0 && unassignedIdx < len(p.focusedWork.UnassignedBeads) {
-		return p.focusedWork.UnassignedBeads[unassignedIdx].ID
+	if unassignedIdx >= 0 && unassignedIdx < len(p.focusedWork.UnassignedBeans) {
+		return p.focusedWork.UnassignedBeans[unassignedIdx].ID
 	}
 	return ""
 }
@@ -229,8 +229,8 @@ func (p *WorkOverviewPanel) NavigateDown() {
 	if p.focusedWork == nil {
 		return
 	}
-	// 0 = root, 1..n = tasks, n+1..m = unassigned beads
-	maxIndex := len(p.focusedWork.Tasks) + len(p.focusedWork.UnassignedBeads)
+	// 0 = root, 1..n = tasks, n+1..m = unassigned beans
+	maxIndex := len(p.focusedWork.Tasks) + len(p.focusedWork.UnassignedBeans)
 	if p.selectedIndex < maxIndex {
 		p.selectedIndex++
 	}
@@ -331,10 +331,10 @@ func (p *WorkOverviewPanel) Render(panelHeight, panelWidth int) string {
 	progressLine.WriteString(fmt.Sprintf(" (%d/%d tasks)", completedTasks, len(p.focusedWork.Tasks)))
 
 	// Warning badges
-	if p.focusedWork.UnassignedBeadCount > 0 {
+	if p.focusedWork.UnassignedBeanCount > 0 {
 		warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
 		progressLine.WriteString("  ")
-		progressLine.WriteString(warningStyle.Render(fmt.Sprintf("⚠ %d unassigned", p.focusedWork.UnassignedBeadCount)))
+		progressLine.WriteString(warningStyle.Render(fmt.Sprintf("⚠ %d unassigned", p.focusedWork.UnassignedBeanCount)))
 	}
 	if p.focusedWork.FeedbackCount > 0 {
 		alertStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
@@ -371,8 +371,8 @@ func (p *WorkOverviewPanel) Render(panelHeight, panelWidth int) string {
 	content.WriteString("\n")
 	availableLines := max(panelHeight-headerLines-1, 1)
 
-	// Total items: 1 root issue + n tasks + unassigned beads (if any)
-	totalItems := 1 + len(p.focusedWork.Tasks) + len(p.focusedWork.UnassignedBeads)
+	// Total items: 1 root issue + n tasks + unassigned beans (if any)
+	totalItems := 1 + len(p.focusedWork.Tasks) + len(p.focusedWork.UnassignedBeans)
 
 	// Calculate scroll window
 	startIdx := 0
@@ -382,7 +382,7 @@ func (p *WorkOverviewPanel) Render(panelHeight, panelWidth int) string {
 	endIdx := min(startIdx+availableLines, totalItems)
 
 	// Render visible items (use contentWidth which accounts for padding)
-	// Layout: index 0 = root issue, 1..n = tasks, n+1..m = unassigned beads
+	// Layout: index 0 = root issue, 1..n = tasks, n+1..m = unassigned beans
 	tasksEndIdx := 1 + len(p.focusedWork.Tasks)
 	for i := startIdx; i < endIdx; i++ {
 		var itemLine string
@@ -399,11 +399,11 @@ func (p *WorkOverviewPanel) Render(panelHeight, panelWidth int) string {
 				zoneID = p.zonePrefix + "task-" + p.focusedWork.Tasks[taskIdx].Task.ID
 			}
 		} else {
-			// Unassigned bead (index i - tasksEndIdx in unassignedBeads array)
+			// Unassigned bean (index i - tasksEndIdx in unassignedBeans array)
 			unassignedIdx := i - tasksEndIdx
-			if unassignedIdx < len(p.focusedWork.UnassignedBeads) {
-				itemLine = p.renderUnassignedBeadLine(unassignedIdx, contentWidth)
-				zoneID = p.zonePrefix + "bead-" + p.focusedWork.UnassignedBeads[unassignedIdx].ID
+			if unassignedIdx < len(p.focusedWork.UnassignedBeans) {
+				itemLine = p.renderUnassignedBeanLine(unassignedIdx, contentWidth)
+				zoneID = p.zonePrefix + "bean-" + p.focusedWork.UnassignedBeans[unassignedIdx].ID
 			}
 		}
 		if zoneID != "" && itemLine != "" {
@@ -431,12 +431,12 @@ func (p *WorkOverviewPanel) renderRootIssueLine(panelWidth int) string {
 		prefix = "► "
 	}
 
-	// Find root issue info from workBeads
+	// Find root issue info from workBeans
 	rootID := p.focusedWork.Work.RootIssueID
 	rootTitle := ""
-	for _, bead := range p.focusedWork.WorkBeads {
-		if bead.ID == rootID {
-			rootTitle = bead.Title
+	for _, bean := range p.focusedWork.WorkBeans {
+		if bean.ID == rootID {
+			rootTitle = bean.Title
 			break
 		}
 	}
@@ -551,16 +551,16 @@ func (p *WorkOverviewPanel) renderTaskLine(taskIdx int, _ int) string {
 	return content.String()
 }
 
-// renderUnassignedBeadLine renders an unassigned bead line and returns it
-func (p *WorkOverviewPanel) renderUnassignedBeadLine(beadIdx, panelWidth int) string {
-	if beadIdx >= len(p.focusedWork.UnassignedBeads) {
+// renderUnassignedBeanLine renders an unassigned bean line and returns it
+func (p *WorkOverviewPanel) renderUnassignedBeanLine(beanIdx, panelWidth int) string {
+	if beanIdx >= len(p.focusedWork.UnassignedBeans) {
 		return ""
 	}
 
 	var content strings.Builder
-	bead := p.focusedWork.UnassignedBeads[beadIdx]
+	bean := p.focusedWork.UnassignedBeans[beanIdx]
 	tasksEndIdx := 1 + len(p.focusedWork.Tasks)
-	itemIdx := tasksEndIdx + beadIdx
+	itemIdx := tasksEndIdx + beanIdx
 
 	isSelected := p.selectedIndex == itemIdx
 	isHovered := p.hoveredIndex == itemIdx
@@ -571,12 +571,12 @@ func (p *WorkOverviewPanel) renderUnassignedBeadLine(beadIdx, panelWidth int) st
 	}
 
 	// Build text portion (ID and title)
-	textPortion := bead.ID
-	if bead.Title != "" {
+	textPortion := bean.ID
+	if bean.Title != "" {
 		// Calculate max title length: panelWidth - prefix(2) - icon(1) - spaces(2) - ID - buffer
-		maxTitleLen := panelWidth - 2 - 1 - 2 - len(bead.ID) - 4
+		maxTitleLen := panelWidth - 2 - 1 - 2 - len(bean.ID) - 4
 		if maxTitleLen > 0 {
-			textPortion += " " + ansi.Truncate(bead.Title, maxTitleLen, "...")
+			textPortion += " " + ansi.Truncate(bean.Title, maxTitleLen, "...")
 		}
 	}
 
@@ -590,8 +590,8 @@ func (p *WorkOverviewPanel) renderUnassignedBeadLine(beadIdx, panelWidth int) st
 		content.WriteString(hoverStyle.Render("○ " + textPortion))
 	} else {
 		// Normal: orange icon for unassigned + dim text
-		beadIcon := lipgloss.NewStyle().Foreground(lipgloss.Color("214")).Render("○")
-		content.WriteString(beadIcon + " ")
+		beanIcon := lipgloss.NewStyle().Foreground(lipgloss.Color("214")).Render("○")
+		content.WriteString(beanIcon + " ")
 		content.WriteString(tuiDimStyle.Render(textPortion))
 	}
 	content.WriteString("\n")
@@ -616,10 +616,10 @@ func (p *WorkOverviewPanel) DetectClickedItem(msg tea.MouseMsg) int {
 		}
 	}
 
-	// Check unassigned bead zones
+	// Check unassigned bean zones
 	tasksEndIdx := 1 + len(p.focusedWork.Tasks)
-	for i, bead := range p.focusedWork.UnassignedBeads {
-		if zone.Get(p.zonePrefix + "bead-" + bead.ID).InBounds(msg) {
+	for i, bean := range p.focusedWork.UnassignedBeans {
+		if zone.Get(p.zonePrefix + "bean-" + bean.ID).InBounds(msg) {
 			return tasksEndIdx + i
 		}
 	}
@@ -628,7 +628,7 @@ func (p *WorkOverviewPanel) DetectClickedItem(msg tea.MouseMsg) int {
 }
 
 // DetectHoveredItem determines which item is at the mouse position for hover detection.
-// Returns the absolute index (0 = root, 1+ = tasks, N+ = unassigned beads), or -1 if not over an item.
+// Returns the absolute index (0 = root, 1+ = tasks, N+ = unassigned beans), or -1 if not over an item.
 func (p *WorkOverviewPanel) DetectHoveredItem(msg tea.MouseMsg) int {
 	// Reuse click detection logic since hover uses the same boundaries
 	return p.DetectClickedItem(msg)

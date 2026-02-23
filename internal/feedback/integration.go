@@ -2,13 +2,12 @@ package feedback
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 	"unicode"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/github"
 	"github.com/sargehq/sarge/internal/project"
 )
@@ -21,18 +20,18 @@ var (
 	issueNumberPattern     = regexp.MustCompile(`/issues/(\d+)`)
 )
 
-// BeadInfo represents information for creating a bead from feedback.
-type BeadInfo struct {
+// BeanInfo represents information for creating a bean from feedback.
+type BeanInfo struct {
 	Title       string
 	Description string
 	Type        string // task, bug, feature
-	Priority    int    // 0-4
+	Priority    string // critical, high, normal, low, deferred
 	ParentID    string // Parent issue ID (root_issue_id)
 	Labels      []string
-	SourceURL   string // GitHub URL for external reference generation
+	SourceURL   string // GitHub URL for tag generation
 }
 
-// Integration handles the integration between GitHub PR feedback and beads.
+// Integration handles the integration between GitHub PR feedback and beans.
 type Integration struct {
 	client    github.ClientInterface
 	processor *FeedbackProcessor
@@ -65,82 +64,70 @@ func (i *Integration) ExtractPRStatus(ctx context.Context, prURL string) (*PRSta
 	return ExtractStatusFromPRStatus(status), nil
 }
 
-// CreateBeadFromFeedback creates a bead using the beads package with proper input validation.
-func (i *Integration) CreateBeadFromFeedback(ctx context.Context, beadDir string, beadInfo BeadInfo) (string, error) {
+// CreateBeanFromFeedback creates a bean using the beans package with proper input validation.
+func (i *Integration) CreateBeanFromFeedback(ctx context.Context, beanDir string, beanInfo BeanInfo) (string, error) {
 	// Validate and sanitize all inputs to prevent injection attacks
-	title, err := validateAndSanitizeInput(beadInfo.Title, 200, "title")
+	title, err := validateAndSanitizeInput(beanInfo.Title, 200, "title")
 	if err != nil {
 		return "", fmt.Errorf("invalid title: %w", err)
 	}
 
-	// Validate bead type
-	if err := validateBeadType(beadInfo.Type); err != nil {
+	// Validate bean type
+	if err := validateBeanType(beanInfo.Type); err != nil {
 		return "", err
 	}
 
 	// Validate priority
-	if err := validatePriority(beadInfo.Priority); err != nil {
+	if err := validatePriority(beanInfo.Priority); err != nil {
 		return "", err
 	}
 
 	// Validate and sanitize parent ID
-	parentID, err := validateAndSanitizeInput(beadInfo.ParentID, 100, "parent ID")
+	parentID, err := validateAndSanitizeInput(beanInfo.ParentID, 100, "parent ID")
 	if err != nil {
 		return "", fmt.Errorf("invalid parent ID: %w", err)
 	}
 
 	// Validate and sanitize description (allow longer descriptions)
-	description, err := validateAndSanitizeInput(beadInfo.Description, 5000, "description")
+	description, err := validateAndSanitizeInput(beanInfo.Description, 5000, "description")
 	if err != nil {
 		return "", fmt.Errorf("invalid description: %w", err)
 	}
 
-	// Prepare external reference if we have a source URL
-	var externalRef string
-	if beadInfo.SourceURL != "" {
-		// Validate the source URL
-		sanitizedURL, err := validateAndSanitizeInput(beadInfo.SourceURL, 500, "source URL")
-		if err == nil {
-			// Create a short reference for the external-ref field
-			// For example, "gh-comment-123456" or "gh-pr-123"
-			ref := fmt.Sprintf("gh-%s", extractGitHubID(sanitizedURL))
-			// Validate the external reference
-			if sanitizedRef, err := validateAndSanitizeInput(ref, 100, "external reference"); err == nil {
-				externalRef = sanitizedRef
-			}
-		}
-		// If validation fails, we skip adding the external reference but continue
-	}
-
-	// Validate labels
-	var validLabels []string
-	for _, label := range beadInfo.Labels {
-		// Validate each label
+	// Build tags from labels and source URL
+	var validTags []string
+	for _, label := range beanInfo.Labels {
 		sanitizedLabel, err := validateAndSanitizeInput(label, 50, "label")
 		if err != nil {
-			// Skip invalid labels but continue
 			continue
 		}
-		validLabels = append(validLabels, sanitizedLabel)
+		validTags = append(validTags, sanitizedLabel)
+	}
+	if beanInfo.SourceURL != "" {
+		if sanitizedURL, err := validateAndSanitizeInput(beanInfo.SourceURL, 500, "source URL"); err == nil {
+			ref := fmt.Sprintf("gh-%s", extractGitHubID(sanitizedURL))
+			if sanitizedRef, err := validateAndSanitizeInput(ref, 100, "source tag"); err == nil {
+				validTags = append(validTags, sanitizedRef)
+			}
+		}
 	}
 
-	// Create bead using the beads package
-	createOpts := beads.CreateOptions{
-		Title:       title,
-		Type:        beadInfo.Type,     // Already validated
-		Priority:    beadInfo.Priority, // Already validated as int
-		Parent:      parentID,
-		Description: description,
-		Labels:      validLabels,
-		ExternalRef: externalRef,
+	// Create bean using the beans package
+	createOpts := beans.CreateOptions{
+		Title:    title,
+		Type:     beanInfo.Type,
+		Priority: beanInfo.Priority,
+		Parent:   parentID,
+		Body:     description,
+		Tags:     validTags,
 	}
 
-	beadID, err := beads.NewCLI(beadDir).Create(ctx, createOpts)
+	beanID, err := beans.NewCLI(beanDir).Create(ctx, createOpts)
 	if err != nil {
-		return "", fmt.Errorf("failed to create bead: %w", err)
+		return "", fmt.Errorf("failed to create bean: %w", err)
 	}
 
-	return beadID, nil
+	return beanID, nil
 }
 
 // extractGitHubID extracts a GitHub identifier from a URL
@@ -218,8 +205,8 @@ func validateAndSanitizeInput(input string, maxLength int, fieldName string) (st
 	return result, nil
 }
 
-// validateBeadType ensures the bead type is valid.
-func validateBeadType(beadType string) error {
+// validateBeanType ensures the bean type is valid.
+func validateBeanType(beanType string) error {
 	validTypes := map[string]bool{
 		"bug":     true,
 		"feature": true,
@@ -227,22 +214,29 @@ func validateBeadType(beadType string) error {
 		"epic":    true,
 	}
 
-	if !validTypes[strings.ToLower(beadType)] {
-		return fmt.Errorf("invalid bead type: %s", beadType)
+	if !validTypes[strings.ToLower(beanType)] {
+		return fmt.Errorf("invalid bean type: %s", beanType)
 	}
 	return nil
 }
 
-// validatePriority ensures the priority is within valid range.
-func validatePriority(priority int) error {
-	if priority < 0 || priority > 4 {
-		return errors.New("priority must be between 0 and 4")
+// validatePriority ensures the priority is a valid beans priority string.
+func validatePriority(priority string) error {
+	valid := map[string]bool{
+		beans.PriorityCritical: true,
+		beans.PriorityHigh:     true,
+		beans.PriorityNormal:   true,
+		beans.PriorityLow:      true,
+		beans.PriorityDeferred: true,
+	}
+	if !valid[priority] {
+		return fmt.Errorf("invalid priority: %s", priority)
 	}
 	return nil
 }
 
-// GetBeadType converts a feedback type to a bead type string.
-func GetBeadType(feedbackType github.FeedbackType) string {
+// GetBeanType converts a feedback type to a bean type string.
+func GetBeanType(feedbackType github.FeedbackType) string {
 	switch feedbackType {
 	case github.FeedbackTypeTest, github.FeedbackTypeBuild, github.FeedbackTypeCI, github.FeedbackTypeConflict:
 		return "bug"

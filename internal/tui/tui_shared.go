@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/db"
 )
 
@@ -106,9 +106,9 @@ var (
 	typeDefaultStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("247")) // Gray for others
 
-	// New bead animation style
-	tuiNewBeadStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFF00")). // Bright yellow for newly created beads
+	// New bean animation style
+	tuiNewBeanStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFFF00")). // Bright yellow for newly created beans
 			Bold(true)
 )
 
@@ -129,16 +129,16 @@ type ViewMode int
 const (
 	ViewNormal ViewMode = iota
 	ViewCreateWork
-	ViewCreateBead
-	ViewCreateBeadInline // Create issue inline in description area
+	ViewCreateBean
+	ViewCreateBeanInline // Create issue inline in description area
 	ViewCreateEpic
-	ViewAddChildBead // Add child issue to selected issue
-	ViewEditBead     // Edit selected issue
+	ViewAddChildBean // Add child issue to selected issue
+	ViewEditBean     // Edit selected issue
 	ViewDestroyConfirm
-	ViewCloseBeadConfirm
-	ViewDeleteBeadConfirm // Permanently delete bead(s)
-	ViewAssignBeads
-	ViewBeadSearch
+	ViewCloseBeanConfirm
+	ViewDeleteBeanConfirm // Permanently delete bean(s)
+	ViewAssignBeans
+	ViewBeanSearch
 	ViewLabelFilter
 	ViewLinearImportInline // Import from Linear (inline in details panel)
 	ViewPRImportInline     // Import from GitHub PR (inline in details panel)
@@ -146,41 +146,42 @@ const (
 	ViewHelp
 )
 
-// beadItem represents a bead in the beads panel with TUI-specific display state.
-// It embeds beads.BeadWithDeps to access domain data directly.
-type beadItem struct {
-	*beads.BeadWithDeps
+// beanItem represents a bean in the beans panel with TUI-specific display state.
+// It embeds beans.BeanWithDeps to access domain data directly.
+type beanItem struct {
+	*beans.BeanWithDeps
 
 	// TUI-specific display state
 	isReady bool // computed ready state
 	treeDepth         int      // depth in tree view (0 = root)
 	assignedWorkID    string   // work ID if already assigned to a work (empty = not assigned)
-	isClosedParent    bool     // true if this is a closed bead included for tree context (has visible children)
-	isLastChild       bool     // true if this bead is the last child of its parent
+	isClosedParent    bool     // true if this is a closed bean included for tree context (has visible children)
+	isLastChild       bool     // true if this bean is the last child of its parent
 	treePrefixPattern string   // precomputed tree prefix pattern (e.g., "│ └─")
 	children          []string // IDs of issues blocked by this one (computed from tree)
 }
 
-// beadFilters holds the current filter state for beads
-type beadFilters struct {
-	status     string // "open", "closed", "ready"
+// beanFilters holds the current filter state for beans
+type beanFilters struct {
+	status     string // "todo", "completed", "ready", "all"
 	label      string // filter by label (empty = no filter)
 	searchText string // fuzzy search text
 	sortBy     string // "default", "priority", "created", "title"
 
 	// Entity-based filters (override status filter when set)
-	task     string // task ID - show beads assigned to this task
-	children string // bead ID - show children (dependents) of this bead
+	task     string // task ID - show beans assigned to this task
+	children string // bean ID - show children (dependents) of this bean
 
 	// Context filters (always applied when work panel is present)
 	rootIssue string // root issue ID - always include in results when set
 }
 
-// beadTypes is the list of valid bead types
-var beadTypes = []string{
+// beanTypes is the list of valid bean types.
+// "feature" is first so it is the default when creating a new bean (beanType index 0).
+var beanTypes = []string{
+	"feature",
 	"task",
 	"bug",
-	"feature",
 	"epic",
 	"chore",
 	"merge-request",
@@ -197,25 +198,16 @@ var beadTypes = []string{
 func statusIcon(status string) string {
 	switch status {
 	// Internal db statuses
-	case db.StatusPending:
+	case db.StatusPending, beans.StatusTodo:
 		return statusPending.Render("○")
-	case db.StatusProcessing:
+	case db.StatusProcessing, beans.StatusInProgress:
 		return statusProcessing.Render("●")
-	case db.StatusCompleted:
+	case db.StatusCompleted: // same value for db and beans ("completed")
 		return statusCompleted.Render("✓")
-	case db.StatusFailed:
+	case db.StatusFailed, beans.StatusScrapped:
 		return statusFailed.Render("✗")
-	// Bead statuses from bd CLI
-	case "open":
-		return statusPending.Render("○")
-	case "in_progress":
-		return statusProcessing.Render("●")
-	case "blocked":
-		return statusFailed.Render("◐")
-	case "deferred":
+	case beans.StatusDraft:
 		return statusPending.Render("❄")
-	case "closed":
-		return statusCompleted.Render("✓")
 	default:
 		return "?"
 	}
@@ -265,36 +257,36 @@ func styleButtonWithHover(text string, hovered bool) string {
 }
 
 
-// fetchBeadsWithFilters fetches and filters beads based on provided filters
-func fetchBeadsWithFilters(ctx context.Context, beadsClient *beads.Client, _ string, filters beadFilters) ([]beadItem, error) {
+// fetchBeansWithFilters fetches and filters beans based on provided filters
+func fetchBeansWithFilters(ctx context.Context, beansClient *beans.Client, _ string, filters beanFilters) ([]beanItem, error) {
 	// For "ready" status, use bd ready command
 	if filters.status == "ready" {
-		return fetchReadyBeads(ctx, beadsClient, filters)
+		return fetchReadyBeans(ctx, beansClient, filters)
 	}
 
 	// List issues with optional status filter
-	// "open" means all non-closed statuses (open, in_progress, blocked, deferred)
+	// "todo" (StatusTodo) means all non-terminal statuses (todo, in-progress, draft)
 	// "all" means no filter
 	// Other values are passed directly as status filter
 	statusFilter := ""
 	filterOutClosed := false
-	if filters.status == beads.StatusOpen {
-		// Fetch all and filter out closed
+	if filters.status == beans.StatusTodo {
+		// Fetch all and filter out terminal statuses
 		statusFilter = ""
 		filterOutClosed = true
 	} else if filters.status != "" && filters.status != "all" {
 		statusFilter = filters.status
 	}
-	issuesList, err := beadsClient.ListBeads(ctx, statusFilter)
+	issuesList, err := beansClient.ListBeans(ctx, statusFilter)
 	if err != nil {
 		return nil, err
 	}
 
-	// Filter out closed issues if "open" filter was requested
+	// Filter out terminal-status issues if "todo" filter was requested
 	if filterOutClosed {
-		filtered := make([]beads.Bead, 0, len(issuesList))
+		filtered := make([]beans.Bean, 0, len(issuesList))
 		for _, issue := range issuesList {
-			if issue.Status != beads.StatusClosed {
+			if issue.Status != beans.StatusCompleted {
 				filtered = append(filtered, issue)
 			}
 		}
@@ -304,7 +296,7 @@ func fetchBeadsWithFilters(ctx context.Context, beadsClient *beads.Client, _ str
 	// TODO: Apply label filter if needed (requires additional query support)
 
 	// Get ready issues to mark which ones are ready
-	readyIssues, _ := beadsClient.GetReadyBeads(ctx)
+	readyIssues, _ := beansClient.GetReadyBeans(ctx)
 	readySet := make(map[string]bool)
 	for _, issue := range readyIssues {
 		readySet[issue.ID] = true
@@ -315,44 +307,44 @@ func fetchBeadsWithFilters(ctx context.Context, beadsClient *beads.Client, _ str
 	for _, issue := range issuesList {
 		issueIDs = append(issueIDs, issue.ID)
 	}
-	depsResult, err := beadsClient.GetBeadsWithDeps(ctx, issueIDs)
+	depsResult, err := beansClient.GetBeansWithDeps(ctx, issueIDs)
 	if err != nil {
 		return nil, err
 	}
 
-	var items []beadItem
+	var items []beanItem
 	for _, issue := range issuesList {
 		// Apply search filter
 		if filters.searchText != "" {
 			searchLower := strings.ToLower(filters.searchText)
 			if !strings.Contains(strings.ToLower(issue.ID), searchLower) &&
 				!strings.Contains(strings.ToLower(issue.Title), searchLower) &&
-				!strings.Contains(strings.ToLower(issue.Description), searchLower) {
+				!strings.Contains(strings.ToLower(issue.Body), searchLower) {
 				continue
 			}
 		}
 
-		beadWithDeps := depsResult.GetBead(issue.ID)
-		if beadWithDeps == nil {
-			// Fallback: create BeadWithDeps from the issue
-			bead := issue
-			beadWithDeps = &beads.BeadWithDeps{Bead: &bead}
+		beanWithDeps := depsResult.GetBean(issue.ID)
+		if beanWithDeps == nil {
+			// Fallback: create BeanWithDeps from the issue
+			bean := issue
+			beanWithDeps = &beans.BeanWithDeps{Bean: &bean}
 		}
-		items = append(items, beadItem{
-			BeadWithDeps: beadWithDeps,
+		items = append(items, beanItem{
+			BeanWithDeps: beanWithDeps,
 			isReady:      readySet[issue.ID],
 		})
 	}
 
 	// Apply sorting
-	items = sortBeadItems(items, filters.sortBy)
+	items = sortBeanItems(items, filters.sortBy)
 
 	return items, nil
 }
 
-func fetchReadyBeads(ctx context.Context, beadsClient *beads.Client, filters beadFilters) ([]beadItem, error) {
+func fetchReadyBeans(ctx context.Context, beansClient *beans.Client, filters beanFilters) ([]beanItem, error) {
 	// Get ready issues
-	readyIssues, err := beadsClient.GetReadyBeads(ctx)
+	readyIssues, err := beansClient.GetReadyBeans(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -362,42 +354,42 @@ func fetchReadyBeads(ctx context.Context, beadsClient *beads.Client, filters bea
 	for _, issue := range readyIssues {
 		issueIDs = append(issueIDs, issue.ID)
 	}
-	depsResult, err := beadsClient.GetBeadsWithDeps(ctx, issueIDs)
+	depsResult, err := beansClient.GetBeansWithDeps(ctx, issueIDs)
 	if err != nil {
 		return nil, err
 	}
 
-	var items []beadItem
+	var items []beanItem
 	for _, issue := range readyIssues {
 		// Apply search filter
 		if filters.searchText != "" {
 			searchLower := strings.ToLower(filters.searchText)
 			if !strings.Contains(strings.ToLower(issue.ID), searchLower) &&
 				!strings.Contains(strings.ToLower(issue.Title), searchLower) &&
-				!strings.Contains(strings.ToLower(issue.Description), searchLower) {
+				!strings.Contains(strings.ToLower(issue.Body), searchLower) {
 				continue
 			}
 		}
 
-		beadWithDeps := depsResult.GetBead(issue.ID)
-		if beadWithDeps == nil {
-			// Fallback: create BeadWithDeps from the issue
-			bead := issue
-			beadWithDeps = &beads.BeadWithDeps{Bead: &bead}
+		beanWithDeps := depsResult.GetBean(issue.ID)
+		if beanWithDeps == nil {
+			// Fallback: create BeanWithDeps from the issue
+			bean := issue
+			beanWithDeps = &beans.BeanWithDeps{Bean: &bean}
 		}
-		items = append(items, beadItem{
-			BeadWithDeps: beadWithDeps,
+		items = append(items, beanItem{
+			BeanWithDeps: beanWithDeps,
 			isReady:      true,
 		})
 	}
 
 	// Apply sorting
-	items = sortBeadItems(items, filters.sortBy)
+	items = sortBeanItems(items, filters.sortBy)
 
 	return items, nil
 }
 
-func sortBeadItems(items []beadItem, sortBy string) []beadItem {
+func sortBeanItems(items []beanItem, sortBy string) []beanItem {
 	switch sortBy {
 	case "priority":
 		sort.Slice(items, func(i, j int) bool {
@@ -420,7 +412,7 @@ func sortBeadItems(items []beadItem, sortBy string) []beadItem {
 	return items
 }
 
-// compareIDsNatural compares two bead IDs using natural sort order.
+// compareIDsNatural compares two bean IDs using natural sort order.
 // IDs like "ac-819" are split into prefix ("ac-") and numeric suffix (819),
 // with the numeric part compared numerically instead of lexicographically.
 // This ensures "ac-9" sorts before "ac-10".

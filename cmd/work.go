@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/agents"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/git"
@@ -24,18 +24,18 @@ var workCmd = &cobra.Command{
 }
 
 var workCreateCmd = &cobra.Command{
-	Use:   "create <bead-id>",
-	Short: "Create a new work unit from a bead",
-	Long: `Create a new work unit from a single bead.
+	Use:   "create <bean-id>",
+	Short: "Create a new work unit from a bean",
+	Long: `Create a new work unit from a single bean.
 Creates a subdirectory with a git worktree for isolated development.
 
-If the bead is an epic, all child beads are automatically included.
+If the bean is an epic, all child beans are automatically included.
 Transitive dependencies are also included.
 
-Branch name is auto-generated from the bead title - you'll be prompted to accept or customize.
+Branch name is auto-generated from the bean title - you'll be prompted to accept or customize.
 
 With --auto flag, runs the full automated workflow:
-1. Creates tasks from beads
+1. Creates tasks from beans
 2. Executes all tasks
 3. Runs review-fix loop until clean
 4. Creates a pull request`,
@@ -75,7 +75,7 @@ var workPRCmd = &cobra.Command{
 	Long: `Create a special task for Claude to review the work and create a pull request.
 If no ID is provided, uses the work for the current directory context.
 
-Claude will analyze all completed tasks and beads to generate a comprehensive PR description.`,
+Claude will analyze all completed tasks and beans to generate a comprehensive PR description.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runWorkPR,
 }
@@ -93,24 +93,24 @@ and adherence to project standards.`,
 }
 
 var workAddCmd = &cobra.Command{
-	Use:   "add <bead-ids...>",
-	Short: "Add beads to work",
-	Long: `Add beads to an existing work unit.
+	Use:   "add <bean-ids...>",
+	Short: "Add beans to work",
+	Long: `Add beans to an existing work unit.
 
-Multiple beads can be specified separated by spaces or commas.
-Epics are automatically expanded to include all child beads.
+Multiple beans can be specified separated by spaces or commas.
+Epics are automatically expanded to include all child beans.
 
-Use --plan when running to let the LLM group beads intelligently,
+Use --plan when running to let the LLM group beans intelligently,
 or --auto for a fully automated workflow.`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: runWorkAdd,
 }
 
 var workRemoveCmd = &cobra.Command{
-	Use:   "remove <bead-ids...>",
-	Short: "Remove beads from work",
-	Long: `Remove beads from an existing work unit.
-Beads that are already assigned to a pending or processing task cannot be removed.`,
+	Use:   "remove <bean-ids...>",
+	Short: "Remove beans from work",
+	Long: `Remove beans from an existing work unit.
+Beans that are already assigned to a pending or processing task cannot be removed.`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: runWorkRemove,
 }
@@ -213,28 +213,28 @@ func runWorkCreate(cmd *cobra.Command, args []string) error {
 
 	mainRepoPath := proj.MainRepoPath()
 	gitOps := git.NewOperations()
-	beadID := args[0]
+	beanID := args[0]
 
-	// Expand the bead (handles epics and transitive deps)
-	expandedIssueIDs, err := workpkg.CollectIssueIDsForAutomatedWorkflow(ctx, beadID, proj.Beads)
+	// Expand the bean (handles epics and transitive deps)
+	expandedIssueIDs, err := workpkg.CollectIssueIDsForAutomatedWorkflow(ctx, beanID, proj.Beans)
 	if err != nil {
-		return fmt.Errorf("failed to expand bead %s: %w", beadID, err)
+		return fmt.Errorf("failed to expand bean %s: %w", beanID, err)
 	}
 
 	if len(expandedIssueIDs) == 0 {
-		return fmt.Errorf("no beads found for %s", beadID)
+		return fmt.Errorf("no beans found for %s", beanID)
 	}
 
 	// Get issue details for branch name generation
-	issuesResult, err := proj.Beads.GetBeadsWithDeps(ctx, expandedIssueIDs)
+	issuesResult, err := proj.Beans.GetBeansWithDeps(ctx, expandedIssueIDs)
 	if err != nil {
 		return fmt.Errorf("failed to get issue details: %w", err)
 	}
 
 	// Convert to slice of issue pointers for branch name generation
-	var groupIssues []*beads.Bead
+	var groupIssues []*beans.Bean
 	for _, issueID := range expandedIssueIDs {
-		if issue, ok := issuesResult.Beads[issueID]; ok {
+		if issue, ok := issuesResult.Beans[issueID]; ok {
 			issueCopy := issue
 			groupIssues = append(groupIssues, &issueCopy)
 		}
@@ -281,10 +281,10 @@ func runWorkCreate(cmd *cobra.Command, args []string) error {
 	result, err := svc.CreateWorkAsyncWithOptions(ctx, workpkg.CreateWorkAsyncOptions{
 		BranchName:        branchName,
 		BaseBranch:        baseBranch,
-		RootIssueID:       beadID,
+		RootIssueID:       beanID,
 		Auto:              flagAutoRun,
 		UseExistingBranch: useExistingBranch,
-		BeadIDs:           expandedIssueIDs,
+		BeanIDs:           expandedIssueIDs,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create work: %w", err)
@@ -297,8 +297,8 @@ func runWorkCreate(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Branch: %s\n", result.BranchName)
 	fmt.Printf("Base Branch: %s\n", result.BaseBranch)
 
-	// Display beads
-	fmt.Printf("\nBeads (%d):\n", len(groupIssues))
+	// Display beans
+	fmt.Printf("\nBeans (%d):\n", len(groupIssues))
 	for _, issue := range groupIssues {
 		fmt.Printf("  - %s: %s\n", issue.ID, issue.Title)
 	}
@@ -321,33 +321,33 @@ func runWorkCreate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// parseBeadArgs parses positional args into bead IDs.
+// parseBeanArgs parses positional args into bean IDs.
 // Both commas and spaces are treated as separators.
-// Epics are expanded to their child beads.
-// Returns an error if duplicate bead IDs are found.
-func parseBeadArgs(ctx context.Context, args []string, beadsClient *beads.Client) ([]string, error) {
-	seenBeads := make(map[string]bool)
+// Epics are expanded to their child beans.
+// Returns an error if duplicate bean IDs are found.
+func parseBeanArgs(ctx context.Context, args []string, beansClient *beans.Client) ([]string, error) {
+	seenBeans := make(map[string]bool)
 	var allIssueIDs []string
 
 	for _, arg := range args {
-		// Split comma-separated bead IDs (commas and spaces both work as separators)
-		beadIDs := workpkg.ParseBeadIDs(arg)
-		if len(beadIDs) == 0 {
+		// Split comma-separated bean IDs (commas and spaces both work as separators)
+		beanIDs := workpkg.ParseBeanIDs(arg)
+		if len(beanIDs) == 0 {
 			continue
 		}
 
-		for _, beadID := range beadIDs {
-			// Expand this bead (handles epics and transitive deps)
-			expandedIDs, err := workpkg.CollectIssueIDsForAutomatedWorkflow(ctx, beadID, beadsClient)
+		for _, beanID := range beanIDs {
+			// Expand this bean (handles epics and transitive deps)
+			expandedIDs, err := workpkg.CollectIssueIDsForAutomatedWorkflow(ctx, beanID, beansClient)
 			if err != nil {
-				return nil, fmt.Errorf("failed to expand bead %s: %w", beadID, err)
+				return nil, fmt.Errorf("failed to expand bean %s: %w", beanID, err)
 			}
 			for _, issueID := range expandedIDs {
 				// Check for duplicates
-				if seenBeads[issueID] {
-					return nil, fmt.Errorf("duplicate bead %s specified", issueID)
+				if seenBeans[issueID] {
+					return nil, fmt.Errorf("duplicate bean %s specified", issueID)
 				}
-				seenBeads[issueID] = true
+				seenBeans[issueID] = true
 				allIssueIDs = append(allIssueIDs, issueID)
 			}
 		}
@@ -383,7 +383,7 @@ func promptForBranchName(proposed string) (string, error) {
 	return response, nil
 }
 
-// runWorkAdd adds beads to an existing work.
+// runWorkAdd adds beans to an existing work.
 func runWorkAdd(cmd *cobra.Command, args []string) error {
 	ctx := GetContext()
 
@@ -405,27 +405,27 @@ func runWorkAdd(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Parse bead IDs from args
-	beadIDs, err := parseBeadArgs(ctx, args, proj.Beads)
+	// Parse bean IDs from args
+	beanIDs, err := parseBeanArgs(ctx, args, proj.Beans)
 	if err != nil {
 		return err
 	}
 
-	if len(beadIDs) == 0 {
-		return fmt.Errorf("no beads specified")
+	if len(beanIDs) == 0 {
+		return fmt.Errorf("no beans specified")
 	}
 
-	// Add beads to work using WorkService (handles validation internally)
-	result, err := svc.AddBeads(ctx, workID, beadIDs)
+	// Add beans to work using WorkService (handles validation internally)
+	result, err := svc.AddBeans(ctx, workID, beanIDs)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Added %d bead(s) to work %s\n", result.BeadsAdded, workID)
+	fmt.Printf("Added %d bean(s) to work %s\n", result.BeansAdded, workID)
 	return nil
 }
 
-// runWorkRemove removes beads from an existing work.
+// runWorkRemove removes beans from an existing work.
 func runWorkRemove(cmd *cobra.Command, args []string) error {
 	ctx := GetContext()
 
@@ -447,26 +447,26 @@ func runWorkRemove(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Collect and trim bead IDs
-	var beadIDs []string
-	for _, beadID := range args {
-		beadID = strings.TrimSpace(beadID)
-		if beadID != "" {
-			beadIDs = append(beadIDs, beadID)
+	// Collect and trim bean IDs
+	var beanIDs []string
+	for _, beanID := range args {
+		beanID = strings.TrimSpace(beanID)
+		if beanID != "" {
+			beanIDs = append(beanIDs, beanID)
 		}
 	}
 
-	if len(beadIDs) == 0 {
-		return fmt.Errorf("no beads specified")
+	if len(beanIDs) == 0 {
+		return fmt.Errorf("no beans specified")
 	}
 
-	// Remove beads using WorkService (handles validation internally)
-	result, err := svc.RemoveBeads(ctx, workID, beadIDs)
+	// Remove beans using WorkService (handles validation internally)
+	result, err := svc.RemoveBeans(ctx, workID, beanIDs)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Removed %d bead(s) from work %s\n", result.BeadsRemoved, workID)
+	fmt.Printf("Removed %d bean(s) from work %s\n", result.BeansRemoved, workID)
 	return nil
 }
 
@@ -767,7 +767,7 @@ func runWorkPR(cmd *cobra.Command, args []string) error {
 	work, err := proj.DB.GetWork(ctx, workID)
 	if err == nil && work != nil && work.RootIssueID != "" {
 		fmt.Printf("Closing root issue %s...\n", work.RootIssueID)
-		if err := beads.NewCLI(proj.BeadsPath()).Close(ctx, work.RootIssueID); err != nil {
+		if err := beans.NewCLI(proj.BeansPath()).Close(ctx, work.RootIssueID); err != nil {
 			fmt.Printf("Warning: failed to close root issue %s: %v\n", work.RootIssueID, err)
 		}
 	}
@@ -886,35 +886,35 @@ func runWorkReview(cmd *cobra.Command, args []string) error {
 		}
 
 		// Check if the review created any issues under the root issue
-		var beadsToFix []beads.Bead
+		var beansToFix []beans.Bean
 		if work.RootIssueID != "" {
 			// Get all children of the root issue
-			rootChildrenIssues, err := proj.Beads.GetBeadWithChildren(ctx, work.RootIssueID)
+			rootChildrenIssues, err := proj.Beans.GetBeanWithChildren(ctx, work.RootIssueID)
 			if err != nil {
 				return fmt.Errorf("failed to get children of root issue %s: %w", work.RootIssueID, err)
 			}
 
-			// Filter to only ready beads that were created by this review task
+			// Filter to only ready beans that were created by this review task
 			// (excluding the root issue itself)
 			expectedExternalRef := fmt.Sprintf("review-%s", reviewTask.ID)
 			for _, issue := range rootChildrenIssues {
 				if issue.ID != work.RootIssueID &&
-					beads.IsWorkableStatus(issue.Status) &&
-					issue.ExternalRef == expectedExternalRef {
-					beadsToFix = append(beadsToFix, issue)
+					beans.IsWorkableStatus(issue.Status) &&
+					beans.HasTagValue(issue.Tags, expectedExternalRef) {
+					beansToFix = append(beansToFix, issue)
 				}
 			}
 		}
 
-		if len(beadsToFix) == 0 {
+		if len(beansToFix) == 0 {
 			fmt.Println("Review passed - no issues found!")
 			break
 		}
 
-		fmt.Printf("Review found %d issue(s) - creating fix tasks...\n", len(beadsToFix))
+		fmt.Printf("Review found %d issue(s) - creating fix tasks...\n", len(beansToFix))
 
-		// Create and run fix tasks for each bead
-		for _, b := range beadsToFix {
+		// Create and run fix tasks for each bean
+		for _, b := range beansToFix {
 			nextNum, err := proj.DB.GetNextTaskNumber(ctx, workID)
 			if err != nil {
 				return fmt.Errorf("failed to get next task number: %w", err)
@@ -925,7 +925,7 @@ func runWorkReview(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("failed to create fix task: %w", err)
 			}
 
-			fmt.Printf("Created fix task %s for bead %s: %s\n", taskID, b.ID, b.Title)
+			fmt.Printf("Created fix task %s for bean %s: %s\n", taskID, b.ID, b.Title)
 
 			// Run the fix task
 			if err := processTask(proj, taskID, agent); err != nil {

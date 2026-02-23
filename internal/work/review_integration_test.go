@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/sargehq/sarge/internal/beads"
+	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/testutil"
 	"github.com/stretchr/testify/assert"
@@ -19,7 +19,7 @@ func TestReviewLoop_NoIssuesCreatesPR(t *testing.T) {
 	ctx := context.Background()
 
 	// Create work with a root issue
-	h.CreateBead("root-1", "Root issue for work")
+	h.CreateBean("root-1", "Root issue for work")
 	workRecord := h.CreateWorkWithRootIssue("w-test", "feat/test-branch", "root-1")
 
 	// Create and complete a review task
@@ -28,9 +28,9 @@ func TestReviewLoop_NoIssuesCreatesPR(t *testing.T) {
 	require.NoError(t, err)
 
 	// Review finds no issues (no children created under root)
-	// GetBeadWithChildren returns only the root issue itself
-	hasBeadsToFix := h.SimulateReviewCompletion("w-test.1", "w-test", nil)
-	assert.False(t, hasBeadsToFix, "review with no issues should not have beads to fix")
+	// GetBeanWithChildren returns only the root issue itself
+	hasBeansToFix := h.SimulateReviewCompletion("w-test.1", "w-test", nil)
+	assert.False(t, hasBeansToFix, "review with no issues should not have beans to fix")
 
 	// Verify that a PR task can now be created (review passed)
 	prTaskNum, err := h.DB.GetNextTaskNumber(ctx, "w-test")
@@ -54,7 +54,7 @@ func TestReviewLoop_IssuesCreateFixTasks(t *testing.T) {
 	ctx := context.Background()
 
 	// Create work with a root issue
-	h.CreateBead("root-1", "Root issue for work")
+	h.CreateBean("root-1", "Root issue for work")
 	workRecord := h.CreateWorkWithRootIssue("w-test", "feat/test-branch", "root-1")
 
 	// Create and complete a review task
@@ -63,14 +63,14 @@ func TestReviewLoop_IssuesCreateFixTasks(t *testing.T) {
 	require.NoError(t, err)
 
 	// Review creates issues under the root issue
-	reviewIssues := []beads.Bead{
-		{ID: "fix-1", Title: "Fix security issue", Status: beads.StatusOpen, ExternalRef: "review-w-test.1"},
-		{ID: "fix-2", Title: "Fix performance issue", Status: beads.StatusOpen, ExternalRef: "review-w-test.1"},
+	reviewIssues := []beans.Bean{
+		{ID: "fix-1", Title: "Fix security issue", Status: beans.StatusTodo, Tags: []string{"review-w-test.1"}},
+		{ID: "fix-2", Title: "Fix performance issue", Status: beans.StatusTodo, Tags: []string{"review-w-test.1"}},
 	}
 	h.AddReviewIssues("root-1", reviewIssues)
 
-	hasBeadsToFix := h.SimulateReviewCompletion("w-test.1", "w-test", reviewIssues)
-	assert.True(t, hasBeadsToFix, "review with issues should have beads to fix")
+	hasBeansToFix := h.SimulateReviewCompletion("w-test.1", "w-test", reviewIssues)
+	assert.True(t, hasBeansToFix, "review with issues should have beans to fix")
 
 	// Create fix tasks (simulating what handleReviewFixLoop does)
 	var fixTaskIDs []string
@@ -114,7 +114,7 @@ func TestReviewLoop_MaxIterationsForcesPR(t *testing.T) {
 	ctx := context.Background()
 
 	// Create work with a root issue
-	h.CreateBead("root-1", "Root issue for work")
+	h.CreateBean("root-1", "Root issue for work")
 	workRecord := h.CreateWorkWithRootIssue("w-test", "feat/test-branch", "root-1")
 
 	// Create multiple review tasks to simulate iterations
@@ -136,8 +136,8 @@ func TestReviewLoop_MaxIterationsForcesPR(t *testing.T) {
 
 	// At max iterations, a PR task should be created regardless of issues
 	// Even if there are still issues, we proceed to PR after max iterations
-	reviewIssues := []beads.Bead{
-		{ID: "unresolved-1", Title: "Still open issue", Status: beads.StatusOpen, ExternalRef: "review-w-test.3"},
+	reviewIssues := []beans.Bean{
+		{ID: "unresolved-1", Title: "Still open issue", Status: beans.StatusTodo, Tags: []string{"review-w-test.3"}},
 	}
 	h.AddReviewIssues("root-1", reviewIssues)
 
@@ -167,7 +167,7 @@ func TestReviewLoop_ManualReviewSkipsAutomation(t *testing.T) {
 	ctx := context.Background()
 
 	// Create work with a root issue
-	h.CreateBead("root-1", "Root issue for work")
+	h.CreateBean("root-1", "Root issue for work")
 	workRecord := h.CreateWorkWithRootIssue("w-test", "feat/test-branch", "root-1")
 
 	// Create a manual review task (auto_workflow=false)
@@ -179,8 +179,8 @@ func TestReviewLoop_ManualReviewSkipsAutomation(t *testing.T) {
 	require.NoError(t, err)
 
 	// Review creates issues, but manual review should skip automation
-	reviewIssues := []beads.Bead{
-		{ID: "fix-1", Title: "Fix issue", Status: beads.StatusOpen, ExternalRef: "review-w-test.1"},
+	reviewIssues := []beans.Bean{
+		{ID: "fix-1", Title: "Fix issue", Status: beans.StatusTodo, Tags: []string{"review-w-test.1"}},
 	}
 	h.AddReviewIssues("root-1", reviewIssues)
 
@@ -210,7 +210,7 @@ func TestReviewLoop_FixTaskDependencies(t *testing.T) {
 	ctx := context.Background()
 
 	// Create work with a root issue
-	h.CreateBead("root-1", "Root issue for work")
+	h.CreateBean("root-1", "Root issue for work")
 	workRecord := h.CreateWorkWithRootIssue("w-test", "feat/test-branch", "root-1")
 
 	// Create first review task
@@ -221,9 +221,9 @@ func TestReviewLoop_FixTaskDependencies(t *testing.T) {
 	require.NoError(t, err)
 
 	// Review creates issues
-	reviewIssues := []beads.Bead{
-		{ID: "fix-1", Title: "Fix issue 1", Status: beads.StatusOpen, ExternalRef: "review-w-test.1"},
-		{ID: "fix-2", Title: "Fix issue 2", Status: beads.StatusOpen, ExternalRef: "review-w-test.1"},
+	reviewIssues := []beans.Bean{
+		{ID: "fix-1", Title: "Fix issue 1", Status: beans.StatusTodo, Tags: []string{"review-w-test.1"}},
+		{ID: "fix-2", Title: "Fix issue 2", Status: beans.StatusTodo, Tags: []string{"review-w-test.1"}},
 	}
 	h.AddReviewIssues("root-1", reviewIssues)
 

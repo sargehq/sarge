@@ -28,33 +28,33 @@ func FetchTaskPollData(ctx context.Context, proj *project.Project, taskID string
 		work = &db.Work{ID: task.WorkID, Status: "unknown"}
 	}
 
-	beadIDs, err := proj.DB.GetTaskBeads(ctx, taskID)
+	beanIDs, err := proj.DB.GetTaskBeans(ctx, taskID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get task beads: %w", err)
+		return nil, fmt.Errorf("failed to get task beans: %w", err)
 	}
 
-	// Batch fetch all bead details
-	beadsResult, err := proj.Beads.GetBeadsWithDeps(ctx, beadIDs)
+	// Batch fetch all bean details
+	beansResult, err := proj.Beans.GetBeansWithDeps(ctx, beanIDs)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get beads: %w", err)
+		return nil, fmt.Errorf("failed to get beans: %w", err)
 	}
 
 	tp := &TaskProgress{Task: task}
-	for _, beadID := range beadIDs {
-		status, err := proj.DB.GetTaskBeadStatus(ctx, taskID, beadID)
+	for _, beanID := range beanIDs {
+		status, err := proj.DB.GetTaskBeanStatus(ctx, taskID, beanID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get task bead status: %w", err)
+			return nil, fmt.Errorf("failed to get task bean status: %w", err)
 		}
 		if status == "" {
 			status = db.StatusPending
 		}
-		bp := BeadProgress{ID: beadID, Status: status}
-		if bead := beadsResult.GetBead(beadID); bead != nil {
-			bp.Title = bead.Title
-			bp.Description = bead.Description
-			bp.BeadStatus = bead.Status
+		bp := BeanProgress{ID: beanID, Status: status}
+		if bean := beansResult.GetBean(beanID); bean != nil {
+			bp.Title = bean.Title
+			bp.Description = bean.Body
+			bp.BeanStatus = bean.Status
 		}
-		tp.Beads = append(tp.Beads, bp)
+		tp.Beans = append(tp.Beans, bp)
 	}
 
 	return []*WorkProgress{{
@@ -107,135 +107,135 @@ func FetchWorkProgress(ctx context.Context, proj *project.Project, work *db.Work
 		return nil, fmt.Errorf("failed to get tasks: %w", err)
 	}
 
-	// Fetch all task beads for this work in a single query
-	allTaskBeads, err := proj.DB.GetTaskBeadsForWork(ctx, work.ID)
+	// Fetch all task beans for this work in a single query
+	allTaskBeans, err := proj.DB.GetTaskBeansForWork(ctx, work.ID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get task beads: %w", err)
+		return nil, fmt.Errorf("failed to get task beans: %w", err)
 	}
 
-	// Get all work beads
-	allWorkBeads, err := proj.DB.GetWorkBeads(ctx, work.ID)
+	// Get all work beans
+	allWorkBeans, err := proj.DB.GetWorkBeans(ctx, work.ID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get work beads: %w", err)
+		return nil, fmt.Errorf("failed to get work beans: %w", err)
 	}
 
-	// Get unassigned beads for this work
-	unassignedWorkBeads, err := proj.DB.GetUnassignedWorkBeads(ctx, work.ID)
+	// Get unassigned beans for this work
+	unassignedWorkBeans, err := proj.DB.GetUnassignedWorkBeans(ctx, work.ID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get unassigned beads: %w", err)
+		return nil, fmt.Errorf("failed to get unassigned beans: %w", err)
 	}
 
-	// Collect all bead IDs for batch fetch
-	beadIDSet := make(map[string]struct{})
-	for _, tb := range allTaskBeads {
-		beadIDSet[tb.BeadID] = struct{}{}
+	// Collect all bean IDs for batch fetch
+	beanIDSet := make(map[string]struct{})
+	for _, tb := range allTaskBeans {
+		beanIDSet[tb.BeanID] = struct{}{}
 	}
-	for _, wb := range allWorkBeads {
-		beadIDSet[wb.BeadID] = struct{}{}
+	for _, wb := range allWorkBeans {
+		beanIDSet[wb.BeanID] = struct{}{}
 	}
-	for _, wb := range unassignedWorkBeads {
-		beadIDSet[wb.BeadID] = struct{}{}
+	for _, wb := range unassignedWorkBeans {
+		beanIDSet[wb.BeanID] = struct{}{}
 	}
 	if work.RootIssueID != "" {
-		beadIDSet[work.RootIssueID] = struct{}{}
+		beanIDSet[work.RootIssueID] = struct{}{}
 	}
 
-	beadIDs := make([]string, 0, len(beadIDSet))
-	for id := range beadIDSet {
-		beadIDs = append(beadIDs, id)
+	beanIDs := make([]string, 0, len(beanIDSet))
+	for id := range beanIDSet {
+		beanIDs = append(beanIDs, id)
 	}
 
-	// Batch fetch all bead details
-	beadsResult, err := proj.Beads.GetBeadsWithDeps(ctx, beadIDs)
+	// Batch fetch all bean details
+	beansResult, err := proj.Beans.GetBeansWithDeps(ctx, beanIDs)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get beads: %w", err)
+		return nil, fmt.Errorf("failed to get beans: %w", err)
 	}
 
-	// Build a map of task ID -> beads for efficient lookup
-	taskBeadsMap := make(map[string][]db.TaskBeadInfo)
-	for _, tb := range allTaskBeads {
-		taskBeadsMap[tb.TaskID] = append(taskBeadsMap[tb.TaskID], tb)
+	// Build a map of task ID -> beans for efficient lookup
+	taskBeansMap := make(map[string][]db.TaskBeanInfo)
+	for _, tb := range allTaskBeans {
+		taskBeansMap[tb.TaskID] = append(taskBeansMap[tb.TaskID], tb)
 	}
 
 	for _, task := range tasks {
 		tp := &TaskProgress{Task: task}
-		for _, tb := range taskBeadsMap[task.ID] {
+		for _, tb := range taskBeansMap[task.ID] {
 			status := tb.Status
 			if status == "" {
 				status = db.StatusPending
 			}
-			bp := BeadProgress{ID: tb.BeadID, Status: status}
-			if bead := beadsResult.GetBead(tb.BeadID); bead != nil {
-				bp.Title = bead.Title
-				bp.Description = bead.Description
-				bp.BeadStatus = bead.Status
+			bp := BeanProgress{ID: tb.BeanID, Status: status}
+			if bean := beansResult.GetBean(tb.BeanID); bean != nil {
+				bp.Title = bean.Title
+				bp.Description = bean.Body
+				bp.BeanStatus = bean.Status
 			}
-			tp.Beads = append(tp.Beads, bp)
+			tp.Beans = append(tp.Beans, bp)
 		}
 		wp.Tasks = append(wp.Tasks, tp)
 	}
 
-	// Populate work beads
-	for _, wb := range allWorkBeads {
-		bp := BeadProgress{ID: wb.BeadID}
-		if bead := beadsResult.GetBead(wb.BeadID); bead != nil {
-			bp.Title = bead.Title
-			bp.Description = bead.Description
-			bp.BeadStatus = bead.Status
-			bp.Priority = bead.Priority
-			bp.IssueType = bead.Type
+	// Populate work beans
+	for _, wb := range allWorkBeans {
+		bp := BeanProgress{ID: wb.BeanID}
+		if bean := beansResult.GetBean(wb.BeanID); bean != nil {
+			bp.Title = bean.Title
+			bp.Description = bean.Body
+			bp.BeanStatus = bean.Status
+			bp.Priority = bean.Priority
+			bp.IssueType = bean.Type
 		}
-		wp.WorkBeads = append(wp.WorkBeads, bp)
+		wp.WorkBeans = append(wp.WorkBeans, bp)
 	}
 
-	// Ensure root issue is always available for display (it may not be in work_beads if it's an epic)
+	// Ensure root issue is always available for display (it may not be in work_beans if it's an epic)
 	if work.RootIssueID != "" {
 		rootFound := false
-		for _, wb := range wp.WorkBeads {
+		for _, wb := range wp.WorkBeans {
 			if wb.ID == work.RootIssueID {
 				rootFound = true
 				break
 			}
 		}
 		if !rootFound {
-			if rootBead := beadsResult.GetBead(work.RootIssueID); rootBead != nil {
-				bp := BeadProgress{
-					ID:          rootBead.ID,
-					Title:       rootBead.Title,
-					Description: rootBead.Description,
-					BeadStatus:  rootBead.Status,
-					Priority:    rootBead.Priority,
-					IssueType:   rootBead.Type,
+			if rootBean := beansResult.GetBean(work.RootIssueID); rootBean != nil {
+				bp := BeanProgress{
+					ID:          rootBean.ID,
+					Title:       rootBean.Title,
+					Description: rootBean.Body,
+					BeanStatus:  rootBean.Status,
+					Priority:    rootBean.Priority,
+					IssueType:   rootBean.Type,
 				}
 				// Prepend root issue so it appears first
-				wp.WorkBeads = append([]BeadProgress{bp}, wp.WorkBeads...)
+				wp.WorkBeans = append([]BeanProgress{bp}, wp.WorkBeans...)
 			}
 		}
 	}
 
-	// Populate unassigned beads (excluding root issue which is displayed separately)
-	for _, wb := range unassignedWorkBeads {
+	// Populate unassigned beans (excluding root issue which is displayed separately)
+	for _, wb := range unassignedWorkBeans {
 		// Skip root issue - it's displayed separately in the UI
-		if wb.BeadID == work.RootIssueID {
+		if wb.BeanID == work.RootIssueID {
 			continue
 		}
-		bp := BeadProgress{ID: wb.BeadID}
-		if bead := beadsResult.GetBead(wb.BeadID); bead != nil {
-			bp.Title = bead.Title
-			bp.Description = bead.Description
-			bp.BeadStatus = bead.Status
-			bp.Priority = bead.Priority
-			bp.IssueType = bead.Type
+		bp := BeanProgress{ID: wb.BeanID}
+		if bean := beansResult.GetBean(wb.BeanID); bean != nil {
+			bp.Title = bean.Title
+			bp.Description = bean.Body
+			bp.BeanStatus = bean.Status
+			bp.Priority = bean.Priority
+			bp.IssueType = bean.Type
 		}
-		wp.UnassignedBeads = append(wp.UnassignedBeads, bp)
+		wp.UnassignedBeans = append(wp.UnassignedBeans, bp)
 	}
-	wp.UnassignedBeadCount = len(wp.UnassignedBeads)
+	wp.UnassignedBeanCount = len(wp.UnassignedBeans)
 
-	// Get unassigned feedback bead IDs for this work
-	feedbackBeadIDs, err := proj.DB.GetUnassignedFeedbackBeadIDs(ctx, work.ID)
+	// Get unassigned feedback bean IDs for this work
+	feedbackBeanIDs, err := proj.DB.GetUnassignedFeedbackBeanIDs(ctx, work.ID)
 	if err == nil {
-		wp.FeedbackBeadIDs = feedbackBeadIDs
-		wp.FeedbackCount = len(feedbackBeadIDs)
+		wp.FeedbackBeanIDs = feedbackBeanIDs
+		wp.FeedbackCount = len(feedbackBeanIDs)
 	}
 
 	// Populate PR status fields from work record
