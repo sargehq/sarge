@@ -5,7 +5,7 @@ Your job is to analyze, break down work, and create subtasks. The orchestrator
 will handle implementation in separate sessions.
 
 First, investigate this issue:
-beans show {{.BeanID}}
+beans --beans-path {{.BeansPath}} show {{.BeanID}}
 
 After reviewing the issue details, help plan by:
 - Analyzing the problem and identifying what needs to change
@@ -15,7 +15,7 @@ After reviewing the issue details, help plan by:
 
 When breaking down into subtasks, create them as children of this issue:
 
-  beans create "<subtask title>" --parent {{.BeanID}} --type task \
+  beans --beans-path {{.BeansPath}} create "<subtask title>" --parent {{.BeanID}} --type task \
     --description "<description of the subtask>"
 
 This establishes {{.BeanID}} as the parent, making the new issues its children.

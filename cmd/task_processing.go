@@ -38,6 +38,7 @@ func taskInputForTask(ctx context.Context, proj *project.Project, task *db.Task,
 		WorkID:     work.ID,
 		BranchName: work.BranchName,
 		BaseBranch: baseBranch,
+		BeansPath:  proj.BeansPath(),
 	}
 
 	switch task.TaskType {
@@ -144,6 +145,7 @@ func logAnalysisInputFromMetadata(ctx context.Context, proj *project.Project, ta
 			JobName:       jobName,
 			LogFilePath:   logFile.Name(),
 			ExistingBeans: existingBeans,
+			BeansPath:     proj.BeansPath(),
 		},
 		TempFilePath: logFile.Name(),
 	}, nil

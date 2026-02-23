@@ -54,8 +54,8 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	// Apply hooks.env to current process - inherited by child processes (Claude)
 	applyHooksEnv(proj.Config.Hooks.Env)
 
-	// Set BEANS_DIR so beans commands work in Claude
-	_ = os.Setenv("BEANS_DIR", proj.BeansPath())
+	// Set BEANS_PATH so beans commands work in Claude
+	_ = os.Setenv("BEANS_PATH", proj.BeansPath())
 
 	// Register the plan session in the database
 	if err := proj.DB.RegisterPlanSession(ctx, beanID, zellijSession, tabName, os.Getpid()); err != nil {
@@ -80,5 +80,5 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return agent.RunInteractive(ctx, types.TaskParams{Type: types.TaskTypePlan, BeanID: beanID}, mainRepoPath, os.Stdin, os.Stdout, os.Stderr, proj.Config)
+	return agent.RunInteractive(ctx, types.TaskParams{Type: types.TaskTypePlan, BeanID: beanID, BeansPath: proj.BeansPath()}, mainRepoPath, os.Stdin, os.Stdout, os.Stderr, proj.Config)
 }

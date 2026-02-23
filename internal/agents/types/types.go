@@ -21,6 +21,7 @@ type TaskParams struct {
 	WorkID        string
 	BranchName    string
 	BaseBranch    string
+	BeansPath     string        // path to beans directory, passed as --beans-path to all beans CLI invocations
 	BeanIDs       []string      // implement, estimate
 	RootIssueID   string        // review, log_analysis
 	PRURL         string        // update_pr_description
