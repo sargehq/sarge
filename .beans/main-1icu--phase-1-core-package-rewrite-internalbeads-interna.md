@@ -1,11 +1,11 @@
 ---
 # main-1icu
 title: 'Phase 1: Core Package Rewrite (internal/beads → internal/beans)'
-status: todo
+status: completed
 type: epic
 priority: critical
 created_at: 2026-02-23T02:05:49Z
-updated_at: 2026-02-23T02:05:49Z
+updated_at: 2026-02-23T02:15:02Z
 parent: main-ds0d
 ---
 

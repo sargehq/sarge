@@ -1,11 +1,11 @@
 ---
 # main-t1lr
 title: Update pubsub for beans events
-status: todo
+status: completed
 type: task
 priority: high
 created_at: 2026-02-23T02:06:09Z
-updated_at: 2026-02-23T02:06:09Z
+updated_at: 2026-02-23T02:14:58Z
 parent: main-1icu
 ---
 

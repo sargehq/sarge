@@ -1,11 +1,11 @@
 ---
 # main-6qa2
 title: Rewrite domain types (Bead → Bean struct)
-status: todo
+status: completed
 type: task
 priority: critical
 created_at: 2026-02-23T02:06:09Z
-updated_at: 2026-02-23T02:06:09Z
+updated_at: 2026-02-23T02:14:58Z
 parent: main-1icu
 ---
 

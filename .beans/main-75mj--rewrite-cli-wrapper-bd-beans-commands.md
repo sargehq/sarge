@@ -1,11 +1,11 @@
 ---
 # main-75mj
 title: Rewrite CLI wrapper (bd → beans commands)
-status: todo
+status: completed
 type: task
 priority: critical
 created_at: 2026-02-23T02:06:09Z
-updated_at: 2026-02-23T02:06:09Z
+updated_at: 2026-02-23T02:14:58Z
 parent: main-1icu
 ---
 
