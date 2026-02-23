@@ -253,5 +253,4 @@ func (c *cliImpl) AddDependency(ctx context.Context, beadID, dependsOnID string)
 	return nil
 }
 
-// Compile-time check that Client implements Reader.
-var _ Reader = (*Client)(nil)
+

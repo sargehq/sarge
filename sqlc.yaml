@@ -15,18 +15,3 @@ sql:
         overrides:
           - db_type: "DATETIME"
             go_type: "time.Time"
-  - schema: "internal/beads/schema.sql"
-    queries: "internal/beads/queries"
-    engine: "sqlite"
-    gen:
-      go:
-        package: "queries"
-        out: "internal/beads/queries"
-        emit_json_tags: true
-        emit_prepared_queries: false
-        emit_interface: true
-        emit_exact_table_names: false
-        emit_empty_slices: true
-        overrides:
-          - db_type: "DATETIME"
-            go_type: "time.Time"
