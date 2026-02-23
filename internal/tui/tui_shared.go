@@ -259,7 +259,7 @@ func styleButtonWithHover(text string, hovered bool) string {
 
 // fetchBeansWithFilters fetches and filters beans based on provided filters
 func fetchBeansWithFilters(ctx context.Context, beansClient *beans.Client, _ string, filters beanFilters) ([]beanItem, error) {
-	// For "ready" status, use bd ready command
+	// For "ready" status, use beans ready command
 	if filters.status == "ready" {
 		return fetchReadyBeans(ctx, beansClient, filters)
 	}

@@ -35,7 +35,7 @@ go test ./...
 - `cmd/control_plane.go` - [Hidden] Background task execution (zellij tab)
 
 ### Internal Packages
-- `internal/beads/` - Beads database client (bd CLI wrapper)
+- `internal/beans/` - Beans database client (beans CLI wrapper)
 - `internal/linear/` - Linear MCP client and import logic
 - `internal/agents/` - Coding agent invocation (Claude, pi)
   - `internal/agents/claude/` - Claude Code agent templates and args
@@ -53,9 +53,9 @@ go test ./...
 
 ## External Dependencies
 
-Uses CLI tools: `bd`, `claude`, `gh`, `git`, `mise` (optional), `zellij`
+Uses CLI tools: `beans`, `claude`, `gh`, `git`, `mise` (optional), `zellij`
 
-**Important**: The beads (`bd`) version in `mise.toml` must stay aligned with the version in `internal/mise/template/mise.tmpl`. Sarge queries the beads database directly via sqlc and expects specific schema columns. Version mismatches cause errors like "no such column: owner".
+**Important**: The beans (`beans`) version in `mise.toml` must stay aligned with the version in `internal/mise/template/mise.tmpl`. Sarge queries the beads database directly via sqlc and expects specific schema columns. Version mismatches cause errors like "no such column: owner".
 
 ### Updating the Beads Version
 
@@ -314,7 +314,7 @@ CREATE TABLE pr_feedback (
 Located in `internal/github/`, the integration provides:
 
 - `FetchAndStoreFeedback()`: Fetches PR status checks, workflow runs, comments
-- `CreateBeadFromFeedback()`: Creates beads using the bd CLI
+- `CreateBeadFromFeedback()`: Creates beads using the beans CLI
 
 Feedback types processed:
 - **CI/Build failures**: Failed status checks and workflow runs
@@ -521,7 +521,7 @@ Works have the following status states:
 Two-phase workflow: **work** → **run**.
 
 1. Create project: `sarge proj create <dir> <repo>`
-   - Initializes beads: `bd init` and `bd hooks install`
+   - Initializes beans: `beans init` and `beans hooks install`
    - If mise enabled (`.mise.toml` or `.tool-versions`): runs `mise trust`, `mise install`
    - If mise `setup` task defined: runs `mise run setup` (use for npm/pnpm install)
 
@@ -543,7 +543,7 @@ Two-phase workflow: **work** → **run**.
      - Tasks run in sequence within the work's tab
      - All tasks share the same worktree
      - Claude Code implements changes in the work's worktree
-     - Closes beads with `bd close <id> --reason "..."`
+     - Closes beads with `beans close <id> --reason "..."`
    - Worktree persists (managed at work level, not task level)
 
 Zellij sessions are named `sarge-<project-name>` for isolation between projects.

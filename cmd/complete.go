@@ -203,7 +203,7 @@ func runComplete(cmd *cobra.Command, args []string) error {
 	// Standalone bean (not part of a task) - must exist in beans table
 	if err := proj.DB.CompleteBean(ctx, beanID, flagCompletePRURL); err != nil {
 		// Check if this might be a bean ID that doesn't exist in our tracking
-		return fmt.Errorf("failed to complete bean %s: %w (hint: if the bean was closed via 'bd close', it may not be tracked here; use 'sarge complete <task-id>' instead)", beanID, err)
+		return fmt.Errorf("failed to complete bean %s: %w (hint: if the bean was closed via 'beans close', it may not be tracked here; use 'sarge complete <task-id>' instead)", beanID, err)
 	}
 
 	fmt.Printf("Marked bean %s as completed", beanID)

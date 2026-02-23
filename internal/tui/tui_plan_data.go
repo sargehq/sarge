@@ -399,11 +399,11 @@ func (m *planModel) saveBeanEdit(beanID, title, description, beanType, status st
 	}
 }
 
-// openInEditor opens the issue in $EDITOR using bd edit
+// openInEditor opens the issue in $EDITOR using beans edit
 func (m *planModel) openInEditor(beanID string) tea.Cmd {
 	beansPath := m.proj.BeansPath()
 
-	// Use bd edit which handles $EDITOR and the issue format
+	// Use beans edit which handles $EDITOR and the issue format
 	c := beans.EditCommand(m.ctx, beanID, beansPath)
 	return tea.ExecProcess(c, func(err error) tea.Msg {
 		if err != nil {

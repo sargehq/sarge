@@ -23,7 +23,7 @@ This command is typically invoked by the TUI's Plan mode, which creates a
 zellij tab for each issue and runs 'sarge plan <id>' within it.
 
 Claude can then be used to:
-- Investigate the issue (bd show <id>)
+- Investigate the issue (beans show <id>)
 - Break down the issue into subtasks
 - Plan implementation strategies
 - Create related issues
@@ -54,7 +54,7 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	// Apply hooks.env to current process - inherited by child processes (Claude)
 	applyHooksEnv(proj.Config.Hooks.Env)
 
-	// Set BEANS_DIR so bd commands work in Claude
+	// Set BEANS_DIR so beans commands work in Claude
 	_ = os.Setenv("BEANS_DIR", proj.BeansPath())
 
 	// Register the plan session in the database

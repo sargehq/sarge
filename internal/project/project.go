@@ -206,7 +206,7 @@ func CreateWithSelections(ctx context.Context, dir, repoSource string, agentType
 		return nil, err
 	}
 
-	// 5. Initialize beans (after mise, so bd CLI is available)
+	// 5. Initialize beans (after mise, so beans CLI is available)
 	beansPath, err := setupBeans(ctx, repoSource, absDir, mainPath)
 	if err != nil {
 		os.RemoveAll(absDir)
