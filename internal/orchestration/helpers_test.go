@@ -42,7 +42,7 @@ func TestCountReviewIterations(t *testing.T) {
 		defer database.DeleteWork(ctx, "w-review-count")
 
 		// Create some implement tasks and review tasks
-		err := database.CreateTask(ctx, "w-review-count.1", "implement", []string{"bead-1"}, 10, "w-review-count", 1)
+		err := database.CreateTask(ctx, "w-review-count.1", "implement", []string{"bean-1"}, 10, "w-review-count", 1)
 		require.NoError(t, err)
 
 		err = database.CreateTask(ctx, "w-review-count.2", "review", []string{}, 10, "w-review-count", 2)
@@ -51,7 +51,7 @@ func TestCountReviewIterations(t *testing.T) {
 		err = database.CreateTask(ctx, "w-review-count.3", "review", []string{}, 10, "w-review-count", 3)
 		require.NoError(t, err)
 
-		err = database.CreateTask(ctx, "w-review-count.4", "implement", []string{"bead-2"}, 10, "w-review-count", 4)
+		err = database.CreateTask(ctx, "w-review-count.4", "implement", []string{"bean-2"}, 10, "w-review-count", 4)
 		require.NoError(t, err)
 
 		// Count review iterations
@@ -65,7 +65,7 @@ func TestCountReviewIterations(t *testing.T) {
 		defer database.DeleteWork(ctx, "w-no-review")
 
 		// Create only implement tasks
-		err := database.CreateTask(ctx, "w-no-review.1", "implement", []string{"bead-1"}, 10, "w-no-review", 1)
+		err := database.CreateTask(ctx, "w-no-review.1", "implement", []string{"bean-1"}, 10, "w-no-review", 1)
 		require.NoError(t, err)
 
 		// Count review iterations

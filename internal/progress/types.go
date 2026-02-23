@@ -8,11 +8,11 @@ import (
 type WorkProgress struct {
 	Work                *db.Work
 	Tasks               []*TaskProgress
-	WorkBeans           []BeanProgress // all beads assigned to this work
-	UnassignedBeads     []BeanProgress // beads in work but not assigned to any task
-	UnassignedBeadCount int
+	WorkBeans           []BeanProgress // all beans assigned to this work
+	UnassignedBeans     []BeanProgress // beans in work but not assigned to any task
+	UnassignedBeanCount int
 	FeedbackCount       int      // count of unresolved PR feedback items
-	FeedbackBeanIDs     []string // bead IDs from unassigned PR feedback
+	FeedbackBeanIDs     []string // bean IDs from unassigned PR feedback
 
 	// PR status fields (populated from work record)
 	CIStatus           string   // pending, success, failure
@@ -25,7 +25,7 @@ type WorkProgress struct {
 // TaskProgress holds progress info for a task.
 type TaskProgress struct {
 	Task  *db.Task
-	Beads []BeanProgress
+	Beans []BeanProgress
 }
 
 // BeanProgress holds progress info for a bean.

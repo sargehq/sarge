@@ -114,7 +114,7 @@ func promptToolSelections() (agentType string, selections mise.ToolSelections) {
 	fmt.Println()
 	fmt.Println(headerStyle.Render("🔧 Tool Configuration"))
 	fmt.Println("Configure which tools to use for this project.")
-	fmt.Println(lipgloss.NewStyle().Faint(true).Render("(beads is always included in mise — required for sarge)"))
+	fmt.Println(lipgloss.NewStyle().Faint(true).Render("(beans is always included in mise — required for sarge)"))
 	fmt.Println()
 
 	// Detect installed tools and report
@@ -357,15 +357,15 @@ func runProjStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	// Show task status from database
-	beads, err := proj.DB.ListBeans(ctx, "")
+	beans, err := proj.DB.ListBeans(ctx, "")
 	if err != nil {
 		fmt.Printf("\nTasks: error listing (%v)\n", err)
 		return nil
 	}
 
-	if len(beads) > 0 {
-		fmt.Printf("\nTracked tasks: %d\n", len(beads))
-		for _, b := range beads {
+	if len(beans) > 0 {
+		fmt.Printf("\nTracked tasks: %d\n", len(beans))
+		for _, b := range beans {
 			fmt.Printf("  - %s [%s] %s\n", b.ID, b.Status, b.Title)
 		}
 	} else {

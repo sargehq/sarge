@@ -112,7 +112,7 @@ func EnsureUniqueBranchName(ctx context.Context, gitOps git.Operations, repoPath
 	return "", fmt.Errorf("could not find unique branch name after 100 attempts (base: %s)", baseName)
 }
 
-// ParseBeanIDs parses a comma-delimited string of bead IDs into a slice.
+// ParseBeanIDs parses a comma-delimited string of bean IDs into a slice.
 // It trims whitespace from each ID and filters out empty strings.
 func ParseBeanIDs(beanIDStr string) []string {
 	if beanIDStr == "" {

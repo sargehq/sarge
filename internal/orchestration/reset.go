@@ -16,8 +16,8 @@ import (
 // while a task is running - the Claude process is also killed, but the task
 // remains marked as processing in the database.
 //
-// This function preserves partial bead progress by checking the actual bead
-// status in beads.jsonl before resetting. Beads that are already closed are
+// This function preserves partial bean progress by checking the actual bean
+// status in beans.jsonl before resetting. Beans that are already closed are
 // marked as completed in the task, not reset to pending.
 func ResetStuckProcessingTasks(ctx context.Context, proj *project.Project, workID string) error {
 	// Get all tasks for this work
@@ -31,18 +31,18 @@ func ResetStuckProcessingTasks(ctx context.Context, proj *project.Project, workI
 		if t.Status == db.StatusProcessing {
 			fmt.Printf("Resetting stuck task %s from processing to pending...\n", t.ID)
 
-			// Preserve partial bead progress by checking actual bead status
-			preservedCount, resetBeadCount, err := ResetTaskBeadsWithProgress(ctx, proj, t.ID, workID)
+			// Preserve partial bean progress by checking actual bean status
+			preservedCount, resetBeanCount, err := ResetTaskBeansWithProgress(ctx, proj, t.ID, workID)
 			if err != nil {
-				return fmt.Errorf("failed to reset task beads for %s: %w", t.ID, err)
+				return fmt.Errorf("failed to reset task beans for %s: %w", t.ID, err)
 			}
 
 			if preservedCount > 0 {
-				fmt.Printf("  Preserved %d already-completed bead(s), reset %d bead(s)\n", preservedCount, resetBeadCount)
-				logging.Info("preserved partial bead progress during task reset",
+				fmt.Printf("  Preserved %d already-completed bean(s), reset %d bean(s)\n", preservedCount, resetBeanCount)
+				logging.Info("preserved partial bean progress during task reset",
 					"task_id", t.ID,
 					"preserved_count", preservedCount,
-					"reset_count", resetBeadCount,
+					"reset_count", resetBeanCount,
 				)
 			}
 
@@ -55,8 +55,8 @@ func ResetStuckProcessingTasks(ctx context.Context, proj *project.Project, workI
 				"event_type", "task_reset",
 				"task_id", t.ID,
 				"work_id", workID,
-				"preserved_beads", preservedCount,
-				"reset_beads", resetBeadCount,
+				"preserved_beans", preservedCount,
+				"reset_beans", resetBeanCount,
 			)
 
 			resetCount++
@@ -70,63 +70,63 @@ func ResetStuckProcessingTasks(ctx context.Context, proj *project.Project, workI
 	return nil
 }
 
-// ResetTaskBeadsWithProgress resets task bead statuses while preserving progress.
-// It checks the actual bead status in beads.jsonl and only resets beads that
+// ResetTaskBeansWithProgress resets task bean statuses while preserving progress.
+// It checks the actual bean status in beans.jsonl and only resets beans that
 // are not already closed. Returns (preserved count, reset count, error).
 // Also logs recovery events for audit trail.
-func ResetTaskBeadsWithProgress(ctx context.Context, proj *project.Project, taskID, workID string) (int, int, error) {
-	// Get all beads in this task with their current status
-	taskBeads, err := proj.DB.GetTaskBeansWithStatus(ctx, taskID)
+func ResetTaskBeansWithProgress(ctx context.Context, proj *project.Project, taskID, workID string) (int, int, error) {
+	// Get all beans in this task with their current status
+	taskBeans, err := proj.DB.GetTaskBeansWithStatus(ctx, taskID)
 	if err != nil {
-		return 0, 0, fmt.Errorf("failed to get task beads: %w", err)
+		return 0, 0, fmt.Errorf("failed to get task beans: %w", err)
 	}
 
-	if len(taskBeads) == 0 {
+	if len(taskBeans) == 0 {
 		return 0, 0, nil
 	}
 
-	// Collect bead IDs to check their actual status
-	beanIDs := make([]string, len(taskBeads))
-	for i, tb := range taskBeads {
+	// Collect bean IDs to check their actual status
+	beanIDs := make([]string, len(taskBeans))
+	for i, tb := range taskBeans {
 		beanIDs[i] = tb.BeanID
 	}
 
-	// Get actual bead status from beads.jsonl
-	beadsResult, err := proj.Beads.GetBeansWithDeps(ctx, beanIDs)
+	// Get actual bean status from beans.jsonl
+	beansResult, err := proj.Beans.GetBeansWithDeps(ctx, beanIDs)
 	if err != nil {
-		// If we can't check bead status, fall back to resetting all
-		logging.Warn("could not check bead status, falling back to full reset",
+		// If we can't check bean status, fall back to resetting all
+		logging.Warn("could not check bean status, falling back to full reset",
 			"task_id", taskID,
 			"error", err,
 		)
 		if err := proj.DB.ResetTaskBeanStatuses(ctx, taskID); err != nil {
 			return 0, 0, err
 		}
-		return 0, len(taskBeads), nil
+		return 0, len(taskBeans), nil
 	}
 
 	preservedCount := 0
 	resetCount := 0
 
-	for _, tb := range taskBeads {
-		// Check if the bead is closed in beads.jsonl
-		actualBead, found := beadsResult.Beans[tb.BeanID]
-		if found && actualBead.Status == beans.StatusCompleted {
-			// Bead is closed in beads.jsonl - mark it as completed in task_beads
+	for _, tb := range taskBeans {
+		// Check if the bean is closed in beans.jsonl
+		actualBean, found := beansResult.Beans[tb.BeanID]
+		if found && actualBean.Status == beans.StatusCompleted {
+			// Bean is closed in beans.jsonl - mark it as completed in task_beans
 			if tb.Status != db.StatusCompleted {
 				if err := proj.DB.CompleteTaskBean(ctx, taskID, tb.BeanID); err != nil {
-					logging.Warn("failed to mark closed bead as completed",
+					logging.Warn("failed to mark closed bean as completed",
 						"task_id", taskID,
-						"bead_id", tb.BeanID,
+						"bean_id", tb.BeanID,
 						"error", err,
 					)
 				} else {
 					preservedCount++
-					logging.Debug("bead already closed in beads.jsonl, preserving completed status",
-						"event_type", "bead_preserved",
+					logging.Debug("bean already closed in beans.jsonl, preserving completed status",
+						"event_type", "bean_preserved",
 						"task_id", taskID,
 						"work_id", workID,
-						"bead_id", tb.BeanID,
+						"bean_id", tb.BeanID,
 						"previous_task_status", tb.Status,
 					)
 				}
@@ -135,21 +135,21 @@ func ResetTaskBeadsWithProgress(ctx context.Context, proj *project.Project, task
 				preservedCount++
 			}
 		} else {
-			// Bead is not closed - reset to pending
+			// Bean is not closed - reset to pending
 			if tb.Status != db.StatusPending {
 				if err := proj.DB.ResetTaskBeanStatus(ctx, taskID, tb.BeanID); err != nil {
-					logging.Warn("failed to reset bead status",
+					logging.Warn("failed to reset bean status",
 						"task_id", taskID,
-						"bead_id", tb.BeanID,
+						"bean_id", tb.BeanID,
 						"error", err,
 					)
 				} else {
 					resetCount++
-					logging.Debug("bead not closed, resetting to pending",
-						"event_type", "bead_reset",
+					logging.Debug("bean not closed, resetting to pending",
+						"event_type", "bean_reset",
 						"task_id", taskID,
 						"work_id", workID,
-						"bead_id", tb.BeanID,
+						"bean_id", tb.BeanID,
 						"previous_task_status", tb.Status,
 					)
 				}

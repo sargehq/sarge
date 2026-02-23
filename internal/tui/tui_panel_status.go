@@ -43,8 +43,8 @@ type StatusBar struct {
 	zonePrefix string
 
 	// Data providers (set by coordinator)
-	getBeadItems            func() []beadItem
-	getBeadsCursor          func() int
+	getBeanItems            func() []beanItem
+	getBeansCursor          func() int
 	getActiveSessions       func() map[string]bool
 	getViewMode             func() ViewMode
 	getTextInput            func() string
@@ -72,14 +72,14 @@ func (s *StatusBar) SetSize(width int) {
 
 // SetDataProviders sets the functions to get data from the coordinator
 func (s *StatusBar) SetDataProviders(
-	getBeadItems func() []beadItem,
-	getBeadsCursor func() int,
+	getBeanItems func() []beanItem,
+	getBeansCursor func() int,
 	getActiveSessions func() map[string]bool,
 	getViewMode func() ViewMode,
 	getTextInput func() string,
 ) {
-	s.getBeadItems = getBeadItems
-	s.getBeadsCursor = getBeadsCursor
+	s.getBeanItems = getBeanItems
+	s.getBeansCursor = getBeansCursor
 	s.getActiveSessions = getActiveSessions
 	s.getViewMode = getViewMode
 	s.getTextInput = getTextInput
@@ -139,7 +139,7 @@ func (s *StatusBar) UpdateSpinner(msg tea.Msg) tea.Cmd {
 // Render returns the status bar content
 func (s *StatusBar) Render() string {
 	// If in search mode, show vim-style inline search bar
-	if s.getViewMode != nil && s.getViewMode() == ViewBeadSearch {
+	if s.getViewMode != nil && s.getViewMode() == ViewBeanSearch {
 		searchPrompt := "/"
 		searchInput := ""
 		if s.getTextInput != nil {

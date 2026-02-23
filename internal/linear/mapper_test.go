@@ -169,7 +169,7 @@ func TestMapType(t *testing.T) {
 	}
 }
 
-func TestMapIssueToBeadCreate(t *testing.T) {
+func TestMapIssueToBeanCreate(t *testing.T) {
 	estimate := 3.5
 	issue := &Issue{
 		Identifier:  "ENG-123",
@@ -184,7 +184,7 @@ func TestMapIssueToBeadCreate(t *testing.T) {
 		Estimate:    &estimate,
 	}
 
-	opts := MapIssueToBeadCreate(issue)
+	opts := MapIssueToBeanCreate(issue)
 
 	require.Equal(t, "Fix authentication bug", opts.Title)
 	require.Equal(t, "bug", opts.Type)
@@ -198,7 +198,7 @@ func TestMapIssueToBeadCreate(t *testing.T) {
 	require.Equal(t, "3.5", opts.Metadata["linear_estimate"])
 }
 
-func TestFormatBeadDescription(t *testing.T) {
+func TestFormatBeanDescription(t *testing.T) {
 	estimate := 2.0
 	issue := &Issue{
 		Identifier:  "ENG-456",
@@ -211,7 +211,7 @@ func TestFormatBeadDescription(t *testing.T) {
 		Assignee:    &User{Name: "Jane Smith"},
 	}
 
-	desc := FormatBeadDescription(issue)
+	desc := FormatBeanDescription(issue)
 
 	// Check that it contains key elements
 	require.True(t, strings.Contains(desc, "Original description"), "Description should contain original description")

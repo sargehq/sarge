@@ -742,7 +742,7 @@ func (c *Client) PostPRComment(ctx context.Context, prURL string, body string) e
 }
 
 // PostReplyToComment posts a reply to a specific comment on a PR.
-// This is used to acknowledge when we've created a bead from feedback.
+// This is used to acknowledge when we've created a bean from feedback.
 func (c *Client) PostReplyToComment(ctx context.Context, prURL string, commentID int, body string) error {
 	logging.Debug("posting reply to comment", "prURL", prURL, "commentID", commentID, "bodyLen", len(body))
 

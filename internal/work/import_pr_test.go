@@ -195,7 +195,7 @@ func TestSetupWorktreeFromPR_WorktreeCreateError(t *testing.T) {
 	require.NotNil(t, resultMetadata, "metadata should be returned even on worktree create failure")
 }
 
-func TestMapPRToBeadCreate(t *testing.T) {
+func TestMapPRToBeanCreate(t *testing.T) {
 	pr := &github.PRMetadata{
 		Number:      123,
 		URL:         "https://github.com/owner/repo/pull/123",
@@ -209,7 +209,7 @@ func TestMapPRToBeadCreate(t *testing.T) {
 		Repo:        "owner/repo",
 	}
 
-	opts := mapPRToBeadCreate(pr)
+	opts := mapPRToBeanCreate(pr)
 
 	require.Equal(t, "Add new feature", opts.title)
 	require.Equal(t, "This PR adds a new feature", opts.description)
@@ -484,7 +484,7 @@ func TestMapPRStatus(t *testing.T) {
 	}
 }
 
-func TestFormatBeadDescription(t *testing.T) {
+func TestFormatBeanDescription(t *testing.T) {
 	mergedAt := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
 
 	tests := []struct {
@@ -579,7 +579,7 @@ func TestFormatBeadDescription(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := formatBeadDescription(tt.pr)
+			result := formatBeanDescription(tt.pr)
 
 			for _, expected := range tt.contains {
 				require.True(t, strings.Contains(result, expected),
@@ -615,39 +615,39 @@ func TestParsePriority(t *testing.T) {
 	}
 }
 
-func TestCreateBeadOptions(t *testing.T) {
-	opts := &CreateBeadOptions{
-		BeadsDir:         "/path/to/beads",
+func TestCreateBeanOptions(t *testing.T) {
+	opts := &CreateBeanOptions{
+		BeansDir:         "/path/to/beans",
 		SkipIfExists:     true,
 		OverrideTitle:    "Custom Title",
 		OverrideType:     "bug",
 		OverridePriority: "P1",
 	}
 
-	require.Equal(t, "/path/to/beads", opts.BeadsDir)
+	require.Equal(t, "/path/to/beans", opts.BeansDir)
 	require.True(t, opts.SkipIfExists)
 	require.Equal(t, "Custom Title", opts.OverrideTitle)
 	require.Equal(t, "bug", opts.OverrideType)
 	require.Equal(t, "P1", opts.OverridePriority)
 }
 
-func TestCreateBeadResult(t *testing.T) {
-	result := &CreateBeadResult{
-		BeanID:     "bead-123",
+func TestCreateBeanResult(t *testing.T) {
+	result := &CreateBeanResult{
+		BeanID:     "bean-123",
 		Created:    true,
 		SkipReason: "",
 	}
 
-	require.Equal(t, "bead-123", result.BeanID)
+	require.Equal(t, "bean-123", result.BeanID)
 	require.True(t, result.Created)
 
 	// Test skip result
-	skipResult := &CreateBeadResult{
-		BeanID:     "existing-bead",
+	skipResult := &CreateBeanResult{
+		BeanID:     "existing-bean",
 		Created:    false,
-		SkipReason: "bead already exists for this PR",
+		SkipReason: "bean already exists for this PR",
 	}
 
-	require.False(t, skipResult.Created, "Created should be false for skipped bead")
-	require.NotEmpty(t, skipResult.SkipReason, "SkipReason should be set for skipped bead")
+	require.False(t, skipResult.Created, "Created should be false for skipped bean")
+	require.NotEmpty(t, skipResult.SkipReason, "SkipReason should be set for skipped bean")
 }

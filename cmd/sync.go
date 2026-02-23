@@ -48,8 +48,8 @@ func runSync(cmd *cobra.Command, args []string) error {
 
 	// Pull in each worktree
 	for _, wt := range worktrees {
-		// Skip beads internal worktrees (managed by beads system, not sarge)
-		if strings.Contains(wt.Path, ".git/beads-worktrees") {
+		// Skip beans internal worktrees (managed by beans system, not sarge)
+		if strings.Contains(wt.Path, ".git/beans-worktrees") {
 			continue
 		}
 

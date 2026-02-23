@@ -18,14 +18,14 @@ func TestWorkCreation_Success(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Create a test bead
-	h.CreateBead("bead-1", "Implement feature X")
+	// Create a test bean
+	h.CreateBean("bean-1", "Implement feature X")
 
 	// Create work asynchronously
 	result, err := h.WorkService.CreateWorkAsyncWithOptions(ctx, work.CreateWorkAsyncOptions{
 		BranchName:  "feat/implement-feature-x",
 		BaseBranch:  "main",
-		RootIssueID: "bead-1",
+		RootIssueID: "bean-1",
 	})
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -39,7 +39,7 @@ func TestWorkCreation_Success(t *testing.T) {
 	assert.Equal(t, "pending", workRecord.Status)
 	assert.Equal(t, "feat/implement-feature-x", workRecord.BranchName)
 	assert.Equal(t, "main", workRecord.BaseBranch)
-	assert.Equal(t, "bead-1", workRecord.RootIssueID)
+	assert.Equal(t, "bean-1", workRecord.RootIssueID)
 	assert.False(t, workRecord.Auto)
 
 	// Verify CreateWorktree task scheduled
@@ -51,7 +51,7 @@ func TestWorkCreation_Success(t *testing.T) {
 	assert.Equal(t, db.TaskStatusPending, tasks[0].Status)
 	assert.Equal(t, "feat/implement-feature-x", tasks[0].Metadata["branch"])
 	assert.Equal(t, "main", tasks[0].Metadata["base_branch"])
-	assert.Equal(t, "bead-1", tasks[0].Metadata["root_issue_id"])
+	assert.Equal(t, "bean-1", tasks[0].Metadata["root_issue_id"])
 }
 
 func TestWorkCreation_WithEpicExpansion(t *testing.T) {
@@ -63,7 +63,7 @@ func TestWorkCreation_WithEpicExpansion(t *testing.T) {
 	// Create an epic with children
 	h.CreateEpicWithChildren("epic-1", "child-1", "child-2")
 
-	// Create work using CreateWorkAsyncWithOptions to include beads
+	// Create work using CreateWorkAsyncWithOptions to include beans
 	result, err := h.WorkService.CreateWorkAsyncWithOptions(ctx, work.CreateWorkAsyncOptions{
 		BranchName:  "feat/epic-work",
 		BaseBranch:  "main",
@@ -79,13 +79,13 @@ func TestWorkCreation_WithEpicExpansion(t *testing.T) {
 	require.NotNil(t, workRecord)
 	assert.Equal(t, "epic-1", workRecord.RootIssueID)
 
-	// Verify all beads added to work_beads table
-	workBeads, err := h.DB.GetWorkBeans(ctx, result.WorkID)
+	// Verify all beans added to work_beans table
+	workBeans, err := h.DB.GetWorkBeans(ctx, result.WorkID)
 	require.NoError(t, err)
-	require.Len(t, workBeads, 3, "expected epic and 2 children")
+	require.Len(t, workBeans, 3, "expected epic and 2 children")
 
 	beanIDs := make(map[string]bool)
-	for _, wb := range workBeads {
+	for _, wb := range workBeans {
 		beanIDs[wb.BeanID] = true
 	}
 	assert.True(t, beanIDs["epic-1"])
@@ -187,42 +187,42 @@ func TestWorkCreation_CleanupOnPartialFailure(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Create a bead
-	h.CreateBead("bead-1", "Test Bead")
+	// Create a bean
+	h.CreateBean("bean-1", "Test Bean")
 
-	// First, create a work with the bead
+	// First, create a work with the bean
 	result1, err := h.WorkService.CreateWorkAsyncWithOptions(ctx, work.CreateWorkAsyncOptions{
 		BranchName:  "feat/first-work",
 		BaseBranch:  "main",
-		RootIssueID: "bead-1",
-		BeanIDs:     []string{"bead-1"},
+		RootIssueID: "bean-1",
+		BeanIDs:     []string{"bean-1"},
 	})
 	require.NoError(t, err)
 
-	// Verify the work was created with its bead
-	beads1, err := h.DB.GetWorkBeans(ctx, result1.WorkID)
+	// Verify the work was created with its bean
+	beans1, err := h.DB.GetWorkBeans(ctx, result1.WorkID)
 	require.NoError(t, err)
-	assert.Len(t, beads1, 1, "first work should have one bead")
+	assert.Len(t, beans1, 1, "first work should have one bean")
 
-	// Create another work with a different bead - this should succeed
-	// (beads can belong to multiple works in the system design)
-	h.CreateBead("bead-2", "Test Bead 2")
+	// Create another work with a different bean - this should succeed
+	// (beans can belong to multiple works in the system design)
+	h.CreateBean("bean-2", "Test Bean 2")
 	result2, err := h.WorkService.CreateWorkAsyncWithOptions(ctx, work.CreateWorkAsyncOptions{
 		BranchName:  "feat/second-work",
 		BaseBranch:  "main",
-		RootIssueID: "bead-2",
-		BeanIDs:     []string{"bead-2"},
+		RootIssueID: "bean-2",
+		BeanIDs:     []string{"bean-2"},
 	})
 	require.NoError(t, err)
 
-	// Verify both works exist with their respective beads
+	// Verify both works exist with their respective beans
 	works, err := h.DB.ListWorks(ctx, "")
 	require.NoError(t, err)
 	assert.Len(t, works, 2, "should have two independent works")
 
-	beads2, err := h.DB.GetWorkBeans(ctx, result2.WorkID)
+	beans2, err := h.DB.GetWorkBeans(ctx, result2.WorkID)
 	require.NoError(t, err)
-	assert.Len(t, beads2, 1, "second work should have one bead")
+	assert.Len(t, beans2, 1, "second work should have one bean")
 }
 
 func TestWorkCreation_WithUseExistingBranch(t *testing.T) {

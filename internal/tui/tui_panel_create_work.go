@@ -253,7 +253,7 @@ func (p *CreateWorkPanel) GetResult() CreateWorkResult {
 	}
 }
 
-// GetBeanID returns the bead ID for this work
+// GetBeanID returns the bean ID for this work
 func (p *CreateWorkPanel) GetBeanID() string {
 	return p.beanID
 }
@@ -303,9 +303,9 @@ func (p *CreateWorkPanel) Render() string {
 	content.WriteString(tuiSuccessStyle.Render("Create Work"))
 	content.WriteString("\n\n")
 
-	// Show bead info
-	beadInfo := fmt.Sprintf("Creating work from issue: %s", issueIDStyle.Render(p.beanID))
-	content.WriteString(beadInfo)
+	// Show bean info
+	beanInfo := fmt.Sprintf("Creating work from issue: %s", issueIDStyle.Render(p.beanID))
+	content.WriteString(beanInfo)
 	content.WriteString("\n\n")
 
 	// Mode toggle

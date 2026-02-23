@@ -11,8 +11,8 @@ import (
 	"github.com/sargehq/sarge/internal/progress"
 )
 
-// WorkTaskPanel renders the right side of the work details view when a task or unassigned bead is selected.
-// It displays task details including ID, type, status, beads, and errors, or unassigned bead details.
+// WorkTaskPanel renders the right side of the work details view when a task or unassigned bean is selected.
+// It displays task details including ID, type, status, beans, and errors, or unassigned bean details.
 type WorkTaskPanel struct {
 	// Dimensions
 	width  int
@@ -25,9 +25,9 @@ type WorkTaskPanel struct {
 	viewport viewport.Model
 
 	// Data
-	selectedTask   *progress.TaskProgress // The selected task, or nil if unassigned bead
-	selectedBead   *progress.BeanProgress // The selected unassigned bead, or nil if task
-	isUnassigned   bool          // True if showing an unassigned bead
+	selectedTask   *progress.TaskProgress // The selected task, or nil if unassigned bean
+	selectedBean   *progress.BeanProgress // The selected unassigned bean, or nil if task
+	isUnassigned   bool          // True if showing an unassigned bean
 }
 
 // NewWorkTaskPanel creates a new WorkTaskPanel
@@ -66,16 +66,16 @@ func (p *WorkTaskPanel) SetFocus(focused bool) {
 // SetTask sets the task to display
 func (p *WorkTaskPanel) SetTask(task *progress.TaskProgress) {
 	p.selectedTask = task
-	p.selectedBead = nil
+	p.selectedBean = nil
 	p.isUnassigned = false
 	// Reset viewport scroll when switching content
 	p.viewport.SetYOffset(0)
 }
 
-// SetUnassignedBead sets the unassigned bead to display
-func (p *WorkTaskPanel) SetUnassignedBead(bead *progress.BeanProgress) {
+// SetUnassignedBean sets the unassigned bean to display
+func (p *WorkTaskPanel) SetUnassignedBean(bean *progress.BeanProgress) {
 	p.selectedTask = nil
-	p.selectedBead = bead
+	p.selectedBean = bean
 	p.isUnassigned = true
 	// Reset viewport scroll when switching content
 	p.viewport.SetYOffset(0)
@@ -84,7 +84,7 @@ func (p *WorkTaskPanel) SetUnassignedBead(bead *progress.BeanProgress) {
 // Clear clears the panel content
 func (p *WorkTaskPanel) Clear() {
 	p.selectedTask = nil
-	p.selectedBead = nil
+	p.selectedBean = nil
 	p.isUnassigned = false
 }
 
@@ -113,12 +113,12 @@ func (p *WorkTaskPanel) GetViewport() *viewport.Model {
 	return &p.viewport
 }
 
-// Render returns the task/bead details content using the viewport
+// Render returns the task/bean details content using the viewport
 func (p *WorkTaskPanel) Render(panelWidth int) string {
 	// Get the full content first
 	var fullContent string
-	if p.isUnassigned && p.selectedBead != nil {
-		fullContent = p.renderUnassignedBeadDetails(panelWidth)
+	if p.isUnassigned && p.selectedBean != nil {
+		fullContent = p.renderUnassignedBeanDetails(panelWidth)
 	} else if p.selectedTask != nil {
 		fullContent = p.renderTaskDetails(panelWidth)
 	} else {
@@ -152,26 +152,26 @@ func (p *WorkTaskPanel) renderTaskDetails(panelWidth int) string {
 		fmt.Fprintf(&content, "Budget: %d\n", task.Task.ComplexityBudget)
 	}
 
-	// Show task beads
-	fmt.Fprintf(&content, "\nBeads (%d):\n", len(task.Beads))
-	for i, bead := range task.Beads {
+	// Show task beans
+	fmt.Fprintf(&content, "\nBeans (%d):\n", len(task.Beans))
+	for i, bean := range task.Beans {
 		if i >= 10 {
-			fmt.Fprintf(&content, "  ... and %d more\n", len(task.Beads)-10)
+			fmt.Fprintf(&content, "  ... and %d more\n", len(task.Beans)-10)
 			break
 		}
 		statusStr := "○"
-		switch bead.Status {
+		switch bean.Status {
 		case db.StatusCompleted:
 			statusStr = "✓"
 		case db.StatusProcessing:
 			statusStr = "●"
 		}
-		beadLine := fmt.Sprintf("  %s %s", statusStr, bead.ID)
-		if bead.Title != "" {
+		beanLine := fmt.Sprintf("  %s %s", statusStr, bean.ID)
+		if bean.Title != "" {
 			// "  ○ ID: " is about 8 chars prefix
-			beadLine += ": " + ansi.Truncate(bead.Title, contentWidth-8-len(bead.ID), "...")
+			beanLine += ": " + ansi.Truncate(bean.Title, contentWidth-8-len(bean.ID), "...")
 		}
-		content.WriteString(beadLine + "\n")
+		content.WriteString(beanLine + "\n")
 	}
 
 	// Show error if failed
@@ -186,14 +186,14 @@ func (p *WorkTaskPanel) renderTaskDetails(panelWidth int) string {
 	return content.String()
 }
 
-// renderUnassignedBeadDetails renders details for an unassigned bead
-func (p *WorkTaskPanel) renderUnassignedBeadDetails(panelWidth int) string {
-	if p.selectedBead == nil {
-		return tuiDimStyle.Render("No bead selected")
+// renderUnassignedBeanDetails renders details for an unassigned bean
+func (p *WorkTaskPanel) renderUnassignedBeanDetails(panelWidth int) string {
+	if p.selectedBean == nil {
+		return tuiDimStyle.Render("No bean selected")
 	}
 
 	var content strings.Builder
-	bead := p.selectedBead
+	bean := p.selectedBean
 
 	// Account for padding (tuiPanelStyle has Padding(0, 1) = 2 chars total)
 	contentWidth := panelWidth - 2
@@ -205,19 +205,19 @@ func (p *WorkTaskPanel) renderUnassignedBeadDetails(panelWidth int) string {
 	content.WriteString(tuiDimStyle.Render("[p] plan [r] run"))
 	content.WriteString("\n\n")
 
-	fmt.Fprintf(&content, "ID: %s\n", bead.ID)
-	if bead.Title != "" {
-		fmt.Fprintf(&content, "Title: %s\n", ansi.Truncate(bead.Title, contentWidth-7, "..."))
+	fmt.Fprintf(&content, "ID: %s\n", bean.ID)
+	if bean.Title != "" {
+		fmt.Fprintf(&content, "Title: %s\n", ansi.Truncate(bean.Title, contentWidth-7, "..."))
 	}
-	if bead.IssueType != "" {
-		fmt.Fprintf(&content, "Type: %s\n", bead.IssueType)
+	if bean.IssueType != "" {
+		fmt.Fprintf(&content, "Type: %s\n", bean.IssueType)
 	}
-	fmt.Fprintf(&content, "Priority: %s\n", bead.Priority)
-	fmt.Fprintf(&content, "Status: %s\n", bead.BeanStatus)
+	fmt.Fprintf(&content, "Priority: %s\n", bean.Priority)
+	fmt.Fprintf(&content, "Status: %s\n", bean.BeanStatus)
 
-	if bead.Description != "" {
+	if bean.Description != "" {
 		content.WriteString("\nDescription:\n")
-		content.WriteString(ansi.Truncate(bead.Description, contentWidth, "..."))
+		content.WriteString(ansi.Truncate(bean.Description, contentWidth, "..."))
 	}
 
 	return content.String()

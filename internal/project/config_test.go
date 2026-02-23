@@ -485,10 +485,10 @@ source = "https://github.com/example/repo"
 path = "main"
 
 # =============================================================================
-# Beads Configuration
+# Beans Configuration
 # =============================================================================
-[beads]
-path = "main/.beads"
+[beans]
+path = "main/.beans"
 `
 
 	// Create temp file
@@ -506,8 +506,8 @@ path = "main/.beads"
 			Source: "https://github.com/example/repo",
 			Path:   "main",
 		},
-		Beads: BeansConfig{
-			Path: "main/.beads",
+		Beans: BeansConfig{
+			Path: "main/.beans",
 		},
 	}
 
@@ -562,10 +562,10 @@ source = "/home/user/repo"
 path = "main"
 
 # =============================================================================
-# Beads Configuration
+# Beans Configuration
 # =============================================================================
-[beads]
-path = ".co/.beads"
+[beans]
+path = ".co/.beans"
 
 # =============================================================================
 # Claude Configuration
@@ -589,8 +589,8 @@ time_limit = 45
 			Source: "/home/user/repo",
 			Path:   "main",
 		},
-		Beads: BeansConfig{
-			Path: ".co/.beads",
+		Beans: BeansConfig{
+			Path: ".co/.beans",
 		},
 	}
 
@@ -629,10 +629,10 @@ source = "https://github.com/example/repo"
 path = "main"
 
 # =============================================================================
-# Beads Configuration
+# Beans Configuration
 # =============================================================================
-[beads]
-path = "main/.beads"
+[beans]
+path = "main/.beans"
 `
 
 	tmpDir := t.TempDir()
@@ -649,8 +649,8 @@ path = "main/.beads"
 			Source: "https://github.com/example/repo",
 			Path:   "main",
 		},
-		Beads: BeansConfig{
-			Path: "main/.beads",
+		Beans: BeansConfig{
+			Path: "main/.beans",
 		},
 	}
 
@@ -686,8 +686,8 @@ func TestGenerateDocumentedConfig_AgentType(t *testing.T) {
 				Source: "https://github.com/example/repo",
 				Path:   "main",
 			},
-			Beads: BeansConfig{
-				Path: "main/.beads",
+			Beans: BeansConfig{
+				Path: "main/.beans",
 			},
 			Agent: AgentConfig{
 				Type: agentType,

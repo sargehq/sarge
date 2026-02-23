@@ -18,26 +18,26 @@ func TestDestroyWork_CleansUpAllResources(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Create work with beads
-	h.CreateBead("bead-1", "Test Bead 1")
-	h.CreateBead("bead-2", "Test Bead 2")
+	// Create work with beans
+	h.CreateBean("bean-1", "Test Bean 1")
+	h.CreateBean("bean-2", "Test Bean 2")
 
 	workRecord := h.CreateWork("w-test", "feat/test-branch")
-	h.AddBeanToWork("w-test", "bead-1")
-	h.AddBeanToWork("w-test", "bead-2")
+	h.AddBeanToWork("w-test", "bean-1")
+	h.AddBeanToWork("w-test", "bean-2")
 
 	// Create a task associated with the work
-	h.CreateTask("w-test.1", "w-test", []string{"bead-1", "bead-2"})
+	h.CreateTask("w-test.1", "w-test", []string{"bean-1", "bean-2"})
 
 	// Verify work exists before destruction
 	workBefore, err := h.DB.GetWork(ctx, "w-test")
 	require.NoError(t, err)
 	require.NotNil(t, workBefore)
 
-	// Verify beads are associated
-	beadsBefore, err := h.DB.GetWorkBeans(ctx, "w-test")
+	// Verify beans are associated
+	beansBefore, err := h.DB.GetWorkBeans(ctx, "w-test")
 	require.NoError(t, err)
-	assert.Len(t, beadsBefore, 2)
+	assert.Len(t, beansBefore, 2)
 
 	// Track worktree removal
 	worktreeRemoved := false
@@ -60,10 +60,10 @@ func TestDestroyWork_CleansUpAllResources(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, workAfter, "work record should be deleted")
 
-	// Verify work_beads cleaned up
-	beadsAfter, err := h.DB.GetWorkBeans(ctx, "w-test")
+	// Verify work_beans cleaned up
+	beansAfter, err := h.DB.GetWorkBeans(ctx, "w-test")
 	require.NoError(t, err)
-	assert.Empty(t, beadsAfter, "work beads should be deleted")
+	assert.Empty(t, beansAfter, "work beans should be deleted")
 
 	// Verify task was deleted
 	task, err := h.DB.GetTask(ctx, "w-test.1")
@@ -77,17 +77,17 @@ func TestDestroyWork_ClosesRootIssue(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Create bead that will be the root issue
-	h.CreateBead("root-bead", "Root Issue")
+	// Create bean that will be the root issue
+	h.CreateBean("root-bean", "Root Issue")
 
 	// Create work with root issue
-	err := h.DB.CreateWork(ctx, "w-test", "Test Work", "/test/worktree", "feat/test", "main", "root-bead", false)
+	err := h.DB.CreateWork(ctx, "w-test", "Test Work", "/test/worktree", "feat/test", "main", "root-bean", false)
 	require.NoError(t, err)
 
 	// Track if close was called
 	closeCalled := false
 	var closedBeanID string
-	h.Beads.CloseFunc = func(ctx context.Context, beanID string) error {
+	h.Beans.CloseFunc = func(ctx context.Context, beanID string) error {
 		closeCalled = true
 		closedBeanID = beanID
 		return nil
@@ -98,8 +98,8 @@ func TestDestroyWork_ClosesRootIssue(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify root issue was closed
-	assert.True(t, closeCalled, "beads.Close should have been called")
-	assert.Equal(t, "root-bead", closedBeanID, "should close the root issue")
+	assert.True(t, closeCalled, "beans.Close should have been called")
+	assert.Equal(t, "root-bean", closedBeanID, "should close the root issue")
 }
 
 func TestDestroyWork_TerminatesZellijTabs(t *testing.T) {
@@ -136,13 +136,13 @@ func TestDestroyWork_HandlesPartialFailures(t *testing.T) {
 	ctx := context.Background()
 
 	// Create work with root issue
-	h.CreateBead("root-bead", "Root Issue")
-	err := h.DB.CreateWork(ctx, "w-test", "Test Work", "/test/worktree", "feat/test", "main", "root-bead", false)
+	h.CreateBean("root-bean", "Root Issue")
+	err := h.DB.CreateWork(ctx, "w-test", "Test Work", "/test/worktree", "feat/test", "main", "root-bean", false)
 	require.NoError(t, err)
 
-	// Configure beads close to fail
-	h.Beads.CloseFunc = func(ctx context.Context, beanID string) error {
-		return errors.New("beads service unavailable")
+	// Configure beans close to fail
+	h.Beans.CloseFunc = func(ctx context.Context, beanID string) error {
+		return errors.New("beans service unavailable")
 	}
 
 	// Configure tab termination to fail
@@ -258,7 +258,7 @@ func TestDestroyWork_NoRootIssue(t *testing.T) {
 
 	// Track if close was called
 	closeCalled := false
-	h.Beads.CloseFunc = func(ctx context.Context, beanID string) error {
+	h.Beans.CloseFunc = func(ctx context.Context, beanID string) error {
 		closeCalled = true
 		return nil
 	}

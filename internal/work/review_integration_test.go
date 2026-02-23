@@ -19,7 +19,7 @@ func TestReviewLoop_NoIssuesCreatesPR(t *testing.T) {
 	ctx := context.Background()
 
 	// Create work with a root issue
-	h.CreateBead("root-1", "Root issue for work")
+	h.CreateBean("root-1", "Root issue for work")
 	workRecord := h.CreateWorkWithRootIssue("w-test", "feat/test-branch", "root-1")
 
 	// Create and complete a review task
@@ -28,9 +28,9 @@ func TestReviewLoop_NoIssuesCreatesPR(t *testing.T) {
 	require.NoError(t, err)
 
 	// Review finds no issues (no children created under root)
-	// GetBeadWithChildren returns only the root issue itself
-	hasBeadsToFix := h.SimulateReviewCompletion("w-test.1", "w-test", nil)
-	assert.False(t, hasBeadsToFix, "review with no issues should not have beads to fix")
+	// GetBeanWithChildren returns only the root issue itself
+	hasBeansToFix := h.SimulateReviewCompletion("w-test.1", "w-test", nil)
+	assert.False(t, hasBeansToFix, "review with no issues should not have beans to fix")
 
 	// Verify that a PR task can now be created (review passed)
 	prTaskNum, err := h.DB.GetNextTaskNumber(ctx, "w-test")
@@ -54,7 +54,7 @@ func TestReviewLoop_IssuesCreateFixTasks(t *testing.T) {
 	ctx := context.Background()
 
 	// Create work with a root issue
-	h.CreateBead("root-1", "Root issue for work")
+	h.CreateBean("root-1", "Root issue for work")
 	workRecord := h.CreateWorkWithRootIssue("w-test", "feat/test-branch", "root-1")
 
 	// Create and complete a review task
@@ -69,8 +69,8 @@ func TestReviewLoop_IssuesCreateFixTasks(t *testing.T) {
 	}
 	h.AddReviewIssues("root-1", reviewIssues)
 
-	hasBeadsToFix := h.SimulateReviewCompletion("w-test.1", "w-test", reviewIssues)
-	assert.True(t, hasBeadsToFix, "review with issues should have beads to fix")
+	hasBeansToFix := h.SimulateReviewCompletion("w-test.1", "w-test", reviewIssues)
+	assert.True(t, hasBeansToFix, "review with issues should have beans to fix")
 
 	// Create fix tasks (simulating what handleReviewFixLoop does)
 	var fixTaskIDs []string
@@ -114,7 +114,7 @@ func TestReviewLoop_MaxIterationsForcesPR(t *testing.T) {
 	ctx := context.Background()
 
 	// Create work with a root issue
-	h.CreateBead("root-1", "Root issue for work")
+	h.CreateBean("root-1", "Root issue for work")
 	workRecord := h.CreateWorkWithRootIssue("w-test", "feat/test-branch", "root-1")
 
 	// Create multiple review tasks to simulate iterations
@@ -167,7 +167,7 @@ func TestReviewLoop_ManualReviewSkipsAutomation(t *testing.T) {
 	ctx := context.Background()
 
 	// Create work with a root issue
-	h.CreateBead("root-1", "Root issue for work")
+	h.CreateBean("root-1", "Root issue for work")
 	workRecord := h.CreateWorkWithRootIssue("w-test", "feat/test-branch", "root-1")
 
 	// Create a manual review task (auto_workflow=false)
@@ -210,7 +210,7 @@ func TestReviewLoop_FixTaskDependencies(t *testing.T) {
 	ctx := context.Background()
 
 	// Create work with a root issue
-	h.CreateBead("root-1", "Root issue for work")
+	h.CreateBean("root-1", "Root issue for work")
 	workRecord := h.CreateWorkWithRootIssue("w-test", "feat/test-branch", "root-1")
 
 	// Create first review task

@@ -15,11 +15,11 @@ import (
 
 var workFeedbackCmd = &cobra.Command{
 	Use:   "feedback [<work-id>]",
-	Short: "Process PR feedback and create beads",
-	Long: `Process PR feedback for a work unit and create beads from actionable items.
+	Short: "Process PR feedback and create beans",
+	Long: `Process PR feedback for a work unit and create beans from actionable items.
 
 Fetches PR status checks, workflow runs, comments, and review comments,
-then creates beads for failures and requested changes.
+then creates beans for failures and requested changes.
 
 If no work ID is provided, detects from current directory.`,
 	Args: cobra.MaximumNArgs(1),
@@ -29,7 +29,7 @@ If no work ID is provided, detects from current directory.`,
 var feedbackDryRun bool
 
 func init() {
-	workFeedbackCmd.Flags().BoolVar(&feedbackDryRun, "dry-run", false, "Show what beads would be created without creating them")
+	workFeedbackCmd.Flags().BoolVar(&feedbackDryRun, "dry-run", false, "Show what beans would be created without creating them")
 }
 
 func runWorkFeedback(cmd *cobra.Command, args []string) error {
@@ -57,7 +57,7 @@ func runWorkFeedback(cmd *cobra.Command, args []string) error {
 
 	// Skip dry-run as it's not needed for internal calls
 	if feedbackDryRun {
-		fmt.Println("[DRY RUN MODE - Not creating beads]")
+		fmt.Println("[DRY RUN MODE - Not creating beans]")
 	}
 
 	// Call the internal function

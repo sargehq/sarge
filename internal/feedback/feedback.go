@@ -13,14 +13,14 @@ import (
 
 // processPRFeedbackQuiet processes PR feedback without outputting to stdout.
 // This is used by the scheduler to avoid interfering with the TUI.
-// Returns the number of beads created and any error.
+// Returns the number of beans created and any error.
 func processPRFeedbackQuiet(ctx context.Context, proj *project.Project, database *db.DB, workID string) (int, error) {
 	return processPRFeedbackInternal(ctx, proj, database, workID, true)
 }
 
-// ProcessPRFeedback processes PR feedback for a work and creates beads.
+// ProcessPRFeedback processes PR feedback for a work and creates beans.
 // This is an internal function that can be called directly.
-// Returns the number of beads created and any error.
+// Returns the number of beans created and any error.
 func ProcessPRFeedback(ctx context.Context, proj *project.Project, database *db.DB, workID string) (int, error) {
 	return processPRFeedbackInternal(ctx, proj, database, workID, false)
 }
@@ -87,14 +87,14 @@ func processPRFeedbackInternal(ctx context.Context, proj *project.Project, datab
 		fmt.Printf("Found %d actionable feedback items:\n\n", len(feedbackItems))
 	}
 
-	// Store feedback in database and create beads
-	createdBeads := []string{}
-	beadsPath := proj.BeansPath()
+	// Store feedback in database and create beans
+	createdBeans := []string{}
+	beansPath := proj.BeansPath()
 
 	for i, item := range feedbackItems {
 		// Check if this is a reply to an existing comment
 		if inReplyToID := item.GetInReplyToID(); inReplyToID != "" {
-			// This is a reply - find the original comment's bead and add this as a comment
+			// This is a reply - find the original comment's bean and add this as a comment
 			parentFeedback, err := database.GetFeedbackBySourceID(ctx, workID, inReplyToID)
 			if err != nil {
 				if !quiet {
@@ -121,21 +121,21 @@ func processPRFeedbackInternal(ctx context.Context, proj *project.Project, datab
 				}
 			}
 
-			// Add the reply as a comment to the existing bead
+			// Add the reply as a comment to the existing bean
 			commentText := fmt.Sprintf("Reply from %s:\n\n%s", item.GetSourceName(), item.Description)
-			if err := beans.NewCLI(beadsPath).AddComment(ctx, *parentFeedback.BeanID, commentText); err != nil {
+			if err := beans.NewCLI(beansPath).AddComment(ctx, *parentFeedback.BeanID, commentText); err != nil {
 				if !quiet {
-					fmt.Printf("%d. [ERROR] Failed to add comment to bead %s: %v\n", i+1, *parentFeedback.BeanID, err)
+					fmt.Printf("%d. [ERROR] Failed to add comment to bean %s: %v\n", i+1, *parentFeedback.BeanID, err)
 				}
 				continue
 			}
 
 			if !quiet {
-				fmt.Printf("%d. [REPLY] Added comment to bead %s\n", i+1, *parentFeedback.BeanID)
+				fmt.Printf("%d. [REPLY] Added comment to bean %s\n", i+1, *parentFeedback.BeanID)
 			}
 
 			// Store this reply in the database to track it was processed
-			// (using the same bead_id as the parent)
+			// (using the same bean_id as the parent)
 			prFeedback, err := database.CreatePRFeedbackFromParams(ctx, db.CreatePRFeedbackParams{
 				WorkID:       workID,
 				PRURL:        work.PRURL,
@@ -203,29 +203,29 @@ func processPRFeedbackInternal(ctx context.Context, proj *project.Project, datab
 			continue
 		}
 
-		beadInfo := BeadInfo{
+		beanInfo := BeanInfo{
 			Title:       item.Title,
 			Description: item.Description,
-			Type:        GetBeadType(item.Type),
+			Type:        GetBeanType(item.Type),
 			Priority:    beans.PriorityFromInt(item.Priority),
 			ParentID:    work.RootIssueID,
 			Labels:      []string{"from-pr-feedback"},
 			SourceURL:   item.Source.URL,
 		}
 
-		// Create bead using beads package
-		beanID, err := integration.CreateBeadFromFeedback(ctx, beadsPath, beadInfo)
+		// Create bean using beans package
+		beanID, err := integration.CreateBeanFromFeedback(ctx, beansPath, beanInfo)
 		if err != nil {
 			if !quiet {
-				fmt.Printf("   Error creating bead: %v\n", err)
+				fmt.Printf("   Error creating bean: %v\n", err)
 			}
 			continue
 		}
 
 		if !quiet {
-			fmt.Printf("   Created bead: %s\n", beanID)
+			fmt.Printf("   Created bean: %s\n", beanID)
 		}
-		createdBeads = append(createdBeads, beanID)
+		createdBeans = append(createdBeans, beanID)
 
 		// Post back to GitHub comment if this feedback came from a comment
 		// Use typed context to determine comment type and ID
@@ -280,13 +280,13 @@ func processPRFeedbackInternal(ctx context.Context, proj *project.Project, datab
 	if !quiet {
 		fmt.Printf("\n=== Summary ===\n")
 		fmt.Printf("Total feedback items: %d\n", len(feedbackItems))
-		fmt.Printf("Beads created: %d\n", len(createdBeads))
+		fmt.Printf("Beans created: %d\n", len(createdBeans))
 
-		if len(createdBeads) > 0 {
-			fmt.Println("\nTo add these beads to the work, run:")
-			fmt.Printf("  sarge work add %s\n", strings.Join(createdBeads, " "))
+		if len(createdBeans) > 0 {
+			fmt.Println("\nTo add these beans to the work, run:")
+			fmt.Printf("  sarge work add %s\n", strings.Join(createdBeans, " "))
 		}
 	}
 
-	return len(createdBeads), nil
+	return len(createdBeans), nil
 }

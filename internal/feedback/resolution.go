@@ -14,7 +14,7 @@ import (
 	"github.com/sargehq/sarge/internal/project"
 )
 
-// CheckAndResolveComments checks for feedback items and resolves those with closed beads.
+// CheckAndResolveComments checks for feedback items and resolves those with closed beans.
 func CheckAndResolveComments(ctx context.Context, proj *project.Project, workID string) error {
 	// Get unresolved feedback items for this work
 	feedbacks, err := proj.DB.GetUnresolvedFeedbackForWork(ctx, workID)
@@ -34,14 +34,14 @@ func CheckAndResolveComments(ctx context.Context, proj *project.Project, workID 
 			continue
 		}
 
-		// Check if the bead is actually closed
-		bead, err := proj.Beads.GetBean(ctx, *fb.BeanID)
+		// Check if the bean is actually closed
+		bean, err := proj.Beans.GetBean(ctx, *fb.BeanID)
 		if err != nil {
-			logging.Error("failed to get bead", "bead_id", *fb.BeanID, "error", err)
+			logging.Error("failed to get bean", "bean_id", *fb.BeanID, "error", err)
 			continue
 		}
 
-		if bead == nil || bead.Status != beans.StatusCompleted {
+		if bean == nil || bean.Status != beans.StatusCompleted {
 			continue
 		}
 
@@ -59,16 +59,16 @@ func CheckAndResolveComments(ctx context.Context, proj *project.Project, workID 
 	return nil
 }
 
-// ResolveFeedbackForBeans posts resolution comments on GitHub for closed beads.
-// It checks the provided beads and posts resolution comments for any associated
+// ResolveFeedbackForBeans posts resolution comments on GitHub for closed beans.
+// It checks the provided beans and posts resolution comments for any associated
 // unresolved feedback items. Uses the transactional outbox pattern: atomically marks
 // feedback as resolved and schedules comment tasks, then attempts optimistic execution.
-func ResolveFeedbackForBeans(ctx context.Context, database *db.DB, beadClient *beans.Client, workID string, closedBeanIDs []string) error {
+func ResolveFeedbackForBeans(ctx context.Context, database *db.DB, beanClient *beans.Client, workID string, closedBeanIDs []string) error {
 	if len(closedBeanIDs) == 0 {
 		return nil
 	}
 
-	// Get unresolved feedback for the closed beads
+	// Get unresolved feedback for the closed beans
 	feedbacks, err := database.GetUnresolvedFeedbackForBeans(ctx, closedBeanIDs)
 	if err != nil {
 		return fmt.Errorf("failed to get unresolved feedback: %w", err)
@@ -78,21 +78,21 @@ func ResolveFeedbackForBeans(ctx context.Context, database *db.DB, beadClient *b
 		return nil
 	}
 
-	fmt.Printf("\nResolving %d GitHub feedback items for closed beads...\n", len(feedbacks))
+	fmt.Printf("\nResolving %d GitHub feedback items for closed beans...\n", len(feedbacks))
 
 	for _, fb := range feedbacks {
 		if fb.BeanID == nil || fb.SourceID == nil {
 			continue
 		}
 
-		// Get bead details for close reason
-		bead, err := beadClient.GetBean(ctx, *fb.BeanID)
+		// Get bean details for close reason
+		bean, err := beanClient.GetBean(ctx, *fb.BeanID)
 		if err != nil {
-			fmt.Printf("Warning: failed to get bead %s: %v\n", *fb.BeanID, err)
+			fmt.Printf("Warning: failed to get bean %s: %v\n", *fb.BeanID, err)
 			continue
 		}
 
-		if bead == nil {
+		if bean == nil {
 			continue
 		}
 
@@ -188,14 +188,14 @@ func resolveFeedbackItem(ctx context.Context, database *db.DB, workID string, fb
 		commentErr = ghClient.PostPRComment(ctx, fb.PRURL, resolutionMessage)
 	}
 	if commentErr != nil {
-		logging.Warn("Initial GitHub comment failed, scheduler will retry", "error", commentErr, "work_id", workID, "bead_id", *fb.BeanID)
+		logging.Warn("Initial GitHub comment failed, scheduler will retry", "error", commentErr, "work_id", workID, "bean_id", *fb.BeanID)
 		fmt.Printf("Warning: initial comment post failed, will retry in background: %v\n", commentErr)
 	} else {
 		// Success - mark scheduled task as completed
 		if markErr := database.MarkTaskCompletedByIdempotencyKey(ctx, commentIdempotencyKey); markErr != nil {
 			logging.Warn("failed to mark github comment task as completed", "error", markErr, "work_id", workID)
 		}
-		fmt.Printf("Successfully posted resolution comment for bead %s on GitHub\n", *fb.BeanID)
+		fmt.Printf("Successfully posted resolution comment for bean %s on GitHub\n", *fb.BeanID)
 	}
 
 	// For review comments, also attempt immediate thread resolution
@@ -208,7 +208,7 @@ func resolveFeedbackItem(ctx context.Context, database *db.DB, workID string, fb
 			if err := database.MarkTaskCompletedByIdempotencyKey(ctx, resolveIdempotencyKey); err != nil {
 				logging.Warn("failed to mark github resolve thread task as completed", "error", err, "work_id", workID)
 			}
-			fmt.Printf("Successfully resolved review thread for bead %s\n", *fb.BeanID)
+			fmt.Printf("Successfully resolved review thread for bean %s\n", *fb.BeanID)
 		}
 	}
 

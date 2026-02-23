@@ -27,14 +27,14 @@ func (cp *ControlPlane) HandlePRFeedbackTask(ctx context.Context, proj *project.
 
 	logging.Debug("Checking PR feedback", "pr_url", work.PRURL, "work_id", workID)
 
-	// Process PR feedback - creates beads but doesn't add them to work
+	// Process PR feedback - creates beans but doesn't add them to work
 	createdCount, err := cp.FeedbackProcessor.ProcessPRFeedback(ctx, proj, proj.DB, workID)
 	if err != nil {
 		return fmt.Errorf("failed to check PR feedback: %w", err)
 	}
 
 	if createdCount > 0 {
-		logging.Info("Created beads from PR feedback", "count", createdCount, "work_id", workID)
+		logging.Info("Created beans from PR feedback", "count", createdCount, "work_id", workID)
 	} else {
 		logging.Debug("No new PR feedback found", "work_id", workID)
 	}

@@ -22,7 +22,7 @@ func (m *planModel) sessionName() string {
 	return fmt.Sprintf("sarge-%s", m.proj.Config.Project.Name)
 }
 
-// spawnPlanSession spawns or resumes a planning session for a specific bead
+// spawnPlanSession spawns or resumes a planning session for a specific bean
 func (m *planModel) spawnPlanSession(beanID string) tea.Cmd {
 	return func() tea.Msg {
 		tabName := workpkg.PlanTabName(beanID)
@@ -30,7 +30,7 @@ func (m *planModel) spawnPlanSession(beanID string) tea.Cmd {
 
 		logging.Debug("spawnPlanSession started", "beanID", beanID, "tabName", tabName)
 
-		// Check if session already running for this bead
+		// Check if session already running for this bean
 		running, _ := m.proj.DB.IsPlanSessionRunning(m.ctx, beanID)
 		logging.Debug("spawnPlanSession checked if running", "beanID", beanID, "running", running)
 		if running {
@@ -73,7 +73,7 @@ func (m *planModel) spawnPlanSession(beanID string) tea.Cmd {
 
 // executeCreateWork creates a work unit with the given branch name.
 // This uses the shared CreateWorkFromBean method which handles:
-// 1. Expanding the bead to collect all issue IDs
+// 1. Expanding the bean to collect all issue IDs
 // 2. Creating work record in DB (with auto flag)
 // 3. Initializing the zellij session
 // 4. Ensuring control plane is running
@@ -112,17 +112,17 @@ func (m *planModel) executeCreateWork(beanID string, branchName string, auto boo
 	}
 }
 
-func (m *planModel) addBeadsToWork(beanIDs []string, workID string) tea.Cmd {
+func (m *planModel) addBeansToWork(beanIDs []string, workID string) tea.Cmd {
 	return func() tea.Msg {
-		// Use WorkService to add beads
-		_, err := m.workService.AddBeads(m.ctx, workID, beanIDs)
+		// Use WorkService to add beans
+		_, err := m.workService.AddBeans(m.ctx, workID, beanIDs)
 		if err != nil {
 			beanIDsStr := strings.Join(beanIDs, ", ")
-			return beadAddedToWorkMsg{beanID: beanIDsStr, workID: workID, err: fmt.Errorf("failed to add issues to work: %w", err)}
+			return beanAddedToWorkMsg{beanID: beanIDsStr, workID: workID, err: fmt.Errorf("failed to add issues to work: %w", err)}
 		}
 
 		beanIDsStr := strings.Join(beanIDs, ", ")
-		return beadAddedToWorkMsg{beanID: beanIDsStr, workID: workID}
+		return beanAddedToWorkMsg{beanID: beanIDsStr, workID: workID}
 	}
 }
 
@@ -200,7 +200,7 @@ func (m *planModel) runFocusedWork(autoGroup bool) tea.Cmd {
 				return workCommandMsg{action: "Run work", workID: workID, err: err}
 			}
 		} else {
-			// Use direct mode - creates one task per bead
+			// Use direct mode - creates one task per bean
 			_, err := m.workService.RunWork(m.ctx, workID, false, io.Discard)
 			if err != nil {
 				return workCommandMsg{action: "Run work", workID: workID, err: err}
@@ -422,7 +422,7 @@ func (m *planModel) resetSelectedTask() tea.Cmd {
 		if err := m.proj.DB.ResetTaskStatus(m.ctx, taskID); err != nil {
 			return workCommandMsg{action: "Reset task", workID: workID, err: err}
 		}
-		// Reset all bead statuses for this task
+		// Reset all bean statuses for this task
 		if err := m.proj.DB.ResetTaskBeanStatuses(m.ctx, taskID); err != nil {
 			return workCommandMsg{action: "Reset task", workID: workID, err: err}
 		}

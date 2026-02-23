@@ -20,7 +20,7 @@ var configTemplateText string
 type Config struct {
 	Project     ProjectConfig     `toml:"project"`
 	Repo        RepoConfig        `toml:"repo"`
-	Beads       BeansConfig       `toml:"beans"`
+	Beans       BeansConfig       `toml:"beans"`
 	Hooks       HooksConfig       `toml:"hooks"`
 	Linear      LinearConfig      `toml:"linear"`
 	Agent       AgentConfig       `toml:"agent"`
@@ -610,7 +610,7 @@ func (c *Config) GenerateDocumentedConfig() string {
 		RepoType:        c.Repo.Type,
 		RepoSource:      c.Repo.Source,
 		RepoPath:        c.Repo.Path,
-		BeansPath:       c.Beads.Path,
+		BeansPath:       c.Beans.Path,
 		AgentType:       c.Agent.Type,
 		MultiplexerType: c.Multiplexer.Type,
 	}

@@ -33,7 +33,7 @@ func TestBuildLogAnalysisPrompt(t *testing.T) {
 				TaskID:       "w-abc.5",
 				WorkID:       "w-abc",
 				BranchName:   "feature/test-branch",
-				RootIssueID:  "beads-123",
+				RootIssueID:  "beans-123",
 				WorkflowName: "CI Pipeline",
 				JobName:      "Unit Tests",
 				LogFilePath:  "--- FAIL: TestSomething (0.02s)",
@@ -45,7 +45,7 @@ func TestBuildLogAnalysisPrompt(t *testing.T) {
 				"Workflow: CI Pipeline",
 				"--- FAIL: TestSomething (0.02s)",
 				"sarge complete w-abc.5",
-				"--parent beads-123",
+				"--parent beans-123",
 			},
 		},
 		{
@@ -79,7 +79,7 @@ func TestBuildLogAnalysisPrompt(t *testing.T) {
 				TaskID:       "w-test.2",
 				WorkID:       "w-test",
 				BranchName:   "dev",
-				RootIssueID:  "beads-456",
+				RootIssueID:  "beans-456",
 				WorkflowName: "Tests",
 				JobName:      "Integration",
 				LogFilePath:  "",
@@ -205,8 +205,8 @@ func TestBuildLogAnalysisPromptBdCreateCommand(t *testing.T) {
 	require.Contains(t, result, "--priority", "BuildPrompt() missing --priority flag")
 }
 
-func TestTaskParamsExistingBeadsField(t *testing.T) {
-	// Test that ExistingBeads field is properly included in the struct
+func TestTaskParamsExistingBeansField(t *testing.T) {
+	// Test that ExistingBeans field is properly included in the struct
 	params := types.TaskParams{
 		Type:         types.TaskTypeLogAnalysis,
 		TaskID:       "task-1",
@@ -216,22 +216,22 @@ func TestTaskParamsExistingBeadsField(t *testing.T) {
 		WorkflowName: "workflow-1",
 		JobName:      "job-1",
 		LogFilePath:  "content",
-		ExistingBeads: []types.BeadSummary{
-			{ID: "bead-1", Title: "Fix test failure", Body: "Test failed at file.go:42"},
-			{ID: "bead-2", Title: "Lint error", Body: "Missing comment on exported function"},
+		ExistingBeans: []types.BeanSummary{
+			{ID: "bean-1", Title: "Fix test failure", Body: "Test failed at file.go:42"},
+			{ID: "bean-2", Title: "Lint error", Body: "Missing comment on exported function"},
 		},
 	}
 
-	require.Len(t, params.ExistingBeads, 2)
-	require.Equal(t, "bead-1", params.ExistingBeads[0].ID)
-	require.Equal(t, "Fix test failure", params.ExistingBeads[0].Title)
-	require.Equal(t, "Test failed at file.go:42", params.ExistingBeads[0].Body)
+	require.Len(t, params.ExistingBeans, 2)
+	require.Equal(t, "bean-1", params.ExistingBeans[0].ID)
+	require.Equal(t, "Fix test failure", params.ExistingBeans[0].Title)
+	require.Equal(t, "Test failed at file.go:42", params.ExistingBeans[0].Body)
 }
 
-func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
+func TestBuildLogAnalysisPromptWithExistingBeans(t *testing.T) {
 	agent := mustNewClaudeAgent(t)
 
-	t.Run("renders existing beads section", func(t *testing.T) {
+	t.Run("renders existing beans section", func(t *testing.T) {
 		params := types.TaskParams{
 			Type:         types.TaskTypeLogAnalysis,
 			TaskID:       "w-test.1",
@@ -240,34 +240,34 @@ func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
 			WorkflowName: "CI",
 			JobName:      "Test",
 			LogFilePath:  "--- FAIL: TestSomething (0.02s)",
-			ExistingBeads: []types.BeadSummary{
-				{ID: "beads-123", Title: "Fix TestUserAuth failure", Body: "Test failed at auth_test.go:42"},
-				{ID: "beads-456", Title: "Fix lint error in utils", Body: "Missing comment"},
+			ExistingBeans: []types.BeanSummary{
+				{ID: "beans-123", Title: "Fix TestUserAuth failure", Body: "Test failed at auth_test.go:42"},
+				{ID: "beans-456", Title: "Fix lint error in utils", Body: "Missing comment"},
 			},
 		}
 
 		result, err := agent.BuildPrompt(params)
 		require.NoError(t, err)
 
-		// Should contain the existing beads section header
+		// Should contain the existing beans section header
 		require.Contains(t, result, "Existing Open Issues")
 
-		// Should contain bead IDs and titles
-		require.Contains(t, result, "beads-123")
+		// Should contain bean IDs and titles
+		require.Contains(t, result, "beans-123")
 		require.Contains(t, result, "Fix TestUserAuth failure")
-		require.Contains(t, result, "beads-456")
+		require.Contains(t, result, "beans-456")
 		require.Contains(t, result, "Fix lint error in utils")
 
 		// Should contain descriptions
 		require.Contains(t, result, "Test failed at auth_test.go:42")
 		require.Contains(t, result, "Missing comment")
 
-		// Should contain instructions to check existing beads
+		// Should contain instructions to check existing beans
 		require.Contains(t, result, "matches an existing issue")
 		require.Contains(t, result, "skip it")
 	})
 
-	t.Run("no existing beads section when empty", func(t *testing.T) {
+	t.Run("no existing beans section when empty", func(t *testing.T) {
 		params := types.TaskParams{
 			Type:          types.TaskTypeLogAnalysis,
 			TaskID:        "w-test.1",
@@ -276,17 +276,17 @@ func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
 			WorkflowName:  "CI",
 			JobName:       "Test",
 			LogFilePath:   "--- FAIL: TestSomething (0.02s)",
-			ExistingBeads: nil,
+			ExistingBeans: nil,
 		}
 
 		result, err := agent.BuildPrompt(params)
 		require.NoError(t, err)
 
-		// Should not contain the existing beads section header when no beads
+		// Should not contain the existing beans section header when no beans
 		require.NotContains(t, result, "Existing Open Issues")
 	})
 
-	t.Run("handles beads without description", func(t *testing.T) {
+	t.Run("handles beans without description", func(t *testing.T) {
 		params := types.TaskParams{
 			Type:         types.TaskTypeLogAnalysis,
 			TaskID:       "w-test.1",
@@ -295,16 +295,16 @@ func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
 			WorkflowName: "CI",
 			JobName:      "Test",
 			LogFilePath:  "--- FAIL: TestSomething (0.02s)",
-			ExistingBeads: []types.BeadSummary{
-				{ID: "beads-789", Title: "Fix test", Body: ""},
+			ExistingBeans: []types.BeanSummary{
+				{ID: "beans-789", Title: "Fix test", Body: ""},
 			},
 		}
 
 		result, err := agent.BuildPrompt(params)
 		require.NoError(t, err)
 
-		// Should contain the bead ID and title
-		require.Contains(t, result, "beads-789")
+		// Should contain the bean ID and title
+		require.Contains(t, result, "beans-789")
 		require.Contains(t, result, "Fix test")
 
 		// Should not have extra whitespace issues
@@ -312,14 +312,14 @@ func TestBuildLogAnalysisPromptWithExistingBeads(t *testing.T) {
 	})
 }
 
-func TestBeadSummaryStruct(t *testing.T) {
-	summary := types.BeadSummary{
-		ID:          "bead-test",
+func TestBeanSummaryStruct(t *testing.T) {
+	summary := types.BeanSummary{
+		ID:          "bean-test",
 		Title:       "Test Title",
 		Body: "Test Description",
 	}
 
-	require.Equal(t, "bead-test", summary.ID)
+	require.Equal(t, "bean-test", summary.ID)
 	require.Equal(t, "Test Title", summary.Title)
 	require.Equal(t, "Test Description", summary.Body)
 }
@@ -391,13 +391,13 @@ func TestBuildPlanPromptForPi(t *testing.T) {
 	claudeAgent := claude.New()
 	piAgent := pi.New()
 
-	claudePrompt, err := claudeAgent.BuildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeanID: "bead-123"})
+	claudePrompt, err := claudeAgent.BuildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeanID: "bean-123"})
 	require.NoError(t, err)
-	piPrompt, err := piAgent.BuildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeanID: "bead-123"})
+	piPrompt, err := piAgent.BuildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeanID: "bean-123"})
 	require.NoError(t, err)
 
-	require.Contains(t, claudePrompt, "bead-123")
-	require.Contains(t, piPrompt, "bead-123")
+	require.Contains(t, claudePrompt, "bean-123")
+	require.Contains(t, piPrompt, "bean-123")
 	require.NotEmpty(t, claudePrompt)
 	require.NotEmpty(t, piPrompt)
 }
@@ -428,7 +428,7 @@ func TestBuildPromptAllTypes(t *testing.T) {
 			params: types.TaskParams{
 				Type:       types.TaskTypeImplement,
 				TaskID:     "w-abc.1",
-				BeanIDs:    []string{"bead-1"},
+				BeanIDs:    []string{"bean-1"},
 				BranchName: "feat/test",
 				BaseBranch: "main",
 			},
@@ -439,7 +439,7 @@ func TestBuildPromptAllTypes(t *testing.T) {
 			params: types.TaskParams{
 				Type:    types.TaskTypeEstimate,
 				TaskID:  "w-abc.2",
-				BeanIDs: []string{"bead-1"},
+				BeanIDs: []string{"bean-1"},
 			},
 			wantContains: "w-abc.2",
 		},
@@ -482,9 +482,9 @@ func TestBuildPromptAllTypes(t *testing.T) {
 			name: "plan",
 			params: types.TaskParams{
 				Type:   types.TaskTypePlan,
-				BeanID: "bead-plan-1",
+				BeanID: "bean-plan-1",
 			},
-			wantContains: "bead-plan-1",
+			wantContains: "bean-plan-1",
 		},
 	}
 

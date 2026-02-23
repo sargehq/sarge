@@ -14,7 +14,7 @@ import (
 	"github.com/sargehq/sarge/internal/zmx"
 )
 
-// PlanTabName returns the zellij tab name for a bead's planning session.
+// PlanTabName returns the zellij tab name for a bean's planning session.
 func PlanTabName(beanID string) string {
 	return fmt.Sprintf("plan-%s", beanID)
 }
@@ -343,8 +343,8 @@ func (m *DefaultOrchestratorManager) openAgentSessionZellij(ctx context.Context,
 	return nil
 }
 
-// SpawnPlanSession creates a zellij tab and runs the plan command for a bead.
-// The tab is named "plan-<bead-id>" for easy identification.
+// SpawnPlanSession creates a zellij tab and runs the plan command for a bean.
+// The tab is named "plan-<bean-id>" for easy identification.
 // The function returns immediately after spawning - the plan session runs in the tab.
 // Progress messages are written to the provided writer. Pass io.Discard to suppress output.
 //

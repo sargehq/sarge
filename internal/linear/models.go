@@ -72,7 +72,7 @@ type ImportResult struct {
 // ImportOptions represents options for importing Linear issues
 type ImportOptions struct {
 	DryRun         bool
-	UpdateExisting bool   // Update existing beads if already imported
+	UpdateExisting bool   // Update existing beans if already imported
 	CreateDeps     bool
 	MaxDepDepth    int
 	AssigneeFilter string

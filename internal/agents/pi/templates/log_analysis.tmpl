@@ -7,11 +7,11 @@ You are analyzing CI logs for Work {{.WorkID}}.
 Branch: {{.BranchName}}
 Job: {{.JobName}}
 Workflow: {{.WorkflowName}}
-{{if .ExistingBeads}}
+{{if .ExistingBeans}}
 ## Existing Open Issues
 
 The following issues already exist. Before creating a new bean, check if any failure matches one of these existing issues:
-{{range .ExistingBeads}}
+{{range .ExistingBeans}}
 - **{{.ID}}**: {{.Title}}{{if .Body}}
   {{.Body}}{{end}}
 {{end}}

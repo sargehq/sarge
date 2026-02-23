@@ -6,17 +6,17 @@ import (
 	"github.com/sargehq/sarge/internal/beans"
 )
 
-// DependencyGraph represents bead dependencies.
+// DependencyGraph represents bean dependencies.
 type DependencyGraph struct {
-	// DependsOn maps bead ID to IDs it depends on
+	// DependsOn maps bean ID to IDs it depends on
 	DependsOn map[string][]string
-	// Dependents maps bead ID to IDs that depend on it (renamed from BlockedBy)
+	// Dependents maps bean ID to IDs that depend on it (renamed from BlockedBy)
 	Dependents map[string][]string
 }
 
-// BuildDependencyGraph creates a dependency graph from beads and their dependencies.
+// BuildDependencyGraph creates a dependency graph from beans and their dependencies.
 func BuildDependencyGraph(
-	beadList []beans.Bean,
+	beanList []beans.Bean,
 	dependencies map[string][]beans.Dependency,
 ) *DependencyGraph {
 	graph := &DependencyGraph{
@@ -24,13 +24,13 @@ func BuildDependencyGraph(
 		Dependents: make(map[string][]string),
 	}
 
-	// Create set of valid bead IDs
+	// Create set of valid bean IDs
 	validIDs := make(map[string]bool)
-	for _, bead := range beadList {
-		validIDs[bead.ID] = true
-		// Initialize empty slices for this bead
-		graph.DependsOn[bead.ID] = []string{}
-		graph.Dependents[bead.ID] = []string{}
+	for _, bean := range beanList {
+		validIDs[bean.ID] = true
+		// Initialize empty slices for this bean
+		graph.DependsOn[bean.ID] = []string{}
+		graph.Dependents[bean.ID] = []string{}
 	}
 
 	// Build dependency relationships from the dependencies map
@@ -47,20 +47,20 @@ func BuildDependencyGraph(
 	return graph
 }
 
-// TopologicalSort returns beads in dependency order (dependencies before dependents).
-func TopologicalSort(graph *DependencyGraph, beadList []beans.Bean) ([]beans.Bean, error) {
-	beadMap := make(map[string]beans.Bean)
-	for _, bead := range beadList {
-		beadMap[bead.ID] = bead
+// TopologicalSort returns beans in dependency order (dependencies before dependents).
+func TopologicalSort(graph *DependencyGraph, beanList []beans.Bean) ([]beans.Bean, error) {
+	beanMap := make(map[string]beans.Bean)
+	for _, bean := range beanList {
+		beanMap[bean.ID] = bean
 	}
 
 	// Kahn's algorithm
 	inDegree := make(map[string]int)
-	for _, bead := range beadList {
-		inDegree[bead.ID] = len(graph.DependsOn[bead.ID])
+	for _, bean := range beanList {
+		inDegree[bean.ID] = len(graph.DependsOn[bean.ID])
 	}
 
-	// Start with beads that have no dependencies
+	// Start with beans that have no dependencies
 	var queue []string
 	for id, degree := range inDegree {
 		if degree == 0 {
@@ -74,7 +74,7 @@ func TopologicalSort(graph *DependencyGraph, beadList []beans.Bean) ([]beans.Bea
 		id := queue[0]
 		queue = queue[1:]
 
-		result = append(result, beadMap[id])
+		result = append(result, beanMap[id])
 
 		// Reduce in-degree of dependents
 		for _, dependent := range graph.Dependents[id] {
@@ -86,7 +86,7 @@ func TopologicalSort(graph *DependencyGraph, beadList []beans.Bean) ([]beans.Bea
 	}
 
 	// Check for cycles
-	if len(result) != len(beadList) {
+	if len(result) != len(beanList) {
 		return nil, fmt.Errorf("dependency cycle detected")
 	}
 

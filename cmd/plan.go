@@ -15,7 +15,7 @@ import (
 )
 
 var planCmd = &cobra.Command{
-	Use:   "plan <bead-id>",
+	Use:   "plan <bean-id>",
 	Short: "Launch Claude for planning a specific issue",
 	Long: `Plan launches Claude Code for planning work on a specific issue.
 

@@ -491,7 +491,7 @@ func TestReviewFixLoopCreatesOnlyOnePRTask(t *testing.T) {
 	require.NoError(t, err)
 
 	// First review cycle - no PR task exists
-	err = testDB.CreateTask(ctx, "work-1.1", "implement", []string{"bead-1"}, 5, "work-1", 1)
+	err = testDB.CreateTask(ctx, "work-1.1", "implement", []string{"bean-1"}, 5, "work-1", 1)
 	require.NoError(t, err)
 
 	// First review passes - should create PR task
@@ -519,7 +519,7 @@ func TestReviewFixLoopCreatesOnlyOnePRTask(t *testing.T) {
 	require.NoError(t, err)
 
 	// Second review cycle (after PR feedback) - PR already exists
-	err = testDB.CreateTask(ctx, "work-1.4", "implement", []string{"bead-2"}, 5, "work-1", 4)
+	err = testDB.CreateTask(ctx, "work-1.4", "implement", []string{"bean-2"}, 5, "work-1", 4)
 	require.NoError(t, err)
 	err = testDB.CreateTask(ctx, "work-1.5", "review", nil, 0, "work-1", 5)
 	require.NoError(t, err)

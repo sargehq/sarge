@@ -34,14 +34,14 @@ type RunWorkOptions struct {
 	ForceEstimate bool
 }
 
-// RunWork creates tasks from unassigned beads and ensures an orchestrator is running.
+// RunWork creates tasks from unassigned beans and ensures an orchestrator is running.
 // This is the core logic used by both the CLI `sarge run` command and the TUI.
 // Progress messages are written to the provided writer. Pass io.Discard to suppress output.
 func (s *WorkService) RunWork(ctx context.Context, workID string, usePlan bool, w io.Writer) (*RunWorkResult, error) {
 	return s.RunWorkWithOptions(ctx, workID, RunWorkOptions{UsePlan: usePlan}, w)
 }
 
-// RunWorkWithOptions creates tasks from unassigned beads and ensures an orchestrator is running.
+// RunWorkWithOptions creates tasks from unassigned beans and ensures an orchestrator is running.
 // Progress messages are written to the provided writer. Pass io.Discard to suppress output.
 func (s *WorkService) RunWorkWithOptions(ctx context.Context, workID string, opts RunWorkOptions, w io.Writer) (*RunWorkResult, error) {
 	// Get work details to verify it exists
@@ -62,7 +62,7 @@ func (s *WorkService) RunWorkWithOptions(ctx context.Context, workID string, opt
 		return nil, fmt.Errorf("work %s worktree does not exist at %s", work.ID, work.WorktreePath)
 	}
 
-	// Create tasks from unassigned work beads
+	// Create tasks from unassigned work beans
 	tasksCreated, err := s.createTasksFromWorkBeans(ctx, workID, opts.UsePlan, opts.ForceEstimate, w)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create tasks: %w", err)
@@ -104,7 +104,7 @@ func (s *WorkService) RunWorkAuto(ctx context.Context, workID string, w io.Write
 		return nil, fmt.Errorf("work %s worktree does not exist at %s", work.ID, work.WorktreePath)
 	}
 
-	// Create estimate task from unassigned work beads (post-estimation will create implement tasks)
+	// Create estimate task from unassigned work beans (post-estimation will create implement tasks)
 	err = s.CreateEstimateTaskFromWorkBeans(ctx, workID, w)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create estimate task: %w", err)
@@ -123,9 +123,9 @@ func (s *WorkService) RunWorkAuto(ctx context.Context, workID string, w io.Write
 	}, nil
 }
 
-// PlanWorkTasks creates tasks from unassigned beads in a work unit without spawning an orchestrator.
-// If autoGroup is true, uses LLM complexity estimation to group beads into tasks.
-// Otherwise, uses existing group assignments from work_beads (one task per bead or group).
+// PlanWorkTasks creates tasks from unassigned beans in a work unit without spawning an orchestrator.
+// If autoGroup is true, uses LLM complexity estimation to group beans into tasks.
+// Otherwise, uses existing group assignments from work_beans (one task per bean or group).
 // Progress messages are written to w. Pass io.Discard to suppress output.
 func (s *WorkService) PlanWorkTasks(ctx context.Context, workID string, autoGroup bool, w io.Writer) (*PlanWorkTasksResult, error) {
 	// Get work details to verify it exists
@@ -137,7 +137,7 @@ func (s *WorkService) PlanWorkTasks(ctx context.Context, workID string, autoGrou
 		return nil, fmt.Errorf("work %s not found", workID)
 	}
 
-	// Create tasks from unassigned work beads
+	// Create tasks from unassigned work beans
 	tasksCreated, err := s.createTasksFromWorkBeans(ctx, workID, autoGroup, false, w)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create tasks: %w", err)
@@ -148,23 +148,23 @@ func (s *WorkService) PlanWorkTasks(ctx context.Context, workID string, autoGrou
 	}, nil
 }
 
-// CreateEstimateTaskFromWorkBeans creates an estimate task from unassigned work beads.
+// CreateEstimateTaskFromWorkBeans creates an estimate task from unassigned work beans.
 // This is used in --auto mode where the full automated workflow includes estimation.
 // After the estimate task completes, handlePostEstimation creates implement tasks.
 func (s *WorkService) CreateEstimateTaskFromWorkBeans(ctx context.Context, workID string, w io.Writer) error {
-	// Get unassigned beads
+	// Get unassigned beans
 	unassigned, err := s.DB.GetUnassignedWorkBeans(ctx, workID)
 	if err != nil {
-		return fmt.Errorf("failed to get unassigned beads: %w", err)
+		return fmt.Errorf("failed to get unassigned beans: %w", err)
 	}
 
 	if len(unassigned) == 0 {
-		return fmt.Errorf("no unassigned beads found for work %s", workID)
+		return fmt.Errorf("no unassigned beans found for work %s", workID)
 	}
 
-	fmt.Fprintf(w, "\nFound %d unassigned bead(s)\n", len(unassigned))
+	fmt.Fprintf(w, "\nFound %d unassigned bean(s)\n", len(unassigned))
 
-	// Collect bead IDs
+	// Collect bean IDs
 	var beanIDs []string
 	for _, wb := range unassigned {
 		beanIDs = append(beanIDs, wb.BeanID)
@@ -182,59 +182,59 @@ func (s *WorkService) CreateEstimateTaskFromWorkBeans(ctx context.Context, workI
 		return fmt.Errorf("failed to create estimate task: %w", err)
 	}
 
-	fmt.Fprintf(w, "  Created estimate task %s with %d bead(s)\n", taskID, len(beanIDs))
+	fmt.Fprintf(w, "  Created estimate task %s with %d bean(s)\n", taskID, len(beanIDs))
 	fmt.Fprintln(w, "  Implement tasks will be created after estimation completes.")
 
 	return nil
 }
 
-// createTasksFromWorkBeans creates tasks from unassigned beads in work_beads.
-// If usePlan is true, uses LLM complexity estimation to group beads.
+// createTasksFromWorkBeans creates tasks from unassigned beans in work_beans.
+// If usePlan is true, uses LLM complexity estimation to group beans.
 // Returns the number of tasks created.
 func (s *WorkService) createTasksFromWorkBeans(ctx context.Context, workID string, usePlan bool, forceEstimate bool, w io.Writer) (int, error) {
-	// Get unassigned beads
+	// Get unassigned beans
 	unassigned, err := s.DB.GetUnassignedWorkBeans(ctx, workID)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get unassigned beads: %w", err)
+		return 0, fmt.Errorf("failed to get unassigned beans: %w", err)
 	}
 
 	if len(unassigned) == 0 {
 		return 0, nil
 	}
 
-	fmt.Fprintf(w, "\nFound %d unassigned bead(s)\n", len(unassigned))
+	fmt.Fprintf(w, "\nFound %d unassigned bean(s)\n", len(unassigned))
 
-	// Collect bead IDs from unassigned work_beads
+	// Collect bean IDs from unassigned work_beans
 	beanIDs := make([]string, len(unassigned))
 	for i, wb := range unassigned {
 		beanIDs[i] = wb.BeanID
 	}
 
 	// Get all issues with dependencies in one call
-	issuesResult, err := s.BeadsReader.GetBeansWithDeps(ctx, beanIDs)
+	issuesResult, err := s.BeansReader.GetBeansWithDeps(ctx, beanIDs)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get bead details: %w", err)
+		return 0, fmt.Errorf("failed to get bean details: %w", err)
 	}
 
-	// Verify all beads were found
+	// Verify all beans were found
 	for _, beanID := range beanIDs {
 		if _, found := issuesResult.Beans[beanID]; !found {
-			return 0, fmt.Errorf("bead %s not found", beanID)
+			return 0, fmt.Errorf("bean %s not found", beanID)
 		}
 	}
 
-	// Group beads into tasks
-	var taskGroups [][]string // Each inner slice is a group of bead IDs for one task
+	// Group beans into tasks
+	var taskGroups [][]string // Each inner slice is a group of bean IDs for one task
 
 	if usePlan {
-		// Use LLM complexity estimation to group beads
-		fmt.Fprintln(w, "Using LLM complexity estimation to group beads...")
-		taskGroups, err = s.planBeadsWithComplexity(ctx, issuesResult, workID, forceEstimate)
+		// Use LLM complexity estimation to group beans
+		fmt.Fprintln(w, "Using LLM complexity estimation to group beans...")
+		taskGroups, err = s.planBeansWithComplexity(ctx, issuesResult, workID, forceEstimate)
 		if err != nil {
-			return 0, fmt.Errorf("failed to plan beads: %w", err)
+			return 0, fmt.Errorf("failed to plan beans: %w", err)
 		}
 	} else {
-		// Each bead becomes its own task
+		// Each bean becomes its own task
 		for _, wb := range unassigned {
 			taskGroups = append(taskGroups, []string{wb.BeanID})
 		}
@@ -258,33 +258,33 @@ func (s *WorkService) createTasksFromWorkBeans(ctx context.Context, workID strin
 			return tasksCreated, fmt.Errorf("failed to create task: %w", err)
 		}
 
-		fmt.Fprintf(w, "  Created task %s with %d bead(s)\n", taskID, len(groupBeanIDs))
+		fmt.Fprintf(w, "  Created task %s with %d bean(s)\n", taskID, len(groupBeanIDs))
 		tasksCreated++
 	}
 
 	return tasksCreated, nil
 }
 
-// planBeadsWithComplexity uses LLM complexity estimation to group beads.
+// planBeansWithComplexity uses LLM complexity estimation to group beans.
 // If forceEstimate is true, re-estimates complexity even if cached values exist.
 // If s.TaskPlanner is set, uses it directly; otherwise creates a default planner.
-func (s *WorkService) planBeadsWithComplexity(ctx context.Context, issuesResult *beans.BeansWithDepsResult, workID string, forceEstimate bool) ([][]string, error) {
-	// Convert map to slice of beads
-	beadList := make([]beans.Bean, 0, len(issuesResult.Beans))
+func (s *WorkService) planBeansWithComplexity(ctx context.Context, issuesResult *beans.BeansWithDepsResult, workID string, forceEstimate bool) ([][]string, error) {
+	// Convert map to slice of beans
+	beanList := make([]beans.Bean, 0, len(issuesResult.Beans))
 	for _, b := range issuesResult.Beans {
-		beadList = append(beadList, b)
+		beanList = append(beanList, b)
 	}
 
 	// If a task planner is configured, use it directly
 	if s.TaskPlanner != nil {
 		// Plan tasks using token budget of 120K (context window is 200K, leave headroom)
 		const tokenBudget = 120000
-		planned, err := s.TaskPlanner.Plan(ctx, beadList, issuesResult.Dependencies, tokenBudget)
+		planned, err := s.TaskPlanner.Plan(ctx, beanList, issuesResult.Dependencies, tokenBudget)
 		if err != nil {
 			return nil, fmt.Errorf("failed to plan tasks: %w", err)
 		}
 
-		// Convert planned tasks to bead ID groups
+		// Convert planned tasks to bean ID groups
 		var groups [][]string
 		for _, p := range planned {
 			groups = append(groups, p.BeanIDs)
@@ -296,8 +296,8 @@ func (s *WorkService) planBeadsWithComplexity(ctx context.Context, issuesResult 
 	estimator := task.NewLLMEstimator(s.DB, s.MainRepoPath, s.Config.Project.Name, workID)
 	planner := task.NewDefaultPlanner(estimator)
 
-	// Estimate complexity for each bead
-	result, err := estimator.EstimateBatch(ctx, beadList, forceEstimate)
+	// Estimate complexity for each bean
+	result, err := estimator.EstimateBatch(ctx, beanList, forceEstimate)
 	if err != nil {
 		return nil, fmt.Errorf("failed to estimate complexity: %w", err)
 	}
@@ -309,12 +309,12 @@ func (s *WorkService) planBeadsWithComplexity(ctx context.Context, issuesResult 
 
 	// Plan tasks using token budget of 120K (context window is 200K, leave headroom)
 	const tokenBudget = 120000
-	planned, err := planner.Plan(ctx, beadList, issuesResult.Dependencies, tokenBudget)
+	planned, err := planner.Plan(ctx, beanList, issuesResult.Dependencies, tokenBudget)
 	if err != nil {
 		return nil, fmt.Errorf("failed to plan tasks: %w", err)
 	}
 
-	// Convert planned tasks to bead ID groups
+	// Convert planned tasks to bean ID groups
 	var groups [][]string
 	for _, p := range planned {
 		groups = append(groups, p.BeanIDs)

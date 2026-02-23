@@ -388,7 +388,7 @@ func TestHandlePRFeedbackTask(t *testing.T) {
 		mocks := setupControlPlane()
 
 		mocks.Feedback.ProcessPRFeedbackFunc = func(ctx context.Context, proj *project.Project, database *db.DB, workID string) (int, error) {
-			return 3, nil // Created 3 beads
+			return 3, nil // Created 3 beans
 		}
 
 		// Mock GetPRStatus for spawnWorkflowWatchers - return empty workflows

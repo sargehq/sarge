@@ -106,12 +106,12 @@ type createResponse struct {
 
 // Create implements CLI.Create.
 func (c *cliImpl) Create(ctx context.Context, opts CreateOptions) (string, error) {
-	beadType := opts.Type
+	beanType := opts.Type
 	if opts.IsEpic {
-		beadType = "epic"
+		beanType = "epic"
 	}
 
-	args := []string{"create", opts.Title, "--type", beadType, "--priority", opts.Priority, "--json"}
+	args := []string{"create", opts.Title, "--type", beanType, "--priority", opts.Priority, "--json"}
 	if opts.Body != "" {
 		args = append(args, "--body", opts.Body)
 	}

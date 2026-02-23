@@ -12,7 +12,7 @@ import (
 
 // Panel padding: tuiPanelStyle has Padding(0, 1) = 2 chars horizontal padding total
 
-// IssueDetailsPanel renders issue details for the focused bead.
+// IssueDetailsPanel renders issue details for the focused bean.
 type IssueDetailsPanel struct {
 	// Dimensions
 	width  int
@@ -25,9 +25,9 @@ type IssueDetailsPanel struct {
 	viewport viewport.Model
 
 	// Data (set by coordinator)
-	focusedBead      *beadItem
+	focusedBean      *beanItem
 	hasActiveSession bool
-	childBeadMap     map[string]*beadItem // For looking up child status
+	childBeanMap     map[string]*beanItem // For looking up child status
 }
 
 // NewIssueDetailsPanel creates a new IssueDetailsPanel
@@ -41,7 +41,7 @@ func NewIssueDetailsPanel() *IssueDetailsPanel {
 		width:        60,
 		height:       20,
 		viewport:     vp,
-		childBeadMap: make(map[string]*beadItem),
+		childBeanMap: make(map[string]*beanItem),
 	}
 }
 
@@ -72,18 +72,18 @@ func (p *IssueDetailsPanel) IsFocused() bool {
 	return p.focused
 }
 
-// SetData updates the panel's data with the focused bead
-func (p *IssueDetailsPanel) SetData(focusedBead *beadItem, hasActiveSession bool, childBeadMap map[string]*beadItem) {
-	// Check if bead changed - reset scroll if so
-	beadChanged := p.focusedBead == nil || focusedBead == nil ||
-		(p.focusedBead != nil && focusedBead != nil && p.focusedBead.ID != focusedBead.ID)
+// SetData updates the panel's data with the focused bean
+func (p *IssueDetailsPanel) SetData(focusedBean *beanItem, hasActiveSession bool, childBeanMap map[string]*beanItem) {
+	// Check if bean changed - reset scroll if so
+	beanChanged := p.focusedBean == nil || focusedBean == nil ||
+		(p.focusedBean != nil && focusedBean != nil && p.focusedBean.ID != focusedBean.ID)
 
-	p.focusedBead = focusedBead
+	p.focusedBean = focusedBean
 	p.hasActiveSession = hasActiveSession
-	p.childBeadMap = childBeadMap
+	p.childBeanMap = childBeanMap
 
-	// Reset scroll when switching beads
-	if beadChanged {
+	// Reset scroll when switching beans
+	if beanChanged {
 		p.viewport.SetYOffset(0)
 	}
 }
@@ -137,12 +137,12 @@ func (p *IssueDetailsPanel) RenderWithPanel(contentHeight int) string {
 
 // renderFullIssueContent renders all content without line limits
 func (p *IssueDetailsPanel) renderFullIssueContent() string {
-	if p.focusedBead == nil {
+	if p.focusedBean == nil {
 		return tuiDimStyle.Render("No issue selected")
 	}
 
 	var content strings.Builder
-	bead := p.focusedBead
+	bean := p.focusedBean
 
 	// Calculate inner width (panel has Padding(0, 1) = 2 chars total horizontal padding)
 	innerWidth := p.width - 2
@@ -150,23 +150,23 @@ func (p *IssueDetailsPanel) renderFullIssueContent() string {
 	// Build header line - may need truncation to fit
 	var header strings.Builder
 	header.WriteString(tuiLabelStyle.Render("ID: "))
-	header.WriteString(tuiValueStyle.Render(bead.ID))
+	header.WriteString(tuiValueStyle.Render(bean.ID))
 	header.WriteString("  ")
 	header.WriteString(tuiLabelStyle.Render("Type: "))
-	header.WriteString(tuiValueStyle.Render(bead.Type))
+	header.WriteString(tuiValueStyle.Render(bean.Type))
 	header.WriteString("  ")
 	header.WriteString(tuiLabelStyle.Render("P"))
-	header.WriteString(tuiValueStyle.Render(bead.Priority))
+	header.WriteString(tuiValueStyle.Render(bean.Priority))
 	header.WriteString("  ")
 	header.WriteString(tuiLabelStyle.Render("Status: "))
-	header.WriteString(tuiValueStyle.Render(bead.Status))
+	header.WriteString(tuiValueStyle.Render(bean.Status))
 	if p.hasActiveSession {
 		header.WriteString("  ")
 		header.WriteString(tuiSuccessStyle.Render("[Session Active]"))
 	}
-	if bead.assignedWorkID != "" {
+	if bean.assignedWorkID != "" {
 		header.WriteString("  ")
-		header.WriteString(tuiDimStyle.Render("Work: " + bead.assignedWorkID))
+		header.WriteString(tuiDimStyle.Render("Work: " + bean.assignedWorkID))
 	}
 
 	// Truncate header to fit inner width
@@ -178,29 +178,29 @@ func (p *IssueDetailsPanel) renderFullIssueContent() string {
 	content.WriteString("\n")
 
 	// Truncate title to fit on one line
-	titleStr := bead.Title
+	titleStr := bean.Title
 	if lipgloss.Width(titleStr) > innerWidth {
 		titleStr = ansi.Truncate(titleStr, innerWidth, "...")
 	}
 	content.WriteString(tuiValueStyle.Render(titleStr))
 
 	// Show full description
-	if bead.Body != "" {
+	if bean.Body != "" {
 		content.WriteString("\n\n")
 		// Word wrap description to fit within inner width
-		wrapped := wordwrap.String(bead.Body, innerWidth)
+		wrapped := wordwrap.String(bean.Body, innerWidth)
 		content.WriteString(tuiDimStyle.Render(wrapped))
 	}
 
 	// Show all children (issues blocked by this one)
-	if len(bead.children) > 0 {
+	if len(bean.children) > 0 {
 		content.WriteString("\n\n")
 		content.WriteString(tuiLabelStyle.Render("Blocks:"))
 
 		// Show all children with status
-		for _, childID := range bead.children {
+		for _, childID := range bean.children {
 			var childLine string
-			if child, ok := p.childBeadMap[childID]; ok {
+			if child, ok := p.childBeanMap[childID]; ok {
 				childLine = fmt.Sprintf("\n  %s %s %s",
 					statusIcon(child.Status),
 					issueIDStyle.Render(child.ID),

@@ -196,7 +196,7 @@ func (p *WorkSummaryPanel) renderFullContent(panelWidth int) string {
 		approvalStyle := lipgloss.NewStyle().Foreground(approvalColor)
 		fmt.Fprintf(&content, "  Review: %s\n", approvalStyle.Render(approvalIcon+" "+approvalText))
 
-		// Feedback (show bead IDs)
+		// Feedback (show bean IDs)
 		if p.focusedWork.FeedbackCount > 0 {
 			feedbackStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
 			beanIDsStr := strings.Join(p.focusedWork.FeedbackBeanIDs, ", ")
@@ -281,15 +281,15 @@ func (p *WorkSummaryPanel) renderFullContent(panelWidth int) string {
 	fmt.Fprintf(&content, " (%d/%d tasks completed)\n", completedTasks, len(p.focusedWork.Tasks))
 
 	// Alerts/Warnings
-	if p.focusedWork.UnassignedBeadCount > 0 || p.focusedWork.FeedbackCount > 0 {
+	if p.focusedWork.UnassignedBeanCount > 0 || p.focusedWork.FeedbackCount > 0 {
 		content.WriteString("\n")
 		alertHeaderStyle := lipgloss.NewStyle().Bold(true)
 		content.WriteString(alertHeaderStyle.Render("Alerts:"))
 		content.WriteString("\n")
 
-		if p.focusedWork.UnassignedBeadCount > 0 {
+		if p.focusedWork.UnassignedBeanCount > 0 {
 			warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
-			content.WriteString(warningStyle.Render(fmt.Sprintf("  ⚠ %d unassigned bead(s) need attention\n", p.focusedWork.UnassignedBeadCount)))
+			content.WriteString(warningStyle.Render(fmt.Sprintf("  ⚠ %d unassigned bean(s) need attention\n", p.focusedWork.UnassignedBeanCount)))
 		}
 		if p.focusedWork.FeedbackCount > 0 {
 			alertStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
@@ -308,31 +308,31 @@ func (p *WorkSummaryPanel) renderFullContent(panelWidth int) string {
 	content.WriteString(strings.Repeat("─", contentWidth))
 	content.WriteString("\n")
 
-	// Find root bead in workBeads
-	var rootBead *progress.BeanProgress
+	// Find root bean in workBeans
+	var rootBean *progress.BeanProgress
 	for i := range p.focusedWork.WorkBeans {
 		if p.focusedWork.WorkBeans[i].ID == rootID {
-			rootBead = &p.focusedWork.WorkBeans[i]
+			rootBean = &p.focusedWork.WorkBeans[i]
 			break
 		}
 	}
 
-	// If not found in workBeads, try unassignedBeads
-	if rootBead == nil {
-		for i := range p.focusedWork.UnassignedBeads {
-			if p.focusedWork.UnassignedBeads[i].ID == rootID {
-				rootBead = &p.focusedWork.UnassignedBeads[i]
+	// If not found in workBeans, try unassignedBeans
+	if rootBean == nil {
+		for i := range p.focusedWork.UnassignedBeans {
+			if p.focusedWork.UnassignedBeans[i].ID == rootID {
+				rootBean = &p.focusedWork.UnassignedBeans[i]
 				break
 			}
 		}
 	}
 
 	// Display root issue details
-	if rootBead != nil {
+	if rootBean != nil {
 		// Title first (truncated to fit content width with some margin)
-		if rootBead.Title != "" {
+		if rootBean.Title != "" {
 			titleStyle := lipgloss.NewStyle().Bold(true)
-			title := ansi.Truncate(rootBead.Title, contentWidth-2, "...")
+			title := ansi.Truncate(rootBean.Title, contentWidth-2, "...")
 			content.WriteString(titleStyle.Render(title))
 			content.WriteString("\n")
 		}
@@ -340,22 +340,22 @@ func (p *WorkSummaryPanel) renderFullContent(panelWidth int) string {
 		// Metadata line
 		fmt.Fprintf(&content, "%s  Type: %s  P:%s  %s\n",
 			rootID,
-			rootBead.IssueType,
-			rootBead.Priority,
-			rootBead.BeanStatus)
+			rootBean.IssueType,
+			rootBean.Priority,
+			rootBean.BeanStatus)
 
 		// Description (truncate to avoid layout issues)
-		if rootBead.Description != "" {
+		if rootBean.Description != "" {
 			content.WriteString("\n")
 			content.WriteString("Description:\n")
 			// Keep multiline but truncate to reasonable length
-			desc := rootBead.Description
+			desc := rootBean.Description
 			desc = ansi.Truncate(desc, 300, "...")
 			content.WriteString(tuiDimStyle.Render(desc))
 			content.WriteString("\n")
 		}
 	} else {
-		// Fallback if bead not found
+		// Fallback if bean not found
 		fmt.Fprintf(&content, "Issue: %s\n", rootID)
 		content.WriteString(tuiDimStyle.Render("(Issue details not loaded)"))
 		content.WriteString("\n")
@@ -366,7 +366,7 @@ func (p *WorkSummaryPanel) renderFullContent(panelWidth int) string {
 	summaryHeaderStyle := lipgloss.NewStyle().Bold(true)
 	content.WriteString(summaryHeaderStyle.Render("Statistics:"))
 	content.WriteString("\n")
-	fmt.Fprintf(&content, "  Total Beads: %d\n", len(p.focusedWork.WorkBeans))
+	fmt.Fprintf(&content, "  Total Beans: %d\n", len(p.focusedWork.WorkBeans))
 	fmt.Fprintf(&content, "  Total Tasks: %d\n", len(p.focusedWork.Tasks))
 
 	// Count task types

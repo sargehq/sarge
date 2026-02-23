@@ -12,8 +12,8 @@ import (
 // Processor defines the interface for processing PR feedback.
 // This abstraction enables testing without actual GitHub API calls.
 type Processor interface {
-	// ProcessPRFeedback processes PR feedback for a work and creates beads.
-	// Returns the number of beads created and any error.
+	// ProcessPRFeedback processes PR feedback for a work and creates beans.
+	// Returns the number of beans created and any error.
 	ProcessPRFeedback(ctx context.Context, proj *project.Project, database *db.DB, workID string) (int, error)
 }
 

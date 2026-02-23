@@ -35,10 +35,10 @@ func TestCanAddToTask(t *testing.T) {
 // computation logic from handlePostEstimation. Used for testing.
 func ComputeInterTaskDeps(tasks []Task, dependencies map[string][]beans.Dependency) map[int][]int {
 	// Build beanID → task index mapping
-	beadToTask := make(map[string]int)
+	beanToTask := make(map[string]int)
 	for i, t := range tasks {
 		for _, beanID := range t.BeanIDs {
-			beadToTask[beanID] = i
+			beanToTask[beanID] = i
 		}
 	}
 
@@ -46,12 +46,12 @@ func ComputeInterTaskDeps(tasks []Task, dependencies map[string][]beans.Dependen
 	// Returns map of taskIdx → list of task indices it depends on
 	interTaskDeps := make(map[int]map[int]bool)
 	for beanID, deps := range dependencies {
-		taskIdx, ok := beadToTask[beanID]
+		taskIdx, ok := beanToTask[beanID]
 		if !ok {
 			continue
 		}
 		for _, dep := range deps {
-			depTaskIdx, ok := beadToTask[dep.BlockedByID]
+			depTaskIdx, ok := beanToTask[dep.BlockedByID]
 			if !ok {
 				continue
 			}
@@ -136,7 +136,7 @@ func TestComputeInterTaskDepsDiamond(t *testing.T) {
 }
 
 func TestComputeInterTaskDepsSameTaskNoDeps(t *testing.T) {
-	// Both beads in same task, b depends on a
+	// Both beans in same task, b depends on a
 	tasks := []Task{
 		{ID: "task-1", BeanIDs: []string{"a", "b"}},
 	}
@@ -147,6 +147,6 @@ func TestComputeInterTaskDepsSameTaskNoDeps(t *testing.T) {
 
 	interDeps := ComputeInterTaskDeps(tasks, dependencies)
 
-	// No inter-task dependencies since both beads are in the same task
+	// No inter-task dependencies since both beans are in the same task
 	assert.Empty(t, interDeps, "same-task dependencies should not create inter-task deps")
 }

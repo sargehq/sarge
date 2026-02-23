@@ -90,7 +90,7 @@ func runOrchestrate(cmd *cobra.Command, args []string) error {
 		if len(tasks) == 0 {
 			fmt.Println("\nSetting up automated workflow...")
 
-			// Create estimate task from unassigned theWork beads (post-estimation will create implement tasks)
+			// Create estimate task from unassigned theWork beans (post-estimation will create implement tasks)
 			workSvc := work.NewWorkService(proj)
 			err := workSvc.CreateEstimateTaskFromWorkBeans(ctx, workID, os.Stdout)
 			if err != nil {
@@ -340,7 +340,7 @@ func executeTask(proj *project.Project, t *db.Task, work *db.Work, agent agents.
 	}
 
 	// Defensive: auto-complete log_analysis tasks if the agent exited without calling sarge complete.
-	// Log analysis tasks are observational (they create beads but don't modify code), so it's
+	// Log analysis tasks are observational (they create beans but don't modify code), so it's
 	// safe to auto-complete them. This prevents the orchestrator from spinning forever.
 	if t.TaskType == "log_analysis" {
 		updatedTask, err := proj.DB.GetTask(ctx, t.ID)
@@ -372,39 +372,39 @@ func executeTask(proj *project.Project, t *db.Task, work *db.Work, agent agents.
 }
 
 // handlePostEstimation creates implement, review, and PR tasks after estimation completes.
-// Uses bin-packing to group beads based on their complexity estimates.
+// Uses bin-packing to group beans based on their complexity estimates.
 func handlePostEstimation(proj *project.Project, estimateTask *db.Task, work *db.Work) error {
 	ctx := GetContext()
 
 	fmt.Println("Creating implement, review, and PR tasks based on complexity estimates...")
 
-	// Get the beads that were estimated
+	// Get the beans that were estimated
 	beanIDs, err := proj.DB.GetTaskBeans(ctx, estimateTask.ID)
 	if err != nil {
-		return fmt.Errorf("failed to get task beads: %w", err)
+		return fmt.Errorf("failed to get task beans: %w", err)
 	}
 
 	if len(beanIDs) == 0 {
-		return fmt.Errorf("no beads found for estimate task %s", estimateTask.ID)
+		return fmt.Errorf("no beans found for estimate task %s", estimateTask.ID)
 	}
 
 	// Get issues with dependencies for planning
-	issuesResult, err := proj.Beads.GetBeansWithDeps(ctx, beanIDs)
+	issuesResult, err := proj.Beans.GetBeansWithDeps(ctx, beanIDs)
 	if err != nil {
-		return fmt.Errorf("failed to get bead details: %w", err)
+		return fmt.Errorf("failed to get bean details: %w", err)
 	}
 
-	// Verify all beads were found
+	// Verify all beans were found
 	for _, beanID := range beanIDs {
 		if _, found := issuesResult.Beans[beanID]; !found {
-			return fmt.Errorf("bead %s not found", beanID)
+			return fmt.Errorf("bean %s not found", beanID)
 		}
 	}
 
 	// Convert map to slice
-	beadList := make([]beans.Bean, 0, len(issuesResult.Beans))
+	beanList := make([]beans.Bean, 0, len(issuesResult.Beans))
 	for _, b := range issuesResult.Beans {
-		beadList = append(beadList, b)
+		beanList = append(beanList, b)
 	}
 
 	// Create planner with cached complexity estimator
@@ -415,18 +415,18 @@ func handlePostEstimation(proj *project.Project, estimateTask *db.Task, work *db
 	const tokenBudget = 120000
 	fmt.Printf("Planning tasks with token budget %dK...\n", tokenBudget/1000)
 
-	tasks, err := planner.Plan(ctx, beadList, issuesResult.Dependencies, tokenBudget)
+	tasks, err := planner.Plan(ctx, beanList, issuesResult.Dependencies, tokenBudget)
 	if err != nil {
 		return fmt.Errorf("failed to plan tasks: %w", err)
 	}
 
 	if len(tasks) == 0 {
-		return fmt.Errorf("planner returned no tasks for %d beads", len(beanIDs))
+		return fmt.Errorf("planner returned no tasks for %d beans", len(beanIDs))
 	}
 
 	// Create implement tasks and track beanID → taskID mapping
 	var implementTaskIDs []string
-	beadToTask := make(map[string]string) // beanID → taskID
+	beanToTask := make(map[string]string) // beanID → taskID
 	for _, t := range tasks {
 		nextNum, err := proj.DB.GetNextTaskNumber(ctx, work.ID)
 		if err != nil {
@@ -443,26 +443,26 @@ func handlePostEstimation(proj *project.Project, estimateTask *db.Task, work *db
 			return fmt.Errorf("failed to add dependency for %s: %w", taskID, err)
 		}
 
-		// Track which task each bead is in
+		// Track which task each bean is in
 		for _, beanID := range t.BeanIDs {
-			beadToTask[beanID] = taskID
+			beanToTask[beanID] = taskID
 		}
 
 		implementTaskIDs = append(implementTaskIDs, taskID)
-		fmt.Printf("Created implement task %s (complexity: %d) with %d bead(s): %v\n",
+		fmt.Printf("Created implement task %s (complexity: %d) with %d bean(s): %v\n",
 			taskID, t.Complexity, len(t.BeanIDs), t.BeanIDs)
 	}
 
-	// Compute inter-task dependencies from bead dependencies.
-	// If bead A (in task X) depends on bead B (in task Y where Y != X), task X depends on task Y.
+	// Compute inter-task dependencies from bean dependencies.
+	// If bean A (in task X) depends on bean B (in task Y where Y != X), task X depends on task Y.
 	interTaskDeps := make(map[string]map[string]bool) // taskID → set of dependent taskIDs
 	for beanID, deps := range issuesResult.Dependencies {
-		taskID, ok := beadToTask[beanID]
+		taskID, ok := beanToTask[beanID]
 		if !ok {
-			continue // bead not in our task set
+			continue // bean not in our task set
 		}
 		for _, dep := range deps {
-			depTaskID, ok := beadToTask[dep.BlockedByID]
+			depTaskID, ok := beanToTask[dep.BlockedByID]
 			if !ok {
 				continue // dependency not in our task set
 			}
@@ -531,49 +531,49 @@ func handleReviewFixLoop(proj *project.Project, reviewTask *db.Task, work *db.Wo
 		return createPRTask(proj, work, reviewTask.ID)
 	}
 
-	// Check if the review created any issue beads under the root issue
-	var beadsToFix []beans.Bean
+	// Check if the review created any issue beans under the root issue
+	var beansToFix []beans.Bean
 	if work.RootIssueID != "" {
 		// Get all children of the root issue
-		rootChildrenIssues, err := proj.Beads.GetBeanWithChildren(ctx, work.RootIssueID)
+		rootChildrenIssues, err := proj.Beans.GetBeanWithChildren(ctx, work.RootIssueID)
 		if err != nil {
 			return fmt.Errorf("failed to get children of root issue %s: %w", work.RootIssueID, err)
 		}
 
-		// Filter to only ready beads that were created by this review task
+		// Filter to only ready beans that were created by this review task
 		// (excluding the root issue itself)
 		expectedExternalRef := fmt.Sprintf("review-%s", reviewTask.ID)
 		for _, issue := range rootChildrenIssues {
 			if issue.ID != work.RootIssueID &&
 				beans.IsWorkableStatus(issue.Status) &&
 				beans.HasTagValue(issue.Tags, expectedExternalRef) {
-				beadsToFix = append(beadsToFix, issue)
+				beansToFix = append(beansToFix, issue)
 			}
 		}
 	}
 
 	// If work has a PR URL, also check for PR feedback
-	if len(beadsToFix) == 0 && work.PRURL != "" {
+	if len(beansToFix) == 0 && work.PRURL != "" {
 		fmt.Println("Review passed - checking for PR feedback...")
 
-		// Process PR feedback - creates beads but doesn't add them to work
+		// Process PR feedback - creates beans but doesn't add them to work
 		_, err := feedback.ProcessPRFeedback(ctx, proj, proj.DB, work.ID)
 		if err != nil {
 			fmt.Printf("Warning: failed to check PR feedback: %v\n", err)
 		} else {
-			// Re-check for new beads from PR feedback
+			// Re-check for new beans from PR feedback
 			if work.RootIssueID != "" {
-				// Re-fetch children of root issue to see if feedback created new beads
-				rootChildrenIssues, err := proj.Beads.GetBeanWithChildren(ctx, work.RootIssueID)
+				// Re-fetch children of root issue to see if feedback created new beans
+				rootChildrenIssues, err := proj.Beans.GetBeanWithChildren(ctx, work.RootIssueID)
 				if err == nil {
-					// Filter for any new open beads (not just review-created ones)
+					// Filter for any new open beans (not just review-created ones)
 					for _, issue := range rootChildrenIssues {
 						if issue.ID != work.RootIssueID &&
 							beans.IsWorkableStatus(issue.Status) {
-							// Check if this bead is already in a task
+							// Check if this bean is already in a task
 							inTask, _ := proj.DB.IsBeanInTask(ctx, work.ID, issue.ID)
 							if !inTask {
-								beadsToFix = append(beadsToFix, issue)
+								beansToFix = append(beansToFix, issue)
 							}
 						}
 					}
@@ -582,16 +582,16 @@ func handleReviewFixLoop(proj *project.Project, reviewTask *db.Task, work *db.Wo
 		}
 	}
 
-	if len(beadsToFix) == 0 {
+	if len(beansToFix) == 0 {
 		fmt.Println("Review passed and no PR feedback issues found!")
 		return createPRTask(proj, work, reviewTask.ID)
 	}
 
-	fmt.Printf("Review found %d issue(s) - creating fix tasks...\n", len(beadsToFix))
+	fmt.Printf("Review found %d issue(s) - creating fix tasks...\n", len(beansToFix))
 
-	// Create fix tasks for each bead
+	// Create fix tasks for each bean
 	var fixTaskIDs []string
-	for _, b := range beadsToFix {
+	for _, b := range beansToFix {
 		nextNum, err := proj.DB.GetNextTaskNumber(ctx, work.ID)
 		if err != nil {
 			return fmt.Errorf("failed to get next task number: %w", err)
@@ -608,7 +608,7 @@ func handleReviewFixLoop(proj *project.Project, reviewTask *db.Task, work *db.Wo
 		}
 
 		fixTaskIDs = append(fixTaskIDs, taskID)
-		fmt.Printf("Created fix task %s for bead %s: %s\n", taskID, b.ID, b.Title)
+		fmt.Printf("Created fix task %s for bean %s: %s\n", taskID, b.ID, b.Title)
 	}
 
 	// Create a new review task that depends on all fix tasks

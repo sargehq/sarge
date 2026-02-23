@@ -25,9 +25,9 @@ func MapStatus(state State) string {
 	}
 }
 
-// MapPriority converts Linear priority (0-4) to Beads priority (P0-P4)
+// MapPriority converts Linear priority (0-4) to Beans priority (P0-P4)
 // Linear: 0=Urgent, 1=High, 2=Medium, 3=Low, 4=No priority
-// Beads: P0=Critical, P1=High, P2=Medium, P3=Low, P4=Backlog
+// Beans: P0=Critical, P1=High, P2=Medium, P3=Low, P4=Backlog
 func MapPriority(priority int) string {
 	switch priority {
 	case 0:
@@ -45,7 +45,7 @@ func MapPriority(priority int) string {
 	}
 }
 
-// MapType infers a Beads issue type from Linear data
+// MapType infers a Beans issue type from Linear data
 // Returns: "task", "bug", or "feature"
 func MapType(issue *Issue) string {
 	// Check labels for type hints
@@ -72,8 +72,8 @@ func MapType(issue *Issue) string {
 	return "task"
 }
 
-// BeadCreateOptions represents options for creating a bead from Linear
-type BeadCreateOptions struct {
+// BeanCreateOptions represents options for creating a bean from Linear
+type BeanCreateOptions struct {
 	Title       string
 	Description string
 	Type        string   // task, bug, feature
@@ -84,9 +84,9 @@ type BeadCreateOptions struct {
 	Metadata    map[string]string
 }
 
-// MapIssueToBeadCreate converts a Linear issue to Beads creation options
-func MapIssueToBeadCreate(issue *Issue) *BeadCreateOptions {
-	opts := &BeadCreateOptions{
+// MapIssueToBeanCreate converts a Linear issue to Beans creation options
+func MapIssueToBeanCreate(issue *Issue) *BeanCreateOptions {
+	opts := &BeanCreateOptions{
 		Title:       issue.Title,
 		Description: issue.Description,
 		Type:        MapType(issue),
@@ -124,9 +124,9 @@ func MapIssueToBeadCreate(issue *Issue) *BeadCreateOptions {
 	return opts
 }
 
-// FormatBeadDescription formats a bead description with Linear metadata
+// FormatBeanDescription formats a bean description with Linear metadata
 // Appends Linear-specific information to the description
-func FormatBeadDescription(issue *Issue) string {
+func FormatBeanDescription(issue *Issue) string {
 	var builder strings.Builder
 
 	// Add the original description

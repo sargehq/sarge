@@ -237,8 +237,8 @@ func (b *WorkTabsBar) Render() string {
 			Background(tabBg)
 		tabBuilder += tabStyle.Render(tabContent)
 
-		// Add pending work indicator (orange warning for feedback or unassigned beads)
-		if work.FeedbackCount > 0 || work.UnassignedBeadCount > 0 {
+		// Add pending work indicator (orange warning for feedback or unassigned beans)
+		if work.FeedbackCount > 0 || work.UnassignedBeanCount > 0 {
 			badgeStyle := lipgloss.NewStyle().
 				Foreground(lipgloss.Color("214")). // Orange for pending work
 				Background(tabBg)

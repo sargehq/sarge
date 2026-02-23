@@ -199,7 +199,7 @@ func (a *Agent) resolveTemplate(params types.TaskParams) (*template.Template, an
 			WorkflowName  string
 			JobName       string
 			LogFilePath   string
-			ExistingBeads []types.BeadSummary
+			ExistingBeans []types.BeanSummary
 		}{
 			TaskID:        params.TaskID,
 			WorkID:        params.WorkID,
@@ -208,7 +208,7 @@ func (a *Agent) resolveTemplate(params types.TaskParams) (*template.Template, an
 			WorkflowName:  params.WorkflowName,
 			JobName:       params.JobName,
 			LogFilePath:   params.LogFilePath,
-			ExistingBeads: params.ExistingBeads,
+			ExistingBeans: params.ExistingBeans,
 		}, nil
 
 	default:

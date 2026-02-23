@@ -8,7 +8,7 @@ import (
 
 // Dialog update handlers
 
-func (m *planModel) updateBeadSearch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *planModel) updateBeanSearch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Esc or Ctrl+G cancels search and clears filter
 	if msg.Type == tea.KeyEsc || msg.String() == "esc" || msg.String() == "escape" || msg.String() == "ctrl+g" {
 		m.viewMode = ViewNormal
@@ -31,7 +31,7 @@ func (m *planModel) updateBeadSearch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		prevSearch := m.filters.searchText
 		m.filters.searchText = m.textInput.Value()
 		if m.filters.searchText != prevSearch {
-			m.beadsCursor = 0 // Reset cursor when search changes
+			m.beansCursor = 0 // Reset cursor when search changes
 			m.searchSeq++     // Increment to invalidate any in-flight searches
 			// Trigger data refresh to apply filter
 			return m, tea.Batch(cmd, m.refreshData())
@@ -58,33 +58,33 @@ func (m *planModel) updateLabelFilter(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 }
 
-func (m *planModel) updateCloseBeadConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *planModel) updateCloseBeanConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if msg.Type == tea.KeyEsc || msg.String() == "esc" || msg.String() == "escape" {
 		m.viewMode = ViewNormal
 		return m, nil
 	}
 	switch msg.String() {
 	case "y", "Y":
-		// Collect selected beads
+		// Collect selected beans
 		var beanIDs []string
-		for _, item := range m.beadItems {
-			if m.selectedBeads[item.ID] {
+		for _, item := range m.beanItems {
+			if m.selectedBeans[item.ID] {
 				beanIDs = append(beanIDs, item.ID)
 			}
 		}
 
-		// If no selected beads, use cursor bead
-		if len(beanIDs) == 0 && len(m.beadItems) > 0 && m.beadsCursor < len(m.beadItems) {
-			beanIDs = append(beanIDs, m.beadItems[m.beadsCursor].ID)
+		// If no selected beans, use cursor bean
+		if len(beanIDs) == 0 && len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
+			beanIDs = append(beanIDs, m.beanItems[m.beansCursor].ID)
 		}
 
 		m.viewMode = ViewNormal
 		if len(beanIDs) == 1 {
-			// Single bead - use the existing closeBead function
-			return m, m.closeBead(beanIDs[0])
+			// Single bean - use the existing closeBean function
+			return m, m.closeBean(beanIDs[0])
 		} else if len(beanIDs) > 1 {
-			// Multiple beads - use the batch close function
-			return m, m.closeBeads(beanIDs)
+			// Multiple beans - use the batch close function
+			return m, m.closeBeans(beanIDs)
 		}
 		return m, nil
 	case "n", "N":
@@ -94,35 +94,35 @@ func (m *planModel) updateCloseBeadConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	return m, nil
 }
 
-func (m *planModel) updateDeleteBeadConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *planModel) updateDeleteBeanConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if msg.Type == tea.KeyEsc || msg.String() == "esc" || msg.String() == "escape" {
 		m.viewMode = ViewNormal
 		return m, nil
 	}
 	switch msg.String() {
 	case "y", "Y":
-		// Collect selected beads
+		// Collect selected beans
 		var beanIDs []string
-		for _, item := range m.beadItems {
-			if m.selectedBeads[item.ID] {
+		for _, item := range m.beanItems {
+			if m.selectedBeans[item.ID] {
 				beanIDs = append(beanIDs, item.ID)
 			}
 		}
 
-		// If no selected beads, use cursor bead
-		if len(beanIDs) == 0 && len(m.beadItems) > 0 && m.beadsCursor < len(m.beadItems) {
-			beanIDs = append(beanIDs, m.beadItems[m.beadsCursor].ID)
+		// If no selected beans, use cursor bean
+		if len(beanIDs) == 0 && len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
+			beanIDs = append(beanIDs, m.beanItems[m.beansCursor].ID)
 		}
 
 		m.viewMode = ViewNormal
 		// Clear selection after deletion
-		m.selectedBeads = make(map[string]bool)
+		m.selectedBeans = make(map[string]bool)
 		if len(beanIDs) == 1 {
-			// Single bead - use the deleteBead function
-			return m, m.deleteBead(beanIDs[0])
+			// Single bean - use the deleteBean function
+			return m, m.deleteBean(beanIDs[0])
 		} else if len(beanIDs) > 1 {
-			// Multiple beads - use the batch delete function
-			return m, m.deleteBeads(beanIDs)
+			// Multiple beans - use the batch delete function
+			return m, m.deleteBeans(beanIDs)
 		}
 		return m, nil
 	case "n", "N":
@@ -154,41 +154,41 @@ func (m *planModel) renderLabelFilterDialogContent() string {
 	return tuiDialogStyle.Render(content)
 }
 
-func (m *planModel) renderCloseBeadConfirmContent() string {
-	// Collect selected beads
-	var selectedBeads []beadItem
-	for _, item := range m.beadItems {
-		if m.selectedBeads[item.ID] {
-			selectedBeads = append(selectedBeads, item)
+func (m *planModel) renderCloseBeanConfirmContent() string {
+	// Collect selected beans
+	var selectedBeans []beanItem
+	for _, item := range m.beanItems {
+		if m.selectedBeans[item.ID] {
+			selectedBeans = append(selectedBeans, item)
 		}
 	}
 
-	// If no selected beads, use cursor bead
-	if len(selectedBeads) == 0 && len(m.beadItems) > 0 && m.beadsCursor < len(m.beadItems) {
-		selectedBeads = append(selectedBeads, m.beadItems[m.beadsCursor])
+	// If no selected beans, use cursor bean
+	if len(selectedBeans) == 0 && len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
+		selectedBeans = append(selectedBeans, m.beanItems[m.beansCursor])
 	}
 
 	// Build the confirmation message
-	var beadsList string
-	if len(selectedBeads) == 1 {
-		beadsList = fmt.Sprintf("  %s\n  %s", selectedBeads[0].ID, selectedBeads[0].Title)
-	} else if len(selectedBeads) > 1 {
-		beadsList = fmt.Sprintf("  %d issues:\n", len(selectedBeads))
-		for i, bead := range selectedBeads {
-			if i < 5 { // Show first 5 beads
-				beadsList += fmt.Sprintf("  - %s: %s\n", bead.ID, bead.Title)
+	var beansList string
+	if len(selectedBeans) == 1 {
+		beansList = fmt.Sprintf("  %s\n  %s", selectedBeans[0].ID, selectedBeans[0].Title)
+	} else if len(selectedBeans) > 1 {
+		beansList = fmt.Sprintf("  %d issues:\n", len(selectedBeans))
+		for i, bean := range selectedBeans {
+			if i < 5 { // Show first 5 beans
+				beansList += fmt.Sprintf("  - %s: %s\n", bean.ID, bean.Title)
 			}
 		}
-		if len(selectedBeads) > 5 {
-			beadsList += fmt.Sprintf("  ... and %d more", len(selectedBeads)-5)
+		if len(selectedBeans) > 5 {
+			beansList += fmt.Sprintf("  ... and %d more", len(selectedBeans)-5)
 		}
 	}
 
 	var title string
-	if len(selectedBeads) == 1 {
+	if len(selectedBeans) == 1 {
 		title = "Close Issue"
 	} else {
-		title = fmt.Sprintf("Close %d Issues", len(selectedBeads))
+		title = fmt.Sprintf("Close %d Issues", len(selectedBeans))
 	}
 
 	content := fmt.Sprintf(`
@@ -198,46 +198,46 @@ func (m *planModel) renderCloseBeadConfirmContent() string {
 %s
 
   [y] Yes  [n] No
-`, title, beadsList)
+`, title, beansList)
 
 	return tuiDialogStyle.Render(content)
 }
 
-func (m *planModel) renderDeleteBeadConfirmContent() string {
-	// Collect selected beads
-	var selectedBeads []beadItem
-	for _, item := range m.beadItems {
-		if m.selectedBeads[item.ID] {
-			selectedBeads = append(selectedBeads, item)
+func (m *planModel) renderDeleteBeanConfirmContent() string {
+	// Collect selected beans
+	var selectedBeans []beanItem
+	for _, item := range m.beanItems {
+		if m.selectedBeans[item.ID] {
+			selectedBeans = append(selectedBeans, item)
 		}
 	}
 
-	// If no selected beads, use cursor bead
-	if len(selectedBeads) == 0 && len(m.beadItems) > 0 && m.beadsCursor < len(m.beadItems) {
-		selectedBeads = append(selectedBeads, m.beadItems[m.beadsCursor])
+	// If no selected beans, use cursor bean
+	if len(selectedBeans) == 0 && len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
+		selectedBeans = append(selectedBeans, m.beanItems[m.beansCursor])
 	}
 
 	// Build the confirmation message
-	var beadsList string
-	if len(selectedBeads) == 1 {
-		beadsList = fmt.Sprintf("  %s\n  %s", selectedBeads[0].ID, selectedBeads[0].Title)
-	} else if len(selectedBeads) > 1 {
-		beadsList = fmt.Sprintf("  %d issues:\n", len(selectedBeads))
-		for i, bead := range selectedBeads {
-			if i < 5 { // Show first 5 beads
-				beadsList += fmt.Sprintf("  - %s: %s\n", bead.ID, bead.Title)
+	var beansList string
+	if len(selectedBeans) == 1 {
+		beansList = fmt.Sprintf("  %s\n  %s", selectedBeans[0].ID, selectedBeans[0].Title)
+	} else if len(selectedBeans) > 1 {
+		beansList = fmt.Sprintf("  %d issues:\n", len(selectedBeans))
+		for i, bean := range selectedBeans {
+			if i < 5 { // Show first 5 beans
+				beansList += fmt.Sprintf("  - %s: %s\n", bean.ID, bean.Title)
 			}
 		}
-		if len(selectedBeads) > 5 {
-			beadsList += fmt.Sprintf("  ... and %d more", len(selectedBeads)-5)
+		if len(selectedBeans) > 5 {
+			beansList += fmt.Sprintf("  ... and %d more", len(selectedBeans)-5)
 		}
 	}
 
 	var title string
-	if len(selectedBeads) == 1 {
+	if len(selectedBeans) == 1 {
 		title = "Delete Issue (PERMANENT)"
 	} else {
-		title = fmt.Sprintf("Delete %d Issues (PERMANENT)", len(selectedBeads))
+		title = fmt.Sprintf("Delete %d Issues (PERMANENT)", len(selectedBeans))
 	}
 
 	content := fmt.Sprintf(`
@@ -249,7 +249,7 @@ func (m *planModel) renderDeleteBeadConfirmContent() string {
   This action cannot be undone!
 
   [y] Yes  [n] No
-`, title, beadsList)
+`, title, beansList)
 
 	return tuiDialogStyle.Render(content)
 }

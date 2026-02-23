@@ -18,7 +18,7 @@ func TestPiSkillInstalled(t *testing.T) {
 
 	t.Run("returns true when SKILL.md exists", func(t *testing.T) {
 		dir := t.TempDir()
-		skillDir := filepath.Join(dir, ".pi", "skills", "beads")
+		skillDir := filepath.Join(dir, ".pi", "skills", "beans")
 		if err := os.MkdirAll(skillDir, 0o750); err != nil {
 			t.Fatal(err)
 		}
@@ -39,7 +39,7 @@ func TestInstallPiSkill(t *testing.T) {
 	}
 
 	// Check that SKILL.md was created
-	skillPath := filepath.Join(dir, ".pi", "skills", "beads", "SKILL.md")
+	skillPath := filepath.Join(dir, ".pi", "skills", "beans", "SKILL.md")
 	if _, err := os.Stat(skillPath); err != nil {
 		t.Errorf("SKILL.md not created: %v", err)
 	}
@@ -52,7 +52,7 @@ func TestInstallPiSkill(t *testing.T) {
 		"WORKFLOWS.md",
 	}
 	for _, name := range resourceFiles {
-		path := filepath.Join(dir, ".pi", "skills", "beads", "resources", name)
+		path := filepath.Join(dir, ".pi", "skills", "beans", "resources", name)
 		if _, err := os.Stat(path); err != nil {
 			t.Errorf("resource file %s not created: %v", name, err)
 		}
@@ -164,11 +164,11 @@ func TestClaudePluginInstalled_WithFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Run("returns true when beads plugin present", func(t *testing.T) {
+	t.Run("returns true when beans plugin present", func(t *testing.T) {
 		data := map[string]any{
 			"version": 2,
 			"plugins": map[string]any{
-				"beads@beads-marketplace": []any{
+				"beans@beans-marketplace": []any{
 					map[string]any{"scope": "project"},
 				},
 			},
@@ -181,11 +181,11 @@ func TestClaudePluginInstalled_WithFile(t *testing.T) {
 
 		installed := claudePluginInstalledFromFile(path)
 		if !installed {
-			t.Error("expected true when beads plugin is present")
+			t.Error("expected true when beans plugin is present")
 		}
 	})
 
-	t.Run("returns false when beads plugin absent", func(t *testing.T) {
+	t.Run("returns false when beans plugin absent", func(t *testing.T) {
 		data := map[string]any{
 			"version": 2,
 			"plugins": map[string]any{
@@ -200,7 +200,7 @@ func TestClaudePluginInstalled_WithFile(t *testing.T) {
 
 		installed := claudePluginInstalledFromFile(path)
 		if installed {
-			t.Error("expected false when beads plugin is absent")
+			t.Error("expected false when beans plugin is absent")
 		}
 	})
 }

@@ -11,12 +11,12 @@ import (
 var flagStatusProject string
 
 var statusCmd = &cobra.Command{
-	Use:   "status [bead-id]",
-	Short: "Show bead tracking status",
-	Long: `Show tracking status for beads.
+	Use:   "status [bean-id]",
+	Short: "Show bean tracking status",
+	Long: `Show tracking status for beans.
 
-With a bead ID: Show detailed status including zellij session/pane info.
-Without ID: Show all beads currently processing with their session/pane.`,
+With a bean ID: Show detailed status including zellij session/pane info.
+Without ID: Show all beans currently processing with their session/pane.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runStatus,
 }
@@ -33,65 +33,65 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	}
 	defer proj.Close()
 
-	// If specific bead requested
+	// If specific bean requested
 	if len(args) > 0 {
 		beanID := args[0]
-		bead, err := proj.DB.GetBean(ctx, beanID)
+		bean, err := proj.DB.GetBean(ctx, beanID)
 		if err != nil {
-			return fmt.Errorf("failed to get bead: %w", err)
+			return fmt.Errorf("failed to get bean: %w", err)
 		}
-		if bead == nil {
-			return fmt.Errorf("bead %s not found in tracking database", beanID)
+		if bean == nil {
+			return fmt.Errorf("bean %s not found in tracking database", beanID)
 		}
 
-		printBeadDetails(bead)
+		printBeanDetails(bean)
 		return nil
 	}
 
-	// Show all processing beads
-	beadList, err := proj.DB.ListBeans(ctx, db.StatusProcessing)
+	// Show all processing beans
+	beanList, err := proj.DB.ListBeans(ctx, db.StatusProcessing)
 	if err != nil {
-		return fmt.Errorf("failed to list beads: %w", err)
+		return fmt.Errorf("failed to list beans: %w", err)
 	}
 
-	if len(beadList) == 0 {
-		fmt.Println("No beads currently processing")
+	if len(beanList) == 0 {
+		fmt.Println("No beans currently processing")
 		return nil
 	}
 
-	fmt.Printf("Currently processing %d bead(s):\n\n", len(beadList))
-	for _, b := range beadList {
-		printBeadDetails(b)
+	fmt.Printf("Currently processing %d bean(s):\n\n", len(beanList))
+	for _, b := range beanList {
+		printBeanDetails(b)
 		fmt.Println()
 	}
 
 	return nil
 }
 
-func printBeadDetails(bead *db.TrackedBean) {
-	fmt.Printf("ID:      %s\n", bead.ID)
-	fmt.Printf("Title:   %s\n", bead.Title)
-	fmt.Printf("Status:  %s\n", bead.Status)
+func printBeanDetails(bean *db.TrackedBean) {
+	fmt.Printf("ID:      %s\n", bean.ID)
+	fmt.Printf("Title:   %s\n", bean.Title)
+	fmt.Printf("Status:  %s\n", bean.Status)
 
-	if bead.ZellijSession != "" {
-		fmt.Printf("Session: %s\n", bead.ZellijSession)
+	if bean.ZellijSession != "" {
+		fmt.Printf("Session: %s\n", bean.ZellijSession)
 	}
-	if bead.ZellijPane != "" {
-		fmt.Printf("Pane:    %s\n", bead.ZellijPane)
+	if bean.ZellijPane != "" {
+		fmt.Printf("Pane:    %s\n", bean.ZellijPane)
 	}
-	if bead.WorktreePath != "" {
-		fmt.Printf("Worktree: %s\n", bead.WorktreePath)
+	if bean.WorktreePath != "" {
+		fmt.Printf("Worktree: %s\n", bean.WorktreePath)
 	}
-	if bead.PRURL != "" {
-		fmt.Printf("PR:      %s\n", bead.PRURL)
+	if bean.PRURL != "" {
+		fmt.Printf("PR:      %s\n", bean.PRURL)
 	}
-	if bead.ErrorMessage != "" {
-		fmt.Printf("Error:   %s\n", bead.ErrorMessage)
+	if bean.ErrorMessage != "" {
+		fmt.Printf("Error:   %s\n", bean.ErrorMessage)
 	}
-	if bead.StartedAt != nil {
-		fmt.Printf("Started: %s\n", bead.StartedAt.Format("2006-01-02 15:04:05"))
+	if bean.StartedAt != nil {
+		fmt.Printf("Started: %s\n", bean.StartedAt.Format("2006-01-02 15:04:05"))
 	}
-	if bead.CompletedAt != nil {
-		fmt.Printf("Done:    %s\n", bead.CompletedAt.Format("2006-01-02 15:04:05"))
+	if bean.CompletedAt != nil {
+		fmt.Printf("Done:    %s\n", bean.CompletedAt.Format("2006-01-02 15:04:05"))
 	}
 }

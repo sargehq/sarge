@@ -26,8 +26,8 @@ type TestHarness struct {
 	DB                  *db.DB
 	Git                 *git.GitOperationsMock
 	Worktree            *worktree.WorktreeOperationsMock
-	Beads               *beans.BeansCLIMock
-	BeadsReader         *beans.BeansReaderMock
+	Beans               *beans.BeansCLIMock
+	BeansReader         *beans.BeansReaderMock
 	OrchestratorManager *work.OrchestratorManagerMock
 	NameGenerator       *names.GeneratorMock
 	TaskPlanner         *task.PlannerMock
@@ -35,10 +35,10 @@ type TestHarness struct {
 	Config              *project.Config
 
 	// Internal state for fixtures
-	beadStore map[string]*beans.Bean
-	beadDeps  map[string][]beans.Dependency
+	beanStore map[string]*beans.Bean
+	beanDeps  map[string][]beans.Dependency
 	workCount int
-	beadCount int
+	beanCount int
 }
 
 // NewTestHarness creates a new TestHarness with an in-memory database
@@ -53,8 +53,8 @@ func NewTestHarness(t *testing.T) *TestHarness {
 	// Create mocks with default no-op/success behavior
 	gitMock := &git.GitOperationsMock{}
 	worktreeMock := &worktree.WorktreeOperationsMock{}
-	beadsMock := &beans.BeansCLIMock{}
-	beadsReaderMock := &beans.BeansReaderMock{}
+	beansMock := &beans.BeansCLIMock{}
+	beansReaderMock := &beans.BeansReaderMock{}
 	orchestratorMock := &work.OrchestratorManagerMock{}
 	nameGenMock := &names.GeneratorMock{}
 	taskPlannerMock := &task.PlannerMock{}
@@ -70,7 +70,7 @@ func NewTestHarness(t *testing.T) *TestHarness {
 			Path:       "main",
 			BaseBranch: "main",
 		},
-		Beads: project.BeansConfig{
+		Beans: project.BeansConfig{
 			Path: "main/.beans",
 		},
 	}
@@ -80,14 +80,14 @@ func NewTestHarness(t *testing.T) *TestHarness {
 		DB:                  testDB,
 		Git:                 gitMock,
 		Worktree:            worktreeMock,
-		Beads:               beadsMock,
-		BeadsReader:         beadsReaderMock,
+		Beans:               beansMock,
+		BeansReader:         beansReaderMock,
 		OrchestratorManager: orchestratorMock,
 		NameGenerator:       nameGenMock,
 		TaskPlanner:         taskPlannerMock,
 		Config:              config,
-		beadStore:           make(map[string]*beans.Bean),
-		beadDeps:            make(map[string][]beans.Dependency),
+		beanStore:           make(map[string]*beans.Bean),
+		beanDeps:            make(map[string][]beans.Dependency),
 	}
 
 	// Wire up WorkService with all mocked dependencies
@@ -95,8 +95,8 @@ func NewTestHarness(t *testing.T) *TestHarness {
 		DB:                  testDB,
 		Git:                 gitMock,
 		Worktree:            worktreeMock,
-		BeadsReader:         beadsReaderMock,
-		BeadsCLI:            beadsMock,
+		BeansReader:         beansReaderMock,
+		BeansCLI:            beansMock,
 		OrchestratorManager: orchestratorMock,
 		TaskPlanner:         taskPlannerMock,
 		NameGenerator:       nameGenMock,
@@ -143,25 +143,25 @@ func (h *TestHarness) configureDefaultMocks() {
 		return nil
 	}
 
-	// Beads CLI defaults: operations succeed
-	h.Beads.CloseFunc = func(ctx context.Context, beanID string) error {
+	// Beans CLI defaults: operations succeed
+	h.Beans.CloseFunc = func(ctx context.Context, beanID string) error {
 		return nil
 	}
-	h.Beads.UpdateFunc = func(ctx context.Context, beanID string, opts beans.UpdateOptions) error {
+	h.Beans.UpdateFunc = func(ctx context.Context, beanID string, opts beans.UpdateOptions) error {
 		return nil
 	}
 
-	// BeadsReader defaults: delegate to internal store
-	h.BeadsReader.GetBeanFunc = func(ctx context.Context, id string) (*beans.BeanWithDeps, error) {
+	// BeansReader defaults: delegate to internal store
+	h.BeansReader.GetBeanFunc = func(ctx context.Context, id string) (*beans.BeanWithDeps, error) {
 		return h.getBeanWithDeps(id), nil
 	}
-	h.BeadsReader.GetBeansWithDepsFunc = func(ctx context.Context, beanIDs []string) (*beans.BeansWithDepsResult, error) {
-		return h.getBeadsWithDepsResult(beanIDs), nil
+	h.BeansReader.GetBeansWithDepsFunc = func(ctx context.Context, beanIDs []string) (*beans.BeansWithDepsResult, error) {
+		return h.getBeansWithDepsResult(beanIDs), nil
 	}
-	h.BeadsReader.GetBeanWithChildrenFunc = func(ctx context.Context, id string) ([]beans.Bean, error) {
-		return h.getBeadWithChildren(id), nil
+	h.BeansReader.GetBeanWithChildrenFunc = func(ctx context.Context, id string) ([]beans.Bean, error) {
+		return h.getBeanWithChildren(id), nil
 	}
-	h.BeadsReader.GetTransitiveDependenciesFunc = func(ctx context.Context, id string) ([]beans.Bean, error) {
+	h.BeansReader.GetTransitiveDependenciesFunc = func(ctx context.Context, id string) ([]beans.Bean, error) {
 		return h.getTransitiveDependencies(id), nil
 	}
 
@@ -182,28 +182,28 @@ func (h *TestHarness) configureDefaultMocks() {
 
 // getBeanWithDeps returns a BeanWithDeps from the internal store.
 func (h *TestHarness) getBeanWithDeps(id string) *beans.BeanWithDeps {
-	bead, ok := h.beadStore[id]
+	bean, ok := h.beanStore[id]
 	if !ok {
 		return nil
 	}
 	return &beans.BeanWithDeps{
-		Bean:         bead,
-		Dependencies: h.beadDeps[id],
+		Bean:         bean,
+		Dependencies: h.beanDeps[id],
 		Dependents:   h.getDependents(id),
 	}
 }
 
-// getBeadsWithDepsResult builds a BeansWithDepsResult from the internal store.
-func (h *TestHarness) getBeadsWithDepsResult(beanIDs []string) *beans.BeansWithDepsResult {
+// getBeansWithDepsResult builds a BeansWithDepsResult from the internal store.
+func (h *TestHarness) getBeansWithDepsResult(beanIDs []string) *beans.BeansWithDepsResult {
 	result := &beans.BeansWithDepsResult{
 		Beans:        make(map[string]beans.Bean),
 		Dependencies: make(map[string][]beans.Dependency),
 		Dependents:   make(map[string][]beans.Dependent),
 	}
 	for _, id := range beanIDs {
-		if bead, ok := h.beadStore[id]; ok {
-			result.Beans[id] = *bead
-			result.Dependencies[id] = h.beadDeps[id]
+		if bean, ok := h.beanStore[id]; ok {
+			result.Beans[id] = *bean
+			result.Dependencies[id] = h.beanDeps[id]
 			result.Dependents[id] = h.getDependents(id)
 		}
 	}
@@ -213,16 +213,16 @@ func (h *TestHarness) getBeadsWithDepsResult(beanIDs []string) *beans.BeansWithD
 // getDependents returns beans that depend on the given bean.
 func (h *TestHarness) getDependents(id string) []beans.Dependent {
 	var dependents []beans.Dependent
-	for beanID, deps := range h.beadDeps {
+	for beanID, deps := range h.beanDeps {
 		for _, dep := range deps {
 			if dep.BlockedByID == id {
-				bead := h.beadStore[beanID]
+				bean := h.beanStore[beanID]
 				dependents = append(dependents, beans.Dependent{
 					BeanID:    beanID,
 					BlockerID: id,
 					Type:      "blocking",
-					Status:    bead.Status,
-					Title:     bead.Title,
+					Status:    bean.Status,
+					Title:     bean.Title,
 				})
 			}
 		}
@@ -230,18 +230,18 @@ func (h *TestHarness) getDependents(id string) []beans.Dependent {
 	return dependents
 }
 
-// getBeadWithChildren returns a bean and all its children (for epics).
-func (h *TestHarness) getBeadWithChildren(id string) []beans.Bean {
+// getBeanWithChildren returns a bean and all its children (for epics).
+func (h *TestHarness) getBeanWithChildren(id string) []beans.Bean {
 	var result []beans.Bean
-	if bead, ok := h.beadStore[id]; ok {
-		result = append(result, *bead)
+	if bean, ok := h.beanStore[id]; ok {
+		result = append(result, *bean)
 	}
 
 	// Find children (beans with parent-child dependency to this bean)
-	for beanID, deps := range h.beadDeps {
+	for beanID, deps := range h.beanDeps {
 		for _, dep := range deps {
 			if dep.BlockedByID == id {
-				if child, ok := h.beadStore[beanID]; ok {
+				if child, ok := h.beanStore[beanID]; ok {
 					result = append(result, *child)
 				}
 			}
@@ -263,13 +263,13 @@ func (h *TestHarness) getTransitiveDependencies(id string) []beans.Bean {
 		visited[beanID] = true
 
 		// First collect dependencies
-		for _, dep := range h.beadDeps[beanID] {
+		for _, dep := range h.beanDeps[beanID] {
 			collect(dep.BlockedByID)
 		}
 
-		// Then add this bead
-		if bead, ok := h.beadStore[beanID]; ok {
-			result = append(result, *bead)
+		// Then add this bean
+		if bean, ok := h.beanStore[beanID]; ok {
+			result = append(result, *bean)
 		}
 	}
 
@@ -278,25 +278,25 @@ func (h *TestHarness) getTransitiveDependencies(id string) []beans.Bean {
 }
 
 // =============================================================================
-// Bead Fixtures
+// Bean Fixtures
 // =============================================================================
 
-// CreateBead creates a test bead and stores it in the harness.
-// The bead is created with status "open" and type "task" by default.
-func (h *TestHarness) CreateBead(id, title string) *beans.Bean {
-	h.beadCount++
-	bead := &beans.Bean{
+// CreateBean creates a test bean and stores it in the harness.
+// The bean is created with status "todo" and type "task" by default.
+func (h *TestHarness) CreateBean(id, title string) *beans.Bean {
+	h.beanCount++
+	bean := &beans.Bean{
 		ID:       id,
 		Title:    title,
 		Status:   beans.StatusTodo,
 		Type:     "task",
 		Priority: beans.PriorityNormal,
 	}
-	h.beadStore[id] = bead
-	return bead
+	h.beanStore[id] = bean
+	return bean
 }
 
-// CreateEpicWithChildren creates an epic bead with child beads.
+// CreateEpicWithChildren creates an epic bean with child beans.
 // The epic is created with the given ID, and children are created with
 // the parent-child dependency relationship.
 func (h *TestHarness) CreateEpicWithChildren(epicID string, childIDs ...string) *beans.Bean {
@@ -309,13 +309,13 @@ func (h *TestHarness) CreateEpicWithChildren(epicID string, childIDs ...string) 
 		IsEpic:   true,
 		Priority: beans.PriorityHigh,
 	}
-	h.beadStore[epicID] = epic
+	h.beanStore[epicID] = epic
 
 	// Create children and set up parent-child relationships
 	for _, childID := range childIDs {
-		child := h.CreateBead(childID, "Task: "+childID)
+		child := h.CreateBean(childID, "Task: "+childID)
 		// Add blocking dependency (child is blocked by parent)
-		h.beadDeps[childID] = append(h.beadDeps[childID], beans.Dependency{
+		h.beanDeps[childID] = append(h.beanDeps[childID], beans.Dependency{
 			BeanID:      childID,
 			BlockedByID: epicID,
 			Status:      epic.Status,
@@ -327,17 +327,17 @@ func (h *TestHarness) CreateEpicWithChildren(epicID string, childIDs ...string) 
 	return epic
 }
 
-// SetBeadDependency creates a blocking dependency between two beads.
-// The bead identified by beanID will be blocked by dependsOnID.
-func (h *TestHarness) SetBeadDependency(beanID, dependsOnID string) {
-	depBead := h.beadStore[dependsOnID]
+// SetBeanDependency creates a blocking dependency between two beans.
+// The bean identified by beanID will be blocked by dependsOnID.
+func (h *TestHarness) SetBeanDependency(beanID, dependsOnID string) {
+	depBean := h.beanStore[dependsOnID]
 	var status, title string
-	if depBead != nil {
-		status = depBead.Status
-		title = depBead.Title
+	if depBean != nil {
+		status = depBean.Status
+		title = depBean.Title
 	}
 
-	h.beadDeps[beanID] = append(h.beadDeps[beanID], beans.Dependency{
+	h.beanDeps[beanID] = append(h.beanDeps[beanID], beans.Dependency{
 		BeanID:      beanID,
 		BlockedByID: dependsOnID,
 		Status:      status,
@@ -370,20 +370,20 @@ func (h *TestHarness) CreateWorkWithRootIssue(workID, branch, rootIssueID string
 	return work
 }
 
-// AddBeanToWork associates a bead with a work in the database.
+// AddBeanToWork associates a bean with a work in the database.
 func (h *TestHarness) AddBeanToWork(workID, beanID string) {
 	h.T.Helper()
 	ctx := context.Background()
 
 	err := h.DB.AddBeanToWork(ctx, workID, beanID)
-	require.NoError(h.T, err, "failed to add bead to work")
+	require.NoError(h.T, err, "failed to add bean to work")
 }
 
 // =============================================================================
 // Task Fixtures
 // =============================================================================
 
-// CreateTask creates a task in the database with the given beads.
+// CreateTask creates a task in the database with the given beans.
 // Returns the created task.
 func (h *TestHarness) CreateTask(taskID, workID string, beanIDs []string) *db.Task {
 	h.T.Helper()
@@ -476,7 +476,7 @@ func (h *TestHarness) MockBranchExists(branchName string, local, remote bool) {
 // =============================================================================
 
 // CreateReviewTask creates a review task in the database using GetNextTaskNumber.
-// Review tasks have no beads associated with them directly.
+// Review tasks have no beans associated with them directly.
 // If taskID is empty, generates a new task ID using the atomic counter.
 // Returns the created task with its actual ID.
 func (h *TestHarness) CreateReviewTask(taskID, workID string) *db.Task {
@@ -530,20 +530,20 @@ func (h *TestHarness) AddReviewIssues(parentID string, issues []beans.Bean) {
 		if issueCopy.Priority == "" {
 			issueCopy.Priority = beans.PriorityNormal
 		}
-		h.beadStore[issue.ID] = &issueCopy
+		h.beanStore[issue.ID] = &issueCopy
 
 		// Add blocking dependency (child is blocked by parent)
-		h.beadDeps[issue.ID] = append(h.beadDeps[issue.ID], beans.Dependency{
+		h.beanDeps[issue.ID] = append(h.beanDeps[issue.ID], beans.Dependency{
 			BeanID:      issue.ID,
 			BlockedByID: parentID,
-			Status:      h.beadStore[parentID].Status,
-			Title:       h.beadStore[parentID].Title,
+			Status:      h.beanStore[parentID].Status,
+			Title:       h.beanStore[parentID].Title,
 		})
 	}
 }
 
 // SimulateReviewCompletion simulates completing a review task and checking for issues.
-// Returns true if there are beads to fix (issues created by the review).
+// Returns true if there are beans to fix (issues created by the review).
 func (h *TestHarness) SimulateReviewCompletion(reviewTaskID, workID string, reviewIssues []beans.Bean) bool {
 	h.T.Helper()
 	ctx := context.Background()

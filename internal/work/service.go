@@ -21,36 +21,36 @@ type WorkService struct {
 	Git                 git.Operations
 	Worktree            worktree.Operations
 	GitHubClient        github.ClientInterface
-	BeadsReader         beans.Reader
-	BeadsCLI            beans.CLI
+	BeansReader         beans.Reader
+	BeansCLI            beans.CLI
 	OrchestratorManager OrchestratorManager
 	TaskPlanner         task.Planner
 	NameGenerator       names.Generator
 	Config              *project.Config
 	ProjectRoot         string // Root directory of the project
 	MainRepoPath        string // Path to the main repository
-	BeadsDir            string // Path to beads directory
+	BeansDir            string // Path to beans directory
 }
 
 // NewWorkService creates a WorkService with production dependencies from a project.
 func NewWorkService(proj *project.Project) *WorkService {
-	// Compute beads directory from project config
-	beadsDir := filepath.Join(proj.Root, proj.Config.Beads.Path)
+	// Compute beans directory from project config
+	beansDir := filepath.Join(proj.Root, proj.Config.Beans.Path)
 
 	return &WorkService{
 		DB:                  proj.DB,
 		Git:                 git.NewOperations(),
 		Worktree:            worktree.NewOperations(),
 		GitHubClient:        github.NewClient(),
-		BeadsReader:         proj.Beads,
-		BeadsCLI:            beans.NewCLI(beadsDir),
+		BeansReader:         proj.Beans,
+		BeansCLI:            beans.NewCLI(beansDir),
 		OrchestratorManager: NewOrchestratorManager(proj.DB, proj.Config),
 		TaskPlanner:         nil, // Planner needs specific initialization, set separately if needed
 		NameGenerator:       names.NewGenerator(),
 		Config:              proj.Config,
 		ProjectRoot:         proj.Root,
 		MainRepoPath:        proj.MainRepoPath(),
-		BeadsDir:            beadsDir,
+		BeansDir:            beansDir,
 	}
 }
 
@@ -61,15 +61,15 @@ type WorkServiceDeps struct {
 	Git                 git.Operations
 	Worktree            worktree.Operations
 	GitHubClient        github.ClientInterface
-	BeadsReader         beans.Reader
-	BeadsCLI            beans.CLI
+	BeansReader         beans.Reader
+	BeansCLI            beans.CLI
 	OrchestratorManager OrchestratorManager
 	TaskPlanner         task.Planner
 	NameGenerator       names.Generator
 	Config              *project.Config
 	ProjectRoot         string
 	MainRepoPath        string
-	BeadsDir            string
+	BeansDir            string
 }
 
 // NewWorkServiceWithDeps creates a WorkService with explicitly provided dependencies.
@@ -80,15 +80,15 @@ func NewWorkServiceWithDeps(deps WorkServiceDeps) *WorkService {
 		Git:                 deps.Git,
 		Worktree:            deps.Worktree,
 		GitHubClient:        deps.GitHubClient,
-		BeadsReader:         deps.BeadsReader,
-		BeadsCLI:            deps.BeadsCLI,
+		BeansReader:         deps.BeansReader,
+		BeansCLI:            deps.BeansCLI,
 		OrchestratorManager: deps.OrchestratorManager,
 		TaskPlanner:         deps.TaskPlanner,
 		NameGenerator:       deps.NameGenerator,
 		Config:              deps.Config,
 		ProjectRoot:         deps.ProjectRoot,
 		MainRepoPath:        deps.MainRepoPath,
-		BeadsDir:            deps.BeadsDir,
+		BeansDir:            deps.BeansDir,
 	}
 }
 

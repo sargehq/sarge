@@ -100,12 +100,12 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 
 	// Print header
 	fmt.Printf("%-20s %-12s %-10s %-8s %-20s %s\n",
-		"ID", "Status", "Type", "Budget", "Created", "Beads")
+		"ID", "Status", "Type", "Budget", "Created", "Beans")
 	fmt.Println(strings.Repeat("-", 100))
 
 	// Print each task
 	for _, task := range tasks {
-		// Get beads for this task
+		// Get beans for this task
 		beanIDs, err := proj.DB.GetTaskBeans(ctx, task.ID)
 		if err != nil {
 			beanIDs = []string{"<error>"}
@@ -202,10 +202,10 @@ func runTaskShow(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("task %s not found", taskID)
 	}
 
-	// Get beads for this task
+	// Get beans for this task
 	beanIDs, err := proj.DB.GetTaskBeans(ctx, task.ID)
 	if err != nil {
-		return fmt.Errorf("failed to get task beads: %w", err)
+		return fmt.Errorf("failed to get task beans: %w", err)
 	}
 
 	// Print task details
@@ -244,15 +244,15 @@ func runTaskShow(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Error:       %s\n", task.ErrorMessage)
 	}
 
-	// Print beads
-	fmt.Printf("\nBeads (%d):\n", len(beanIDs))
+	// Print beans
+	fmt.Printf("\nBeans (%d):\n", len(beanIDs))
 	for _, beanID := range beanIDs {
-		// Get bead status
-		beadStatus, err := proj.DB.GetTaskBeanStatus(ctx, taskID, beanID)
-		if err != nil || beadStatus == "" {
-			beadStatus = "unknown"
+		// Get bean status
+		beanStatus, err := proj.DB.GetTaskBeanStatus(ctx, taskID, beanID)
+		if err != nil || beanStatus == "" {
+			beanStatus = "unknown"
 		}
-		fmt.Printf("  - %s (%s)\n", beanID, beadStatus)
+		fmt.Printf("  - %s (%s)\n", beanID, beanStatus)
 	}
 
 	// Print metadata if any
@@ -323,9 +323,9 @@ func runTaskReset(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to reset task status: %w", err)
 	}
 
-	// Reset all bead statuses for this task
+	// Reset all bean statuses for this task
 	if err := proj.DB.ResetTaskBeanStatuses(ctx, taskID); err != nil {
-		return fmt.Errorf("failed to reset bead statuses: %w", err)
+		return fmt.Errorf("failed to reset bean statuses: %w", err)
 	}
 
 	fmt.Printf("Reset task %s to pending\n", taskID)

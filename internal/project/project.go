@@ -61,7 +61,7 @@ type Project struct {
 	Root   string        // Project directory path
 	Config *Config       // Parsed config.toml
 	DB     *db.DB        // Tracking database (lazy loaded)
-	Beads  *beans.Client // Beans client (for issue tracking)
+	Beans  *beans.Client // Beans client (for issue tracking)
 }
 
 // Find finds a project from a flag value or current directory.
@@ -123,13 +123,13 @@ func load(ctx context.Context, root string) (*Project, error) {
 
 	// Open the beans client automatically
 	// Use the configured beans path (relative to project root)
-	beansDir := filepath.Join(root, cfg.Beads.Path)
+	beansDir := filepath.Join(root, cfg.Beans.Path)
 	beansClient, err := beans.NewClient(ctx, beans.ClientConfig{BeansDir: beansDir})
 	if err != nil {
 		database.Close() // Clean up the already-opened DB
 		return nil, fmt.Errorf("failed to open beans client: %w", err)
 	}
-	proj.Beads = beansClient
+	proj.Beans = beansClient
 
 	// Initialize logging to .co/debug.log
 	if err := logging.Init(root); err != nil {
@@ -179,7 +179,7 @@ func CreateWithSelections(ctx context.Context, dir, repoSource string, agentType
 	// 3. Generate mise config and run mise install
 	setupMise(absDir, mainPath, toolSelections)
 
-	// 4. Create config (before beads init, so config exists)
+	// 4. Create config (before beans init, so config exists)
 	cfg := &Config{
 		Project: ProjectConfig{
 			Name:      filepath.Base(absDir),
@@ -206,16 +206,16 @@ func CreateWithSelections(ctx context.Context, dir, repoSource string, agentType
 		return nil, err
 	}
 
-	// 5. Initialize beads (after mise, so bd CLI is available)
-	beadsPath, err := setupBeans(ctx, repoSource, absDir, mainPath)
+	// 5. Initialize beans (after mise, so bd CLI is available)
+	beansPath, err := setupBeans(ctx, repoSource, absDir, mainPath)
 	if err != nil {
 		os.RemoveAll(absDir)
 		return nil, err
 	}
 
-	// Update config with beads path and save again
-	cfg.Beads = BeansConfig{
-		Path: beadsPath,
+	// Update config with beans path and save again
+	cfg.Beans = BeansConfig{
+		Path: beansPath,
 	}
 	if err := cfg.SaveDocumentedConfig(configPath); err != nil {
 		os.RemoveAll(absDir)
@@ -370,7 +370,7 @@ func (p *Project) MainRepoPath() string {
 
 // BeansPath returns the path to the beans directory.
 func (p *Project) BeansPath() string {
-	return filepath.Join(p.Root, p.Config.Beads.Path)
+	return filepath.Join(p.Root, p.Config.Beans.Path)
 }
 
 // WorktreePath returns the path where a task's worktree should be created.
@@ -378,12 +378,12 @@ func (p *Project) WorktreePath(taskID string) string {
 	return filepath.Join(p.Root, taskID)
 }
 
-// Close closes any open resources (database and beads client).
+// Close closes any open resources (database and beans client).
 func (p *Project) Close() error {
 	var errs []error
-	if p.Beads != nil {
-		if err := p.Beads.Close(); err != nil {
-			errs = append(errs, fmt.Errorf("closing beads client: %w", err))
+	if p.Beans != nil {
+		if err := p.Beans.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("closing beans client: %w", err))
 		}
 	}
 	if p.DB != nil {

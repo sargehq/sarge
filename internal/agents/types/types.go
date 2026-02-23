@@ -28,11 +28,11 @@ type TaskParams struct {
 	WorkflowName  string        // log_analysis
 	JobName       string        // log_analysis
 	LogFilePath   string        // log_analysis
-	ExistingBeads []BeadSummary // log_analysis
+	ExistingBeans []BeanSummary // log_analysis
 }
 
-// BeadSummary provides a summary of an existing bead for matching.
-type BeadSummary struct {
+// BeanSummary provides a summary of an existing bean for matching.
+type BeanSummary struct {
 	ID    string
 	Title string
 	Body  string

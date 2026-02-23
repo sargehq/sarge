@@ -11,14 +11,14 @@ import (
 	"github.com/sargehq/sarge/internal/db"
 )
 
-// AddBeadsToWorkResult contains the result of adding beads to a work.
-type AddBeadsToWorkResult struct {
-	BeadsAdded int
+// AddBeansToWorkResult contains the result of adding beans to a work.
+type AddBeansToWorkResult struct {
+	BeansAdded int
 }
 
-// RemoveBeadsResult contains the result of removing beads from a work.
-type RemoveBeadsResult struct {
-	BeadsRemoved int
+// RemoveBeansResult contains the result of removing beans from a work.
+type RemoveBeansResult struct {
+	BeansRemoved int
 }
 
 // CreateWorkAsyncResult contains the result of creating a work unit asynchronously.
@@ -37,42 +37,42 @@ type CreateWorkAsyncOptions struct {
 	RootIssueID       string
 	Auto              bool
 	UseExistingBranch bool
-	BeanIDs           []string // Beads to add to the work (added immediately, not by control plane)
+	BeanIDs           []string // Beans to add to the work (added immediately, not by control plane)
 }
 
-// CreateWorkFromBeanOptions contains options for creating a work from a bead.
-// This is the high-level API that handles bead expansion, work creation, and control plane initialization.
+// CreateWorkFromBeanOptions contains options for creating a work from a bean.
+// This is the high-level API that handles bean expansion, work creation, and control plane initialization.
 type CreateWorkFromBeanOptions struct {
-	BeanID            string // Root bead ID to create work from
+	BeanID            string // Root bean ID to create work from
 	BranchName        string
 	BaseBranch        string
 	Auto              bool
 	UseExistingBranch bool
 }
 
-// CreateWorkFromBeanResult contains the result of creating a work from a bead.
+// CreateWorkFromBeanResult contains the result of creating a work from a bean.
 type CreateWorkFromBeanResult struct {
 	WorkID     string
 	WorkerName string
 	BranchName string
 	BaseBranch string
-	BeanIDs    []string // All expanded bead IDs
+	BeanIDs    []string // All expanded bean IDs
 }
 
-// CreateWorkFromBean creates a work unit from a bead, handling all common steps:
-// 1. Expands the bead to collect all issue IDs (epics, transitive deps)
+// CreateWorkFromBean creates a work unit from a bean, handling all common steps:
+// 1. Expands the bean to collect all issue IDs (epics, transitive deps)
 // 2. Creates the work asynchronously via CreateWorkAsyncWithOptions
 //
 // This is the shared implementation used by both CLI and TUI.
 // Callers are responsible for ensuring the control plane is running via control.EnsureControlPlane.
 func (s *WorkService) CreateWorkFromBean(ctx context.Context, opts CreateWorkFromBeanOptions) (*CreateWorkFromBeanResult, error) {
 	// 1. Collect issue IDs (handles epics and transitive deps)
-	allIssueIDs, err := CollectIssueIDsForAutomatedWorkflow(ctx, opts.BeanID, s.BeadsReader)
+	allIssueIDs, err := CollectIssueIDsForAutomatedWorkflow(ctx, opts.BeanID, s.BeansReader)
 	if err != nil {
-		return nil, fmt.Errorf("failed to expand bead %s: %w", opts.BeanID, err)
+		return nil, fmt.Errorf("failed to expand bean %s: %w", opts.BeanID, err)
 	}
 	if len(allIssueIDs) == 0 {
-		return nil, fmt.Errorf("no beads found for %s", opts.BeanID)
+		return nil, fmt.Errorf("no beans found for %s", opts.BeanID)
 	}
 
 	// 2. Create work asynchronously (DB operations + schedule control plane task)
@@ -136,11 +136,11 @@ func (s *WorkService) ImportPRAsync(ctx context.Context, opts ImportPRAsyncOptio
 		return nil, fmt.Errorf("failed to create work record: %w", err)
 	}
 
-	// Add root issue to work_beads immediately (before control plane runs)
+	// Add root issue to work_beans immediately (before control plane runs)
 	if opts.RootIssueID != "" {
-		if err := s.addBeadsInternal(ctx, workID, []string{opts.RootIssueID}); err != nil {
+		if err := s.addBeansInternal(ctx, workID, []string{opts.RootIssueID}); err != nil {
 			_ = s.DB.DeleteWork(ctx, workID)
-			return nil, fmt.Errorf("failed to add bead to work: %w", err)
+			return nil, fmt.Errorf("failed to add bean to work: %w", err)
 		}
 	}
 
@@ -203,11 +203,11 @@ func (s *WorkService) CreateWorkAsyncWithOptions(ctx context.Context, opts Creat
 		return nil, fmt.Errorf("failed to create work record: %w", err)
 	}
 
-	// Add beads to work_beads (done immediately, not by control plane)
+	// Add beans to work_beans (done immediately, not by control plane)
 	if len(opts.BeanIDs) > 0 {
-		if err := s.addBeadsInternal(ctx, workID, opts.BeanIDs); err != nil {
+		if err := s.addBeansInternal(ctx, workID, opts.BeanIDs); err != nil {
 			_ = s.DB.DeleteWork(ctx, workID)
-			return nil, fmt.Errorf("failed to add beads to work: %w", err)
+			return nil, fmt.Errorf("failed to add beans to work: %w", err)
 		}
 	}
 
@@ -243,23 +243,23 @@ func (s *WorkService) CreateWorkAsyncWithOptions(ctx context.Context, opts Creat
 	}, nil
 }
 
-// addBeadsInternal adds beads to work_beads table without validation.
-func (s *WorkService) addBeadsInternal(ctx context.Context, workID string, beanIDs []string) error {
+// addBeansInternal adds beans to work_beans table without validation.
+func (s *WorkService) addBeansInternal(ctx context.Context, workID string, beanIDs []string) error {
 	if len(beanIDs) == 0 {
 		return nil
 	}
 	if err := s.DB.AddWorkBeans(ctx, workID, beanIDs); err != nil {
-		return fmt.Errorf("failed to add beads: %w", err)
+		return fmt.Errorf("failed to add beans: %w", err)
 	}
 	return nil
 }
 
-// AddBeads adds beads to an existing work.
-// This is the core logic for adding beads that can be called from both the CLI and TUI.
-// Each bead is added as its own group (no grouping).
-func (s *WorkService) AddBeads(ctx context.Context, workID string, beanIDs []string) (*AddBeadsToWorkResult, error) {
+// AddBeans adds beans to an existing work.
+// This is the core logic for adding beans that can be called from both the CLI and TUI.
+// Each bean is added as its own group (no grouping).
+func (s *WorkService) AddBeans(ctx context.Context, workID string, beanIDs []string) (*AddBeansToWorkResult, error) {
 	if len(beanIDs) == 0 {
-		return nil, fmt.Errorf("no beads specified")
+		return nil, fmt.Errorf("no beans specified")
 	}
 
 	// Verify work exists
@@ -271,32 +271,32 @@ func (s *WorkService) AddBeads(ctx context.Context, workID string, beanIDs []str
 		return nil, fmt.Errorf("work %s not found", workID)
 	}
 
-	// Check if any bead is already in a task
+	// Check if any bean is already in a task
 	for _, beanID := range beanIDs {
 		inTask, err := s.DB.IsBeanInTask(ctx, workID, beanID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to check bead %s: %w", beanID, err)
+			return nil, fmt.Errorf("failed to check bean %s: %w", beanID, err)
 		}
 		if inTask {
-			return nil, fmt.Errorf("bead %s is already assigned to a task", beanID)
+			return nil, fmt.Errorf("bean %s is already assigned to a task", beanID)
 		}
 	}
 
-	// Add beads to work
+	// Add beans to work
 	if err := s.DB.AddWorkBeans(ctx, workID, beanIDs); err != nil {
-		return nil, fmt.Errorf("failed to add beads: %w", err)
+		return nil, fmt.Errorf("failed to add beans: %w", err)
 	}
 
-	return &AddBeadsToWorkResult{
-		BeadsAdded: len(beanIDs),
+	return &AddBeansToWorkResult{
+		BeansAdded: len(beanIDs),
 	}, nil
 }
 
-// RemoveBeads removes beads from an existing work.
-// Beads that are already assigned to a task cannot be removed.
-func (s *WorkService) RemoveBeads(ctx context.Context, workID string, beanIDs []string) (*RemoveBeadsResult, error) {
+// RemoveBeans removes beans from an existing work.
+// Beans that are already assigned to a task cannot be removed.
+func (s *WorkService) RemoveBeans(ctx context.Context, workID string, beanIDs []string) (*RemoveBeansResult, error) {
 	if len(beanIDs) == 0 {
-		return nil, fmt.Errorf("no beads specified")
+		return nil, fmt.Errorf("no beans specified")
 	}
 
 	// Verify work exists
@@ -308,26 +308,26 @@ func (s *WorkService) RemoveBeads(ctx context.Context, workID string, beanIDs []
 		return nil, fmt.Errorf("work %s not found", workID)
 	}
 
-	// Check if any bead is assigned to a task and remove those that aren't
+	// Check if any bean is assigned to a task and remove those that aren't
 	removed := 0
 	for _, beanID := range beanIDs {
 		inTask, err := s.DB.IsBeanInTask(ctx, workID, beanID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to check bead %s: %w", beanID, err)
+			return nil, fmt.Errorf("failed to check bean %s: %w", beanID, err)
 		}
 		if inTask {
-			return nil, fmt.Errorf("bead %s is assigned to a task and cannot be removed", beanID)
+			return nil, fmt.Errorf("bean %s is assigned to a task and cannot be removed", beanID)
 		}
 
-		// Remove the bead
+		// Remove the bean
 		if err := s.DB.RemoveWorkBean(ctx, workID, beanID); err != nil {
-			return nil, fmt.Errorf("failed to remove bead %s: %w", beanID, err)
+			return nil, fmt.Errorf("failed to remove bean %s: %w", beanID, err)
 		}
 		removed++
 	}
 
-	return &RemoveBeadsResult{
-		BeadsRemoved: removed,
+	return &RemoveBeansResult{
+		BeansRemoved: removed,
 	}, nil
 }
 
@@ -348,7 +348,7 @@ func (s *WorkService) DestroyWork(ctx context.Context, workID string, w io.Write
 	// Close the root issue if it exists
 	if work.RootIssueID != "" {
 		fmt.Fprintf(w, "Closing root issue %s...\n", work.RootIssueID)
-		if err := s.BeadsCLI.Close(ctx, work.RootIssueID); err != nil {
+		if err := s.BeansCLI.Close(ctx, work.RootIssueID); err != nil {
 			// Warn but continue - issue might already be closed or deleted
 			fmt.Fprintf(w, "Warning: failed to close root issue %s: %v\n", work.RootIssueID, err)
 		}

@@ -5,7 +5,7 @@ import (
 )
 
 // Bean is the domain type representing an issue tracked by the beans CLI.
-// Unlike the old Bead type, this maps directly to beans CLI/GraphQL JSON output
+// Unlike the old Bean type, this maps directly to beans CLI/GraphQL JSON output
 // with no sqlite dependency.
 type Bean struct {
 	ID        string

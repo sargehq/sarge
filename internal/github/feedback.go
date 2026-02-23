@@ -18,7 +18,7 @@ const (
 	FeedbackTypeConflict FeedbackType = "merge_conflict"
 )
 
-// FeedbackItem represents a piece of feedback from GitHub that could become a bead.
+// FeedbackItem represents a piece of feedback from GitHub that could become a bean.
 type FeedbackItem struct {
 	Type        FeedbackType
 	Title       string
