@@ -1,85 +1,66 @@
-# Beads CLI Reference
+# Beans CLI Reference
 
 ## Finding Work
 
 ```bash
-bd ready                          # Issues ready to work (no blockers)
-bd list --status=open             # All open issues
-bd list --status=in_progress      # Active work
-bd blocked                        # All blocked issues
-bd search "query"                 # Search issues by text
-bd show <id>                      # Detailed view with dependencies
-bd children <id>                  # List child issues
-bd stats                          # Project statistics
+beans list                             # All beans
+beans list --status todo               # Beans ready to start
+beans list --status in-progress        # Active work
+beans list --ready                     # Beans with no unresolved blockers
+beans show <id>                        # Detailed view with dependencies
+beans prime                            # Full AI workflow context
 ```
 
 ## Creating Issues
 
 ```bash
-bd create "Title" --type task -p 2 -d "Description"
-bd create "Title" --type bug -p 1 --parent <epic-id>
-bd create "Title" --type feature -p 2 --deps "blocks:<id>"
+beans create "Title" --type task --priority normal
+beans create "Title" --type bug --priority high --parent <epic-id>
+beans create "Title" --type feature --priority normal --body "Description"
 ```
 
 **Flags:**
-- `--type` / `-t`: `task` | `bug` | `feature` | `chore` | `epic` (default: `task`)
-- `--priority` / `-p`: `0`–`4` or `P0`–`P4` (0=critical, 2=medium, 4=backlog; default: `2`)
-- `--description` / `-d`: Issue description
+- `--type` / `-t`: `task` | `bug` | `feature` | `epic` | `milestone` (default: `task`)
+- `--priority`: `critical` | `high` | `normal` | `low` | `deferred` (default: `normal`)
+- `--body`: Issue description / body text
 - `--parent`: Parent issue ID for hierarchical child
-- `--assignee` / `-a`: Assign to someone
-- `--deps`: Dependencies in format `type:id` or just `id`
-- `--notes`: Working notes
-- `--design`: Design notes
+- `--tag`: Add a tag (can be repeated)
+- `--blocked-by`: ID of a bean that blocks this one
 
 ## Updating Issues
 
 ```bash
-bd update <id> --status in_progress    # Claim work
-bd update <id> --status open           # Unclaim
-bd update <id> --title "New title"     # Change title
-bd update <id> --description "..."     # Change description
-bd update <id> --notes "..."           # Set working notes
-bd update <id> --append-notes "..."    # Append to notes
-bd update <id> --priority 1            # Change priority
-bd update <id> --assignee "name"       # Assign
+beans update <id> --status in-progress     # Claim work
+beans update <id> --status todo            # Unclaim
+beans update <id> --title "New title"      # Change title
+beans update <id> --body "..."             # Change body
+beans update <id> --body-append "..."      # Append to body
+beans update <id> --priority high          # Change priority
+beans update <id> --tag "label"            # Add a tag
+beans update <id> --blocked-by <other-id>  # Add a blocker
 ```
 
-**⚠️ Do NOT use `bd edit`** — it opens $EDITOR and blocks agents.
-
-## Closing Issues
+## Completing Issues
 
 ```bash
-bd close <id>                          # Mark complete
-bd close <id> --reason "summary"       # Close with explanation
-bd close <id1> <id2> <id3>             # Close multiple at once
-bd reopen <id>                         # Reopen a closed issue
+beans update <id> --status completed       # Mark complete
+beans update <id> --status scrapped        # Abandon
+beans update <id> --status todo            # Reopen
 ```
 
 ## Dependencies
 
 ```bash
-bd dep add <issue> <depends-on>        # issue depends on depends-on
-bd dep remove <issue> <depends-on>     # Remove dependency
-bd dep tree <id>                       # Show dependency tree
+beans update <id> --blocked-by <blocker-id>   # id is blocked by blocker-id
 ```
 
-**Direction**: `bd dep add A B` → A depends on B (A is blocked until B is done).
+**Direction**: `beans update A --blocked-by B` → A depends on B (A is blocked until B is done).
 
-## Labels & Comments
-
-```bash
-bd label add <id> "label-name"         # Add label
-bd label remove <id> "label-name"      # Remove label
-bd comment <id> "Comment text"         # Add comment
-```
-
-## Sync & Health
+## Archive & Validation
 
 ```bash
-bd sync                                # Sync beads with git
-bd sync --status                       # Check sync status
-bd doctor                              # Diagnose issues
-bd prime                               # Output AI workflow context
+beans archive                          # Archive completed/scrapped beans
+beans check                            # Validate beans integrity
 ```
 
 ## Issue Types
@@ -89,15 +70,25 @@ bd prime                               # Output AI workflow context
 | `task` | General work items |
 | `bug` | Defects to fix |
 | `feature` | New functionality |
-| `chore` | Maintenance, cleanup |
 | `epic` | Large work with children |
+| `milestone` | High-level goals |
 
 ## Priority Scale
 
 | Priority | Meaning |
 |----------|---------|
-| `0` / `P0` | Critical — drop everything |
-| `1` / `P1` | High — do soon |
-| `2` / `P2` | Medium — default |
-| `3` / `P3` | Low — when time allows |
-| `4` / `P4` | Backlog — someday |
+| `critical` | Drop everything |
+| `high` | Do soon |
+| `normal` | Default |
+| `low` | When time allows |
+| `deferred` | Someday |
+
+## Status Values
+
+| Status | Meaning |
+|--------|---------|
+| `draft` | Not yet ready |
+| `todo` | Ready to start (default) |
+| `in-progress` | Actively being worked on |
+| `completed` | Done |
+| `scrapped` | Abandoned |

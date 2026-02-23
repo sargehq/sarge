@@ -1,75 +1,83 @@
-# Common Agent Pitfalls with Beads
+# Common Agent Pitfalls with Beans
 
-## ❌ Using `bd edit` (blocks agents)
+## ❌ Using Wrong Priority Format
 
-**Problem**: `bd edit <id>` opens $EDITOR (vim/nano), which hangs the agent.
+**Problem**: Using numeric priorities like `--priority 2` or `--priority medium`.
 
-**Fix**: Use `bd update` with flags:
+**Fix**: Priority is a named string:
 ```bash
-bd update <id> --description "new description"
-bd update <id> --notes "working notes"
-bd update <id> --title "new title"
-bd update <id> --append-notes "additional context"
+beans create "Title" --priority normal     # Correct
+beans create "Title" --priority 2          # WRONG
+beans create "Title" --priority medium     # WRONG
 ```
 
-## ❌ String Priorities
+Valid values: `critical`, `high`, `normal`, `low`, `deferred`.
 
-**Problem**: Using `--priority high` or `--priority medium`.
+## ❌ Using Wrong Status Format
 
-**Fix**: Priority is numeric 0–4:
+**Problem**: Using old status values like `open`, `in_progress`, `closed`.
+
+**Fix**: Use beans status values (with hyphens, not underscores):
 ```bash
-bd create "Title" -p 2        # Correct (medium)
-bd create "Title" -p high     # WRONG — will error
+beans update <id> --status in-progress     # Correct
+beans update <id> --status in_progress     # WRONG
+beans update <id> --status completed       # Correct
+beans update <id> --status closed          # WRONG
 ```
+
+Valid values: `draft`, `todo`, `in-progress`, `completed`, `scrapped`.
 
 ## ❌ Dependency Direction Confusion
 
-**Problem**: `bd dep add A B` is read as "A depends on B" but agents often reverse it.
+**Problem**: Getting the direction wrong when adding blockers.
 
-**Fix**: Think "add dependency FROM A TO B" — A is waiting for B:
+**Fix**: `--blocked-by` means "this bean is blocked by that bean":
 ```bash
-bd dep add <blocked-issue> <blocker-issue>
+# A is blocked by B (B must finish first)
+beans update A --blocked-by B
 ```
 
-Verify with `bd show <id>` — check DEPENDS ON and BLOCKS sections.
+Verify with `beans show <id>` — check "Blocked by" and "Blocking" sections.
 
-## ❌ Forgetting `bd sync` Before Push
+## ❌ Not Committing Bean Files
 
-**Problem**: Beads state changes aren't included in git commits.
+**Problem**: Bean changes aren't included in git commits.
 
-**Fix**: Always sync before committing:
+**Fix**: Beans are markdown files in `.beans/` — always include them:
 ```bash
-bd sync
-git add -A
+git add -A                    # Stages bean files too
 git commit -m "..."
 git push
 ```
 
-## ❌ Using TodoWrite/Markdown Instead of Beads
+No separate sync step needed — beans are plain files tracked by git.
 
-**Problem**: Creating TODO.md or using TodoWrite when .beads/ exists.
+## ❌ Using TodoWrite/Markdown Instead of Beans
 
-**Fix**: Always use `bd create` for tracking work:
+**Problem**: Creating TODO.md or using TodoWrite when `.beans/` exists.
+
+**Fix**: Always use `beans create` for tracking work:
 ```bash
-bd create "Fix the bug" --type bug -p 2 -d "Details..."
+beans create "Fix the bug" --type bug --priority high --body "Details..."
 ```
 
-## ❌ Not Updating Notes for Session Survival
+## ❌ Not Updating Body for Session Survival
 
 **Problem**: Context is lost after compaction or new session.
 
-**Fix**: Update notes before ending a session:
+**Fix**: Update the bean body before ending a session:
 ```bash
-bd update <id> --append-notes "Done: X, Y. Next: Z. Blocked by: W."
+beans update <id> --body-append "Done: X, Y. Next: Z. Blocked by: W."
 ```
 
-Notes survive compaction; your conversation history doesn't.
+Bean bodies survive compaction; your conversation history doesn't.
 
-## ❌ Closing Without Reason
+## ❌ Completing Without Context
 
-**Problem**: `bd close <id>` with no reason loses context about what was done.
+**Problem**: Marking a bean completed with no record of what was done.
 
-**Fix**: Always include a reason:
+**Fix**: Update the body before completing:
 ```bash
-bd close <id> --reason "Implemented feature X with tests, updated docs"
+beans update <id> --body-append "Implemented feature X with tests, updated docs"
+beans update <id> --status completed
 ```

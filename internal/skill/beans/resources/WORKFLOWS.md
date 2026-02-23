@@ -1,29 +1,28 @@
-# Beads Workflows
+# Beans Workflows
 
 ## Session Start
 
 ```bash
-bd prime                               # Get full context (especially after compaction)
-bd ready                               # Find available work
-bd show <id>                           # Review issue details and dependencies
-bd update <id> --status in_progress    # Claim the work
+beans prime                                # Get full context (especially after compaction)
+beans list --status todo                   # Find available work
+beans show <id>                            # Review issue details and dependencies
+beans update <id> --status in-progress     # Claim the work
 ```
 
 If resuming work, check for in-progress items first:
 ```bash
-bd list --status=in_progress           # Find your active work
-bd show <id>                           # Read notes for context
+beans list --status in-progress            # Find your active work
+beans show <id>                            # Read body for context
 ```
 
 ## Session End (Mandatory Checklist)
 
 ```
-[ ] 1. git status                      # Check what changed
-[ ] 2. bd close <id> --reason "..."    # Close completed issues
-[ ] 3. bd sync                         # Sync beads state
-[ ] 4. git add -A                      # Stage all changes (including synced beads)
-[ ] 5. git commit -m "..."             # Commit everything
-[ ] 6. git push                        # Push to remote
+[ ] 1. git status                          # Check what changed
+[ ] 2. beans update <id> --status completed  # Complete finished beans
+[ ] 3. git add -A                          # Stage all changes (including bean files)
+[ ] 4. git commit -m "..."                 # Commit everything
+[ ] 5. git push                            # Push to remote
 ```
 
 **Work is NOT done until `git push` succeeds.**
@@ -32,20 +31,19 @@ bd show <id>                           # Read notes for context
 
 ```bash
 # Create the epic
-bd create "Epic title" --type epic -p 2 -d "Overview"
+beans create "Epic title" --type epic --priority normal --body "Overview"
 
 # Create child tasks under the epic
-bd create "Step 1" --type task --parent <epic-id> -d "..."
-bd create "Step 2" --type task --parent <epic-id> -d "..."
-bd create "Step 3" --type task --parent <epic-id> -d "..."
+beans create "Step 1" --type task --parent <epic-id> --body "..."
+beans create "Step 2" --type task --parent <epic-id> --body "..."
+beans create "Step 3" --type task --parent <epic-id> --body "..."
 
 # Add ordering dependencies between steps
-bd dep add <step-2-id> <step-1-id>     # Step 2 depends on Step 1
-bd dep add <step-3-id> <step-2-id>     # Step 3 depends on Step 2
+beans update <step-2-id> --blocked-by <step-1-id>    # Step 2 blocked by Step 1
+beans update <step-3-id> --blocked-by <step-2-id>    # Step 3 blocked by Step 2
 
 # View the plan
-bd children <epic-id>
-bd dep tree <epic-id>
+beans show <epic-id>
 ```
 
 ## Side Quest Handling
@@ -54,13 +52,13 @@ When you discover work while doing other work:
 
 ```bash
 # 1. Create an issue for the discovery
-bd create "Found: thing that needs fixing" --type task -p 3 -d "Details..."
+beans create "Found: thing that needs fixing" --type task --priority low --body "Details..."
 
 # 2. Decide: blocker or defer?
 # If it blocks current work:
-bd dep add <current-work-id> <new-issue-id>
+beans update <current-work-id> --blocked-by <new-issue-id>
 
-# If it can wait, just leave it for bd ready to surface later
+# If it can wait, just leave it for later
 ```
 
 ## Compaction Recovery
@@ -68,12 +66,12 @@ bd dep add <current-work-id> <new-issue-id>
 After context compaction or starting a new session:
 
 ```bash
-bd prime                               # Reload full workflow context
-bd list --status=in_progress           # Find active work
-bd show <id>                           # Read notes for detailed context
+beans prime                                # Reload full workflow context
+beans list --status in-progress            # Find active work
+beans show <id>                            # Read body for detailed context
 ```
 
-**Tip**: Always update notes before session end so the next session has context:
+**Tip**: Always update the body before session end so the next session has context:
 ```bash
-bd update <id> --append-notes "Progress: completed X, next step is Y"
+beans update <id> --body-append "Progress: completed X, next step is Y"
 ```

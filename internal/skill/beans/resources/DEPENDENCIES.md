@@ -1,52 +1,49 @@
-# Beads Dependencies
+# Beans Dependencies
 
 ## Dependency Types
 
-| Type | Meaning | Affects `bd ready`? |
-|------|---------|---------------------|
-| `blocks` | Issue A blocks issue B (B can't start until A is done) | **Yes** |
-| `related` | Issues are related but independent | No |
+| Type | Meaning | Affects `beans list --ready`? |
+|------|---------|-------------------------------|
+| `blocked-by` | Bean A is blocked by bean B (A can't start until B is done) | **Yes** |
 | `parent-child` | Hierarchical grouping (via `--parent`) | No |
-| `discovered-from` | Issue was found while working on another | No |
 
-**Only `blocks` dependencies affect `bd ready`.** Other types are informational.
+**Only `blocked-by` dependencies affect `beans list --ready`.** Parent-child is informational grouping.
 
-## Direction Trap
+## Direction
 
-The most common mistake with dependencies:
+The most important thing to remember:
 
 ```bash
-bd dep add A B
+beans update A --blocked-by B
 ```
 
-This means: **A depends on B** (A is blocked by B, B must be done first).
+This means: **A is blocked by B** (B must be done before A can start).
 
 ### Mental Model
 
-Think of it as: `bd dep add <the-blocked-one> <the-blocker>`
+Think of it as: "this bean (`A`) is blocked by that bean (`B`)"
 
 ```bash
-# "Deploy" depends on "Write tests" — deploy is blocked until tests are done
-bd dep add deploy-123 write-tests-456
+# "Deploy" is blocked by "Write tests" — deploy can't start until tests are done
+beans update deploy-123 --blocked-by write-tests-456
 
-# "Step 2" depends on "Step 1"
-bd dep add step2-id step1-id
+# "Step 2" is blocked by "Step 1"
+beans update step2-id --blocked-by step1-id
 ```
 
 ### Verify
 
 After adding, check with:
 ```bash
-bd show <id>
+beans show <id>
 ```
 
 Look for:
-- **DEPENDS ON** — issues this one is waiting for
-- **BLOCKS** — issues waiting for this one
+- **Blocked by** — beans this one is waiting for
+- **Blocking** — beans waiting for this one
 
-## Decision Tree: Which Dependency Type?
+## Decision Tree: Which Relationship?
 
-1. **Must B finish before A can start?** → `bd dep add A B` (blocks)
-2. **A and B are related but independent?** → `bd dep add A B --type related`
-3. **B is a subtask of A?** → `bd create "B" --parent A` (parent-child)
-4. **Found B while working on A?** → `bd dep add B A --type discovered-from`
+1. **Must B finish before A can start?** → `beans update A --blocked-by B`
+2. **B is a subtask of A?** → `beans create "B" --parent A`
+3. **A and B are related but independent?** → Add a shared tag with `--tag`

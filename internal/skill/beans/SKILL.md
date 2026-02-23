@@ -1,63 +1,65 @@
 ---
-name: beads
+name: beans
 description: >
-  Git-backed issue tracker (bd) for multi-session work with dependencies.
-  Use when the project has a .beads directory, or when managing tasks,
-  bugs, features, dependencies, and project work. Replaces TodoWrite
-  and markdown-based tracking.
+  Markdown-file issue tracker (beans) for multi-session work with dependencies.
+  Use when the project has a .beans/ directory or .beans.yml config, or when
+  managing tasks, bugs, features, dependencies, and project work. Replaces
+  TodoWrite and markdown-based tracking.
 ---
 
-# Beads Issue Tracker
+# Beans Issue Tracker
 
 ## When to Use
 
-Use `bd` commands when:
-- The project has a `.beads/` directory
+Use `beans` commands when:
+- The project has a `.beans/` directory or `.beans.yml`
 - Work spans multiple sessions or has dependencies
 - You need to track tasks, bugs, features, or epics
 
-**Never** use TodoWrite, TaskCreate, or markdown files for task tracking when beads is available.
+**Never** use TodoWrite, TaskCreate, or markdown files for task tracking when beans is available.
 
 ## Quick Start
 
 ```bash
-bd prime              # Full AI-optimized workflow context (run after compaction/new session)
-bd ready              # Find work with no blockers
-bd show <id>          # View issue details
+beans prime           # Full AI-optimized workflow context (run after compaction/new session)
+beans list            # List all beans
+beans show <id>       # View issue details
 ```
 
 ## Essential Commands
 
 | Action | Command |
 |--------|---------|
-| Find work | `bd ready` |
-| View issue | `bd show <id>` |
-| Create issue | `bd create "Title" --type task -p 2 -d "description"` |
-| Claim work | `bd update <id> --status in_progress` |
-| Complete work | `bd close <id>` or `bd close <id> --reason "summary"` |
-| Add dependency | `bd dep add <dependent> <prerequisite>` |
-| View children | `bd children <id>` |
-| Sync with git | `bd sync` |
+| List all | `beans list` |
+| View issue | `beans show <id>` |
+| Create issue | `beans create "Title" --type task --priority normal` |
+| Claim work | `beans update <id> --status in-progress` |
+| Complete work | `beans update <id> --status completed` |
+| Add blocker | `beans update <id> --blocked-by <other-id>` |
+| View children | `beans show <id>` (shows children in output) |
+| Archive done | `beans archive` |
+| Validate | `beans check` |
 
 For full command reference, see [resources/CLI_REFERENCE.md](resources/CLI_REFERENCE.md).
 
 ## Session Protocol
 
-1. **Start**: `bd ready` → `bd show <id>` → `bd update <id> --status in_progress`
-2. **Work**: Implement changes, update notes with `bd update <id> --notes "..."`
-3. **Complete**: `bd close <id> --reason "summary"`
-4. **Sync**: `bd sync` → `git add -A` → `git commit` → `git push`
+1. **Start**: `beans list` → `beans show <id>` → `beans update <id> --status in-progress`
+2. **Work**: Implement changes, update bean with `beans update <id>` flags
+3. **Complete**: `beans update <id> --status completed`
+4. **Commit**: Include both code changes AND bean file(s) in the commit, then `git push`
 
 See [resources/WORKFLOWS.md](resources/WORKFLOWS.md) for detailed workflows.
 
 ## ⚠️ Critical Warnings
 
-- **Do NOT use `bd edit`** — opens $EDITOR, blocks agents. Use `bd update` with flags instead.
-- **Priority is numeric 0–4** (0=critical, 4=backlog). NOT "high"/"medium"/"low".
-- **Title is positional**: `bd create "My title"`, not just `--title` (though `--title` also works).
-- **Dependency direction**: `bd dep add A B` means **A depends on B** (A is blocked by B).
-- **Always `bd sync` before `git push`** to include beads changes in the commit.
-- **Close with reason**: `bd close <id> --reason "what was done"` preserves context across sessions.
+- **Beans are markdown files** in `.beans/` — they are tracked in git alongside code.
+- **Always commit bean files** with your code changes.
+- **Use `beans prime`** at session start for full context.
+- **Priority is a string**: `critical`, `high`, `normal`, `low`, `deferred`. NOT numeric.
+- **Status values**: `draft`, `todo`, `in-progress`, `completed`, `scrapped`.
+- **Title is positional**: `beans create "My title"`, not just flags.
+- **Dependency direction**: `beans update A --blocked-by B` means **A is blocked by B**.
 
 ## Resources
 
