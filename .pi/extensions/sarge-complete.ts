@@ -3,22 +3,9 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 export default function (pi: ExtensionAPI) {
   // Primary safety net: when the agent finishes processing, check if the task
   // is still in 'processing' status and call sarge complete if so.
-  pi.on("agent_end", async (event, _ctx) => {
+  pi.on("agent_end", async (_event, _ctx) => {
     const taskID = process.env.SARGE_TASK_ID;
     if (!taskID) return;
-
-    // Don't call sarge complete if the agent was interrupted by the user (Esc).
-    // When interrupted, the last assistant message has stopReason === "aborted".
-    // The user may want to continue the session, so leave the task in processing.
-    const lastAssistant = event.messages
-      .slice()
-      .reverse()
-      .find((m) => m.role === "assistant") as
-      | { role: "assistant"; stopReason: string }
-      | undefined;
-    if (lastAssistant?.stopReason === "aborted") {
-      return;
-    }
 
     try {
       // Check if task is still processing by running sarge task show
