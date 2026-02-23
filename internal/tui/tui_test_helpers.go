@@ -49,7 +49,8 @@ func testBeanItemWithOptions(id, title string, priority string, beanType string,
 
 // testBeanItemBlocking creates a beanItem with only blocking dependencies (no parent).
 // Use this when testing blocking-only relationships (not parent-child).
-func testBeanItemBlocking(id, title, status string, priority string, beanType string, blockedBy ...string) beanItem {
+// Status is always beans.StatusTodo; pass a different status via testBeanItem if needed.
+func testBeanItemBlocking(id, title string, priority string, beanType string, blockedBy ...string) beanItem {
 	var dependencies []beans.Dependency
 	for _, depID := range blockedBy {
 		dependencies = append(dependencies, beans.Dependency{
@@ -63,7 +64,7 @@ func testBeanItemBlocking(id, title, status string, priority string, beanType st
 			Bean: &beans.Bean{
 				ID:       id,
 				Title:    title,
-				Status:   status,
+				Status:   beans.StatusTodo,
 				Priority: priority,
 				Type:     beanType,
 			},
