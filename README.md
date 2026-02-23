@@ -37,7 +37,7 @@ The following CLI tools are required but are **automatically installed by mise**
 
 | Tool | Purpose |
 |------|---------|
-| `bd` | Beads issue tracking |
+| `beans` | Beans issue tracking |
 | `claude` or `pi` | Coding agent (selected during project setup) |
 | `gh` | GitHub CLI |
 | `zellij` | Terminal multiplexer |
@@ -129,7 +129,7 @@ All TUI actions are also available as CLI commands for scripting:
 
 ```bash
 cd main
-bd create --title "Add user authentication" --type feature
+beans create --title "Add user authentication" --type feature
 sarge linear import ENG-123       # Or import from Linear
 cd ..
 
@@ -177,7 +177,7 @@ Sarge uses [Beads](https://github.com/steveyegge/beads), a distributed git-backe
 - **Collision-free IDs** - Hash-based IDs eliminate merge conflicts in multi-branch scenarios
 - **Semantic compaction** - Completed tasks are summarized to conserve AI context windows
 
-**You rarely need to use beads directly.** The coding agent and the TUI handle all issue management. The `bd` CLI is available if you need it, but most users interact with beads through `sarge` or let the agent manage issues automatically.
+**You rarely need to use beads directly.** The coding agent and the TUI handle all issue management. The `beans` CLI is available if you need it, but most users interact with beans through `sarge` or let the agent manage issues automatically.
 
 ### Three-Tier Hierarchy
 
@@ -244,7 +244,7 @@ sarge proj create ~/myproject ~/path/to/repo
 cd ~/myproject
 ```
 
-### "bd: command not found" or "gh: command not found" or "zellij: command not found"
+### "beans: command not found" or "gh: command not found" or "zellij: command not found"
 
 These tools are installed by mise:
 ```bash
@@ -265,8 +265,8 @@ gh auth login
 Create work items in your project's main repo:
 ```bash
 cd ~/myproject/main
-bd create --title "Your task" --type task
-bd ready  # View available beads
+beans create --title "Your task" --type task
+beans ready  # View available beans
 ```
 
 ## License
