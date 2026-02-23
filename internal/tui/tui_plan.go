@@ -175,7 +175,7 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 		beansWatcher:           beansWatcher,
 		trackingWatcher:        trackingWatcher,
 		filters: beanFilters{
-			status: "open",
+			status: beans.StatusTodo,
 			sortBy: "default",
 		},
 	}

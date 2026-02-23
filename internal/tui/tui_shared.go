@@ -163,7 +163,7 @@ type beanItem struct {
 
 // beanFilters holds the current filter state for beans
 type beanFilters struct {
-	status     string // "open", "closed", "ready"
+	status     string // "todo", "completed", "ready", "all"
 	label      string // filter by label (empty = no filter)
 	searchText string // fuzzy search text
 	sortBy     string // "default", "priority", "created", "title"
@@ -273,13 +273,13 @@ func fetchBeansWithFilters(ctx context.Context, beansClient *beans.Client, _ str
 	}
 
 	// List issues with optional status filter
-	// "open" means all non-closed statuses (open, in_progress, blocked, deferred)
+	// "todo" (StatusTodo) means all non-terminal statuses (todo, in-progress, draft)
 	// "all" means no filter
 	// Other values are passed directly as status filter
 	statusFilter := ""
 	filterOutClosed := false
 	if filters.status == beans.StatusTodo {
-		// Fetch all and filter out closed
+		// Fetch all and filter out terminal statuses
 		statusFilter = ""
 		filterOutClosed = true
 	} else if filters.status != "" && filters.status != "all" {
@@ -290,7 +290,7 @@ func fetchBeansWithFilters(ctx context.Context, beansClient *beans.Client, _ str
 		return nil, err
 	}
 
-	// Filter out closed issues if "open" filter was requested
+	// Filter out terminal-status issues if "todo" filter was requested
 	if filterOutClosed {
 		filtered := make([]beans.Bean, 0, len(issuesList))
 		for _, issue := range issuesList {

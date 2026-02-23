@@ -160,42 +160,48 @@ func (c *Client) GetBeansWithDeps(ctx context.Context, beanIDs []string) (*Beans
 		}, nil
 	}
 
-	// Build a GraphQL query for all requested beans
-	// Use the beans filter with IDs
-	quotedIDs := make([]string, len(beanIDs))
-	for i, id := range beanIDs {
-		quotedIDs[i] = fmt.Sprintf("%q", id)
-	}
-	idsFilter := strings.Join(quotedIDs, ", ")
-
-	query := fmt.Sprintf(`{
-		beans(filter: { id: [%s] }) {
-			id slug path title status type priority body tags
+	// Build a GraphQL query using aliased bean(id:) queries.
+	// The BeanFilter type does not support filtering by ID, so we use
+	// individual bean(id:) lookups with aliases to batch them.
+	const beanFields = `id slug path title status type priority body tags
 			parentId blockedByIds blockingIds
 			createdAt updatedAt etag
 			blockedBy { id title status }
 			blocking { id title status }
-			children { id title status }
-		}
-	}`, idsFilter)
+			children { id title status }`
+
+	var queryParts []string
+	aliasMap := make(map[string]string, len(beanIDs)) // alias -> beanID
+	for i, id := range beanIDs {
+		alias := fmt.Sprintf("b%d", i)
+		aliasMap[alias] = id
+		queryParts = append(queryParts, fmt.Sprintf(`%s: bean(id: %q) { %s }`, alias, id, beanFields))
+	}
+	query := "{ " + strings.Join(queryParts, "\n") + " }"
 
 	raw, err := c.graphqlQuery(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("fetching beans: %w", err)
 	}
 
-	var resp struct {
-		Beans []graphqlBeanResult `json:"beans"`
-	}
-	if err := json.Unmarshal(raw, &resp); err != nil {
+	// Parse the aliased response: { "b0": {...}, "b1": {...}, ... }
+	var aliasedResp map[string]*graphqlBeanResult
+	if err := json.Unmarshal(raw, &aliasedResp); err != nil {
 		return nil, fmt.Errorf("parsing beans response: %w", err)
 	}
 
-	beansMap := make(map[string]Bean, len(resp.Beans))
+	var resp []graphqlBeanResult
+	for _, result := range aliasedResp {
+		if result != nil {
+			resp = append(resp, *result)
+		}
+	}
+
+	beansMap := make(map[string]Bean, len(resp))
 	depsMap := make(map[string][]Dependency)
 	dependentsMap := make(map[string][]Dependent)
 
-	for _, gb := range resp.Beans {
+	for _, gb := range resp {
 		bean := gb.toBean()
 		beansMap[bean.ID] = bean
 
