@@ -197,25 +197,16 @@ var beanTypes = []string{
 func statusIcon(status string) string {
 	switch status {
 	// Internal db statuses
-	case db.StatusPending:
+	case db.StatusPending, beans.StatusTodo:
 		return statusPending.Render("○")
-	case db.StatusProcessing:
+	case db.StatusProcessing, beans.StatusInProgress:
 		return statusProcessing.Render("●")
-	case db.StatusCompleted:
+	case db.StatusCompleted: // same value for db and beans ("completed")
 		return statusCompleted.Render("✓")
-	case db.StatusFailed:
+	case db.StatusFailed, beans.StatusScrapped:
 		return statusFailed.Render("✗")
-	// Bean statuses from bd CLI
-	case "open":
-		return statusPending.Render("○")
-	case "in_progress":
-		return statusProcessing.Render("●")
-	case "blocked":
-		return statusFailed.Render("◐")
-	case "deferred":
+	case beans.StatusDraft:
 		return statusPending.Render("❄")
-	case "closed":
-		return statusCompleted.Render("✓")
 	default:
 		return "?"
 	}
