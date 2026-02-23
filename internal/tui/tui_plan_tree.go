@@ -26,10 +26,17 @@ func buildBeanTree(ctx context.Context, items []beanItem, client *beans.Client, 
 	// Collect all issue IDs (used in getBlockingDepIDs closure below)
 	_ = len(items) // issueIDs would be used for dependency lookups if needed
 
-	// Helper to extract blocking dependency IDs from a beanItem
+	// Helper to extract parent/dependency IDs from a beanItem.
+	// Includes the ParentID (beans parent-child relationship) and all
+	// blocking dependencies. ParentID takes priority for tree structure.
 	getBlockingDepIDs := func(item *beanItem) []string {
 		if item.BeanWithDeps == nil {
 			return nil
+		}
+		// If the bean has a parent, use that as the sole tree parent
+		// to avoid duplicate tree edges.
+		if item.ParentID != "" {
+			return []string{item.ParentID}
 		}
 		depIDs := make([]string, 0, len(item.Dependencies))
 		for _, dep := range item.Dependencies {

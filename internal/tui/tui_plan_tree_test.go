@@ -32,8 +32,8 @@ func TestBuildBeanTree_EpicHierarchy(t *testing.T) {
 // TestBuildBeanTree_BlocksDependencies tests handling of "blocks" type dependencies
 func TestBuildBeanTree_BlocksDependencies(t *testing.T) {
 	items := []beanItem{
-		testBeanItem("blocker", "Blocker", beans.StatusTodo, beans.PriorityHigh, "task"),
-		testBeanItem("blocked", "Blocked", beans.StatusTodo, beans.PriorityNormal, "task", "blocker"),
+		testBeanItemBlocking("blocker", "Blocker", beans.StatusTodo, beans.PriorityHigh, "task"),
+		testBeanItemBlocking("blocked", "Blocked", beans.StatusTodo, beans.PriorityNormal, "task", "blocker"),
 	}
 
 	result := buildBeanTree(context.Background(), items, nil)
@@ -141,10 +141,11 @@ func TestBuildBeanTree_MixedTypes(t *testing.T) {
 
 // TestBuildBeanTree_CircularDependencies tests handling of circular dependency detection
 func TestBuildBeanTree_CircularDependencies(t *testing.T) {
+	// Use blocking deps for circular dependency (parent-child can't be circular)
 	items := []beanItem{
-		testBeanItem("item-1", "Item 1", beans.StatusTodo, beans.PriorityHigh, "task", "item-3"),
-		testBeanItem("item-2", "Item 2", beans.StatusTodo, beans.PriorityNormal, "task", "item-1"),
-		testBeanItem("item-3", "Item 3", beans.StatusTodo, beans.PriorityLow, "task", "item-2"),
+		testBeanItemBlocking("item-1", "Item 1", beans.StatusTodo, beans.PriorityHigh, "task", "item-3"),
+		testBeanItemBlocking("item-2", "Item 2", beans.StatusTodo, beans.PriorityNormal, "task", "item-1"),
+		testBeanItemBlocking("item-3", "Item 3", beans.StatusTodo, beans.PriorityLow, "task", "item-2"),
 	}
 
 	// The function should handle this gracefully without infinite loop
