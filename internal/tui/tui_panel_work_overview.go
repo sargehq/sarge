@@ -117,23 +117,23 @@ func (p *WorkOverviewPanel) GetSelectedTaskID() string {
 	return ""
 }
 
-// GetSelectedBeadIDs returns the bead IDs that should be shown based on current selection.
+// GetSelectedBeanIDs returns the bead IDs that should be shown based on current selection.
 // - If root issue is selected (index 0): returns all work beads (root + dependents)
 // - If a task is selected: returns only the beads assigned to that task
 // - If an unassigned bead is selected: returns just that bead's ID
 // Returns nil if no work is focused.
-func (p *WorkOverviewPanel) GetSelectedBeadIDs() []string {
+func (p *WorkOverviewPanel) GetSelectedBeanIDs() []string {
 	if p.focusedWork == nil {
 		return nil
 	}
 
 	if p.selectedIndex == 0 {
 		// Root issue selected - return all work beads
-		var beadIDs []string
-		for _, bp := range p.focusedWork.WorkBeads {
-			beadIDs = append(beadIDs, bp.ID)
+		var beanIDs []string
+		for _, bp := range p.focusedWork.WorkBeans {
+			beanIDs = append(beanIDs, bp.ID)
 		}
-		return beadIDs
+		return beanIDs
 	}
 
 	tasksEndIdx := 1 + len(p.focusedWork.Tasks)
@@ -141,11 +141,11 @@ func (p *WorkOverviewPanel) GetSelectedBeadIDs() []string {
 	// Task selected - return only task's beads
 	taskIdx := p.selectedIndex - 1
 	if taskIdx >= 0 && taskIdx < len(p.focusedWork.Tasks) {
-		var beadIDs []string
+		var beanIDs []string
 		for _, bp := range p.focusedWork.Tasks[taskIdx].Beads {
-			beadIDs = append(beadIDs, bp.ID)
+			beanIDs = append(beanIDs, bp.ID)
 		}
-		return beadIDs
+		return beanIDs
 	}
 
 	// Unassigned bead selected - return just that bead
@@ -188,8 +188,8 @@ func (p *WorkOverviewPanel) IsUnassignedBeadSelected() bool {
 	return unassignedIdx >= 0 && unassignedIdx < len(p.focusedWork.UnassignedBeads)
 }
 
-// GetSelectedUnassignedBeadID returns the ID of the selected unassigned bead, or empty if none selected
-func (p *WorkOverviewPanel) GetSelectedUnassignedBeadID() string {
+// GetSelectedUnassignedBeanID returns the ID of the selected unassigned bead, or empty if none selected
+func (p *WorkOverviewPanel) GetSelectedUnassignedBeanID() string {
 	if !p.IsUnassignedBeadSelected() {
 		return ""
 	}
@@ -434,7 +434,7 @@ func (p *WorkOverviewPanel) renderRootIssueLine(panelWidth int) string {
 	// Find root issue info from workBeads
 	rootID := p.focusedWork.Work.RootIssueID
 	rootTitle := ""
-	for _, bead := range p.focusedWork.WorkBeads {
+	for _, bead := range p.focusedWork.WorkBeans {
 		if bead.ID == rootID {
 			rootTitle = bead.Title
 			break

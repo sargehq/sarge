@@ -20,8 +20,8 @@ func TestTaskExecution_SuccessfulCompletion(t *testing.T) {
 	h.CreateBead("bead-1", "Task 1")
 	h.CreateBead("bead-2", "Task 2")
 	workRecord := h.CreateWork("w-test", "feat/test-branch")
-	h.AddBeadToWork("w-test", "bead-1")
-	h.AddBeadToWork("w-test", "bead-2")
+	h.AddBeanToWork("w-test", "bead-1")
+	h.AddBeanToWork("w-test", "bead-2")
 
 	// Create tasks
 	task1 := h.CreateTask("w-test.1", "w-test", []string{"bead-1"})
@@ -43,7 +43,7 @@ func TestTaskExecution_SuccessfulCompletion(t *testing.T) {
 	assert.NotNil(t, task1After.StartedAt)
 
 	// Simulate completing beads within task 1
-	err = h.DB.CompleteTaskBead(ctx, "w-test.1", "bead-1")
+	err = h.DB.CompleteTaskBean(ctx, "w-test.1", "bead-1")
 	require.NoError(t, err)
 
 	// Check and complete task if all beads done
@@ -61,7 +61,7 @@ func TestTaskExecution_SuccessfulCompletion(t *testing.T) {
 	err = h.DB.StartTask(ctx, "w-test.2", workRecord.WorktreePath)
 	require.NoError(t, err)
 
-	err = h.DB.CompleteTaskBead(ctx, "w-test.2", "bead-2")
+	err = h.DB.CompleteTaskBean(ctx, "w-test.2", "bead-2")
 	require.NoError(t, err)
 
 	completed, err = h.DB.CheckAndCompleteTask(ctx, "w-test.2", "")
@@ -84,8 +84,8 @@ func TestTaskExecution_Failure(t *testing.T) {
 	h.CreateBead("bead-1", "Will fail")
 	h.CreateBead("bead-2", "Will not run")
 	workRecord := h.CreateWork("w-test", "feat/test-branch")
-	h.AddBeadToWork("w-test", "bead-1")
-	h.AddBeadToWork("w-test", "bead-2")
+	h.AddBeanToWork("w-test", "bead-1")
+	h.AddBeanToWork("w-test", "bead-2")
 
 	// Create tasks
 	h.CreateTask("w-test.1", "w-test", []string{"bead-1"})
@@ -133,9 +133,9 @@ func TestTaskExecution_PartialBeadCompletion(t *testing.T) {
 	h.CreateBead("bead-2", "Second bead")
 	h.CreateBead("bead-3", "Third bead")
 	workRecord := h.CreateWork("w-test", "feat/test-branch")
-	h.AddBeadToWork("w-test", "bead-1")
-	h.AddBeadToWork("w-test", "bead-2")
-	h.AddBeadToWork("w-test", "bead-3")
+	h.AddBeanToWork("w-test", "bead-1")
+	h.AddBeanToWork("w-test", "bead-2")
+	h.AddBeanToWork("w-test", "bead-3")
 
 	// Create one task with multiple beads
 	h.CreateTask("w-test.1", "w-test", []string{"bead-1", "bead-2", "bead-3"})
@@ -145,7 +145,7 @@ func TestTaskExecution_PartialBeadCompletion(t *testing.T) {
 	require.NoError(t, err)
 
 	// Complete first bead
-	err = h.DB.CompleteTaskBead(ctx, "w-test.1", "bead-1")
+	err = h.DB.CompleteTaskBean(ctx, "w-test.1", "bead-1")
 	require.NoError(t, err)
 
 	// Task should NOT be complete yet
@@ -154,13 +154,13 @@ func TestTaskExecution_PartialBeadCompletion(t *testing.T) {
 	assert.False(t, completed, "task should not be complete with only 1/3 beads done")
 
 	// Verify bead statuses
-	total, completedCount, err := h.DB.CountTaskBeadStatuses(ctx, "w-test.1")
+	total, completedCount, err := h.DB.CountTaskBeanStatuses(ctx, "w-test.1")
 	require.NoError(t, err)
 	assert.Equal(t, 3, total)
 	assert.Equal(t, 1, completedCount)
 
 	// Complete second bead
-	err = h.DB.CompleteTaskBead(ctx, "w-test.1", "bead-2")
+	err = h.DB.CompleteTaskBean(ctx, "w-test.1", "bead-2")
 	require.NoError(t, err)
 
 	completed, err = h.DB.CheckAndCompleteTask(ctx, "w-test.1", "")
@@ -168,7 +168,7 @@ func TestTaskExecution_PartialBeadCompletion(t *testing.T) {
 	assert.False(t, completed, "task should not be complete with only 2/3 beads done")
 
 	// Complete third bead
-	err = h.DB.CompleteTaskBead(ctx, "w-test.1", "bead-3")
+	err = h.DB.CompleteTaskBean(ctx, "w-test.1", "bead-3")
 	require.NoError(t, err)
 
 	// Now task should be complete
@@ -191,7 +191,7 @@ func TestTaskExecution_WorkStatusTransitions(t *testing.T) {
 	// Create beads and work
 	h.CreateBead("bead-1", "Task bead")
 	workRecord := h.CreateWork("w-test", "feat/test-branch")
-	h.AddBeadToWork("w-test", "bead-1")
+	h.AddBeanToWork("w-test", "bead-1")
 
 	// Verify initial work status
 	assert.Equal(t, db.StatusPending, workRecord.Status)
@@ -211,7 +211,7 @@ func TestTaskExecution_WorkStatusTransitions(t *testing.T) {
 	h.CreateTask("w-test.1", "w-test", []string{"bead-1"})
 	err = h.DB.StartTask(ctx, "w-test.1", workRecord.WorktreePath)
 	require.NoError(t, err)
-	err = h.DB.CompleteTaskBead(ctx, "w-test.1", "bead-1")
+	err = h.DB.CompleteTaskBean(ctx, "w-test.1", "bead-1")
 	require.NoError(t, err)
 	_, err = h.DB.CheckAndCompleteTask(ctx, "w-test.1", "")
 	require.NoError(t, err)
@@ -255,7 +255,7 @@ func TestTaskExecution_WorkFailureAndRestart(t *testing.T) {
 	// Create beads and work
 	h.CreateBead("bead-1", "Task bead")
 	workRecord := h.CreateWork("w-test", "feat/test-branch")
-	h.AddBeadToWork("w-test", "bead-1")
+	h.AddBeanToWork("w-test", "bead-1")
 
 	// Start work
 	err := h.DB.StartWork(ctx, "w-test", "session-1", "tab-1")
@@ -285,7 +285,7 @@ func TestTaskExecution_WorkFailureAndRestart(t *testing.T) {
 	assert.Equal(t, db.StatusProcessing, work.Status)
 }
 
-func TestTaskExecution_BeadStatusTracking(t *testing.T) {
+func TestTaskExecution_BeanStatusTracking(t *testing.T) {
 	h := testutil.NewTestHarness(t)
 	defer h.Cleanup()
 
@@ -295,14 +295,14 @@ func TestTaskExecution_BeadStatusTracking(t *testing.T) {
 	h.CreateBead("bead-1", "Bead 1")
 	h.CreateBead("bead-2", "Bead 2")
 	workRecord := h.CreateWork("w-test", "feat/test-branch")
-	h.AddBeadToWork("w-test", "bead-1")
-	h.AddBeadToWork("w-test", "bead-2")
+	h.AddBeanToWork("w-test", "bead-1")
+	h.AddBeanToWork("w-test", "bead-2")
 
 	// Create task with multiple beads
 	h.CreateTask("w-test.1", "w-test", []string{"bead-1", "bead-2"})
 
 	// Get initial bead statuses
-	beads, err := h.DB.GetTaskBeadsWithStatus(ctx, "w-test.1")
+	beads, err := h.DB.GetTaskBeansWithStatus(ctx, "w-test.1")
 	require.NoError(t, err)
 	require.Len(t, beads, 2)
 	for _, bead := range beads {
@@ -314,23 +314,23 @@ func TestTaskExecution_BeadStatusTracking(t *testing.T) {
 	require.NoError(t, err)
 
 	// Complete first bead
-	err = h.DB.CompleteTaskBead(ctx, "w-test.1", "bead-1")
+	err = h.DB.CompleteTaskBean(ctx, "w-test.1", "bead-1")
 	require.NoError(t, err)
 
 	// Check individual bead status
-	status1, err := h.DB.GetTaskBeadStatus(ctx, "w-test.1", "bead-1")
+	status1, err := h.DB.GetTaskBeanStatus(ctx, "w-test.1", "bead-1")
 	require.NoError(t, err)
 	assert.Equal(t, db.StatusCompleted, status1)
 
-	status2, err := h.DB.GetTaskBeadStatus(ctx, "w-test.1", "bead-2")
+	status2, err := h.DB.GetTaskBeanStatus(ctx, "w-test.1", "bead-2")
 	require.NoError(t, err)
 	assert.Equal(t, db.StatusPending, status2)
 
 	// Fail second bead
-	err = h.DB.FailTaskBead(ctx, "w-test.1", "bead-2")
+	err = h.DB.FailTaskBean(ctx, "w-test.1", "bead-2")
 	require.NoError(t, err)
 
-	status2, err = h.DB.GetTaskBeadStatus(ctx, "w-test.1", "bead-2")
+	status2, err = h.DB.GetTaskBeanStatus(ctx, "w-test.1", "bead-2")
 	require.NoError(t, err)
 	assert.Equal(t, db.StatusFailed, status2)
 }
@@ -345,8 +345,8 @@ func TestTaskExecution_TaskReset(t *testing.T) {
 	h.CreateBead("bead-1", "Bead 1")
 	h.CreateBead("bead-2", "Bead 2")
 	workRecord := h.CreateWork("w-test", "feat/test-branch")
-	h.AddBeadToWork("w-test", "bead-1")
-	h.AddBeadToWork("w-test", "bead-2")
+	h.AddBeanToWork("w-test", "bead-1")
+	h.AddBeanToWork("w-test", "bead-2")
 
 	// Create and start task
 	h.CreateTask("w-test.1", "w-test", []string{"bead-1", "bead-2"})
@@ -354,9 +354,9 @@ func TestTaskExecution_TaskReset(t *testing.T) {
 	require.NoError(t, err)
 
 	// Complete one bead, fail the other
-	err = h.DB.CompleteTaskBead(ctx, "w-test.1", "bead-1")
+	err = h.DB.CompleteTaskBean(ctx, "w-test.1", "bead-1")
 	require.NoError(t, err)
-	err = h.DB.FailTaskBead(ctx, "w-test.1", "bead-2")
+	err = h.DB.FailTaskBean(ctx, "w-test.1", "bead-2")
 	require.NoError(t, err)
 
 	// Fail the task
@@ -378,11 +378,11 @@ func TestTaskExecution_TaskReset(t *testing.T) {
 	assert.Equal(t, db.StatusPending, task.Status)
 
 	// Reset all bead statuses
-	err = h.DB.ResetTaskBeadStatuses(ctx, "w-test.1")
+	err = h.DB.ResetTaskBeanStatuses(ctx, "w-test.1")
 	require.NoError(t, err)
 
 	// Verify beads are reset to pending
-	beads, err := h.DB.GetTaskBeadsWithStatus(ctx, "w-test.1")
+	beads, err := h.DB.GetTaskBeansWithStatus(ctx, "w-test.1")
 	require.NoError(t, err)
 	for _, bead := range beads {
 		assert.Equal(t, db.StatusPending, bead.Status)
@@ -432,9 +432,9 @@ func TestTaskExecution_MultiTaskSequentialExecution(t *testing.T) {
 	h.CreateBead("bead-2", "Second")
 	h.CreateBead("bead-3", "Third")
 	workRecord := h.CreateWork("w-test", "feat/test-branch")
-	h.AddBeadToWork("w-test", "bead-1")
-	h.AddBeadToWork("w-test", "bead-2")
-	h.AddBeadToWork("w-test", "bead-3")
+	h.AddBeanToWork("w-test", "bead-1")
+	h.AddBeanToWork("w-test", "bead-2")
+	h.AddBeanToWork("w-test", "bead-3")
 
 	// Create tasks in sequence
 	h.CreateTask("w-test.1", "w-test", []string{"bead-1"})
@@ -448,14 +448,14 @@ func TestTaskExecution_MultiTaskSequentialExecution(t *testing.T) {
 	// Execute tasks sequentially
 	for i := 1; i <= 3; i++ {
 		taskID := taskID("w-test", i)
-		beadID := beadID(i)
+		beanID := beanID(i)
 
 		// Start task
 		err = h.DB.StartTask(ctx, taskID, workRecord.WorktreePath)
 		require.NoError(t, err)
 
 		// Complete bead
-		err = h.DB.CompleteTaskBead(ctx, taskID, beadID)
+		err = h.DB.CompleteTaskBean(ctx, taskID, beanID)
 		require.NoError(t, err)
 
 		// Complete task
@@ -477,7 +477,7 @@ func TestTaskExecution_MultiTaskSequentialExecution(t *testing.T) {
 	assert.True(t, isComplete)
 }
 
-func TestTaskExecution_GetTaskBeadsForWork(t *testing.T) {
+func TestTaskExecution_GetTaskBeansForWork(t *testing.T) {
 	h := testutil.NewTestHarness(t)
 	defer h.Cleanup()
 
@@ -488,9 +488,9 @@ func TestTaskExecution_GetTaskBeadsForWork(t *testing.T) {
 	h.CreateBead("bead-2", "Second")
 	h.CreateBead("bead-3", "Third")
 	workRecord := h.CreateWork("w-test", "feat/test-branch")
-	h.AddBeadToWork("w-test", "bead-1")
-	h.AddBeadToWork("w-test", "bead-2")
-	h.AddBeadToWork("w-test", "bead-3")
+	h.AddBeanToWork("w-test", "bead-1")
+	h.AddBeanToWork("w-test", "bead-2")
+	h.AddBeanToWork("w-test", "bead-3")
 
 	// Create tasks
 	h.CreateTask("w-test.1", "w-test", []string{"bead-1", "bead-2"})
@@ -499,18 +499,18 @@ func TestTaskExecution_GetTaskBeadsForWork(t *testing.T) {
 	// Start first task and complete one bead
 	err := h.DB.StartTask(ctx, "w-test.1", workRecord.WorktreePath)
 	require.NoError(t, err)
-	err = h.DB.CompleteTaskBead(ctx, "w-test.1", "bead-1")
+	err = h.DB.CompleteTaskBean(ctx, "w-test.1", "bead-1")
 	require.NoError(t, err)
 
 	// Get all task beads for work
-	taskBeads, err := h.DB.GetTaskBeadsForWork(ctx, "w-test")
+	taskBeads, err := h.DB.GetTaskBeansForWork(ctx, "w-test")
 	require.NoError(t, err)
 	require.Len(t, taskBeads, 3)
 
 	// Verify statuses
 	statusMap := make(map[string]string)
 	for _, tb := range taskBeads {
-		statusMap[tb.BeadID] = tb.Status
+		statusMap[tb.BeanID] = tb.Status
 	}
 
 	assert.Equal(t, db.StatusCompleted, statusMap["bead-1"])
@@ -523,6 +523,6 @@ func taskID(workID string, num int) string {
 	return workID + "." + string(rune('0'+num))
 }
 
-func beadID(num int) string {
+func beanID(num int) string {
 	return "bead-" + string(rune('0'+num))
 }

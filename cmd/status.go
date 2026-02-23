@@ -35,13 +35,13 @@ func runStatus(cmd *cobra.Command, args []string) error {
 
 	// If specific bead requested
 	if len(args) > 0 {
-		beadID := args[0]
-		bead, err := proj.DB.GetBead(ctx, beadID)
+		beanID := args[0]
+		bead, err := proj.DB.GetBean(ctx, beanID)
 		if err != nil {
 			return fmt.Errorf("failed to get bead: %w", err)
 		}
 		if bead == nil {
-			return fmt.Errorf("bead %s not found in tracking database", beadID)
+			return fmt.Errorf("bead %s not found in tracking database", beanID)
 		}
 
 		printBeadDetails(bead)
@@ -49,7 +49,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	// Show all processing beads
-	beadList, err := proj.DB.ListBeads(ctx, db.StatusProcessing)
+	beadList, err := proj.DB.ListBeans(ctx, db.StatusProcessing)
 	if err != nil {
 		return fmt.Errorf("failed to list beads: %w", err)
 	}
@@ -68,7 +68,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func printBeadDetails(bead *db.TrackedBead) {
+func printBeadDetails(bead *db.TrackedBean) {
 	fmt.Printf("ID:      %s\n", bead.ID)
 	fmt.Printf("Title:   %s\n", bead.Title)
 	fmt.Printf("Status:  %s\n", bead.Status)

@@ -1,5 +1,5 @@
--- name: StartBead :exec
-INSERT INTO beads (id, status, title, zellij_session, zellij_pane, worktree_path, started_at, updated_at)
+-- name: StartBean :exec
+INSERT INTO beans (id, status, title, zellij_session, zellij_pane, worktree_path, started_at, updated_at)
 VALUES (?, 'processing', ?, ?, ?, ?, ?, ?)
 ON CONFLICT(id) DO UPDATE SET
     status = 'processing',
@@ -10,42 +10,42 @@ ON CONFLICT(id) DO UPDATE SET
     started_at = excluded.started_at,
     updated_at = excluded.updated_at;
 
--- name: CompleteBead :execrows
-UPDATE beads
+-- name: CompleteBean :execrows
+UPDATE beans
 SET status = 'completed',
     pr_url = ?,
     completed_at = ?,
     updated_at = ?
 WHERE id = ?;
 
--- name: FailBead :execrows
-UPDATE beads
+-- name: FailBean :execrows
+UPDATE beans
 SET status = 'failed',
     error_message = ?,
     completed_at = ?,
     updated_at = ?
 WHERE id = ?;
 
--- name: GetBead :one
+-- name: GetBean :one
 SELECT id, status, title, pr_url, error_message, zellij_session, zellij_pane,
        worktree_path, started_at, completed_at, created_at, updated_at
-FROM beads
+FROM beans
 WHERE id = ?;
 
--- name: GetBeadStatus :one
+-- name: GetBeanStatus :one
 SELECT status
-FROM beads
+FROM beans
 WHERE id = ?;
 
--- name: ListBeads :many
+-- name: ListBeans :many
 SELECT id, status, title, pr_url, error_message, zellij_session, zellij_pane,
        worktree_path, started_at, completed_at, created_at, updated_at
-FROM beads
+FROM beans
 ORDER BY created_at DESC;
 
--- name: ListBeadsByStatus :many
+-- name: ListBeansByStatus :many
 SELECT id, status, title, pr_url, error_message, zellij_session, zellij_pane,
        worktree_path, started_at, completed_at, created_at, updated_at
-FROM beads
+FROM beans
 WHERE status = ?
 ORDER BY created_at DESC;

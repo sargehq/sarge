@@ -103,7 +103,7 @@ func processPRFeedbackInternal(ctx context.Context, proj *project.Project, datab
 				continue
 			}
 
-			if parentFeedback == nil || parentFeedback.BeadID == nil {
+			if parentFeedback == nil || parentFeedback.BeanID == nil {
 				if !quiet {
 					fmt.Printf("%d. [SKIP - Reply to untracked comment] %s\n", i+1, item.Title)
 				}
@@ -123,15 +123,15 @@ func processPRFeedbackInternal(ctx context.Context, proj *project.Project, datab
 
 			// Add the reply as a comment to the existing bead
 			commentText := fmt.Sprintf("Reply from %s:\n\n%s", item.GetSourceName(), item.Description)
-			if err := beads.NewCLI(beadsPath).AddComment(ctx, *parentFeedback.BeadID, commentText); err != nil {
+			if err := beads.NewCLI(beadsPath).AddComment(ctx, *parentFeedback.BeanID, commentText); err != nil {
 				if !quiet {
-					fmt.Printf("%d. [ERROR] Failed to add comment to bead %s: %v\n", i+1, *parentFeedback.BeadID, err)
+					fmt.Printf("%d. [ERROR] Failed to add comment to bead %s: %v\n", i+1, *parentFeedback.BeanID, err)
 				}
 				continue
 			}
 
 			if !quiet {
-				fmt.Printf("%d. [REPLY] Added comment to bead %s\n", i+1, *parentFeedback.BeadID)
+				fmt.Printf("%d. [REPLY] Added comment to bead %s\n", i+1, *parentFeedback.BeanID)
 			}
 
 			// Store this reply in the database to track it was processed
@@ -147,7 +147,7 @@ func processPRFeedbackInternal(ctx context.Context, proj *project.Project, datab
 				Priority:     item.Priority,
 			})
 			if err == nil {
-				_ = database.MarkFeedbackProcessed(ctx, prFeedback.ID, *parentFeedback.BeadID)
+				_ = database.MarkFeedbackProcessed(ctx, prFeedback.ID, *parentFeedback.BeanID)
 			}
 
 			continue
@@ -214,7 +214,7 @@ func processPRFeedbackInternal(ctx context.Context, proj *project.Project, datab
 		}
 
 		// Create bead using beads package
-		beadID, err := integration.CreateBeadFromFeedback(ctx, beadsPath, beadInfo)
+		beanID, err := integration.CreateBeadFromFeedback(ctx, beadsPath, beadInfo)
 		if err != nil {
 			if !quiet {
 				fmt.Printf("   Error creating bead: %v\n", err)
@@ -223,9 +223,9 @@ func processPRFeedbackInternal(ctx context.Context, proj *project.Project, datab
 		}
 
 		if !quiet {
-			fmt.Printf("   Created bead: %s\n", beadID)
+			fmt.Printf("   Created bead: %s\n", beanID)
 		}
-		createdBeads = append(createdBeads, beadID)
+		createdBeads = append(createdBeads, beanID)
 
 		// Post back to GitHub comment if this feedback came from a comment
 		// Use typed context to determine comment type and ID
@@ -246,7 +246,7 @@ func processPRFeedbackInternal(ctx context.Context, proj *project.Project, datab
 				// Create the acknowledgment message with marker to prevent feedback loop
 				// The sarge-bot marker is filtered out by isActionableComment() in processor.go
 				ackMessage := fmt.Sprintf("<!-- sarge-bot -->✅ Created tracking issue **%s** for this feedback.\n\nTitle: %s\nPriority: P%d",
-					beadID, item.Title, item.Priority)
+					beanID, item.Title, item.Priority)
 
 				client := github.NewClient()
 				var postErr error
@@ -269,7 +269,7 @@ func processPRFeedbackInternal(ctx context.Context, proj *project.Project, datab
 		}
 
 		// Mark feedback as processed
-		if err := database.MarkFeedbackProcessed(ctx, prFeedback.ID, beadID); err != nil {
+		if err := database.MarkFeedbackProcessed(ctx, prFeedback.ID, beanID); err != nil {
 			if !quiet {
 				fmt.Printf("   Warning: Failed to mark feedback as processed: %v\n", err)
 			}

@@ -32,7 +32,7 @@ func runList(cmd *cobra.Command, args []string) error {
 	}
 	defer proj.Close()
 
-	beadList, err := proj.DB.ListBeads(ctx, flagListStatus)
+	beadList, err := proj.DB.ListBeans(ctx, flagListStatus)
 	if err != nil {
 		return fmt.Errorf("failed to list beads: %w", err)
 	}

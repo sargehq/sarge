@@ -357,7 +357,7 @@ func runProjStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	// Show task status from database
-	beads, err := proj.DB.ListBeads(ctx, "")
+	beads, err := proj.DB.ListBeans(ctx, "")
 	if err != nil {
 		fmt.Printf("\nTasks: error listing (%v)\n", err)
 		return nil

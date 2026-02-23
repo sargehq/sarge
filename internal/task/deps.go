@@ -34,13 +34,13 @@ func BuildDependencyGraph(
 	}
 
 	// Build dependency relationships from the dependencies map
-	for beadID, deps := range dependencies {
+	for beanID, deps := range dependencies {
 		for _, dep := range deps {
 			// Only add dependencies that are in our bead set
 			if validIDs[dep.DependsOnID] {
 				if dep.Type == "blocks" || dep.Type == "blocked_by" {
-					graph.DependsOn[beadID] = append(graph.DependsOn[beadID], dep.DependsOnID)
-					graph.Dependents[dep.DependsOnID] = append(graph.Dependents[dep.DependsOnID], beadID)
+					graph.DependsOn[beanID] = append(graph.DependsOn[beanID], dep.DependsOnID)
+					graph.Dependents[dep.DependsOnID] = append(graph.Dependents[dep.DependsOnID], beanID)
 				}
 			}
 		}

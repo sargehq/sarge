@@ -23,75 +23,75 @@ func (m *planModel) sessionName() string {
 }
 
 // spawnPlanSession spawns or resumes a planning session for a specific bead
-func (m *planModel) spawnPlanSession(beadID string) tea.Cmd {
+func (m *planModel) spawnPlanSession(beanID string) tea.Cmd {
 	return func() tea.Msg {
-		tabName := workpkg.PlanTabName(beadID)
+		tabName := workpkg.PlanTabName(beanID)
 		mainRepoPath := m.proj.MainRepoPath()
 
-		logging.Debug("spawnPlanSession started", "beadID", beadID, "tabName", tabName)
+		logging.Debug("spawnPlanSession started", "beanID", beanID, "tabName", tabName)
 
 		// Check if session already running for this bead
-		running, _ := m.proj.DB.IsPlanSessionRunning(m.ctx, beadID)
-		logging.Debug("spawnPlanSession checked if running", "beadID", beadID, "running", running)
+		running, _ := m.proj.DB.IsPlanSessionRunning(m.ctx, beanID)
+		logging.Debug("spawnPlanSession checked if running", "beanID", beanID, "running", running)
 		if running {
 			// Session exists - for zellij, switch to it; for zmx, it's a no-op (attach handled separately)
 			if !m.proj.Config.Multiplexer.IsZmx() {
 				zellijSession := m.sessionName()
 				if err := m.zj.Session(zellijSession).SwitchToTab(m.ctx, tabName); err != nil {
-					return planSessionSpawnedMsg{beadID: beadID, err: err}
+					return planSessionSpawnedMsg{beanID: beanID, err: err}
 				}
 			}
-			return planSessionSpawnedMsg{beadID: beadID, resumed: true}
+			return planSessionSpawnedMsg{beanID: beanID, resumed: true}
 		}
 
 		// Ensure control plane is running
 		sessionResult, err := control.EnsureControlPlane(m.ctx, m.proj)
 		if err != nil {
-			logging.Error("spawnPlanSession EnsureControlPlane failed", "beadID", beadID, "error", err)
-			return planSessionSpawnedMsg{beadID: beadID, err: err}
+			logging.Error("spawnPlanSession EnsureControlPlane failed", "beanID", beanID, "error", err)
+			return planSessionSpawnedMsg{beanID: beanID, err: err}
 		}
 		logging.Debug("spawnPlanSession EnsureControlPlane completed",
-			"beadID", beadID,
+			"beanID", beanID,
 			"sessionCreated", sessionResult.SessionCreated,
 			"sessionName", sessionResult.SessionName)
 
 		// Use the orchestrator manager to spawn the plan session
-		if err := m.workService.OrchestratorManager.SpawnPlanSession(m.ctx, beadID, m.proj.Config.Project.Name, mainRepoPath, io.Discard); err != nil {
-			logging.Error("spawnPlanSession SpawnPlanSession failed", "beadID", beadID, "error", err)
-			return planSessionSpawnedMsg{beadID: beadID, err: err}
+		if err := m.workService.OrchestratorManager.SpawnPlanSession(m.ctx, beanID, m.proj.Config.Project.Name, mainRepoPath, io.Discard); err != nil {
+			logging.Error("spawnPlanSession SpawnPlanSession failed", "beanID", beanID, "error", err)
+			return planSessionSpawnedMsg{beanID: beanID, err: err}
 		}
 
-		msg := planSessionSpawnedMsg{beadID: beadID, resumed: false}
+		msg := planSessionSpawnedMsg{beanID: beanID, resumed: false}
 		if sessionResult.SessionCreated {
 			msg.sessionCreated = true
 			msg.sessionName = sessionResult.SessionName
 		}
-		logging.Debug("spawnPlanSession completed", "beadID", beadID, "sessionCreated", msg.sessionCreated, "sessionName", msg.sessionName)
+		logging.Debug("spawnPlanSession completed", "beanID", beanID, "sessionCreated", msg.sessionCreated, "sessionName", msg.sessionName)
 		return msg
 	}
 }
 
 // executeCreateWork creates a work unit with the given branch name.
-// This uses the shared CreateWorkFromBead method which handles:
+// This uses the shared CreateWorkFromBean method which handles:
 // 1. Expanding the bead to collect all issue IDs
 // 2. Creating work record in DB (with auto flag)
 // 3. Initializing the zellij session
 // 4. Ensuring control plane is running
-func (m *planModel) executeCreateWork(beadID string, branchName string, auto bool, useExistingBranch bool) tea.Cmd {
+func (m *planModel) executeCreateWork(beanID string, branchName string, auto bool, useExistingBranch bool) tea.Cmd {
 	return func() tea.Msg {
-		logging.Debug("executeCreateWork started", "beadID", beadID, "branchName", branchName, "auto", auto, "useExistingBranch", useExistingBranch)
+		logging.Debug("executeCreateWork started", "beanID", beanID, "branchName", branchName, "auto", auto, "useExistingBranch", useExistingBranch)
 
-		opts := workpkg.CreateWorkFromBeadOptions{
-			BeadID:            beadID,
+		opts := workpkg.CreateWorkFromBeanOptions{
+			BeanID:            beanID,
 			BranchName:        branchName,
 			BaseBranch:        m.proj.Config.Repo.GetBaseBranch(),
 			Auto:              auto,
 			UseExistingBranch: useExistingBranch,
 		}
-		result, err := m.workService.CreateWorkFromBead(m.ctx, opts)
+		result, err := m.workService.CreateWorkFromBean(m.ctx, opts)
 		if err != nil {
-			logging.Error("executeCreateWork CreateWorkFromBead failed", "beadID", beadID, "error", err)
-			return planWorkCreatedMsg{beadID: beadID, err: err}
+			logging.Error("executeCreateWork CreateWorkFromBean failed", "beanID", beanID, "error", err)
+			return planWorkCreatedMsg{beanID: beanID, err: err}
 		}
 		logging.Debug("executeCreateWork completed successfully", "workID", result.WorkID)
 
@@ -100,10 +100,10 @@ func (m *planModel) executeCreateWork(beadID string, branchName string, auto boo
 		if err != nil {
 			logging.Warn("executeCreateWork EnsureControlPlane failed", "error", err)
 			// Non-fatal: work was created but control plane might need manual start
-			return planWorkCreatedMsg{beadID: beadID, workID: result.WorkID, err: err}
+			return planWorkCreatedMsg{beanID: beanID, workID: result.WorkID, err: err}
 		}
 
-		msg := planWorkCreatedMsg{beadID: beadID, workID: result.WorkID}
+		msg := planWorkCreatedMsg{beanID: beanID, workID: result.WorkID}
 		if sessionResult.SessionCreated {
 			msg.sessionCreated = true
 			msg.sessionName = sessionResult.SessionName
@@ -112,17 +112,17 @@ func (m *planModel) executeCreateWork(beadID string, branchName string, auto boo
 	}
 }
 
-func (m *planModel) addBeadsToWork(beadIDs []string, workID string) tea.Cmd {
+func (m *planModel) addBeadsToWork(beanIDs []string, workID string) tea.Cmd {
 	return func() tea.Msg {
 		// Use WorkService to add beads
-		_, err := m.workService.AddBeads(m.ctx, workID, beadIDs)
+		_, err := m.workService.AddBeads(m.ctx, workID, beanIDs)
 		if err != nil {
-			beadIDsStr := strings.Join(beadIDs, ", ")
-			return beadAddedToWorkMsg{beadID: beadIDsStr, workID: workID, err: fmt.Errorf("failed to add issues to work: %w", err)}
+			beanIDsStr := strings.Join(beanIDs, ", ")
+			return beadAddedToWorkMsg{beanID: beanIDsStr, workID: workID, err: fmt.Errorf("failed to add issues to work: %w", err)}
 		}
 
-		beadIDsStr := strings.Join(beadIDs, ", ")
-		return beadAddedToWorkMsg{beadID: beadIDsStr, workID: workID}
+		beanIDsStr := strings.Join(beanIDs, ", ")
+		return beadAddedToWorkMsg{beanID: beanIDsStr, workID: workID}
 	}
 }
 
@@ -423,7 +423,7 @@ func (m *planModel) resetSelectedTask() tea.Cmd {
 			return workCommandMsg{action: "Reset task", workID: workID, err: err}
 		}
 		// Reset all bead statuses for this task
-		if err := m.proj.DB.ResetTaskBeadStatuses(m.ctx, taskID); err != nil {
+		if err := m.proj.DB.ResetTaskBeanStatuses(m.ctx, taskID); err != nil {
 			return workCommandMsg{action: "Reset task", workID: workID, err: err}
 		}
 		return workCommandMsg{action: "Reset task " + taskID, workID: workID}

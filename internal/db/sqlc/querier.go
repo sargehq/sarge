@@ -13,24 +13,24 @@ import (
 type Querier interface {
 	AddTaskDependency(ctx context.Context, arg AddTaskDependencyParams) error
 	AddTaskToWork(ctx context.Context, arg AddTaskToWorkParams) error
-	AddWorkBead(ctx context.Context, arg AddWorkBeadParams) error
-	AddWorkBeadsBatch(ctx context.Context, arg AddWorkBeadsBatchParams) error
+	AddWorkBean(ctx context.Context, arg AddWorkBeanParams) error
+	AddWorkBeansBatch(ctx context.Context, arg AddWorkBeansBatchParams) error
 	CacheComplexity(ctx context.Context, arg CacheComplexityParams) error
-	CompleteBead(ctx context.Context, arg CompleteBeadParams) (int64, error)
+	CompleteBean(ctx context.Context, arg CompleteBeanParams) (int64, error)
 	CompleteTask(ctx context.Context, arg CompleteTaskParams) (int64, error)
-	CompleteTaskBead(ctx context.Context, arg CompleteTaskBeadParams) (int64, error)
+	CompleteTaskBean(ctx context.Context, arg CompleteTaskBeanParams) (int64, error)
 	CompleteWork(ctx context.Context, arg CompleteWorkParams) (int64, error)
-	CountEstimatedBeads(ctx context.Context, beadIds []string) (int64, error)
+	CountEstimatedBeans(ctx context.Context, beanIds []string) (int64, error)
 	CountPendingTasksForWork(ctx context.Context, workID string) (int64, error)
-	CountTaskBeadStatuses(ctx context.Context, taskID string) (CountTaskBeadStatusesRow, error)
-	// Count PR feedback items that have beads which are not yet assigned to any task and not resolved/closed.
+	CountTaskBeanStatuses(ctx context.Context, taskID string) (CountTaskBeanStatusesRow, error)
+	// Count PR feedback items that have beans which are not yet assigned to any task and not resolved/closed.
 	CountUnassignedFeedbackForWork(ctx context.Context, workID string) (int64, error)
 	CreateMigrationsTable(ctx context.Context) error
 	CreatePRFeedback(ctx context.Context, arg CreatePRFeedbackParams) error
 	CreateScheduledTask(ctx context.Context, arg CreateScheduledTaskParams) error
 	CreateScheduledTaskWithRetry(ctx context.Context, arg CreateScheduledTaskWithRetryParams) error
 	CreateTask(ctx context.Context, arg CreateTaskParams) error
-	CreateTaskBead(ctx context.Context, arg CreateTaskBeadParams) error
+	CreateTaskBean(ctx context.Context, arg CreateTaskBeanParams) error
 	CreateWork(ctx context.Context, arg CreateWorkParams) error
 	DeleteCompletedTasksOlderThan(ctx context.Context, executedAt sql.NullTime) error
 	DeleteControlPlaneProcess(ctx context.Context) error
@@ -43,42 +43,42 @@ type Querier interface {
 	DeleteSchedulerForWork(ctx context.Context, workID string) (int64, error)
 	DeleteStaleProcesses(ctx context.Context, dollar_1 sql.NullString) error
 	DeleteTask(ctx context.Context, id string) (int64, error)
-	DeleteTaskBeadsByTask(ctx context.Context, taskID string) (int64, error)
-	DeleteTaskBeadsForWork(ctx context.Context, workID string) (int64, error)
+	DeleteTaskBeansByTask(ctx context.Context, taskID string) (int64, error)
+	DeleteTaskBeansForWork(ctx context.Context, workID string) (int64, error)
 	DeleteTaskDependencies(ctx context.Context, taskID string) (int64, error)
 	DeleteTaskDependenciesForWork(ctx context.Context, workID string) (int64, error)
 	DeleteTaskDependency(ctx context.Context, arg DeleteTaskDependencyParams) (int64, error)
 	DeleteTaskMetadata(ctx context.Context, arg DeleteTaskMetadataParams) (int64, error)
 	DeleteTasksForWork(ctx context.Context, workID string) (int64, error)
 	DeleteWork(ctx context.Context, id string) (int64, error)
-	DeleteWorkBeads(ctx context.Context, workID string) (int64, error)
+	DeleteWorkBeans(ctx context.Context, workID string) (int64, error)
 	DeleteWorkTaskByTask(ctx context.Context, taskID string) (int64, error)
 	DeleteWorkTasks(ctx context.Context, workID string) (int64, error)
-	FailBead(ctx context.Context, arg FailBeadParams) (int64, error)
+	FailBean(ctx context.Context, arg FailBeanParams) (int64, error)
 	FailTask(ctx context.Context, arg FailTaskParams) (int64, error)
-	FailTaskBead(ctx context.Context, arg FailTaskBeadParams) (int64, error)
+	FailTaskBean(ctx context.Context, arg FailTaskBeanParams) (int64, error)
 	FailWork(ctx context.Context, arg FailWorkParams) (int64, error)
-	// Returns all beads assigned to any work, with their work ID.
-	// This is used by plan mode to show which beads are already assigned.
-	GetAllAssignedBeads(ctx context.Context) ([]GetAllAssignedBeadsRow, error)
+	// Returns all beans assigned to any work, with their work ID.
+	// This is used by plan mode to show which beans are already assigned.
+	GetAllAssignedBeans(ctx context.Context) ([]GetAllAssignedBeansRow, error)
 	GetAllCachedComplexity(ctx context.Context) ([]GetAllCachedComplexityRow, error)
 	GetAllProcesses(ctx context.Context) ([]Process, error)
 	GetAllTaskMetadata(ctx context.Context, taskID string) ([]GetAllTaskMetadataRow, error)
 	GetAndIncrementTaskCounter(ctx context.Context, workID string) (int64, error)
 	GetAppliedMigrations(ctx context.Context) ([]string, error)
-	GetBead(ctx context.Context, id string) (Bead, error)
-	GetBeadStatus(ctx context.Context, id string) (string, error)
+	GetBean(ctx context.Context, id string) (Bean, error)
+	GetBeanStatus(ctx context.Context, id string) (string, error)
 	GetCachedComplexity(ctx context.Context, arg GetCachedComplexityParams) (GetCachedComplexityRow, error)
 	GetControlPlaneProcess(ctx context.Context) (Process, error)
 	GetLastMigration(ctx context.Context) (string, error)
 	GetLastWorkID(ctx context.Context) (string, error)
-	GetMaxWorkBeadPosition(ctx context.Context, workID string) (int64, error)
+	GetMaxWorkBeanPosition(ctx context.Context, workID string) (int64, error)
 	GetMigrationDownSQL(ctx context.Context, version string) (GetMigrationDownSQLRow, error)
 	GetNextScheduledTask(ctx context.Context) (Scheduler, error)
 	GetOrchestratorProcess(ctx context.Context, workID sql.NullString) (Process, error)
 	GetOverdueTasks(ctx context.Context) ([]Scheduler, error)
 	GetPRFeedback(ctx context.Context, id string) (PrFeedback, error)
-	GetPRFeedbackByBead(ctx context.Context, beadID sql.NullString) (PrFeedback, error)
+	GetPRFeedbackByBean(ctx context.Context, beanID sql.NullString) (PrFeedback, error)
 	GetPRFeedbackBySourceID(ctx context.Context, arg GetPRFeedbackBySourceIDParams) (PrFeedback, error)
 	GetPRTaskForWork(ctx context.Context, workID string) (GetPRTaskForWorkRow, error)
 	GetPendingTaskByType(ctx context.Context, arg GetPendingTaskByTypeParams) (Scheduler, error)
@@ -89,41 +89,41 @@ type Querier interface {
 	GetScheduledTasksForWork(ctx context.Context, workID string) ([]Scheduler, error)
 	GetStaleProcesses(ctx context.Context, dollar_1 sql.NullString) ([]Process, error)
 	GetTask(ctx context.Context, id string) (GetTaskRow, error)
-	GetTaskBeadStatus(ctx context.Context, arg GetTaskBeadStatusParams) (string, error)
-	GetTaskBeads(ctx context.Context, taskID string) ([]string, error)
-	GetTaskBeadsForWork(ctx context.Context, workID string) ([]TaskBead, error)
-	GetTaskBeadsWithStatus(ctx context.Context, taskID string) ([]TaskBead, error)
+	GetTaskBeanStatus(ctx context.Context, arg GetTaskBeanStatusParams) (string, error)
+	GetTaskBeans(ctx context.Context, taskID string) ([]string, error)
+	GetTaskBeansForWork(ctx context.Context, workID string) ([]TaskBean, error)
+	GetTaskBeansWithStatus(ctx context.Context, taskID string) ([]TaskBean, error)
 	GetTaskByIdempotencyKey(ctx context.Context, idempotencyKey sql.NullString) (Scheduler, error)
 	GetTaskDependencies(ctx context.Context, taskID string) ([]string, error)
 	GetTaskDependents(ctx context.Context, dependsOnTaskID string) ([]string, error)
-	GetTaskForBead(ctx context.Context, beadID string) (string, error)
+	GetTaskForBean(ctx context.Context, beanID string) (string, error)
 	GetTaskMetadata(ctx context.Context, arg GetTaskMetadataParams) (string, error)
 	GetTasksWithActivity(ctx context.Context) ([]GetTasksWithActivityRow, error)
-	// Get bead IDs from PR feedback items that are not yet assigned to any task and not resolved/closed.
-	GetUnassignedFeedbackBeadIDs(ctx context.Context, workID string) ([]sql.NullString, error)
-	GetUnassignedWorkBeads(ctx context.Context, workID string) ([]WorkBead, error)
-	GetUnresolvedFeedbackForBeads(ctx context.Context, beadIds []sql.NullString) ([]PrFeedback, error)
+	// Get bean IDs from PR feedback items that are not yet assigned to any task and not resolved/closed.
+	GetUnassignedFeedbackBeanIDs(ctx context.Context, workID string) ([]sql.NullString, error)
+	GetUnassignedWorkBeans(ctx context.Context, workID string) ([]WorkBean, error)
+	GetUnresolvedFeedbackForBeans(ctx context.Context, beanIds []sql.NullString) ([]PrFeedback, error)
 	GetUnresolvedFeedbackForWork(ctx context.Context, workID string) ([]PrFeedback, error)
 	GetWork(ctx context.Context, id string) (Work, error)
-	GetWorkBeads(ctx context.Context, workID string) ([]WorkBead, error)
+	GetWorkBeans(ctx context.Context, workID string) ([]WorkBean, error)
 	GetWorkByDirectory(ctx context.Context, worktreePath string) (Work, error)
 	GetWorkTasks(ctx context.Context, workID string) ([]GetWorkTasksRow, error)
 	GetWorksWithPRs(ctx context.Context) ([]Work, error)
 	GetWorksWithUnseenChanges(ctx context.Context) ([]Work, error)
 	HasExistingFeedback(ctx context.Context, arg HasExistingFeedbackParams) (int64, error)
-	// Only consider feedback "existing" if a bead was actually created.
-	// This allows retry if bead creation failed on a previous attempt.
+	// Only consider feedback "existing" if a bean was actually created.
+	// This allows retry if bean creation failed on a previous attempt.
 	HasExistingFeedbackBySourceID(ctx context.Context, arg HasExistingFeedbackBySourceIDParams) (int64, error)
 	HasPendingDependencies(ctx context.Context, taskID string) (bool, error)
 	IdleWork(ctx context.Context, id string) (int64, error)
 	IdleWorkWithPR(ctx context.Context, arg IdleWorkWithPRParams) (int64, error)
 	IncrementAttemptAndReschedule(ctx context.Context, arg IncrementAttemptAndRescheduleParams) error
 	InitializeTaskCounter(ctx context.Context, workID string) error
-	IsBeadInTask(ctx context.Context, arg IsBeadInTaskParams) (bool, error)
+	IsBeanInTask(ctx context.Context, arg IsBeanInTaskParams) (bool, error)
 	IsControlPlaneAlive(ctx context.Context, dollar_1 sql.NullString) (int64, error)
 	IsOrchestratorAlive(ctx context.Context, arg IsOrchestratorAliveParams) (int64, error)
-	ListBeads(ctx context.Context) ([]Bead, error)
-	ListBeadsByStatus(ctx context.Context, status string) ([]Bead, error)
+	ListBeans(ctx context.Context) ([]Bean, error)
+	ListBeansByStatus(ctx context.Context, status string) ([]Bean, error)
 	ListMigrationVersions(ctx context.Context) ([]string, error)
 	ListMigrationsWithDetails(ctx context.Context) ([]ListMigrationsWithDetailsRow, error)
 	ListPRFeedback(ctx context.Context, workID string) ([]PrFeedback, error)
@@ -143,13 +143,13 @@ type Querier interface {
 	RecordMigration(ctx context.Context, version string) error
 	RecordMigrationWithDown(ctx context.Context, arg RecordMigrationWithDownParams) error
 	RegisterProcess(ctx context.Context, arg RegisterProcessParams) error
-	RemoveWorkBead(ctx context.Context, arg RemoveWorkBeadParams) (int64, error)
+	RemoveWorkBean(ctx context.Context, arg RemoveWorkBeanParams) (int64, error)
 	RescheduleTask(ctx context.Context, arg RescheduleTaskParams) error
 	// Reset any tasks stuck in 'executing' status back to 'pending'.
 	// Used when the control plane starts up to recover from a crash.
 	ResetExecutingTasksToPending(ctx context.Context) (int64, error)
-	ResetTaskBeadStatus(ctx context.Context, arg ResetTaskBeadStatusParams) (int64, error)
-	ResetTaskBeadStatuses(ctx context.Context, taskID string) (int64, error)
+	ResetTaskBeanStatus(ctx context.Context, arg ResetTaskBeanStatusParams) (int64, error)
+	ResetTaskBeanStatuses(ctx context.Context, taskID string) (int64, error)
 	ResetTaskStatus(ctx context.Context, id string) (int64, error)
 	RestartWork(ctx context.Context, id string) (int64, error)
 	ResumeWork(ctx context.Context, id string) (int64, error)
@@ -157,7 +157,7 @@ type Querier interface {
 	SetWorkHasUnseenPRChanges(ctx context.Context, arg SetWorkHasUnseenPRChangesParams) (int64, error)
 	SetWorkPRURL(ctx context.Context, arg SetWorkPRURLParams) (int64, error)
 	SpawnTask(ctx context.Context, arg SpawnTaskParams) (int64, error)
-	StartBead(ctx context.Context, arg StartBeadParams) error
+	StartBean(ctx context.Context, arg StartBeanParams) error
 	StartTask(ctx context.Context, arg StartTaskParams) (int64, error)
 	StartWork(ctx context.Context, arg StartWorkParams) (int64, error)
 	UpdateHeartbeat(ctx context.Context, id string) (sql.Result, error)

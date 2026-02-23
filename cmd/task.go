@@ -106,9 +106,9 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 	// Print each task
 	for _, task := range tasks {
 		// Get beads for this task
-		beadIDs, err := proj.DB.GetTaskBeads(ctx, task.ID)
+		beanIDs, err := proj.DB.GetTaskBeans(ctx, task.ID)
 		if err != nil {
-			beadIDs = []string{"<error>"}
+			beanIDs = []string{"<error>"}
 		}
 
 		// Format status with color codes for terminal
@@ -136,7 +136,7 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 			typeDisplay,
 			budgetDisplay,
 			createdDisplay,
-			strings.Join(beadIDs, ", "))
+			strings.Join(beanIDs, ", "))
 
 		// Show dependencies (what this task depends on)
 		deps, err := proj.DB.GetTaskDependencies(ctx, task.ID)
@@ -203,7 +203,7 @@ func runTaskShow(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get beads for this task
-	beadIDs, err := proj.DB.GetTaskBeads(ctx, task.ID)
+	beanIDs, err := proj.DB.GetTaskBeans(ctx, task.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get task beads: %w", err)
 	}
@@ -245,14 +245,14 @@ func runTaskShow(cmd *cobra.Command, args []string) error {
 	}
 
 	// Print beads
-	fmt.Printf("\nBeads (%d):\n", len(beadIDs))
-	for _, beadID := range beadIDs {
+	fmt.Printf("\nBeads (%d):\n", len(beanIDs))
+	for _, beanID := range beanIDs {
 		// Get bead status
-		beadStatus, err := proj.DB.GetTaskBeadStatus(ctx, taskID, beadID)
+		beadStatus, err := proj.DB.GetTaskBeanStatus(ctx, taskID, beanID)
 		if err != nil || beadStatus == "" {
 			beadStatus = "unknown"
 		}
-		fmt.Printf("  - %s (%s)\n", beadID, beadStatus)
+		fmt.Printf("  - %s (%s)\n", beanID, beadStatus)
 	}
 
 	// Print metadata if any
@@ -324,7 +324,7 @@ func runTaskReset(cmd *cobra.Command, args []string) error {
 	}
 
 	// Reset all bead statuses for this task
-	if err := proj.DB.ResetTaskBeadStatuses(ctx, taskID); err != nil {
+	if err := proj.DB.ResetTaskBeanStatuses(ctx, taskID); err != nil {
 		return fmt.Errorf("failed to reset bead statuses: %w", err)
 	}
 

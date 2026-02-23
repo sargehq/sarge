@@ -46,7 +46,7 @@ type BeadFormResult struct {
 	BeadType    string
 	Priority    int
 	Status      string // Only used in edit mode
-	EditBeadID  string // Non-empty when editing
+	EditBeanID  string // Non-empty when editing
 	ParentID    string // Non-empty when adding child
 }
 
@@ -61,7 +61,7 @@ type BeadFormPanel struct {
 
 	// Form mode
 	mode       BeadFormMode
-	editBeadID string
+	editBeanID string
 	parentID   string
 
 	// Form state (owned directly)
@@ -113,14 +113,14 @@ func (p *BeadFormPanel) Reset() {
 	p.priority = 2
 	p.focusIdx = 0
 	p.mode = BeadFormModeCreate
-	p.editBeadID = ""
+	p.editBeanID = ""
 	p.parentID = ""
 }
 
 // SetEditMode configures the form for editing an existing bead
-func (p *BeadFormPanel) SetEditMode(beadID, title, description, beadType string, priority int, status string) {
+func (p *BeadFormPanel) SetEditMode(beanID, title, description, beadType string, priority int, status string) {
 	p.mode = BeadFormModeEdit
-	p.editBeadID = beadID
+	p.editBeanID = beanID
 	p.parentID = ""
 	p.titleInput.SetValue(title)
 	p.titleInput.Focus()
@@ -348,7 +348,7 @@ func (p *BeadFormPanel) GetResult() BeadFormResult {
 		BeadType:    beadTypes[p.beadType],
 		Priority:    p.priority,
 		Status:      beadStatuses[p.status],
-		EditBeadID:  p.editBeadID,
+		EditBeanID:  p.editBeanID,
 		ParentID:    p.parentID,
 	}
 }
@@ -381,9 +381,9 @@ func (p *BeadFormPanel) IsFocused() bool {
 }
 
 // SetMode updates the form mode (deprecated - use Reset/SetEditMode/SetAddChildMode)
-func (p *BeadFormPanel) SetMode(mode BeadFormMode, editBeadID, parentID string) {
+func (p *BeadFormPanel) SetMode(mode BeadFormMode, editBeanID, parentID string) {
 	p.mode = mode
-	p.editBeadID = editBeadID
+	p.editBeanID = editBeanID
 	p.parentID = parentID
 }
 
@@ -493,7 +493,7 @@ func (p *BeadFormPanel) Render(visibleLines int) string {
 	var header string
 	switch p.mode {
 	case BeadFormModeEdit:
-		header = "Edit Issue " + issueIDStyle.Render(p.editBeadID)
+		header = "Edit Issue " + issueIDStyle.Render(p.editBeanID)
 	case BeadFormModeAddChild:
 		// Include parent on same line to save vertical space
 		header = "Add Child to " + tuiValueStyle.Render(p.parentID)

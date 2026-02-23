@@ -62,30 +62,30 @@ func runComplete(cmd *cobra.Command, args []string) error {
 	if strings.Contains(id, ".") {
 		// Complete task directly - task IDs always contain dots, bead IDs don't
 		// First, mark beads as completed based on their actual status in the beads system
-		beadIDs, err := proj.DB.GetTaskBeads(ctx, id)
+		beanIDs, err := proj.DB.GetTaskBeans(ctx, id)
 		if err != nil {
 			return fmt.Errorf("failed to get beads for task %s: %w", id, err)
 		}
 
-		var closedBeadIDs []string
-		for _, beadID := range beadIDs {
+		var closedBeanIDs []string
+		for _, beanID := range beanIDs {
 			// Check actual bead status in the beads system
-			bead, err := proj.Beads.GetBead(ctx, beadID)
+			bead, err := proj.Beads.GetBead(ctx, beanID)
 			if err != nil {
-				fmt.Printf("Warning: failed to get bead %s status: %v\n", beadID, err)
+				fmt.Printf("Warning: failed to get bead %s status: %v\n", beanID, err)
 				continue
 			}
 			if bead == nil {
-				fmt.Printf("Warning: bead %s not found\n", beadID)
+				fmt.Printf("Warning: bead %s not found\n", beanID)
 				continue
 			}
 
 			// Only mark as completed if bead is actually closed
 			if bead.Status == beads.StatusClosed {
-				if err := proj.DB.CompleteTaskBead(ctx, id, beadID); err != nil {
-					fmt.Printf("Warning: failed to mark bead %s as completed: %v\n", beadID, err)
+				if err := proj.DB.CompleteTaskBean(ctx, id, beanID); err != nil {
+					fmt.Printf("Warning: failed to mark bead %s as completed: %v\n", beanID, err)
 				} else {
-					closedBeadIDs = append(closedBeadIDs, beadID)
+					closedBeanIDs = append(closedBeanIDs, beanID)
 				}
 			}
 		}
@@ -127,14 +127,14 @@ func runComplete(cmd *cobra.Command, args []string) error {
 		}
 
 		// Resolve GitHub comments for closed beads
-		if len(closedBeadIDs) > 0 {
+		if len(closedBeanIDs) > 0 {
 			// Extract work ID from task ID (e.g., "w-xxx.1" -> "w-xxx")
 			parts := strings.Split(id, ".")
 			if len(parts) >= 1 {
 				workID := parts[0]
 				// Resolve feedback comments immediately
 
-				if err := feedback.ResolveFeedbackForBeads(ctx, proj.DB, proj.Beads, workID, closedBeadIDs); err != nil {
+				if err := feedback.ResolveFeedbackForBeans(ctx, proj.DB, proj.Beads, workID, closedBeanIDs); err != nil {
 					fmt.Printf("Warning: failed to resolve GitHub comments: %v\n", err)
 				}
 			}
@@ -148,20 +148,20 @@ func runComplete(cmd *cobra.Command, args []string) error {
 	}
 
 	// Otherwise, continue with normal bead completion logic
-	beadID := id
+	beanID := id
 
 	// Check if this bead is part of a task
-	taskID, err := proj.DB.GetTaskForBead(ctx, beadID)
+	taskID, err := proj.DB.GetTaskForBean(ctx, beanID)
 	if err != nil {
 		return fmt.Errorf("failed to look up task for bead: %w", err)
 	}
 
 	if taskID != "" {
 		// Bead is part of a task - mark it complete in task_beads
-		if err := proj.DB.CompleteTaskBead(ctx, taskID, beadID); err != nil {
+		if err := proj.DB.CompleteTaskBean(ctx, taskID, beanID); err != nil {
 			return fmt.Errorf("failed to complete task bead: %w", err)
 		}
-		fmt.Printf("Marked bead %s as completed in task %s\n", beadID, taskID)
+		fmt.Printf("Marked bead %s as completed in task %s\n", beanID, taskID)
 
 		// Check if all beads in the task are complete and auto-complete the task
 		autoCompleted, err := proj.DB.CheckAndCompleteTask(ctx, taskID, flagCompletePRURL)
@@ -176,13 +176,13 @@ func runComplete(cmd *cobra.Command, args []string) error {
 			fmt.Println()
 
 			// Resolve GitHub comments for all beads in the task
-			taskBeadIDs, err := proj.DB.GetTaskBeads(ctx, taskID)
-			if err == nil && len(taskBeadIDs) > 0 {
+			taskBeanIDs, err := proj.DB.GetTaskBeans(ctx, taskID)
+			if err == nil && len(taskBeanIDs) > 0 {
 				// Extract work ID from task ID (e.g., "w-xxx.1" -> "w-xxx")
 				parts := strings.Split(taskID, ".")
 				if len(parts) >= 1 {
 					workID := parts[0]
-					if err := feedback.ResolveFeedbackForBeads(ctx, proj.DB, proj.Beads, workID, taskBeadIDs); err != nil {
+					if err := feedback.ResolveFeedbackForBeans(ctx, proj.DB, proj.Beads, workID, taskBeanIDs); err != nil {
 						fmt.Printf("Warning: failed to resolve GitHub comments: %v\n", err)
 					}
 				}
@@ -196,17 +196,17 @@ func runComplete(cmd *cobra.Command, args []string) error {
 
 		// Also update the beads table if the bead exists there (backwards compatibility)
 		// Ignore "not found" errors since task_beads is the primary tracking for task-based beads
-		_ = proj.DB.CompleteBead(ctx, beadID, flagCompletePRURL)
+		_ = proj.DB.CompleteBean(ctx, beanID, flagCompletePRURL)
 		return nil
 	}
 
 	// Standalone bead (not part of a task) - must exist in beads table
-	if err := proj.DB.CompleteBead(ctx, beadID, flagCompletePRURL); err != nil {
+	if err := proj.DB.CompleteBean(ctx, beanID, flagCompletePRURL); err != nil {
 		// Check if this might be a bead ID that doesn't exist in our tracking
-		return fmt.Errorf("failed to complete bead %s: %w (hint: if the bead was closed via 'bd close', it may not be tracked here; use 'sarge complete <task-id>' instead)", beadID, err)
+		return fmt.Errorf("failed to complete bead %s: %w (hint: if the bead was closed via 'bd close', it may not be tracked here; use 'sarge complete <task-id>' instead)", beanID, err)
 	}
 
-	fmt.Printf("Marked bead %s as completed", beadID)
+	fmt.Printf("Marked bead %s as completed", beanID)
 	if flagCompletePRURL != "" {
 		fmt.Printf(" (PR: %s)", flagCompletePRURL)
 	}

@@ -26,9 +26,9 @@ func TestRunWork_CreatesTasksFromBeads(t *testing.T) {
 
 	// Create work with beads
 	workRecord := h.CreateWork("w-test", "feat/test-branch")
-	h.AddBeadToWork("w-test", "bead-1")
-	h.AddBeadToWork("w-test", "bead-2")
-	h.AddBeadToWork("w-test", "bead-3")
+	h.AddBeanToWork("w-test", "bead-1")
+	h.AddBeanToWork("w-test", "bead-2")
+	h.AddBeanToWork("w-test", "bead-3")
 
 	// Configure worktree to exist
 	h.Worktree.ExistsPathFunc = func(worktreePath string) bool {
@@ -51,9 +51,9 @@ func TestRunWork_CreatesTasksFromBeads(t *testing.T) {
 
 	// Verify each task has correct bead association
 	for i, task := range tasks {
-		beadIDs, err := h.DB.GetTaskBeads(ctx, task.ID)
+		beanIDs, err := h.DB.GetTaskBeans(ctx, task.ID)
 		require.NoError(t, err)
-		assert.Len(t, beadIDs, 1, "task %d should have 1 bead", i)
+		assert.Len(t, beanIDs, 1, "task %d should have 1 bead", i)
 		assert.Equal(t, "implement", task.TaskType)
 		assert.Equal(t, db.StatusPending, task.Status)
 	}
@@ -77,9 +77,9 @@ func TestRunWork_RespectsBeadDependencies(t *testing.T) {
 
 	// Create work with beads
 	workRecord := h.CreateWork("w-test", "feat/test-branch")
-	h.AddBeadToWork("w-test", "bead-1")
-	h.AddBeadToWork("w-test", "bead-2")
-	h.AddBeadToWork("w-test", "bead-3")
+	h.AddBeanToWork("w-test", "bead-1")
+	h.AddBeanToWork("w-test", "bead-2")
+	h.AddBeanToWork("w-test", "bead-3")
 
 	// Configure worktree to exist
 	h.Worktree.ExistsPathFunc = func(worktreePath string) bool {
@@ -90,9 +90,9 @@ func TestRunWork_RespectsBeadDependencies(t *testing.T) {
 	h.TaskPlanner.PlanFunc = func(ctx context.Context, beadList []beads.Bead, dependencies map[string][]beads.Dependency, budget int) ([]task.Task, error) {
 		// Return tasks respecting dependencies: bead-1, then bead-2, then bead-3
 		return []task.Task{
-			{ID: "task-1", BeadIDs: []string{"bead-1"}, Beads: []beads.Bead{{ID: "bead-1"}}},
-			{ID: "task-2", BeadIDs: []string{"bead-2"}, Beads: []beads.Bead{{ID: "bead-2"}}},
-			{ID: "task-3", BeadIDs: []string{"bead-3"}, Beads: []beads.Bead{{ID: "bead-3"}}},
+			{ID: "task-1", BeanIDs: []string{"bead-1"}, Beads: []beads.Bead{{ID: "bead-1"}}},
+			{ID: "task-2", BeanIDs: []string{"bead-2"}, Beads: []beads.Bead{{ID: "bead-2"}}},
+			{ID: "task-3", BeanIDs: []string{"bead-3"}, Beads: []beads.Bead{{ID: "bead-3"}}},
 		}, nil
 	}
 
@@ -124,9 +124,9 @@ func TestRunWork_WithPlanningEnabled(t *testing.T) {
 
 	// Create work with beads
 	workRecord := h.CreateWork("w-test", "feat/test-branch")
-	h.AddBeadToWork("w-test", "bead-1")
-	h.AddBeadToWork("w-test", "bead-2")
-	h.AddBeadToWork("w-test", "bead-3")
+	h.AddBeanToWork("w-test", "bead-1")
+	h.AddBeanToWork("w-test", "bead-2")
+	h.AddBeanToWork("w-test", "bead-3")
 
 	// Configure worktree to exist
 	h.Worktree.ExistsPathFunc = func(worktreePath string) bool {
@@ -139,14 +139,14 @@ func TestRunWork_WithPlanningEnabled(t *testing.T) {
 		return []task.Task{
 			{
 				ID:              "task-1",
-				BeadIDs:         []string{"bead-1", "bead-2"},
+				BeanIDs:         []string{"bead-1", "bead-2"},
 				Beads:           []beads.Bead{{ID: "bead-1"}, {ID: "bead-2"}},
 				Complexity:      4,
 				EstimatedTokens: 20000,
 			},
 			{
 				ID:              "task-2",
-				BeadIDs:         []string{"bead-3"},
+				BeanIDs:         []string{"bead-3"},
 				Beads:           []beads.Bead{{ID: "bead-3"}},
 				Complexity:      8,
 				EstimatedTokens: 80000,
@@ -169,13 +169,13 @@ func TestRunWork_WithPlanningEnabled(t *testing.T) {
 
 	// Tasks ordered by task_number DESC, so tasks[0] is the last-created task
 	// Second task (higher number) should have 1 bead
-	task2Beads, err := h.DB.GetTaskBeads(ctx, tasks[0].ID)
+	task2Beads, err := h.DB.GetTaskBeans(ctx, tasks[0].ID)
 	require.NoError(t, err)
 	assert.Len(t, task2Beads, 1)
 	assert.Contains(t, task2Beads, "bead-3")
 
 	// First task (lower number) should have 2 beads
-	task1Beads, err := h.DB.GetTaskBeads(ctx, tasks[1].ID)
+	task1Beads, err := h.DB.GetTaskBeans(ctx, tasks[1].ID)
 	require.NoError(t, err)
 	assert.Len(t, task1Beads, 2)
 	assert.Contains(t, task1Beads, "bead-1")
@@ -193,7 +193,7 @@ func TestRunWork_SkipsAlreadyAssignedBeads(t *testing.T) {
 
 	// Create work with initial bead
 	workRecord := h.CreateWork("w-test", "feat/test-branch")
-	h.AddBeadToWork("w-test", "bead-1")
+	h.AddBeanToWork("w-test", "bead-1")
 
 	// Configure worktree to exist
 	h.Worktree.ExistsPathFunc = func(worktreePath string) bool {
@@ -208,8 +208,8 @@ func TestRunWork_SkipsAlreadyAssignedBeads(t *testing.T) {
 	// Now add more beads to the work
 	h.CreateBead("bead-2", "Newly added")
 	h.CreateBead("bead-3", "Also newly added")
-	h.AddBeadToWork("w-test", "bead-2")
-	h.AddBeadToWork("w-test", "bead-3")
+	h.AddBeanToWork("w-test", "bead-2")
+	h.AddBeanToWork("w-test", "bead-3")
 
 	// Second run: should only create tasks for newly added beads
 	result2, err := h.WorkService.RunWork(ctx, "w-test", false, io.Discard)
@@ -234,7 +234,7 @@ func TestRunWork_SpawnsOrchestrator(t *testing.T) {
 	// Create a bead and work
 	h.CreateBead("bead-1", "Test bead")
 	workRecord := h.CreateWork("w-test", "feat/test-branch")
-	h.AddBeadToWork("w-test", "bead-1")
+	h.AddBeanToWork("w-test", "bead-1")
 
 	// Configure worktree to exist
 	h.Worktree.ExistsPathFunc = func(worktreePath string) bool {
@@ -270,8 +270,8 @@ func TestRunWork_IdempotentOnRerun(t *testing.T) {
 	h.CreateBead("bead-1", "Test bead 1")
 	h.CreateBead("bead-2", "Test bead 2")
 	workRecord := h.CreateWork("w-test", "feat/test-branch")
-	h.AddBeadToWork("w-test", "bead-1")
-	h.AddBeadToWork("w-test", "bead-2")
+	h.AddBeanToWork("w-test", "bead-1")
+	h.AddBeanToWork("w-test", "bead-2")
 
 	// Configure worktree to exist
 	h.Worktree.ExistsPathFunc = func(worktreePath string) bool {
@@ -360,8 +360,8 @@ func TestPlanWorkTasks_CreatesTasksWithoutOrchestrator(t *testing.T) {
 	h.CreateBead("bead-1", "Test bead 1")
 	h.CreateBead("bead-2", "Test bead 2")
 	workRecord := h.CreateWork("w-test", "feat/test-branch")
-	h.AddBeadToWork("w-test", "bead-1")
-	h.AddBeadToWork("w-test", "bead-2")
+	h.AddBeanToWork("w-test", "bead-1")
+	h.AddBeanToWork("w-test", "bead-2")
 
 	// Configure worktree to exist (even though PlanWorkTasks doesn't check)
 	h.Worktree.ExistsPathFunc = func(worktreePath string) bool {
@@ -403,9 +403,9 @@ func TestRunWorkAuto_CreatesEstimateTask(t *testing.T) {
 	h.CreateBead("bead-2", "Task 2")
 	h.CreateBead("bead-3", "Task 3")
 	workRecord := h.CreateWork("w-test", "feat/test-branch")
-	h.AddBeadToWork("w-test", "bead-1")
-	h.AddBeadToWork("w-test", "bead-2")
-	h.AddBeadToWork("w-test", "bead-3")
+	h.AddBeanToWork("w-test", "bead-1")
+	h.AddBeanToWork("w-test", "bead-2")
+	h.AddBeanToWork("w-test", "bead-3")
 
 	// Configure worktree to exist
 	h.Worktree.ExistsPathFunc = func(worktreePath string) bool {
@@ -430,15 +430,15 @@ func TestRunWorkAuto_CreatesEstimateTask(t *testing.T) {
 	assert.Equal(t, db.StatusPending, tasks[0].Status)
 
 	// Verify all beads are in the estimate task
-	beadIDs, err := h.DB.GetTaskBeads(ctx, tasks[0].ID)
+	beanIDs, err := h.DB.GetTaskBeans(ctx, tasks[0].ID)
 	require.NoError(t, err)
-	assert.Len(t, beadIDs, 3)
-	assert.Contains(t, beadIDs, "bead-1")
-	assert.Contains(t, beadIDs, "bead-2")
-	assert.Contains(t, beadIDs, "bead-3")
+	assert.Len(t, beanIDs, 3)
+	assert.Contains(t, beanIDs, "bead-1")
+	assert.Contains(t, beanIDs, "bead-2")
+	assert.Contains(t, beanIDs, "bead-3")
 }
 
-func TestCreateEstimateTaskFromWorkBeads_FailsWithNoUnassignedBeads(t *testing.T) {
+func TestCreateEstimateTaskFromWorkBeans_FailsWithNoUnassignedBeads(t *testing.T) {
 	h := testutil.NewTestHarness(t)
 	defer h.Cleanup()
 
@@ -448,7 +448,7 @@ func TestCreateEstimateTaskFromWorkBeads_FailsWithNoUnassignedBeads(t *testing.T
 	h.CreateWork("w-test", "feat/test-branch")
 
 	// Should fail with no unassigned beads
-	err := h.WorkService.CreateEstimateTaskFromWorkBeads(ctx, "w-test", io.Discard)
+	err := h.WorkService.CreateEstimateTaskFromWorkBeans(ctx, "w-test", io.Discard)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no unassigned beads")
 }
@@ -464,10 +464,10 @@ func TestRunWork_WithEpicBeads(t *testing.T) {
 
 	// Create work with all beads
 	workRecord := h.CreateWork("w-test", "feat/test-branch")
-	h.AddBeadToWork("w-test", "epic-1")
-	h.AddBeadToWork("w-test", "child-1")
-	h.AddBeadToWork("w-test", "child-2")
-	h.AddBeadToWork("w-test", "child-3")
+	h.AddBeanToWork("w-test", "epic-1")
+	h.AddBeanToWork("w-test", "child-1")
+	h.AddBeanToWork("w-test", "child-2")
+	h.AddBeanToWork("w-test", "child-3")
 
 	// Configure worktree to exist
 	h.Worktree.ExistsPathFunc = func(worktreePath string) bool {

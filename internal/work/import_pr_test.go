@@ -632,17 +632,17 @@ func TestCreateBeadOptions(t *testing.T) {
 
 func TestCreateBeadResult(t *testing.T) {
 	result := &CreateBeadResult{
-		BeadID:     "bead-123",
+		BeanID:     "bead-123",
 		Created:    true,
 		SkipReason: "",
 	}
 
-	require.Equal(t, "bead-123", result.BeadID)
+	require.Equal(t, "bead-123", result.BeanID)
 	require.True(t, result.Created)
 
 	// Test skip result
 	skipResult := &CreateBeadResult{
-		BeadID:     "existing-bead",
+		BeanID:     "existing-bead",
 		Created:    false,
 		SkipReason: "bead already exists for this PR",
 	}

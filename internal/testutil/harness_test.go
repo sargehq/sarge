@@ -108,9 +108,9 @@ func TestCreateTask(t *testing.T) {
 
 	// Verify beads are associated
 	ctx := context.Background()
-	beadIDs, err := h.DB.GetTaskBeads(ctx, "w-test.1")
+	beanIDs, err := h.DB.GetTaskBeans(ctx, "w-test.1")
 	require.NoError(t, err)
-	assert.Len(t, beadIDs, 2)
+	assert.Len(t, beanIDs, 2)
 }
 
 func TestCompleteAndFailTask(t *testing.T) {

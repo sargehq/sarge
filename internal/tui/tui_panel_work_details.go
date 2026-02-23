@@ -222,9 +222,9 @@ func (p *WorkDetailsPanel) GetSelectedTaskID() string {
 	return p.overviewPanel.GetSelectedTaskID()
 }
 
-// GetSelectedBeadIDs returns the bead IDs that should be shown based on current selection.
-func (p *WorkDetailsPanel) GetSelectedBeadIDs() []string {
-	return p.overviewPanel.GetSelectedBeadIDs()
+// GetSelectedBeanIDs returns the bead IDs that should be shown based on current selection.
+func (p *WorkDetailsPanel) GetSelectedBeanIDs() []string {
+	return p.overviewPanel.GetSelectedBeanIDs()
 }
 
 // IsTaskSelected returns true if a task is currently selected (vs root issue)
@@ -242,9 +242,9 @@ func (p *WorkDetailsPanel) IsUnassignedBeadSelected() bool {
 	return p.overviewPanel.IsUnassignedBeadSelected()
 }
 
-// GetSelectedUnassignedBeadID returns the ID of the selected unassigned bead
-func (p *WorkDetailsPanel) GetSelectedUnassignedBeadID() string {
-	return p.overviewPanel.GetSelectedUnassignedBeadID()
+// GetSelectedUnassignedBeanID returns the ID of the selected unassigned bead
+func (p *WorkDetailsPanel) GetSelectedUnassignedBeanID() string {
+	return p.overviewPanel.GetSelectedUnassignedBeanID()
 }
 
 // SetSelectedTaskID sets selection to the task with given ID

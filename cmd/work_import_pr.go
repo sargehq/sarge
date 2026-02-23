@@ -81,11 +81,11 @@ func runWorkImportPR(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create bead: %w", err)
 	}
 	if beadResult.Created {
-		fmt.Printf("Created bead: %s\n", beadResult.BeadID)
+		fmt.Printf("Created bead: %s\n", beadResult.BeanID)
 	} else {
-		fmt.Printf("Bead already exists: %s (%s)\n", beadResult.BeadID, beadResult.SkipReason)
+		fmt.Printf("Bead already exists: %s (%s)\n", beadResult.BeanID, beadResult.SkipReason)
 	}
-	rootIssueID := beadResult.BeadID
+	rootIssueID := beadResult.BeanID
 
 	// Schedule PR import via control plane (handles worktree, git, mise)
 	fmt.Printf("\nScheduling PR import...\n")

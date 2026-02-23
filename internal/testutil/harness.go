@@ -144,10 +144,10 @@ func (h *TestHarness) configureDefaultMocks() {
 	}
 
 	// Beads CLI defaults: operations succeed
-	h.Beads.CloseFunc = func(ctx context.Context, beadID string) error {
+	h.Beads.CloseFunc = func(ctx context.Context, beanID string) error {
 		return nil
 	}
-	h.Beads.UpdateFunc = func(ctx context.Context, beadID string, opts beads.UpdateOptions) error {
+	h.Beads.UpdateFunc = func(ctx context.Context, beanID string, opts beads.UpdateOptions) error {
 		return nil
 	}
 
@@ -155,8 +155,8 @@ func (h *TestHarness) configureDefaultMocks() {
 	h.BeadsReader.GetBeadFunc = func(ctx context.Context, id string) (*beads.BeadWithDeps, error) {
 		return h.getBeadWithDeps(id), nil
 	}
-	h.BeadsReader.GetBeadsWithDepsFunc = func(ctx context.Context, beadIDs []string) (*beads.BeadsWithDepsResult, error) {
-		return h.getBeadsWithDepsResult(beadIDs), nil
+	h.BeadsReader.GetBeadsWithDepsFunc = func(ctx context.Context, beanIDs []string) (*beads.BeadsWithDepsResult, error) {
+		return h.getBeadsWithDepsResult(beanIDs), nil
 	}
 	h.BeadsReader.GetBeadWithChildrenFunc = func(ctx context.Context, id string) ([]beads.Bead, error) {
 		return h.getBeadWithChildren(id), nil
@@ -194,13 +194,13 @@ func (h *TestHarness) getBeadWithDeps(id string) *beads.BeadWithDeps {
 }
 
 // getBeadsWithDepsResult builds a BeadsWithDepsResult from the internal store.
-func (h *TestHarness) getBeadsWithDepsResult(beadIDs []string) *beads.BeadsWithDepsResult {
+func (h *TestHarness) getBeadsWithDepsResult(beanIDs []string) *beads.BeadsWithDepsResult {
 	result := &beads.BeadsWithDepsResult{
 		Beads:        make(map[string]beads.Bead),
 		Dependencies: make(map[string][]beads.Dependency),
 		Dependents:   make(map[string][]beads.Dependent),
 	}
-	for _, id := range beadIDs {
+	for _, id := range beanIDs {
 		if bead, ok := h.beadStore[id]; ok {
 			result.Beads[id] = *bead
 			result.Dependencies[id] = h.beadDeps[id]
@@ -213,12 +213,12 @@ func (h *TestHarness) getBeadsWithDepsResult(beadIDs []string) *beads.BeadsWithD
 // getDependents returns beads that depend on the given bead.
 func (h *TestHarness) getDependents(id string) []beads.Dependent {
 	var dependents []beads.Dependent
-	for beadID, deps := range h.beadDeps {
+	for beanID, deps := range h.beadDeps {
 		for _, dep := range deps {
 			if dep.DependsOnID == id {
-				bead := h.beadStore[beadID]
+				bead := h.beadStore[beanID]
 				dependents = append(dependents, beads.Dependent{
-					IssueID:     beadID,
+					IssueID:     beanID,
 					DependsOnID: id,
 					Type:        dep.Type,
 					Status:      bead.Status,
@@ -238,10 +238,10 @@ func (h *TestHarness) getBeadWithChildren(id string) []beads.Bead {
 	}
 
 	// Find children (beads with parent-child dependency to this bead)
-	for beadID, deps := range h.beadDeps {
+	for beanID, deps := range h.beadDeps {
 		for _, dep := range deps {
 			if dep.DependsOnID == id && dep.Type == "parent-child" {
-				if child, ok := h.beadStore[beadID]; ok {
+				if child, ok := h.beadStore[beanID]; ok {
 					result = append(result, *child)
 				}
 			}
@@ -255,22 +255,22 @@ func (h *TestHarness) getTransitiveDependencies(id string) []beads.Bead {
 	visited := make(map[string]bool)
 	var result []beads.Bead
 
-	var collect func(beadID string)
-	collect = func(beadID string) {
-		if visited[beadID] {
+	var collect func(beanID string)
+	collect = func(beanID string) {
+		if visited[beanID] {
 			return
 		}
-		visited[beadID] = true
+		visited[beanID] = true
 
 		// First collect dependencies
-		for _, dep := range h.beadDeps[beadID] {
+		for _, dep := range h.beadDeps[beanID] {
 			if dep.Type == "blocked_by" || dep.Type == "blocks" {
 				collect(dep.DependsOnID)
 			}
 		}
 
 		// Then add this bead
-		if bead, ok := h.beadStore[beadID]; ok {
+		if bead, ok := h.beadStore[beanID]; ok {
 			result = append(result, *bead)
 		}
 	}
@@ -331,8 +331,8 @@ func (h *TestHarness) CreateEpicWithChildren(epicID string, childIDs ...string) 
 }
 
 // SetBeadDependency creates a blocking dependency between two beads.
-// The bead identified by beadID will be blocked by dependsOnID.
-func (h *TestHarness) SetBeadDependency(beadID, dependsOnID string) {
+// The bead identified by beanID will be blocked by dependsOnID.
+func (h *TestHarness) SetBeadDependency(beanID, dependsOnID string) {
 	depBead := h.beadStore[dependsOnID]
 	var status, title string
 	if depBead != nil {
@@ -340,8 +340,8 @@ func (h *TestHarness) SetBeadDependency(beadID, dependsOnID string) {
 		title = depBead.Title
 	}
 
-	h.beadDeps[beadID] = append(h.beadDeps[beadID], beads.Dependency{
-		IssueID:     beadID,
+	h.beadDeps[beanID] = append(h.beadDeps[beanID], beads.Dependency{
+		IssueID:     beanID,
 		DependsOnID: dependsOnID,
 		Type:        "blocks",
 		Status:      status,
@@ -374,12 +374,12 @@ func (h *TestHarness) CreateWorkWithRootIssue(workID, branch, rootIssueID string
 	return work
 }
 
-// AddBeadToWork associates a bead with a work in the database.
-func (h *TestHarness) AddBeadToWork(workID, beadID string) {
+// AddBeanToWork associates a bead with a work in the database.
+func (h *TestHarness) AddBeanToWork(workID, beanID string) {
 	h.T.Helper()
 	ctx := context.Background()
 
-	err := h.DB.AddBeadToWork(ctx, workID, beadID)
+	err := h.DB.AddBeanToWork(ctx, workID, beanID)
 	require.NoError(h.T, err, "failed to add bead to work")
 }
 
@@ -389,11 +389,11 @@ func (h *TestHarness) AddBeadToWork(workID, beadID string) {
 
 // CreateTask creates a task in the database with the given beads.
 // Returns the created task.
-func (h *TestHarness) CreateTask(taskID, workID string, beadIDs []string) *db.Task {
+func (h *TestHarness) CreateTask(taskID, workID string, beanIDs []string) *db.Task {
 	h.T.Helper()
 	ctx := context.Background()
 
-	err := h.DB.CreateTask(ctx, taskID, "implement", beadIDs, 10, workID, extractTaskNumber(taskID))
+	err := h.DB.CreateTask(ctx, taskID, "implement", beanIDs, 10, workID, extractTaskNumber(taskID))
 	require.NoError(h.T, err, "failed to create task")
 
 	task, err := h.DB.GetTask(ctx, taskID)

@@ -318,7 +318,7 @@ func TestCloseKeyHandlerWithSelection(t *testing.T) {
 func TestBatchCloseFunction(t *testing.T) {
 	// This test validates that the closeBeads function is called with multiple IDs
 	// In a real test, we would mock the bd command execution
-	beadIDs := []string{"bead-1", "bead-2", "bead-3"}
+	beanIDs := []string{"bead-1", "bead-2", "bead-3"}
 
 	// Verify the function signature exists and accepts multiple IDs
 	m := &planModel{
@@ -329,7 +329,7 @@ func TestBatchCloseFunction(t *testing.T) {
 	}
 
 	// The closeBeads function should accept a slice of bead IDs
-	cmd := m.closeBeads(beadIDs)
+	cmd := m.closeBeads(beanIDs)
 
 	// Verify the command is not nil
 	require.NotNil(t, cmd, "closeBeads should return a non-nil command")

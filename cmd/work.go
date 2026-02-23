@@ -213,16 +213,16 @@ func runWorkCreate(cmd *cobra.Command, args []string) error {
 
 	mainRepoPath := proj.MainRepoPath()
 	gitOps := git.NewOperations()
-	beadID := args[0]
+	beanID := args[0]
 
 	// Expand the bead (handles epics and transitive deps)
-	expandedIssueIDs, err := workpkg.CollectIssueIDsForAutomatedWorkflow(ctx, beadID, proj.Beads)
+	expandedIssueIDs, err := workpkg.CollectIssueIDsForAutomatedWorkflow(ctx, beanID, proj.Beads)
 	if err != nil {
-		return fmt.Errorf("failed to expand bead %s: %w", beadID, err)
+		return fmt.Errorf("failed to expand bead %s: %w", beanID, err)
 	}
 
 	if len(expandedIssueIDs) == 0 {
-		return fmt.Errorf("no beads found for %s", beadID)
+		return fmt.Errorf("no beads found for %s", beanID)
 	}
 
 	// Get issue details for branch name generation
@@ -281,10 +281,10 @@ func runWorkCreate(cmd *cobra.Command, args []string) error {
 	result, err := svc.CreateWorkAsyncWithOptions(ctx, workpkg.CreateWorkAsyncOptions{
 		BranchName:        branchName,
 		BaseBranch:        baseBranch,
-		RootIssueID:       beadID,
+		RootIssueID:       beanID,
 		Auto:              flagAutoRun,
 		UseExistingBranch: useExistingBranch,
-		BeadIDs:           expandedIssueIDs,
+		BeanIDs:           expandedIssueIDs,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create work: %w", err)
@@ -331,16 +331,16 @@ func parseBeadArgs(ctx context.Context, args []string, beadsClient *beads.Client
 
 	for _, arg := range args {
 		// Split comma-separated bead IDs (commas and spaces both work as separators)
-		beadIDs := workpkg.ParseBeadIDs(arg)
-		if len(beadIDs) == 0 {
+		beanIDs := workpkg.ParseBeanIDs(arg)
+		if len(beanIDs) == 0 {
 			continue
 		}
 
-		for _, beadID := range beadIDs {
+		for _, beanID := range beanIDs {
 			// Expand this bead (handles epics and transitive deps)
-			expandedIDs, err := workpkg.CollectIssueIDsForAutomatedWorkflow(ctx, beadID, beadsClient)
+			expandedIDs, err := workpkg.CollectIssueIDsForAutomatedWorkflow(ctx, beanID, beadsClient)
 			if err != nil {
-				return nil, fmt.Errorf("failed to expand bead %s: %w", beadID, err)
+				return nil, fmt.Errorf("failed to expand bead %s: %w", beanID, err)
 			}
 			for _, issueID := range expandedIDs {
 				// Check for duplicates
@@ -406,17 +406,17 @@ func runWorkAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	// Parse bead IDs from args
-	beadIDs, err := parseBeadArgs(ctx, args, proj.Beads)
+	beanIDs, err := parseBeadArgs(ctx, args, proj.Beads)
 	if err != nil {
 		return err
 	}
 
-	if len(beadIDs) == 0 {
+	if len(beanIDs) == 0 {
 		return fmt.Errorf("no beads specified")
 	}
 
 	// Add beads to work using WorkService (handles validation internally)
-	result, err := svc.AddBeads(ctx, workID, beadIDs)
+	result, err := svc.AddBeads(ctx, workID, beanIDs)
 	if err != nil {
 		return err
 	}
@@ -448,20 +448,20 @@ func runWorkRemove(cmd *cobra.Command, args []string) error {
 	}
 
 	// Collect and trim bead IDs
-	var beadIDs []string
-	for _, beadID := range args {
-		beadID = strings.TrimSpace(beadID)
-		if beadID != "" {
-			beadIDs = append(beadIDs, beadID)
+	var beanIDs []string
+	for _, beanID := range args {
+		beanID = strings.TrimSpace(beanID)
+		if beanID != "" {
+			beanIDs = append(beanIDs, beanID)
 		}
 	}
 
-	if len(beadIDs) == 0 {
+	if len(beanIDs) == 0 {
 		return fmt.Errorf("no beads specified")
 	}
 
 	// Remove beads using WorkService (handles validation internally)
-	result, err := svc.RemoveBeads(ctx, workID, beadIDs)
+	result, err := svc.RemoveBeads(ctx, workID, beanIDs)
 	if err != nil {
 		return err
 	}

@@ -30,7 +30,7 @@ func (m *planModel) refreshDataWithFilters(filters beadFilters, seq uint64) tea.
 
 		// Also fetch active sessions
 		session := m.sessionName()
-		activeSessions, _ := m.proj.DB.GetBeadsWithActiveSessions(m.ctx, session)
+		activeSessions, _ := m.proj.DB.GetBeansWithActiveSessions(m.ctx, session)
 
 		return planDataMsg{
 			beads:          items,
@@ -85,7 +85,7 @@ func (m *planModel) loadBeadsWithFilters(filters beadFilters) ([]beadItem, error
 	}
 
 	// Fetch assigned beads from database and populate assignedWorkID
-	assignedBeads, err := m.proj.DB.GetAllAssignedBeads(m.ctx)
+	assignedBeads, err := m.proj.DB.GetAllAssignedBeans(m.ctx)
 	if err == nil {
 		for i := range items {
 			if workID, ok := assignedBeads[items[i].ID]; ok {
@@ -129,20 +129,20 @@ func (m *planModel) loadBeadsWithFilters(filters beadFilters) ([]beadItem, error
 // If filters.rootIssue is set, the root issue is prepended to the results.
 func (m *planModel) loadBeadsForTask(filters beadFilters) ([]beadItem, error) {
 	// Get bead IDs assigned to this task from the database
-	beadIDs, err := m.proj.DB.GetTaskBeads(m.ctx, filters.task)
+	beanIDs, err := m.proj.DB.GetTaskBeans(m.ctx, filters.task)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get task beads: %w", err)
 	}
 
 	// Track which IDs we have to avoid duplicates
-	beadIDSet := make(map[string]bool)
-	for _, id := range beadIDs {
-		beadIDSet[id] = true
+	beanIDSet := make(map[string]bool)
+	for _, id := range beanIDs {
+		beanIDSet[id] = true
 	}
 
 	// Start with root issue if specified and not already in the task
 	var items []beadItem
-	if filters.rootIssue != "" && !beadIDSet[filters.rootIssue] {
+	if filters.rootIssue != "" && !beanIDSet[filters.rootIssue] {
 		rootBead, err := m.proj.Beads.GetBead(m.ctx, filters.rootIssue)
 		if err == nil && rootBead != nil {
 			items = append(items, beadItem{
@@ -152,8 +152,8 @@ func (m *planModel) loadBeadsForTask(filters beadFilters) ([]beadItem, error) {
 	}
 
 	// Fetch the beads from the beads client (uses cache)
-	for _, beadID := range beadIDs {
-		bead, err := m.proj.Beads.GetBead(m.ctx, beadID)
+	for _, beanID := range beanIDs {
+		bead, err := m.proj.Beads.GetBead(m.ctx, beanID)
 		if err != nil || bead == nil {
 			continue
 		}
@@ -239,7 +239,7 @@ func (m *planModel) createBead(title, beadType string, priority int, isEpic bool
 		ctx := m.ctx
 		beadsPath := m.proj.BeadsPath()
 
-		beadID, err := beads.NewCLI(beadsPath).Create(ctx, beads.CreateOptions{
+		beanID, err := beads.NewCLI(beadsPath).Create(ctx, beads.CreateOptions{
 			Title:       title,
 			Type:        beadType,
 			Priority:    priority,
@@ -254,134 +254,134 @@ func (m *planModel) createBead(title, beadType string, priority int, isEpic bool
 		// Refresh after creation
 		items, err := m.loadBeads()
 		session := m.sessionName()
-		activeSessions, _ := m.proj.DB.GetBeadsWithActiveSessions(m.ctx, session)
+		activeSessions, _ := m.proj.DB.GetBeansWithActiveSessions(m.ctx, session)
 
-		return planDataMsg{beads: items, activeSessions: activeSessions, err: err, createdBeadID: beadID}
+		return planDataMsg{beads: items, activeSessions: activeSessions, err: err, createdBeanID: beanID}
 	}
 }
 
-func (m *planModel) closeBead(beadID string) tea.Cmd {
+func (m *planModel) closeBead(beanID string) tea.Cmd {
 	return func() tea.Msg {
 		beadsPath := m.proj.BeadsPath()
 		session := m.sessionName()
-		tabName := db.TabNameForBead(beadID)
+		tabName := db.TabNameForBean(beanID)
 
 		// If there's an active session for this bead, close it
-		if m.activeBeadSessions[beadID] {
+		if m.activeBeadSessions[beanID] {
 			// Terminate and close the tab
 			_ = m.zj.Session(session).TerminateAndCloseTab(m.ctx, tabName)
 			// Unregister from database
-			_ = m.proj.DB.UnregisterPlanSession(m.ctx, beadID)
+			_ = m.proj.DB.UnregisterPlanSession(m.ctx, beanID)
 		}
 
 		// Close the bead
-		if err := beads.NewCLI(beadsPath).Close(m.ctx, beadID); err != nil {
+		if err := beads.NewCLI(beadsPath).Close(m.ctx, beanID); err != nil {
 			return planDataMsg{err: fmt.Errorf("failed to close issue: %w", err)}
 		}
 
 		// Refresh after close
 		items, err := m.loadBeads()
-		activeSessions, _ := m.proj.DB.GetBeadsWithActiveSessions(m.ctx, session)
+		activeSessions, _ := m.proj.DB.GetBeansWithActiveSessions(m.ctx, session)
 		return planDataMsg{beads: items, activeSessions: activeSessions, err: err}
 	}
 }
 
-func (m *planModel) closeBeads(beadIDs []string) tea.Cmd {
+func (m *planModel) closeBeads(beanIDs []string) tea.Cmd {
 	return func() tea.Msg {
 		beadsPath := m.proj.BeadsPath()
 		session := m.sessionName()
 
 		// First, close any active sessions for these beads
 		zjSession := m.zj.Session(session)
-		for _, beadID := range beadIDs {
-			if m.activeBeadSessions[beadID] {
-				tabName := db.TabNameForBead(beadID)
+		for _, beanID := range beanIDs {
+			if m.activeBeadSessions[beanID] {
+				tabName := db.TabNameForBean(beanID)
 				// Terminate and close the tab
 				_ = zjSession.TerminateAndCloseTab(m.ctx, tabName)
 				// Unregister from database
-				_ = m.proj.DB.UnregisterPlanSession(m.ctx, beadID)
+				_ = m.proj.DB.UnregisterPlanSession(m.ctx, beanID)
 			}
 		}
 
 		// Close all beads using the beads package
 		cli := beads.NewCLI(beadsPath)
-		for _, beadID := range beadIDs {
-			if err := cli.Close(m.ctx, beadID); err != nil {
-				return planDataMsg{err: fmt.Errorf("failed to close issue %s: %w", beadID, err)}
+		for _, beanID := range beanIDs {
+			if err := cli.Close(m.ctx, beanID); err != nil {
+				return planDataMsg{err: fmt.Errorf("failed to close issue %s: %w", beanID, err)}
 			}
 		}
 
 		// Refresh after close
 		items, err := m.loadBeads()
-		activeSessions, _ := m.proj.DB.GetBeadsWithActiveSessions(m.ctx, session)
+		activeSessions, _ := m.proj.DB.GetBeansWithActiveSessions(m.ctx, session)
 		return planDataMsg{beads: items, activeSessions: activeSessions, err: err}
 	}
 }
 
-func (m *planModel) deleteBead(beadID string) tea.Cmd {
+func (m *planModel) deleteBead(beanID string) tea.Cmd {
 	return func() tea.Msg {
 		beadsPath := m.proj.BeadsPath()
 		session := m.sessionName()
-		tabName := db.TabNameForBead(beadID)
+		tabName := db.TabNameForBean(beanID)
 
 		// If there's an active session for this bead, close it
-		if m.activeBeadSessions[beadID] {
+		if m.activeBeadSessions[beanID] {
 			// Terminate and close the tab
 			_ = m.zj.Session(session).TerminateAndCloseTab(m.ctx, tabName)
 			// Unregister from database
-			_ = m.proj.DB.UnregisterPlanSession(m.ctx, beadID)
+			_ = m.proj.DB.UnregisterPlanSession(m.ctx, beanID)
 		}
 
 		// Delete the bead permanently with --force to skip confirmation
-		if err := beads.NewCLI(beadsPath).Delete(m.ctx, beadID, true); err != nil {
+		if err := beads.NewCLI(beadsPath).Delete(m.ctx, beanID, true); err != nil {
 			return planDataMsg{err: fmt.Errorf("failed to delete issue: %w", err)}
 		}
 
 		// Refresh after delete
 		items, err := m.loadBeads()
-		activeSessions, _ := m.proj.DB.GetBeadsWithActiveSessions(m.ctx, session)
+		activeSessions, _ := m.proj.DB.GetBeansWithActiveSessions(m.ctx, session)
 		return planDataMsg{beads: items, activeSessions: activeSessions, err: err}
 	}
 }
 
-func (m *planModel) deleteBeads(beadIDs []string) tea.Cmd {
+func (m *planModel) deleteBeads(beanIDs []string) tea.Cmd {
 	return func() tea.Msg {
 		beadsPath := m.proj.BeadsPath()
 		session := m.sessionName()
 
 		// First, close any active sessions for these beads
 		zjSession := m.zj.Session(session)
-		for _, beadID := range beadIDs {
-			if m.activeBeadSessions[beadID] {
-				tabName := db.TabNameForBead(beadID)
+		for _, beanID := range beanIDs {
+			if m.activeBeadSessions[beanID] {
+				tabName := db.TabNameForBean(beanID)
 				// Terminate and close the tab
 				_ = zjSession.TerminateAndCloseTab(m.ctx, tabName)
 				// Unregister from database
-				_ = m.proj.DB.UnregisterPlanSession(m.ctx, beadID)
+				_ = m.proj.DB.UnregisterPlanSession(m.ctx, beanID)
 			}
 		}
 
 		// Delete all beads permanently with --force
 		cli := beads.NewCLI(beadsPath)
-		for _, beadID := range beadIDs {
-			if err := cli.Delete(m.ctx, beadID, true); err != nil {
-				return planDataMsg{err: fmt.Errorf("failed to delete issue %s: %w", beadID, err)}
+		for _, beanID := range beanIDs {
+			if err := cli.Delete(m.ctx, beanID, true); err != nil {
+				return planDataMsg{err: fmt.Errorf("failed to delete issue %s: %w", beanID, err)}
 			}
 		}
 
 		// Refresh after delete
 		items, err := m.loadBeads()
-		activeSessions, _ := m.proj.DB.GetBeadsWithActiveSessions(m.ctx, session)
+		activeSessions, _ := m.proj.DB.GetBeansWithActiveSessions(m.ctx, session)
 		return planDataMsg{beads: items, activeSessions: activeSessions, err: err}
 	}
 }
 
-func (m *planModel) saveBeadEdit(beadID, title, description, beadType, status string) tea.Cmd {
+func (m *planModel) saveBeadEdit(beanID, title, description, beadType, status string) tea.Cmd {
 	return func() tea.Msg {
 		beadsPath := m.proj.BeadsPath()
 
 		// Update the bead using beads package
-		err := beads.NewCLI(beadsPath).Update(m.ctx, beadID, beads.UpdateOptions{
+		err := beads.NewCLI(beadsPath).Update(m.ctx, beanID, beads.UpdateOptions{
 			Title:       title,
 			Type:        beadType,
 			Description: description,
@@ -394,17 +394,17 @@ func (m *planModel) saveBeadEdit(beadID, title, description, beadType, status st
 		// Refresh after update
 		items, err := m.loadBeads()
 		session := m.sessionName()
-		activeSessions, _ := m.proj.DB.GetBeadsWithActiveSessions(m.ctx, session)
+		activeSessions, _ := m.proj.DB.GetBeansWithActiveSessions(m.ctx, session)
 		return planDataMsg{beads: items, activeSessions: activeSessions, err: err}
 	}
 }
 
 // openInEditor opens the issue in $EDITOR using bd edit
-func (m *planModel) openInEditor(beadID string) tea.Cmd {
+func (m *planModel) openInEditor(beanID string) tea.Cmd {
 	beadsPath := m.proj.BeadsPath()
 
 	// Use bd edit which handles $EDITOR and the issue format
-	c := beads.EditCommand(m.ctx, beadID, beadsPath)
+	c := beads.EditCommand(m.ctx, beanID, beadsPath)
 	return tea.ExecProcess(c, func(err error) tea.Msg {
 		if err != nil {
 			return planStatusMsg{message: fmt.Sprintf("Editor error: %v", err), isError: true}
@@ -465,9 +465,9 @@ func (m *planModel) importLinearIssue(issueIDsInput string) tea.Cmd {
 				return linearImportCompleteMsg{err: result.Error}
 			}
 
-			if result.BeadID != "" {
+			if result.BeanID != "" {
 				return linearImportCompleteMsg{
-					beadIDs:    []string{result.BeadID},
+					beanIDs:    []string{result.BeanID},
 					skipReason: result.SkipReason,
 				}
 			}
@@ -482,7 +482,7 @@ func (m *planModel) importLinearIssue(issueIDsInput string) tea.Cmd {
 		}
 
 		// Collect results
-		var beadIDs []string
+		var beanIDs []string
 		var skipReasons []string
 		var errors []string
 		successCount := 0
@@ -496,15 +496,15 @@ func (m *planModel) importLinearIssue(issueIDsInput string) tea.Cmd {
 			} else if result.SkipReason != "" {
 				skipCount++
 				skipReasons = append(skipReasons, fmt.Sprintf("%s: %s", issueIDs[i], result.SkipReason))
-			} else if result.BeadID != "" {
+			} else if result.BeanID != "" {
 				successCount++
-				beadIDs = append(beadIDs, result.BeadID)
+				beanIDs = append(beanIDs, result.BeanID)
 			}
 		}
 
 		// Return aggregated results
 		return linearImportCompleteMsg{
-			beadIDs:      beadIDs,
+			beanIDs:      beanIDs,
 			successCount: successCount,
 			skipCount:    skipCount,
 			errorCount:   errorCount,
@@ -565,7 +565,7 @@ func (m *planModel) importPR(prURL string) tea.Cmd {
 		if err != nil {
 			return prImportCompleteMsg{err: fmt.Errorf("failed to create bead: %w", err)}
 		}
-		rootIssueID = beadResult.BeadID
+		rootIssueID = beadResult.BeanID
 
 		// Schedule the PR import via the control plane
 		result, err := workSvc.ImportPRAsync(m.ctx, work.ImportPRAsyncOptions{

@@ -199,8 +199,8 @@ func (p *WorkSummaryPanel) renderFullContent(panelWidth int) string {
 		// Feedback (show bead IDs)
 		if p.focusedWork.FeedbackCount > 0 {
 			feedbackStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
-			beadIDsStr := strings.Join(p.focusedWork.FeedbackBeadIDs, ", ")
-			fmt.Fprintf(&content, "  Feedback: %s\n", feedbackStyle.Render(beadIDsStr))
+			beanIDsStr := strings.Join(p.focusedWork.FeedbackBeanIDs, ", ")
+			fmt.Fprintf(&content, "  Feedback: %s\n", feedbackStyle.Render(beanIDsStr))
 		}
 
 		// Merge Status
@@ -293,8 +293,8 @@ func (p *WorkSummaryPanel) renderFullContent(panelWidth int) string {
 		}
 		if p.focusedWork.FeedbackCount > 0 {
 			alertStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
-			beadIDsStr := strings.Join(p.focusedWork.FeedbackBeadIDs, ", ")
-			content.WriteString(alertStyle.Render(fmt.Sprintf("  ● %d pending PR feedback: %s\n", p.focusedWork.FeedbackCount, beadIDsStr)))
+			beanIDsStr := strings.Join(p.focusedWork.FeedbackBeanIDs, ", ")
+			content.WriteString(alertStyle.Render(fmt.Sprintf("  ● %d pending PR feedback: %s\n", p.focusedWork.FeedbackCount, beanIDsStr)))
 		}
 	}
 
@@ -309,10 +309,10 @@ func (p *WorkSummaryPanel) renderFullContent(panelWidth int) string {
 	content.WriteString("\n")
 
 	// Find root bead in workBeads
-	var rootBead *progress.BeadProgress
-	for i := range p.focusedWork.WorkBeads {
-		if p.focusedWork.WorkBeads[i].ID == rootID {
-			rootBead = &p.focusedWork.WorkBeads[i]
+	var rootBead *progress.BeanProgress
+	for i := range p.focusedWork.WorkBeans {
+		if p.focusedWork.WorkBeans[i].ID == rootID {
+			rootBead = &p.focusedWork.WorkBeans[i]
 			break
 		}
 	}
@@ -342,7 +342,7 @@ func (p *WorkSummaryPanel) renderFullContent(panelWidth int) string {
 			rootID,
 			rootBead.IssueType,
 			rootBead.Priority,
-			rootBead.BeadStatus)
+			rootBead.BeanStatus)
 
 		// Description (truncate to avoid layout issues)
 		if rootBead.Description != "" {
@@ -366,7 +366,7 @@ func (p *WorkSummaryPanel) renderFullContent(panelWidth int) string {
 	summaryHeaderStyle := lipgloss.NewStyle().Bold(true)
 	content.WriteString(summaryHeaderStyle.Render("Statistics:"))
 	content.WriteString("\n")
-	fmt.Fprintf(&content, "  Total Beads: %d\n", len(p.focusedWork.WorkBeads))
+	fmt.Fprintf(&content, "  Total Beads: %d\n", len(p.focusedWork.WorkBeans))
 	fmt.Fprintf(&content, "  Total Tasks: %d\n", len(p.focusedWork.Tasks))
 
 	// Count task types

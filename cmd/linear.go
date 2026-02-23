@@ -149,14 +149,14 @@ func printImportResult(result *linear.ImportResult) {
 
 	if result.SkipReason != "" {
 		fmt.Printf("○ %s: %s\n", result.LinearID, result.SkipReason)
-		if result.BeadID != "" {
-			fmt.Printf("  Bead: %s\n", result.BeadID)
+		if result.BeanID != "" {
+			fmt.Printf("  Bead: %s\n", result.BeanID)
 		}
 		return
 	}
 
 	if result.Success {
-		fmt.Printf("✓ Imported %s -> %s\n", result.LinearID, result.BeadID)
+		fmt.Printf("✓ Imported %s -> %s\n", result.LinearID, result.BeanID)
 		if result.LinearURL != "" {
 			fmt.Printf("  URL: %s\n", result.LinearURL)
 		}
@@ -177,7 +177,7 @@ func printBatchResults(results []*linear.ImportResult) {
 			fmt.Printf("○ %s: %s\n", result.LinearID, result.SkipReason)
 		} else if result.Success {
 			successCount++
-			fmt.Printf("✓ %s -> %s\n", result.LinearID, result.BeadID)
+			fmt.Printf("✓ %s -> %s\n", result.LinearID, result.BeanID)
 		}
 	}
 

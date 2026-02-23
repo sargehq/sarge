@@ -66,25 +66,25 @@ func (m *planModel) updateCloseBeadConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	switch msg.String() {
 	case "y", "Y":
 		// Collect selected beads
-		var beadIDs []string
+		var beanIDs []string
 		for _, item := range m.beadItems {
 			if m.selectedBeads[item.ID] {
-				beadIDs = append(beadIDs, item.ID)
+				beanIDs = append(beanIDs, item.ID)
 			}
 		}
 
 		// If no selected beads, use cursor bead
-		if len(beadIDs) == 0 && len(m.beadItems) > 0 && m.beadsCursor < len(m.beadItems) {
-			beadIDs = append(beadIDs, m.beadItems[m.beadsCursor].ID)
+		if len(beanIDs) == 0 && len(m.beadItems) > 0 && m.beadsCursor < len(m.beadItems) {
+			beanIDs = append(beanIDs, m.beadItems[m.beadsCursor].ID)
 		}
 
 		m.viewMode = ViewNormal
-		if len(beadIDs) == 1 {
+		if len(beanIDs) == 1 {
 			// Single bead - use the existing closeBead function
-			return m, m.closeBead(beadIDs[0])
-		} else if len(beadIDs) > 1 {
+			return m, m.closeBead(beanIDs[0])
+		} else if len(beanIDs) > 1 {
 			// Multiple beads - use the batch close function
-			return m, m.closeBeads(beadIDs)
+			return m, m.closeBeads(beanIDs)
 		}
 		return m, nil
 	case "n", "N":
@@ -102,27 +102,27 @@ func (m *planModel) updateDeleteBeadConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 	switch msg.String() {
 	case "y", "Y":
 		// Collect selected beads
-		var beadIDs []string
+		var beanIDs []string
 		for _, item := range m.beadItems {
 			if m.selectedBeads[item.ID] {
-				beadIDs = append(beadIDs, item.ID)
+				beanIDs = append(beanIDs, item.ID)
 			}
 		}
 
 		// If no selected beads, use cursor bead
-		if len(beadIDs) == 0 && len(m.beadItems) > 0 && m.beadsCursor < len(m.beadItems) {
-			beadIDs = append(beadIDs, m.beadItems[m.beadsCursor].ID)
+		if len(beanIDs) == 0 && len(m.beadItems) > 0 && m.beadsCursor < len(m.beadItems) {
+			beanIDs = append(beanIDs, m.beadItems[m.beadsCursor].ID)
 		}
 
 		m.viewMode = ViewNormal
 		// Clear selection after deletion
 		m.selectedBeads = make(map[string]bool)
-		if len(beadIDs) == 1 {
+		if len(beanIDs) == 1 {
 			// Single bead - use the deleteBead function
-			return m, m.deleteBead(beadIDs[0])
-		} else if len(beadIDs) > 1 {
+			return m, m.deleteBead(beanIDs[0])
+		} else if len(beanIDs) > 1 {
 			// Multiple beads - use the batch delete function
-			return m, m.deleteBeads(beadIDs)
+			return m, m.deleteBeads(beanIDs)
 		}
 		return m, nil
 	case "n", "N":

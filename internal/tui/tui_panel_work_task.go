@@ -26,7 +26,7 @@ type WorkTaskPanel struct {
 
 	// Data
 	selectedTask   *progress.TaskProgress // The selected task, or nil if unassigned bead
-	selectedBead   *progress.BeadProgress // The selected unassigned bead, or nil if task
+	selectedBead   *progress.BeanProgress // The selected unassigned bead, or nil if task
 	isUnassigned   bool          // True if showing an unassigned bead
 }
 
@@ -73,7 +73,7 @@ func (p *WorkTaskPanel) SetTask(task *progress.TaskProgress) {
 }
 
 // SetUnassignedBead sets the unassigned bead to display
-func (p *WorkTaskPanel) SetUnassignedBead(bead *progress.BeadProgress) {
+func (p *WorkTaskPanel) SetUnassignedBead(bead *progress.BeanProgress) {
 	p.selectedTask = nil
 	p.selectedBead = bead
 	p.isUnassigned = true
@@ -213,7 +213,7 @@ func (p *WorkTaskPanel) renderUnassignedBeadDetails(panelWidth int) string {
 		fmt.Fprintf(&content, "Type: %s\n", bead.IssueType)
 	}
 	fmt.Fprintf(&content, "Priority: %d\n", bead.Priority)
-	fmt.Fprintf(&content, "Status: %s\n", bead.BeadStatus)
+	fmt.Fprintf(&content, "Status: %s\n", bead.BeanStatus)
 
 	if bead.Description != "" {
 		content.WriteString("\nDescription:\n")

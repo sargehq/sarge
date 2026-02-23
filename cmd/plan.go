@@ -47,9 +47,9 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	}
 	defer proj.Close()
 
-	beadID := args[0]
+	beanID := args[0]
 	zellijSession := fmt.Sprintf("sarge-%s", proj.Config.Project.Name)
-	tabName := db.TabNameForBead(beadID)
+	tabName := db.TabNameForBean(beanID)
 
 	// Apply hooks.env to current process - inherited by child processes (Claude)
 	applyHooksEnv(proj.Config.Hooks.Env)
@@ -58,12 +58,12 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	_ = os.Setenv("BEADS_DIR", proj.BeadsPath())
 
 	// Register the plan session in the database
-	if err := proj.DB.RegisterPlanSession(ctx, beadID, zellijSession, tabName, os.Getpid()); err != nil {
+	if err := proj.DB.RegisterPlanSession(ctx, beanID, zellijSession, tabName, os.Getpid()); err != nil {
 		return fmt.Errorf("failed to register plan session: %w", err)
 	}
 	defer func() {
 		// Unregister when done
-		_ = proj.DB.UnregisterPlanSession(ctx, beadID)
+		_ = proj.DB.UnregisterPlanSession(ctx, beanID)
 	}()
 
 	mainRepoPath := proj.MainRepoPath()
@@ -80,5 +80,5 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return agent.RunInteractive(ctx, types.TaskParams{Type: types.TaskTypePlan, BeadID: beadID}, mainRepoPath, os.Stdin, os.Stdout, os.Stderr, proj.Config)
+	return agent.RunInteractive(ctx, types.TaskParams{Type: types.TaskTypePlan, BeanID: beanID}, mainRepoPath, os.Stdin, os.Stdout, os.Stderr, proj.Config)
 }

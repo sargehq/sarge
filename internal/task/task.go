@@ -19,7 +19,7 @@ const (
 // Task represents a virtual task - a group of beads to be processed together.
 type Task struct {
 	ID              string       // Unique task identifier
-	BeadIDs         []string     // IDs of beads in this task
+	BeanIDs         []string     // IDs of beads in this task
 	Beads           []beads.Bead // Full bead information
 	Complexity      int          // Sum of bead complexity scores
 	EstimatedTokens int          // Sum of estimated tokens for all beads
@@ -47,7 +47,7 @@ type ComplexityEstimator interface {
 
 // BeadComplexity holds complexity information for a single bead.
 type BeadComplexity struct {
-	BeadID          string
+	BeanID          string
 	ComplexityScore int // 1-10 scale
 	EstimatedTokens int
 }

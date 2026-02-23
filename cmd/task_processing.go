@@ -42,20 +42,20 @@ func taskInputForTask(ctx context.Context, proj *project.Project, task *db.Task,
 
 	switch task.TaskType {
 	case "estimate":
-		beadIDs, err := beadIDsForTask(ctx, proj, task.ID)
+		beanIDs, err := beanIDsForTask(ctx, proj, task.ID)
 		if err != nil {
 			return nil, err
 		}
 		params.Type = agenttypes.TaskTypeEstimate
-		params.BeadIDs = beadIDs
+		params.BeanIDs = beanIDs
 
 	case "implement":
-		beadIDs, err := beadIDsForTask(ctx, proj, task.ID)
+		beanIDs, err := beanIDsForTask(ctx, proj, task.ID)
 		if err != nil {
 			return nil, err
 		}
 		params.Type = agenttypes.TaskTypeImplement
-		params.BeadIDs = beadIDs
+		params.BeanIDs = beanIDs
 
 	case "review":
 		params.Type = agenttypes.TaskTypeReview
@@ -152,7 +152,7 @@ func logAnalysisInputFromMetadata(ctx context.Context, proj *project.Project, ta
 // fetchExistingBeadSummaries fetches open beads for the given work and converts them to summaries for matching.
 func fetchExistingBeadSummaries(ctx context.Context, proj *project.Project, workID string) []agenttypes.BeadSummary {
 	// Get bead IDs assigned to this work
-	workBeads, err := proj.DB.GetWorkBeads(ctx, workID)
+	workBeads, err := proj.DB.GetWorkBeans(ctx, workID)
 	if err != nil {
 		fmt.Printf("Warning: failed to fetch work beads for deduplication: %v\n", err)
 		return nil
@@ -163,22 +163,22 @@ func fetchExistingBeadSummaries(ctx context.Context, proj *project.Project, work
 	}
 
 	// Extract bead IDs
-	beadIDs := make([]string, len(workBeads))
+	beanIDs := make([]string, len(workBeads))
 	for i, wb := range workBeads {
-		beadIDs[i] = wb.BeadID
+		beanIDs[i] = wb.BeanID
 	}
 
 	// Fetch bead details from beads database
-	result, err := proj.Beads.GetBeadsWithDeps(ctx, beadIDs)
+	result, err := proj.Beads.GetBeadsWithDeps(ctx, beanIDs)
 	if err != nil {
 		fmt.Printf("Warning: failed to fetch bead details for deduplication: %v\n", err)
 		return nil
 	}
 
 	// Filter to only open beads and convert to summaries
-	summaries := make([]agenttypes.BeadSummary, 0, len(beadIDs))
-	for _, beadID := range beadIDs {
-		if bwd := result.GetBead(beadID); bwd != nil && bwd.Bead.Status == beads.StatusOpen {
+	summaries := make([]agenttypes.BeadSummary, 0, len(beanIDs))
+	for _, beanID := range beanIDs {
+		if bwd := result.GetBead(beanID); bwd != nil && bwd.Bead.Status == beads.StatusOpen {
 			summaries = append(summaries, agenttypes.BeadSummary{
 				ID:          bwd.Bead.ID,
 				Title:       bwd.Bead.Title,
@@ -189,9 +189,9 @@ func fetchExistingBeadSummaries(ctx context.Context, proj *project.Project, work
 	return summaries
 }
 
-// beadIDsForTask returns the bead IDs associated with a task, resolving them through
+// beanIDsForTask returns the bead IDs associated with a task, resolving them through
 // the beads database to get full details and extracting just the IDs.
-func beadIDsForTask(ctx context.Context, proj *project.Project, taskID string) ([]string, error) {
+func beanIDsForTask(ctx context.Context, proj *project.Project, taskID string) ([]string, error) {
 	beadList, err := getBeadsForTask(ctx, proj, taskID)
 	if err != nil {
 		return nil, err
@@ -205,24 +205,24 @@ func beadIDsForTask(ctx context.Context, proj *project.Project, taskID string) (
 
 // getBeadsForTask retrieves the beads associated with a task.
 func getBeadsForTask(ctx context.Context, proj *project.Project, taskID string) ([]beads.Bead, error) {
-	beadIDs, err := proj.DB.GetTaskBeads(ctx, taskID)
+	beanIDs, err := proj.DB.GetTaskBeans(ctx, taskID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get task beads: %w", err)
 	}
 
 	// Get beads with dependencies
-	result, err := proj.Beads.GetBeadsWithDeps(ctx, beadIDs)
+	result, err := proj.Beads.GetBeadsWithDeps(ctx, beanIDs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get beads: %w", err)
 	}
 
-	// Convert map to slice in order of beadIDs
+	// Convert map to slice in order of beanIDs
 	var beadList []beads.Bead
-	for _, beadID := range beadIDs {
-		if b, ok := result.Beads[beadID]; ok {
+	for _, beanID := range beanIDs {
+		if b, ok := result.Beads[beanID]; ok {
 			beadList = append(beadList, b)
 		} else {
-			fmt.Printf("Warning: bead %s not found\n", beadID)
+			fmt.Printf("Warning: bead %s not found\n", beanID)
 		}
 	}
 

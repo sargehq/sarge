@@ -84,19 +84,19 @@ func HandleImportPRTask(ctx context.Context, proj *project.Project, task *db.Sch
 	// Add root issue to work_beads if set and not already added
 	// (ImportPRAsync now adds beads immediately, so this is a fallback)
 	if workRecord.RootIssueID != "" {
-		workBeads, err := proj.DB.GetWorkBeads(ctx, workID)
+		workBeads, err := proj.DB.GetWorkBeans(ctx, workID)
 		if err != nil {
 			logging.Warn("failed to get work beads", "error", err)
 		} else {
 			beadExists := false
 			for _, wb := range workBeads {
-				if wb.BeadID == workRecord.RootIssueID {
+				if wb.BeanID == workRecord.RootIssueID {
 					beadExists = true
 					break
 				}
 			}
 			if !beadExists {
-				if err := proj.DB.AddWorkBeads(ctx, workID, []string{workRecord.RootIssueID}); err != nil {
+				if err := proj.DB.AddWorkBeans(ctx, workID, []string{workRecord.RootIssueID}); err != nil {
 					logging.Warn("failed to add bead to work", "error", err, "bead_id", workRecord.RootIssueID)
 				}
 			}

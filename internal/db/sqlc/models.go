@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-type Bead struct {
+type Bean struct {
 	ID            string       `json:"id"`
 	Status        string       `json:"status"`
 	Title         string       `json:"title"`
@@ -25,7 +25,7 @@ type Bead struct {
 }
 
 type ComplexityCache struct {
-	BeadID          string    `json:"bead_id"`
+	BeanID          string    `json:"bean_id"`
 	DescriptionHash string    `json:"description_hash"`
 	ComplexityScore int64     `json:"complexity_score"`
 	EstimatedTokens int64     `json:"estimated_tokens"`
@@ -33,7 +33,7 @@ type ComplexityCache struct {
 }
 
 type PlanSession struct {
-	BeadID        string    `json:"bead_id"`
+	BeanID        string    `json:"bean_id"`
 	ZellijSession string    `json:"zellij_session"`
 	TabName       string    `json:"tab_name"`
 	Pid           int64     `json:"pid"`
@@ -53,7 +53,7 @@ type PrFeedback struct {
 	SourceName   sql.NullString `json:"source_name"`
 	Context      sql.NullString `json:"context"`
 	Priority     int64          `json:"priority"`
-	BeadID       sql.NullString `json:"bead_id"`
+	BeanID       sql.NullString `json:"bean_id"`
 	CreatedAt    time.Time      `json:"created_at"`
 	ProcessedAt  sql.NullTime   `json:"processed_at"`
 	ResolvedAt   sql.NullTime   `json:"resolved_at"`
@@ -112,9 +112,9 @@ type Task struct {
 	TaskNumber       int64        `json:"task_number"`
 }
 
-type TaskBead struct {
+type TaskBean struct {
 	TaskID string `json:"task_id"`
-	BeadID string `json:"bead_id"`
+	BeanID string `json:"bean_id"`
 	Status string `json:"status"`
 }
 
@@ -156,9 +156,9 @@ type Work struct {
 	MergeableState     string       `json:"mergeable_state"`
 }
 
-type WorkBead struct {
+type WorkBean struct {
 	WorkID    string    `json:"work_id"`
-	BeadID    string    `json:"bead_id"`
+	BeanID    string    `json:"bean_id"`
 	Position  int64     `json:"position"`
 	CreatedAt time.Time `json:"created_at"`
 }

@@ -78,7 +78,7 @@ func binPackBeads(sortedBeads []beads.Bead, estimates map[string]beadEstimate, g
 			taskIdx = len(tasks)
 			tasks = append(tasks, Task{
 				ID:              fmt.Sprintf("task-%d", taskIdx+1),
-				BeadIDs:         []string{},
+				BeanIDs:         []string{},
 				Beads:           []beads.Bead{},
 				Complexity:      0,
 				EstimatedTokens: 0,
@@ -87,7 +87,7 @@ func binPackBeads(sortedBeads []beads.Bead, estimates map[string]beadEstimate, g
 		}
 
 		// Add bead to task
-		tasks[taskIdx].BeadIDs = append(tasks[taskIdx].BeadIDs, bead.ID)
+		tasks[taskIdx].BeanIDs = append(tasks[taskIdx].BeanIDs, bead.ID)
 		tasks[taskIdx].Beads = append(tasks[taskIdx].Beads, bead)
 		tasks[taskIdx].Complexity += est.score
 		tasks[taskIdx].EstimatedTokens += est.tokens
@@ -100,7 +100,7 @@ func binPackBeads(sortedBeads []beads.Bead, estimates map[string]beadEstimate, g
 // findBestTask finds the best task for a bead, or -1 if a new task is needed.
 // The tokens parameter is the estimated token usage for this bead.
 // The budget is the maximum tokens per task.
-func findBestTask(beadID string, tokens int, tasks []Task, assigned map[string]int, graph *DependencyGraph, budget int) int {
+func findBestTask(beanID string, tokens int, tasks []Task, assigned map[string]int, graph *DependencyGraph, budget int) int {
 	bestIdx := -1
 	bestFit := budget + 1 // Initialize to impossible value
 
@@ -115,7 +115,7 @@ func findBestTask(beadID string, tokens int, tasks []Task, assigned map[string]i
 		// All dependencies must either be:
 		// 1. In a previous task (already completed)
 		// 2. In the same task
-		if !canAddToTask(beadID, i, assigned, graph) {
+		if !canAddToTask(beanID, i, assigned, graph) {
 			continue
 		}
 
@@ -131,9 +131,9 @@ func findBestTask(beadID string, tokens int, tasks []Task, assigned map[string]i
 }
 
 // canAddToTask checks if a bead can be added to a task based on dependency constraints.
-func canAddToTask(beadID string, taskIdx int, assigned map[string]int, graph *DependencyGraph) bool {
+func canAddToTask(beanID string, taskIdx int, assigned map[string]int, graph *DependencyGraph) bool {
 	// Check that all dependencies are either in an earlier task or the same task
-	for _, depID := range graph.DependsOn[beadID] {
+	for _, depID := range graph.DependsOn[beanID] {
 		depTaskIdx, ok := assigned[depID]
 		if !ok {
 			// Dependency not yet assigned - can't add this bead yet

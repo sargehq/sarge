@@ -13,18 +13,18 @@ import (
 // - All children recursively (parent-child dependents)
 // - All blocked issues recursively (blocks dependents)
 // - For issues without children/blocked, all transitive dependencies
-func CollectIssueIDsForAutomatedWorkflow(ctx context.Context, beadID string, beadsReader beads.Reader) ([]string, error) {
+func CollectIssueIDsForAutomatedWorkflow(ctx context.Context, beanID string, beadsReader beads.Reader) ([]string, error) {
 	if beadsReader == nil {
 		return nil, fmt.Errorf("beads reader is nil")
 	}
 
 	// First, get the main issue
-	mainIssue, err := beadsReader.GetBead(ctx, beadID)
+	mainIssue, err := beadsReader.GetBead(ctx, beanID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get bead %s: %w", beadID, err)
+		return nil, fmt.Errorf("failed to get bead %s: %w", beanID, err)
 	}
 	if mainIssue == nil {
-		return nil, fmt.Errorf("bead %s not found", beadID)
+		return nil, fmt.Errorf("bead %s not found", beanID)
 	}
 
 	// Check if this issue has children or blocked issues
@@ -38,9 +38,9 @@ func CollectIssueIDsForAutomatedWorkflow(ctx context.Context, beadID string, bea
 
 	if hasChildrenOrBlocked {
 		// Collect all children and blocked issues recursively
-		allIssueIDs, err := collectChildrenAndBlocked(ctx, beadID, beadsReader)
+		allIssueIDs, err := collectChildrenAndBlocked(ctx, beanID, beadsReader)
 		if err != nil {
-			return nil, fmt.Errorf("failed to collect children and blocked for %s: %w", beadID, err)
+			return nil, fmt.Errorf("failed to collect children and blocked for %s: %w", beanID, err)
 		}
 
 		// Filter out closed issues
@@ -58,7 +58,7 @@ func CollectIssueIDsForAutomatedWorkflow(ctx context.Context, beadID string, bea
 	}
 
 	// For regular issues, collect transitive dependencies
-	transitiveIssues, err := beadsReader.GetTransitiveDependencies(ctx, beadID)
+	transitiveIssues, err := beadsReader.GetTransitiveDependencies(ctx, beanID)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func CollectIssueIDsForAutomatedWorkflow(ctx context.Context, beadID string, bea
 
 // collectChildrenAndBlocked recursively collects all children (parent-child) and
 // blocked issues (blocks) for a given bead.
-func collectChildrenAndBlocked(ctx context.Context, beadID string, beadsReader beads.Reader) ([]string, error) {
+func collectChildrenAndBlocked(ctx context.Context, beanID string, beadsReader beads.Reader) ([]string, error) {
 	visited := make(map[string]bool)
 	var orderedIDs []string
 
@@ -108,7 +108,7 @@ func collectChildrenAndBlocked(ctx context.Context, beadID string, beadsReader b
 		return nil
 	}
 
-	if err := collect(beadID); err != nil {
+	if err := collect(beanID); err != nil {
 		return nil, err
 	}
 

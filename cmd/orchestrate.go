@@ -92,7 +92,7 @@ func runOrchestrate(cmd *cobra.Command, args []string) error {
 
 			// Create estimate task from unassigned theWork beads (post-estimation will create implement tasks)
 			workSvc := work.NewWorkService(proj)
-			err := workSvc.CreateEstimateTaskFromWorkBeads(ctx, workID, os.Stdout)
+			err := workSvc.CreateEstimateTaskFromWorkBeans(ctx, workID, os.Stdout)
 			if err != nil {
 				return fmt.Errorf("failed to create estimate task: %w", err)
 			}
@@ -379,25 +379,25 @@ func handlePostEstimation(proj *project.Project, estimateTask *db.Task, work *db
 	fmt.Println("Creating implement, review, and PR tasks based on complexity estimates...")
 
 	// Get the beads that were estimated
-	beadIDs, err := proj.DB.GetTaskBeads(ctx, estimateTask.ID)
+	beanIDs, err := proj.DB.GetTaskBeans(ctx, estimateTask.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get task beads: %w", err)
 	}
 
-	if len(beadIDs) == 0 {
+	if len(beanIDs) == 0 {
 		return fmt.Errorf("no beads found for estimate task %s", estimateTask.ID)
 	}
 
 	// Get issues with dependencies for planning
-	issuesResult, err := proj.Beads.GetBeadsWithDeps(ctx, beadIDs)
+	issuesResult, err := proj.Beads.GetBeadsWithDeps(ctx, beanIDs)
 	if err != nil {
 		return fmt.Errorf("failed to get bead details: %w", err)
 	}
 
 	// Verify all beads were found
-	for _, beadID := range beadIDs {
-		if _, found := issuesResult.Beads[beadID]; !found {
-			return fmt.Errorf("bead %s not found", beadID)
+	for _, beanID := range beanIDs {
+		if _, found := issuesResult.Beads[beanID]; !found {
+			return fmt.Errorf("bead %s not found", beanID)
 		}
 	}
 
@@ -421,12 +421,12 @@ func handlePostEstimation(proj *project.Project, estimateTask *db.Task, work *db
 	}
 
 	if len(tasks) == 0 {
-		return fmt.Errorf("planner returned no tasks for %d beads", len(beadIDs))
+		return fmt.Errorf("planner returned no tasks for %d beads", len(beanIDs))
 	}
 
-	// Create implement tasks and track beadID → taskID mapping
+	// Create implement tasks and track beanID → taskID mapping
 	var implementTaskIDs []string
-	beadToTask := make(map[string]string) // beadID → taskID
+	beadToTask := make(map[string]string) // beanID → taskID
 	for _, t := range tasks {
 		nextNum, err := proj.DB.GetNextTaskNumber(ctx, work.ID)
 		if err != nil {
@@ -434,7 +434,7 @@ func handlePostEstimation(proj *project.Project, estimateTask *db.Task, work *db
 		}
 		taskID := fmt.Sprintf("%s.%d", work.ID, nextNum)
 
-		if err := proj.DB.CreateTask(ctx, taskID, "implement", t.BeadIDs, t.Complexity, work.ID, nextNum); err != nil {
+		if err := proj.DB.CreateTask(ctx, taskID, "implement", t.BeanIDs, t.Complexity, work.ID, nextNum); err != nil {
 			return fmt.Errorf("failed to create implement task: %w", err)
 		}
 
@@ -444,20 +444,20 @@ func handlePostEstimation(proj *project.Project, estimateTask *db.Task, work *db
 		}
 
 		// Track which task each bead is in
-		for _, beadID := range t.BeadIDs {
-			beadToTask[beadID] = taskID
+		for _, beanID := range t.BeanIDs {
+			beadToTask[beanID] = taskID
 		}
 
 		implementTaskIDs = append(implementTaskIDs, taskID)
 		fmt.Printf("Created implement task %s (complexity: %d) with %d bead(s): %v\n",
-			taskID, t.Complexity, len(t.BeadIDs), t.BeadIDs)
+			taskID, t.Complexity, len(t.BeanIDs), t.BeanIDs)
 	}
 
 	// Compute inter-task dependencies from bead dependencies.
 	// If bead A (in task X) depends on bead B (in task Y where Y != X), task X depends on task Y.
 	interTaskDeps := make(map[string]map[string]bool) // taskID → set of dependent taskIDs
-	for beadID, deps := range issuesResult.Dependencies {
-		taskID, ok := beadToTask[beadID]
+	for beanID, deps := range issuesResult.Dependencies {
+		taskID, ok := beadToTask[beanID]
 		if !ok {
 			continue // bead not in our task set
 		}
@@ -571,7 +571,7 @@ func handleReviewFixLoop(proj *project.Project, reviewTask *db.Task, work *db.Wo
 						if issue.ID != work.RootIssueID &&
 							beads.IsWorkableStatus(issue.Status) {
 							// Check if this bead is already in a task
-							inTask, _ := proj.DB.IsBeadInTask(ctx, work.ID, issue.ID)
+							inTask, _ := proj.DB.IsBeanInTask(ctx, work.ID, issue.ID)
 							if !inTask {
 								beadsToFix = append(beadsToFix, issue)
 							}

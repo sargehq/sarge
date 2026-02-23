@@ -1,11 +1,11 @@
-You are planning for issue {{.BeadID}}.
+You are planning for issue {{.BeanID}}.
 
 IMPORTANT: This is PLANNING ONLY. Do NOT implement any code changes or fixes.
 Your job is to analyze, break down work, and create subtasks. The orchestrator
 will handle implementation in separate sessions.
 
 First, investigate this issue:
-bd show {{.BeadID}}
+bd show {{.BeanID}}
 
 After reviewing the issue details, help plan by:
 - Analyzing the problem and identifying what needs to change
@@ -15,10 +15,10 @@ After reviewing the issue details, help plan by:
 
 When breaking down into subtasks, create them as children of this issue:
 
-  bd create "<subtask title>" --parent {{.BeadID}} --type task \
+  bd create "<subtask title>" --parent {{.BeanID}} --type task \
     --description "<description of the subtask>"
 
-This establishes {{.BeadID}} as the parent, making the new issues its children.
+This establishes {{.BeanID}} as the parent, making the new issues its children.
 The orchestrator will then process these subtasks as part of this work.
 
 CRITICAL RULES:

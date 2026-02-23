@@ -370,12 +370,12 @@ func TestNewAgent(t *testing.T) {
 				// Use the concrete type to call BuildPrompt
 				switch a := agent.(type) {
 				case *claude.Agent:
-					prompt, err := a.BuildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeadID: "test-123"})
+					prompt, err := a.BuildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeanID: "test-123"})
 					require.NoError(t, err)
 					require.NotEmpty(t, prompt)
 					require.Contains(t, prompt, "test-123")
 				case *pi.Agent:
-					prompt, err := a.BuildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeadID: "test-123"})
+					prompt, err := a.BuildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeanID: "test-123"})
 					require.NoError(t, err)
 					require.NotEmpty(t, prompt)
 					require.Contains(t, prompt, "test-123")
@@ -391,9 +391,9 @@ func TestBuildPlanPromptForPi(t *testing.T) {
 	claudeAgent := claude.New()
 	piAgent := pi.New()
 
-	claudePrompt, err := claudeAgent.BuildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeadID: "bead-123"})
+	claudePrompt, err := claudeAgent.BuildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeanID: "bead-123"})
 	require.NoError(t, err)
-	piPrompt, err := piAgent.BuildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeadID: "bead-123"})
+	piPrompt, err := piAgent.BuildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeanID: "bead-123"})
 	require.NoError(t, err)
 
 	require.Contains(t, claudePrompt, "bead-123")
@@ -428,7 +428,7 @@ func TestBuildPromptAllTypes(t *testing.T) {
 			params: types.TaskParams{
 				Type:       types.TaskTypeImplement,
 				TaskID:     "w-abc.1",
-				BeadIDs:    []string{"bead-1"},
+				BeanIDs:    []string{"bead-1"},
 				BranchName: "feat/test",
 				BaseBranch: "main",
 			},
@@ -439,7 +439,7 @@ func TestBuildPromptAllTypes(t *testing.T) {
 			params: types.TaskParams{
 				Type:    types.TaskTypeEstimate,
 				TaskID:  "w-abc.2",
-				BeadIDs: []string{"bead-1"},
+				BeanIDs: []string{"bead-1"},
 			},
 			wantContains: "w-abc.2",
 		},
@@ -482,7 +482,7 @@ func TestBuildPromptAllTypes(t *testing.T) {
 			name: "plan",
 			params: types.TaskParams{
 				Type:   types.TaskTypePlan,
-				BeadID: "bead-plan-1",
+				BeanID: "bead-plan-1",
 			},
 			wantContains: "bead-plan-1",
 		},

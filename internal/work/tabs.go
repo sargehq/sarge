@@ -15,8 +15,8 @@ import (
 )
 
 // PlanTabName returns the zellij tab name for a bead's planning session.
-func PlanTabName(beadID string) string {
-	return fmt.Sprintf("plan-%s", beadID)
+func PlanTabName(beanID string) string {
+	return fmt.Sprintf("plan-%s", beanID)
 }
 
 // OpenConsole creates a zellij tab with a shell in the work's worktree.
@@ -351,16 +351,16 @@ func (m *DefaultOrchestratorManager) openAgentSessionZellij(ctx context.Context,
 // IMPORTANT: The zellij session must already exist before calling this function.
 // Callers should use control.EnsureControlPlane to ensure
 // the session exists with the control plane running.
-func (m *DefaultOrchestratorManager) SpawnPlanSession(ctx context.Context, beadID string, projectName string, mainRepoPath string, w io.Writer) error {
+func (m *DefaultOrchestratorManager) SpawnPlanSession(ctx context.Context, beanID string, projectName string, mainRepoPath string, w io.Writer) error {
 	if m.isZmx() {
-		return m.spawnPlanSessionZmx(ctx, beadID, projectName, mainRepoPath, w)
+		return m.spawnPlanSessionZmx(ctx, beanID, projectName, mainRepoPath, w)
 	}
-	return m.spawnPlanSessionZellij(ctx, beadID, projectName, mainRepoPath, w)
+	return m.spawnPlanSessionZellij(ctx, beanID, projectName, mainRepoPath, w)
 }
 
 // spawnPlanSessionZmx opens a terminal window with a zmx plan session.
-func (m *DefaultOrchestratorManager) spawnPlanSessionZmx(ctx context.Context, beadID string, projectName string, mainRepoPath string, w io.Writer) error {
-	tabName := PlanTabName(beadID)
+func (m *DefaultOrchestratorManager) spawnPlanSessionZmx(ctx context.Context, beanID string, projectName string, mainRepoPath string, w io.Writer) error {
+	tabName := PlanTabName(beanID)
 	zmxName := zmx.SessionName(projectName, tabName)
 
 	// Kill existing session if present
@@ -372,7 +372,7 @@ func (m *DefaultOrchestratorManager) spawnPlanSessionZmx(ctx context.Context, be
 
 	// Create session with plan command
 	fmt.Fprintf(w, "Creating plan session: %s\n", zmxName)
-	if err := m.zmx.RunSession(ctx, zmxName, "sarge", []string{"plan", beadID}, mainRepoPath); err != nil {
+	if err := m.zmx.RunSession(ctx, zmxName, "sarge", []string{"plan", beanID}, mainRepoPath); err != nil {
 		return fmt.Errorf("failed to create plan session: %w", err)
 	}
 
@@ -384,9 +384,9 @@ func (m *DefaultOrchestratorManager) spawnPlanSessionZmx(ctx context.Context, be
 }
 
 // spawnPlanSessionZellij creates a zellij tab running the plan command.
-func (m *DefaultOrchestratorManager) spawnPlanSessionZellij(ctx context.Context, beadID string, projectName string, mainRepoPath string, w io.Writer) error {
+func (m *DefaultOrchestratorManager) spawnPlanSessionZellij(ctx context.Context, beanID string, projectName string, mainRepoPath string, w io.Writer) error {
 	sessionName := project.SessionNameForProject(projectName)
-	tabName := PlanTabName(beadID)
+	tabName := PlanTabName(beanID)
 
 	// Verify session exists - callers must initialize it with control plane
 	exists, err := m.zellij.SessionExists(ctx, sessionName)
@@ -412,7 +412,7 @@ func (m *DefaultOrchestratorManager) spawnPlanSessionZellij(ctx context.Context,
 
 	// Create a new tab with the plan command using a layout
 	fmt.Fprintf(w, "Creating tab: %s in session %s\n", tabName, sessionName)
-	if err := session.CreateTabWithCommand(ctx, tabName, mainRepoPath, "sarge", []string{"plan", beadID}, "planning"); err != nil {
+	if err := session.CreateTabWithCommand(ctx, tabName, mainRepoPath, "sarge", []string{"plan", beanID}, "planning"); err != nil {
 		return fmt.Errorf("failed to create tab: %w", err)
 	}
 

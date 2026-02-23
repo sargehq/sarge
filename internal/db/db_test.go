@@ -30,119 +30,119 @@ func TestOpen(t *testing.T) {
 
 	// Verify schema was created by querying the table
 	var count int
-	err := db.QueryRow("SELECT COUNT(*) FROM beads").Scan(&count)
-	require.NoError(t, err, "failed to query beads table")
-	assert.Equal(t, 0, count, "expected 0 beads")
+	err := db.QueryRow("SELECT COUNT(*) FROM beans").Scan(&count)
+	require.NoError(t, err, "failed to query beans table")
+	assert.Equal(t, 0, count, "expected 0 beans")
 }
 
-func TestStartBead(t *testing.T) {
+func TestStartBean(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 	ctx := context.Background()
 
-	err := db.StartBead(ctx, "test-1", "Test Bead", "session-1", "pane-1")
-	require.NoError(t, err, "StartBead failed")
+	err := db.StartBean(ctx, "test-1", "Test Bean", "session-1", "pane-1")
+	require.NoError(t, err, "StartBean failed")
 
-	// Verify bead was created
-	bead, err := db.GetBead(ctx, "test-1")
-	require.NoError(t, err, "GetBead failed")
-	require.NotNil(t, bead, "expected bead, got nil")
-	assert.Equal(t, "test-1", bead.ID)
-	assert.Equal(t, "Test Bead", bead.Title)
-	assert.Equal(t, StatusProcessing, bead.Status)
-	assert.Equal(t, "session-1", bead.ZellijSession)
-	assert.Equal(t, "pane-1", bead.ZellijPane)
-	assert.NotNil(t, bead.StartedAt, "expected StartedAt to be set")
+	// Verify bean was created
+	bean, err := db.GetBean(ctx, "test-1")
+	require.NoError(t, err, "GetBean failed")
+	require.NotNil(t, bean, "expected bean, got nil")
+	assert.Equal(t, "test-1", bean.ID)
+	assert.Equal(t, "Test Bean", bean.Title)
+	assert.Equal(t, StatusProcessing, bean.Status)
+	assert.Equal(t, "session-1", bean.ZellijSession)
+	assert.Equal(t, "pane-1", bean.ZellijPane)
+	assert.NotNil(t, bean.StartedAt, "expected StartedAt to be set")
 }
 
-func TestStartBeadUpsert(t *testing.T) {
+func TestStartBeanUpsert(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 	ctx := context.Background()
 
-	// Create initial bead
-	err := db.StartBead(ctx, "test-1", "Original Title", "session-1", "pane-1")
-	require.NoError(t, err, "first StartBead failed")
+	// Create initial bean
+	err := db.StartBean(ctx, "test-1", "Original Title", "session-1", "pane-1")
+	require.NoError(t, err, "first StartBean failed")
 
 	// Update with new values (upsert)
-	err = db.StartBead(ctx, "test-1", "Updated Title", "session-2", "pane-2")
-	require.NoError(t, err, "second StartBead failed")
+	err = db.StartBean(ctx, "test-1", "Updated Title", "session-2", "pane-2")
+	require.NoError(t, err, "second StartBean failed")
 
-	// Verify bead was updated
-	bead, err := db.GetBead(ctx, "test-1")
-	require.NoError(t, err, "GetBead failed")
-	assert.Equal(t, "Updated Title", bead.Title)
-	assert.Equal(t, "session-2", bead.ZellijSession)
+	// Verify bean was updated
+	bean, err := db.GetBean(ctx, "test-1")
+	require.NoError(t, err, "GetBean failed")
+	assert.Equal(t, "Updated Title", bean.Title)
+	assert.Equal(t, "session-2", bean.ZellijSession)
 }
 
-func TestCompleteBead(t *testing.T) {
+func TestCompleteBean(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 	ctx := context.Background()
 
-	// Create bead first
-	err := db.StartBead(ctx, "test-1", "Test Bead", "session-1", "pane-1")
-	require.NoError(t, err, "StartBead failed")
+	// Create bean first
+	err := db.StartBean(ctx, "test-1", "Test Bean", "session-1", "pane-1")
+	require.NoError(t, err, "StartBean failed")
 
 	// Complete it
-	err = db.CompleteBead(ctx, "test-1", "https://github.com/example/pr/1")
-	require.NoError(t, err, "CompleteBead failed")
+	err = db.CompleteBean(ctx, "test-1", "https://github.com/example/pr/1")
+	require.NoError(t, err, "CompleteBean failed")
 
 	// Verify status and PR URL
-	bead, err := db.GetBead(ctx, "test-1")
-	require.NoError(t, err, "GetBead failed")
-	assert.Equal(t, StatusCompleted, bead.Status)
-	assert.Equal(t, "https://github.com/example/pr/1", bead.PRURL)
-	assert.NotNil(t, bead.CompletedAt, "expected CompletedAt to be set")
+	bean, err := db.GetBean(ctx, "test-1")
+	require.NoError(t, err, "GetBean failed")
+	assert.Equal(t, StatusCompleted, bean.Status)
+	assert.Equal(t, "https://github.com/example/pr/1", bean.PRURL)
+	assert.NotNil(t, bean.CompletedAt, "expected CompletedAt to be set")
 }
 
-func TestCompleteBeadNotFound(t *testing.T) {
+func TestCompleteBeanNotFound(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 	ctx := context.Background()
 
-	err := db.CompleteBead(ctx, "nonexistent", "")
-	assert.Error(t, err, "expected error for nonexistent bead")
+	err := db.CompleteBean(ctx, "nonexistent", "")
+	assert.Error(t, err, "expected error for nonexistent bean")
 }
 
-func TestFailBead(t *testing.T) {
+func TestFailBean(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 	ctx := context.Background()
 
-	// Create bead first
-	err := db.StartBead(ctx, "test-1", "Test Bead", "session-1", "pane-1")
-	require.NoError(t, err, "StartBead failed")
+	// Create bean first
+	err := db.StartBean(ctx, "test-1", "Test Bean", "session-1", "pane-1")
+	require.NoError(t, err, "StartBean failed")
 
 	// Fail it
-	err = db.FailBead(ctx, "test-1", "something went wrong")
-	require.NoError(t, err, "FailBead failed")
+	err = db.FailBean(ctx, "test-1", "something went wrong")
+	require.NoError(t, err, "FailBean failed")
 
 	// Verify status and error message
-	bead, err := db.GetBead(ctx, "test-1")
-	require.NoError(t, err, "GetBead failed")
-	assert.Equal(t, StatusFailed, bead.Status)
-	assert.Equal(t, "something went wrong", bead.ErrorMessage)
-	assert.NotNil(t, bead.CompletedAt, "expected CompletedAt to be set")
+	bean, err := db.GetBean(ctx, "test-1")
+	require.NoError(t, err, "GetBean failed")
+	assert.Equal(t, StatusFailed, bean.Status)
+	assert.Equal(t, "something went wrong", bean.ErrorMessage)
+	assert.NotNil(t, bean.CompletedAt, "expected CompletedAt to be set")
 }
 
-func TestFailBeadNotFound(t *testing.T) {
+func TestFailBeanNotFound(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 	ctx := context.Background()
 
-	err := db.FailBead(ctx, "nonexistent", "error")
-	assert.Error(t, err, "expected error for nonexistent bead")
+	err := db.FailBean(ctx, "nonexistent", "error")
+	assert.Error(t, err, "expected error for nonexistent bean")
 }
 
-func TestGetBeadNotFound(t *testing.T) {
+func TestGetBeanNotFound(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 	ctx := context.Background()
 
-	bead, err := db.GetBead(ctx, "nonexistent")
-	require.NoError(t, err, "GetBead failed")
-	assert.Nil(t, bead, "expected nil for nonexistent bead")
+	bean, err := db.GetBean(ctx, "nonexistent")
+	require.NoError(t, err, "GetBean failed")
+	assert.Nil(t, bean, "expected nil for nonexistent bean")
 }
 
 func TestIsCompleted(t *testing.T) {
@@ -150,63 +150,63 @@ func TestIsCompleted(t *testing.T) {
 	defer cleanup()
 	ctx := context.Background()
 
-	// Nonexistent bead
+	// Nonexistent bean
 	completed, err := db.IsCompleted(ctx, "nonexistent")
 	require.NoError(t, err, "IsCompleted failed")
-	assert.False(t, completed, "expected false for nonexistent bead")
+	assert.False(t, completed, "expected false for nonexistent bean")
 
-	// Processing bead
-	db.StartBead(ctx, "test-1", "Test", "s", "p")
+	// Processing bean
+	db.StartBean(ctx, "test-1", "Test", "s", "p")
 	completed, err = db.IsCompleted(ctx, "test-1")
 	require.NoError(t, err, "IsCompleted failed")
-	assert.False(t, completed, "expected false for processing bead")
+	assert.False(t, completed, "expected false for processing bean")
 
-	// Completed bead
-	db.CompleteBead(ctx, "test-1", "")
+	// Completed bean
+	db.CompleteBean(ctx, "test-1", "")
 	completed, err = db.IsCompleted(ctx, "test-1")
 	require.NoError(t, err, "IsCompleted failed")
-	assert.True(t, completed, "expected true for completed bead")
+	assert.True(t, completed, "expected true for completed bean")
 
-	// Failed bead also counts as completed
-	db.StartBead(ctx, "test-2", "Test 2", "s", "p")
-	db.FailBead(ctx, "test-2", "error")
+	// Failed bean also counts as completed
+	db.StartBean(ctx, "test-2", "Test 2", "s", "p")
+	db.FailBean(ctx, "test-2", "error")
 	completed, err = db.IsCompleted(ctx, "test-2")
 	require.NoError(t, err, "IsCompleted failed")
-	assert.True(t, completed, "expected true for failed bead")
+	assert.True(t, completed, "expected true for failed bean")
 }
 
-func TestListBeads(t *testing.T) {
+func TestListBeans(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 	ctx := context.Background()
 
-	// Create several beads with different statuses
-	db.StartBead(ctx, "test-1", "Processing 1", "s", "p")
-	db.StartBead(ctx, "test-2", "Processing 2", "s", "p")
-	db.StartBead(ctx, "test-3", "Will Complete", "s", "p")
-	db.CompleteBead(ctx, "test-3", "")
-	db.StartBead(ctx, "test-4", "Will Fail", "s", "p")
-	db.FailBead(ctx, "test-4", "error")
+	// Create several beans with different statuses
+	db.StartBean(ctx, "test-1", "Processing 1", "s", "p")
+	db.StartBean(ctx, "test-2", "Processing 2", "s", "p")
+	db.StartBean(ctx, "test-3", "Will Complete", "s", "p")
+	db.CompleteBean(ctx, "test-3", "")
+	db.StartBean(ctx, "test-4", "Will Fail", "s", "p")
+	db.FailBean(ctx, "test-4", "error")
 
 	// List all
-	beads, err := db.ListBeads(ctx, "")
-	require.NoError(t, err, "ListBeads failed")
-	assert.Len(t, beads, 4, "expected 4 beads")
+	beans, err := db.ListBeans(ctx, "")
+	require.NoError(t, err, "ListBeans failed")
+	assert.Len(t, beans, 4, "expected 4 beans")
 
 	// List processing only
-	beads, err = db.ListBeads(ctx, StatusProcessing)
-	require.NoError(t, err, "ListBeads failed")
-	assert.Len(t, beads, 2, "expected 2 processing beads")
+	beans, err = db.ListBeans(ctx, StatusProcessing)
+	require.NoError(t, err, "ListBeans failed")
+	assert.Len(t, beans, 2, "expected 2 processing beans")
 
 	// List completed only
-	beads, err = db.ListBeads(ctx, StatusCompleted)
-	require.NoError(t, err, "ListBeads failed")
-	assert.Len(t, beads, 1, "expected 1 completed bead")
+	beans, err = db.ListBeans(ctx, StatusCompleted)
+	require.NoError(t, err, "ListBeans failed")
+	assert.Len(t, beans, 1, "expected 1 completed bean")
 
 	// List failed only
-	beads, err = db.ListBeads(ctx, StatusFailed)
-	require.NoError(t, err, "ListBeads failed")
-	assert.Len(t, beads, 1, "expected 1 failed bead")
+	beans, err = db.ListBeans(ctx, StatusFailed)
+	require.NoError(t, err, "ListBeans failed")
+	assert.Len(t, beans, 1, "expected 1 failed bean")
 }
 
 func TestTimestamps(t *testing.T) {
@@ -215,14 +215,14 @@ func TestTimestamps(t *testing.T) {
 	ctx := context.Background()
 
 	before := time.Now().Add(-time.Second)
-	db.StartBead(ctx, "test-1", "Test", "s", "p")
+	db.StartBean(ctx, "test-1", "Test", "s", "p")
 	after := time.Now().Add(time.Second)
 
-	bead, _ := db.GetBead(ctx, "test-1")
+	bean, _ := db.GetBean(ctx, "test-1")
 
-	assert.True(t, bead.CreatedAt.After(before) && bead.CreatedAt.Before(after), "CreatedAt not within expected range")
-	assert.True(t, bead.UpdatedAt.After(before) && bead.UpdatedAt.Before(after), "UpdatedAt not within expected range")
-	assert.True(t, bead.StartedAt.After(before) && bead.StartedAt.Before(after), "StartedAt not within expected range")
+	assert.True(t, bean.CreatedAt.After(before) && bean.CreatedAt.Before(after), "CreatedAt not within expected range")
+	assert.True(t, bean.UpdatedAt.After(before) && bean.UpdatedAt.Before(after), "UpdatedAt not within expected range")
+	assert.True(t, bean.StartedAt.After(before) && bean.StartedAt.Before(after), "StartedAt not within expected range")
 }
 
 func TestTasksTableExists(t *testing.T) {
@@ -258,7 +258,7 @@ func TestTasksTableExists(t *testing.T) {
 	assert.Equal(t, 50, actual)
 }
 
-func TestTaskBeadsTableExists(t *testing.T) {
+func TestTaskBeansTableExists(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
@@ -270,18 +270,18 @@ func TestTaskBeadsTableExists(t *testing.T) {
 	_, err = db.Exec(`INSERT INTO tasks (id, status, work_id) VALUES ('task-1', 'pending', 'work-1')`)
 	require.NoError(t, err, "failed to insert task")
 
-	// Insert task_beads entries
+	// Insert task_beans entries
 	_, err = db.Exec(`
-		INSERT INTO task_beads (task_id, bead_id, status)
-		VALUES ('task-1', 'bead-1', 'pending'), ('task-1', 'bead-2', 'completed')
+		INSERT INTO task_beans (task_id, bean_id, status)
+		VALUES ('task-1', 'bean-1', 'pending'), ('task-1', 'bean-2', 'completed')
 	`)
-	require.NoError(t, err, "failed to insert task_beads")
+	require.NoError(t, err, "failed to insert task_beans")
 
 	// Verify count
 	var count int
-	err = db.QueryRow("SELECT COUNT(*) FROM task_beads WHERE task_id = 'task-1'").Scan(&count)
-	require.NoError(t, err, "failed to query task_beads")
-	assert.Equal(t, 2, count, "expected 2 task_beads")
+	err = db.QueryRow("SELECT COUNT(*) FROM task_beans WHERE task_id = 'task-1'").Scan(&count)
+	require.NoError(t, err, "failed to query task_beans")
+	assert.Equal(t, 2, count, "expected 2 task_beans")
 }
 
 func TestComplexityCacheTableExists(t *testing.T) {
@@ -290,18 +290,18 @@ func TestComplexityCacheTableExists(t *testing.T) {
 
 	// Insert complexity cache entry
 	_, err := db.Exec(`
-		INSERT INTO complexity_cache (bead_id, description_hash, complexity_score, estimated_tokens)
-		VALUES ('bead-1', 'abc123hash', 5, 1000)
+		INSERT INTO complexity_cache (bean_id, description_hash, complexity_score, estimated_tokens)
+		VALUES ('bean-1', 'abc123hash', 5, 1000)
 	`)
 	require.NoError(t, err, "failed to insert complexity_cache")
 
 	// Verify insertion
-	var beadID, hash string
+	var beanID, hash string
 	var score, tokens int
-	err = db.QueryRow("SELECT bead_id, description_hash, complexity_score, estimated_tokens FROM complexity_cache WHERE bead_id = 'bead-1'").
-		Scan(&beadID, &hash, &score, &tokens)
+	err = db.QueryRow("SELECT bean_id, description_hash, complexity_score, estimated_tokens FROM complexity_cache WHERE bean_id = 'bean-1'").
+		Scan(&beanID, &hash, &score, &tokens)
 	require.NoError(t, err, "failed to query complexity_cache")
-	assert.Equal(t, "bead-1", beadID)
+	assert.Equal(t, "bean-1", beanID)
 	assert.Equal(t, "abc123hash", hash)
 	assert.Equal(t, 5, score)
 	assert.Equal(t, 1000, tokens)

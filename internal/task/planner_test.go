@@ -123,7 +123,7 @@ func TestPlanSimple(t *testing.T) {
 	require.NoError(t, err, "Plan failed")
 
 	assert.Len(t, tasks, 1, "expected 1 task")
-	assert.Len(t, tasks[0].BeadIDs, 3, "expected 3 beads in task")
+	assert.Len(t, tasks[0].BeanIDs, 3, "expected 3 beads in task")
 }
 
 func TestPlanSplitByBudget(t *testing.T) {
@@ -157,7 +157,7 @@ func TestPlanSplitByBudget(t *testing.T) {
 	// Verify all beads are assigned
 	totalBeads := 0
 	for _, t := range tasks {
-		totalBeads += len(t.BeadIDs)
+		totalBeads += len(t.BeanIDs)
 	}
 	assert.Equal(t, 3, totalBeads, "expected 3 total beads")
 }
@@ -192,7 +192,7 @@ func TestPlanRespectsDependencies(t *testing.T) {
 	// Find which tasks contain a and b
 	taskForBead := make(map[string]int)
 	for i, t := range tasks {
-		for _, id := range t.BeadIDs {
+		for _, id := range t.BeanIDs {
 			taskForBead[id] = i
 		}
 	}
@@ -280,7 +280,7 @@ func TestPlanChainDependencySplitAcrossTasks(t *testing.T) {
 	// Find which task contains each bead
 	taskForBead := make(map[string]int)
 	for i, t := range tasks {
-		for _, id := range t.BeadIDs {
+		for _, id := range t.BeanIDs {
 			taskForBead[id] = i
 		}
 	}
@@ -328,7 +328,7 @@ func TestPlanDiamondDependencySplitAcrossTasks(t *testing.T) {
 	// Find which task contains each bead
 	taskForBead := make(map[string]int)
 	for i, t := range tasks {
-		for _, id := range t.BeadIDs {
+		for _, id := range t.BeanIDs {
 			taskForBead[id] = i
 		}
 	}
@@ -372,7 +372,7 @@ func TestPlanSameTaskDependenciesNoSelfDep(t *testing.T) {
 	// Both beads should be in the same task
 	taskForBead := make(map[string]int)
 	for i, t := range tasks {
-		for _, id := range t.BeadIDs {
+		for _, id := range t.BeanIDs {
 			taskForBead[id] = i
 		}
 	}

@@ -29,7 +29,7 @@ func TestLinearImportIntegration(t *testing.T) {
 		require.NoError(t, err, "Failed to import issue")
 		require.True(t, result.Success, "Import failed: %s", result.SkipReason)
 
-		t.Logf("Imported Linear issue %s as bead %s", result.LinearID, result.BeadID)
+		t.Logf("Imported Linear issue %s as bead %s", result.LinearID, result.BeanID)
 	})
 
 	// Example 2: Import with options
@@ -45,9 +45,9 @@ func TestLinearImportIntegration(t *testing.T) {
 		require.NoError(t, err, "Failed to import issue")
 
 		if result.SkipReason == "already imported" {
-			t.Logf("Issue already imported as bead %s", result.BeadID)
+			t.Logf("Issue already imported as bead %s", result.BeanID)
 		} else if result.Success {
-			t.Logf("Imported Linear issue %s as bead %s", result.LinearID, result.BeadID)
+			t.Logf("Imported Linear issue %s as bead %s", result.LinearID, result.BeanID)
 		}
 	})
 
@@ -58,7 +58,7 @@ func TestLinearImportIntegration(t *testing.T) {
 		require.NoError(t, err, "Failed to import issue")
 
 		if result.Success {
-			t.Logf("Imported Linear issue from URL: %s -> bead %s", result.LinearURL, result.BeadID)
+			t.Logf("Imported Linear issue from URL: %s -> bead %s", result.LinearURL, result.BeanID)
 		}
 	})
 
@@ -78,7 +78,7 @@ func TestLinearImportIntegration(t *testing.T) {
 		for _, result := range results {
 			if result.Success {
 				successCount++
-				t.Logf("✓ %s -> %s", result.LinearID, result.BeadID)
+				t.Logf("✓ %s -> %s", result.LinearID, result.BeanID)
 			} else if result.Error != nil {
 				t.Logf("✗ %s: %v", result.LinearID, result.Error)
 			} else {
@@ -99,9 +99,9 @@ func TestLinearImportIntegration(t *testing.T) {
 		require.NoError(t, err, "Failed to update issue")
 
 		if result.SkipReason == "updated existing bead" {
-			t.Logf("Updated existing bead %s with latest data from Linear", result.BeadID)
+			t.Logf("Updated existing bead %s with latest data from Linear", result.BeanID)
 		} else if result.Success {
-			t.Logf("Created new bead %s", result.BeadID)
+			t.Logf("Created new bead %s", result.BeanID)
 		}
 	})
 
@@ -119,7 +119,7 @@ func TestLinearImportIntegration(t *testing.T) {
 		if result.SkipReason != "" {
 			t.Logf("Skipped: %s", result.SkipReason)
 		} else if result.Success {
-			t.Logf("Imported bead %s (matched filters)", result.BeadID)
+			t.Logf("Imported bead %s (matched filters)", result.BeanID)
 		}
 	})
 

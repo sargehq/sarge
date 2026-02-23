@@ -135,12 +135,12 @@ func (i *Integration) CreateBeadFromFeedback(ctx context.Context, beadDir string
 		ExternalRef: externalRef,
 	}
 
-	beadID, err := beads.NewCLI(beadDir).Create(ctx, createOpts)
+	beanID, err := beads.NewCLI(beadDir).Create(ctx, createOpts)
 	if err != nil {
 		return "", fmt.Errorf("failed to create bead: %w", err)
 	}
 
-	return beadID, nil
+	return beanID, nil
 }
 
 // extractGitHubID extracts a GitHub identifier from a URL

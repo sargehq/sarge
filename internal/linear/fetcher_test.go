@@ -84,7 +84,7 @@ func TestFetcherErrorHandling(t *testing.T) {
 		result, err := fetcher.FetchAndImport(ctx, "ENG-123", nil)
 		require.NoError(t, err)
 		assert.True(t, result.Success, "expected success for cached result")
-		assert.Equal(t, "beads-abc", result.BeadID)
+		assert.Equal(t, "beads-abc", result.BeanID)
 		assert.Equal(t, "already imported (cached)", result.SkipReason)
 	})
 }

@@ -73,13 +73,13 @@ func TestCommentIntegration(t *testing.T) {
 	ctx := context.Background()
 
 	// Simulate creating a bead from feedback
-	beadID := "beads-test-123"
+	beanID := "beads-test-123"
 	feedbackTitle := "Fix test failure in authentication module"
 	priority := 2
 
 	// Post acknowledgment message
 	ackMessage := fmt.Sprintf("✅ Created tracking issue **%s** for this feedback.\n\nTitle: %s\nPriority: P%d",
-		beadID, feedbackTitle, priority)
+		beanID, feedbackTitle, priority)
 
 	err := client.PostPRComment(ctx, prURL, ackMessage)
 	require.NoError(t, err, "Failed to post acknowledgment")

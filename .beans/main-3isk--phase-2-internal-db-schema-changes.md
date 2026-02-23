@@ -1,11 +1,11 @@
 ---
 # main-3isk
 title: 'Phase 2: Internal DB Schema Changes'
-status: todo
+status: in-progress
 type: epic
 priority: critical
 created_at: 2026-02-23T02:06:13Z
-updated_at: 2026-02-23T02:06:13Z
+updated_at: 2026-02-23T02:26:36Z
 parent: main-ds0d
 ---
 

@@ -34,19 +34,19 @@ func TestCanAddToTask(t *testing.T) {
 // ComputeInterTaskDeps is a helper function that mimics the inter-task dependency
 // computation logic from handlePostEstimation. Used for testing.
 func ComputeInterTaskDeps(tasks []Task, dependencies map[string][]beads.Dependency) map[int][]int {
-	// Build beadID → task index mapping
+	// Build beanID → task index mapping
 	beadToTask := make(map[string]int)
 	for i, t := range tasks {
-		for _, beadID := range t.BeadIDs {
-			beadToTask[beadID] = i
+		for _, beanID := range t.BeanIDs {
+			beadToTask[beanID] = i
 		}
 	}
 
 	// Compute inter-task dependencies
 	// Returns map of taskIdx → list of task indices it depends on
 	interTaskDeps := make(map[int]map[int]bool)
-	for beadID, deps := range dependencies {
-		taskIdx, ok := beadToTask[beadID]
+	for beanID, deps := range dependencies {
+		taskIdx, ok := beadToTask[beanID]
 		if !ok {
 			continue
 		}
@@ -78,9 +78,9 @@ func ComputeInterTaskDeps(tasks []Task, dependencies map[string][]beads.Dependen
 func TestComputeInterTaskDepsChain(t *testing.T) {
 	// Chain: c depends on b, b depends on a - each in separate task
 	tasks := []Task{
-		{ID: "task-1", BeadIDs: []string{"a"}},
-		{ID: "task-2", BeadIDs: []string{"b"}},
-		{ID: "task-3", BeadIDs: []string{"c"}},
+		{ID: "task-1", BeanIDs: []string{"a"}},
+		{ID: "task-2", BeanIDs: []string{"b"}},
+		{ID: "task-3", BeanIDs: []string{"c"}},
 	}
 
 	dependencies := map[string][]beads.Dependency{
@@ -105,10 +105,10 @@ func TestComputeInterTaskDepsChain(t *testing.T) {
 func TestComputeInterTaskDepsDiamond(t *testing.T) {
 	// Diamond: a and b independent, c depends on both, d depends on c
 	tasks := []Task{
-		{ID: "task-1", BeadIDs: []string{"a"}},
-		{ID: "task-2", BeadIDs: []string{"b"}},
-		{ID: "task-3", BeadIDs: []string{"c"}},
-		{ID: "task-4", BeadIDs: []string{"d"}},
+		{ID: "task-1", BeanIDs: []string{"a"}},
+		{ID: "task-2", BeanIDs: []string{"b"}},
+		{ID: "task-3", BeanIDs: []string{"c"}},
+		{ID: "task-4", BeanIDs: []string{"d"}},
 	}
 
 	dependencies := map[string][]beads.Dependency{
@@ -138,7 +138,7 @@ func TestComputeInterTaskDepsDiamond(t *testing.T) {
 func TestComputeInterTaskDepsSameTaskNoDeps(t *testing.T) {
 	// Both beads in same task, b depends on a
 	tasks := []Task{
-		{ID: "task-1", BeadIDs: []string{"a", "b"}},
+		{ID: "task-1", BeanIDs: []string{"a", "b"}},
 	}
 
 	dependencies := map[string][]beads.Dependency{

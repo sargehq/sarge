@@ -366,33 +366,33 @@ func TestCollectIssueIDsForAutomatedWorkflow_NoBeadsAvailable(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestParseBeadIDs_Single(t *testing.T) {
-	result := ParseBeadIDs("bead-1")
+func TestParseBeanIDs_Single(t *testing.T) {
+	result := ParseBeanIDs("bead-1")
 	assert.Equal(t, []string{"bead-1"}, result)
 }
 
-func TestParseBeadIDs_Multiple(t *testing.T) {
-	result := ParseBeadIDs("bead-1,bead-2,bead-3")
+func TestParseBeanIDs_Multiple(t *testing.T) {
+	result := ParseBeanIDs("bead-1,bead-2,bead-3")
 	assert.Equal(t, []string{"bead-1", "bead-2", "bead-3"}, result)
 }
 
-func TestParseBeadIDs_WithWhitespace(t *testing.T) {
-	result := ParseBeadIDs("bead-1, bead-2 , bead-3")
+func TestParseBeanIDs_WithWhitespace(t *testing.T) {
+	result := ParseBeanIDs("bead-1, bead-2 , bead-3")
 	assert.Equal(t, []string{"bead-1", "bead-2", "bead-3"}, result)
 }
 
-func TestParseBeadIDs_Empty(t *testing.T) {
-	result := ParseBeadIDs("")
+func TestParseBeanIDs_Empty(t *testing.T) {
+	result := ParseBeanIDs("")
 	assert.Nil(t, result)
 }
 
-func TestParseBeadIDs_OnlyCommas(t *testing.T) {
-	result := ParseBeadIDs(",,,")
+func TestParseBeanIDs_OnlyCommas(t *testing.T) {
+	result := ParseBeanIDs(",,,")
 	assert.Empty(t, result)
 }
 
-func TestParseBeadIDs_EmptyEntries(t *testing.T) {
-	result := ParseBeadIDs("bead-1,,bead-2,")
+func TestParseBeanIDs_EmptyEntries(t *testing.T) {
+	result := ParseBeanIDs("bead-1,,bead-2,")
 	assert.Equal(t, []string{"bead-1", "bead-2"}, result)
 }
 

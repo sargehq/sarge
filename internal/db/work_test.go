@@ -27,10 +27,10 @@ func TestDeleteWork(t *testing.T) {
 	task1ID := "w-test.1"
 	task2ID := "w-test.2"
 
-	err = db.CreateTask(ctx, task1ID, "implement", []string{"bead-1", "bead-2"}, 50, workID, 0)
+	err = db.CreateTask(ctx, task1ID, "implement", []string{"bean-1", "bean-2"}, 50, workID, 0)
 	require.NoError(t, err, "Failed to create task 1")
 
-	err = db.CreateTask(ctx, task2ID, "implement", []string{"bead-3"}, 30, workID, 0)
+	err = db.CreateTask(ctx, task2ID, "implement", []string{"bean-3"}, 30, workID, 0)
 	require.NoError(t, err, "Failed to create task 2")
 
 	// Note: CreateTask already adds the task to work_tasks when workID is provided,
@@ -81,7 +81,7 @@ func TestDeleteWorkNotFound(t *testing.T) {
 	assert.Error(t, err, "Expected error when deleting non-existent work")
 }
 
-func TestAddWorkBeads(t *testing.T) {
+func TestAddWorkBeans(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 	ctx := context.Background()
@@ -90,17 +90,17 @@ func TestAddWorkBeads(t *testing.T) {
 	err := db.CreateWork(ctx, "w-test", "", "/tmp/tree", "feature/test", "main", "root-issue-1", false)
 	require.NoError(t, err)
 
-	// Add beads to work
-	err = db.AddWorkBeads(ctx, "w-test", []string{"bead-1", "bead-2"})
+	// Add beans to work
+	err = db.AddWorkBeans(ctx, "w-test", []string{"bean-1", "bean-2"})
 	require.NoError(t, err)
 
-	// Verify beads were added
-	beads, err := db.GetWorkBeads(ctx, "w-test")
+	// Verify beans were added
+	beans, err := db.GetWorkBeans(ctx, "w-test")
 	require.NoError(t, err)
-	assert.Len(t, beads, 2)
+	assert.Len(t, beans, 2)
 }
 
-func TestAddWorkBeadsDuplicateError(t *testing.T) {
+func TestAddWorkBeansDuplicateError(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 	ctx := context.Background()
@@ -109,18 +109,18 @@ func TestAddWorkBeadsDuplicateError(t *testing.T) {
 	err := db.CreateWork(ctx, "w-test", "", "/tmp/tree", "feature/test", "main", "root-issue-1", false)
 	require.NoError(t, err)
 
-	// Add initial beads
-	err = db.AddWorkBeads(ctx, "w-test", []string{"bead-1", "bead-2"})
+	// Add initial beans
+	err = db.AddWorkBeans(ctx, "w-test", []string{"bean-1", "bean-2"})
 	require.NoError(t, err)
 
-	// Try to add duplicate beads - should error
-	err = db.AddWorkBeads(ctx, "w-test", []string{"bead-2", "bead-3"})
+	// Try to add duplicate beans - should error
+	err = db.AddWorkBeans(ctx, "w-test", []string{"bean-2", "bean-3"})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "beads already exist in work")
-	assert.Contains(t, err.Error(), "bead-2")
+	assert.Contains(t, err.Error(), "beans already exist in work")
+	assert.Contains(t, err.Error(), "bean-2")
 }
 
-func TestAddWorkBeadsEmptyList(t *testing.T) {
+func TestAddWorkBeansEmptyList(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 	ctx := context.Background()
@@ -130,15 +130,15 @@ func TestAddWorkBeadsEmptyList(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add empty list - should succeed with no effect
-	err = db.AddWorkBeads(ctx, "w-test", []string{})
+	err = db.AddWorkBeans(ctx, "w-test", []string{})
 	require.NoError(t, err)
 
-	beads, err := db.GetWorkBeads(ctx, "w-test")
+	beans, err := db.GetWorkBeans(ctx, "w-test")
 	require.NoError(t, err)
-	assert.Empty(t, beads)
+	assert.Empty(t, beans)
 }
 
-func TestAddWorkBeadsMultipleBatches(t *testing.T) {
+func TestAddWorkBeansMultipleBatches(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 	ctx := context.Background()
@@ -147,16 +147,16 @@ func TestAddWorkBeadsMultipleBatches(t *testing.T) {
 	err := db.CreateWork(ctx, "w-test", "", "/tmp/tree", "feature/test", "main", "root-issue-1", false)
 	require.NoError(t, err)
 
-	// Add beads in multiple batches
-	err = db.AddWorkBeads(ctx, "w-test", []string{"bead-1", "bead-2"})
+	// Add beans in multiple batches
+	err = db.AddWorkBeans(ctx, "w-test", []string{"bean-1", "bean-2"})
 	require.NoError(t, err)
-	err = db.AddWorkBeads(ctx, "w-test", []string{"bead-3"})
+	err = db.AddWorkBeans(ctx, "w-test", []string{"bean-3"})
 	require.NoError(t, err)
 
-	// Verify all beads were added
-	beads, err := db.GetWorkBeads(ctx, "w-test")
+	// Verify all beans were added
+	beans, err := db.GetWorkBeans(ctx, "w-test")
 	require.NoError(t, err)
-	assert.Len(t, beads, 3)
+	assert.Len(t, beans, 3)
 }
 
 func TestWorkRootIssueID(t *testing.T) {
@@ -165,14 +165,14 @@ func TestWorkRootIssueID(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a work with a root issue ID
-	err := db.CreateWork(ctx, "w-test", "", "/tmp/tree", "feature/test", "main", "root-bead-123", false)
+	err := db.CreateWork(ctx, "w-test", "", "/tmp/tree", "feature/test", "main", "root-bean-123", false)
 	require.NoError(t, err)
 
 	// Verify root issue ID was stored
 	work, err := db.GetWork(ctx, "w-test")
 	require.NoError(t, err)
 	require.NotNil(t, work)
-	assert.Equal(t, "root-bead-123", work.RootIssueID)
+	assert.Equal(t, "root-bean-123", work.RootIssueID)
 }
 
 func TestWorkRootIssueIDEmpty(t *testing.T) {
@@ -197,9 +197,9 @@ func TestListWorksWithRootIssueID(t *testing.T) {
 	ctx := context.Background()
 
 	// Create works with different root issue IDs
-	err := db.CreateWork(ctx, "w-test1", "", "/tmp/tree1", "feature/test1", "main", "bead-1", false)
+	err := db.CreateWork(ctx, "w-test1", "", "/tmp/tree1", "feature/test1", "main", "bean-1", false)
 	require.NoError(t, err)
-	err = db.CreateWork(ctx, "w-test2", "", "/tmp/tree2", "feature/test2", "main", "bead-2", false)
+	err = db.CreateWork(ctx, "w-test2", "", "/tmp/tree2", "feature/test2", "main", "bean-2", false)
 	require.NoError(t, err)
 
 	// List all works
@@ -212,8 +212,8 @@ func TestListWorksWithRootIssueID(t *testing.T) {
 	for _, w := range works {
 		rootIssues[w.ID] = w.RootIssueID
 	}
-	assert.Equal(t, "bead-1", rootIssues["w-test1"])
-	assert.Equal(t, "bead-2", rootIssues["w-test2"])
+	assert.Equal(t, "bean-1", rootIssues["w-test1"])
+	assert.Equal(t, "bean-2", rootIssues["w-test2"])
 }
 
 func TestWorkStatusTransitionToCompleted(t *testing.T) {
@@ -242,9 +242,9 @@ func TestWorkStatusTransitionToCompleted(t *testing.T) {
 	// Create tasks for the work
 	task1ID := workID + ".1"
 	task2ID := workID + ".2"
-	err = db.CreateTask(ctx, task1ID, "implement", []string{"bead-1"}, 10, workID, 0)
+	err = db.CreateTask(ctx, task1ID, "implement", []string{"bean-1"}, 10, workID, 0)
 	require.NoError(t, err)
-	err = db.CreateTask(ctx, task2ID, "implement", []string{"bead-2"}, 10, workID, 0)
+	err = db.CreateTask(ctx, task2ID, "implement", []string{"bean-2"}, 10, workID, 0)
 	require.NoError(t, err)
 
 	// Verify work is not completed yet
@@ -297,7 +297,7 @@ func TestWorkStatusTransitionToCompletedWithoutPR(t *testing.T) {
 
 	// Create and complete a task
 	taskID := workID + ".1"
-	err = db.CreateTask(ctx, taskID, "implement", []string{"bead-1"}, 10, workID, 0)
+	err = db.CreateTask(ctx, taskID, "implement", []string{"bean-1"}, 10, workID, 0)
 	require.NoError(t, err)
 	err = db.CompleteTask(ctx, taskID, "")
 	require.NoError(t, err)
@@ -340,11 +340,11 @@ func TestIsWorkCompletedWithPartialCompletion(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create three tasks
-	err = db.CreateTask(ctx, workID+".1", "implement", []string{"bead-1"}, 10, workID, 1)
+	err = db.CreateTask(ctx, workID+".1", "implement", []string{"bean-1"}, 10, workID, 1)
 	require.NoError(t, err)
-	err = db.CreateTask(ctx, workID+".2", "implement", []string{"bead-2"}, 10, workID, 2)
+	err = db.CreateTask(ctx, workID+".2", "implement", []string{"bean-2"}, 10, workID, 2)
 	require.NoError(t, err)
-	err = db.CreateTask(ctx, workID+".3", "implement", []string{"bead-3"}, 10, workID, 3)
+	err = db.CreateTask(ctx, workID+".3", "implement", []string{"bean-3"}, 10, workID, 3)
 	require.NoError(t, err)
 
 	// Complete only one task

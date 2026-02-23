@@ -68,7 +68,7 @@ func TestWorkCreation_WithEpicExpansion(t *testing.T) {
 		BranchName:  "feat/epic-work",
 		BaseBranch:  "main",
 		RootIssueID: "epic-1",
-		BeadIDs:     []string{"epic-1", "child-1", "child-2"},
+		BeanIDs:     []string{"epic-1", "child-1", "child-2"},
 	})
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -80,17 +80,17 @@ func TestWorkCreation_WithEpicExpansion(t *testing.T) {
 	assert.Equal(t, "epic-1", workRecord.RootIssueID)
 
 	// Verify all beads added to work_beads table
-	workBeads, err := h.DB.GetWorkBeads(ctx, result.WorkID)
+	workBeads, err := h.DB.GetWorkBeans(ctx, result.WorkID)
 	require.NoError(t, err)
 	require.Len(t, workBeads, 3, "expected epic and 2 children")
 
-	beadIDs := make(map[string]bool)
+	beanIDs := make(map[string]bool)
 	for _, wb := range workBeads {
-		beadIDs[wb.BeadID] = true
+		beanIDs[wb.BeanID] = true
 	}
-	assert.True(t, beadIDs["epic-1"])
-	assert.True(t, beadIDs["child-1"])
-	assert.True(t, beadIDs["child-2"])
+	assert.True(t, beanIDs["epic-1"])
+	assert.True(t, beanIDs["child-1"])
+	assert.True(t, beanIDs["child-2"])
 }
 
 func TestWorkCreation_BranchNameCollision(t *testing.T) {
@@ -195,12 +195,12 @@ func TestWorkCreation_CleanupOnPartialFailure(t *testing.T) {
 		BranchName:  "feat/first-work",
 		BaseBranch:  "main",
 		RootIssueID: "bead-1",
-		BeadIDs:     []string{"bead-1"},
+		BeanIDs:     []string{"bead-1"},
 	})
 	require.NoError(t, err)
 
 	// Verify the work was created with its bead
-	beads1, err := h.DB.GetWorkBeads(ctx, result1.WorkID)
+	beads1, err := h.DB.GetWorkBeans(ctx, result1.WorkID)
 	require.NoError(t, err)
 	assert.Len(t, beads1, 1, "first work should have one bead")
 
@@ -211,7 +211,7 @@ func TestWorkCreation_CleanupOnPartialFailure(t *testing.T) {
 		BranchName:  "feat/second-work",
 		BaseBranch:  "main",
 		RootIssueID: "bead-2",
-		BeadIDs:     []string{"bead-2"},
+		BeanIDs:     []string{"bead-2"},
 	})
 	require.NoError(t, err)
 
@@ -220,7 +220,7 @@ func TestWorkCreation_CleanupOnPartialFailure(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, works, 2, "should have two independent works")
 
-	beads2, err := h.DB.GetWorkBeads(ctx, result2.WorkID)
+	beads2, err := h.DB.GetWorkBeans(ctx, result2.WorkID)
 	require.NoError(t, err)
 	assert.Len(t, beads2, 1, "second work should have one bead")
 }

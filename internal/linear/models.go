@@ -63,7 +63,7 @@ type Comment struct {
 type ImportResult struct {
 	LinearID   string
 	LinearURL  string
-	BeadID     string
+	BeanID     string
 	Success    bool
 	Error      error
 	SkipReason string // e.g., "already imported", "filtered out"

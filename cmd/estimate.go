@@ -37,7 +37,7 @@ func init() {
 
 func runEstimate(cmd *cobra.Command, args []string) error {
 	ctx := GetContext()
-	beadID := args[0]
+	beanID := args[0]
 
 	// Validate score range
 	if flagEstimateScore < 1 || flagEstimateScore > 10 {
@@ -57,12 +57,12 @@ func runEstimate(cmd *cobra.Command, args []string) error {
 	defer proj.Close()
 
 	// Get bead from beads DB to compute description hash
-	bead, err := proj.Beads.GetBead(ctx, beadID)
+	bead, err := proj.Beads.GetBead(ctx, beanID)
 	if err != nil {
-		return fmt.Errorf("failed to get bead %s: %w", beadID, err)
+		return fmt.Errorf("failed to get bead %s: %w", beanID, err)
 	}
 	if bead == nil {
-		return fmt.Errorf("bead %s not found", beadID)
+		return fmt.Errorf("bead %s not found", beanID)
 	}
 
 	// Compute description hash
@@ -71,14 +71,14 @@ func runEstimate(cmd *cobra.Command, args []string) error {
 	descHash := db.HashDescription(fullDescription)
 
 	// Store estimate in complexity cache
-	if err := proj.DB.CacheComplexity(ctx, beadID, descHash, flagEstimateScore, flagEstimateTokens); err != nil {
+	if err := proj.DB.CacheComplexity(ctx, beanID, descHash, flagEstimateScore, flagEstimateTokens); err != nil {
 		return fmt.Errorf("failed to cache complexity: %w", err)
 	}
 
 	// Use provided task ID or find which task contains this bead
 	taskID := flagEstimateTask
 	if taskID == "" {
-		taskID, err = proj.DB.GetTaskForBead(ctx, beadID)
+		taskID, err = proj.DB.GetTaskForBean(ctx, beanID)
 		if err != nil {
 			return fmt.Errorf("failed to find task for bead: %w", err)
 		}
@@ -86,12 +86,12 @@ func runEstimate(cmd *cobra.Command, args []string) error {
 
 	if taskID == "" {
 		// Not part of a task, just print confirmation
-		fmt.Printf("✓ Estimated %s: complexity=%d, tokens=%d\n", beadID, flagEstimateScore, flagEstimateTokens)
+		fmt.Printf("✓ Estimated %s: complexity=%d, tokens=%d\n", beanID, flagEstimateScore, flagEstimateTokens)
 		return nil
 	}
 
 	// Mark this bead as completed in the task
-	if err := proj.DB.CompleteTaskBead(ctx, taskID, beadID); err != nil {
+	if err := proj.DB.CompleteTaskBean(ctx, taskID, beanID); err != nil {
 		// Non-fatal: bead might not be in a task or already completed
 		fmt.Printf("Note: could not mark bead complete in task: %v\n", err)
 	}
@@ -104,13 +104,13 @@ func runEstimate(cmd *cobra.Command, args []string) error {
 
 	if task != nil && task.TaskType == "estimate" {
 		// Get all beads in the task
-		taskBeadIDs, err := proj.DB.GetTaskBeads(ctx, taskID)
+		taskBeanIDs, err := proj.DB.GetTaskBeans(ctx, taskID)
 		if err != nil {
 			return fmt.Errorf("failed to get task beads: %w", err)
 		}
 
 		// Check if all beads have estimates
-		allEstimated, err := proj.DB.AreAllBeadsEstimated(ctx, taskBeadIDs)
+		allEstimated, err := proj.DB.AreAllBeansEstimated(ctx, taskBeanIDs)
 		if err != nil {
 			return fmt.Errorf("failed to check estimates: %w", err)
 		}
@@ -120,12 +120,12 @@ func runEstimate(cmd *cobra.Command, args []string) error {
 			if err := proj.DB.CompleteTask(ctx, taskID, ""); err != nil {
 				return fmt.Errorf("failed to complete task: %w", err)
 			}
-			fmt.Printf("✓ Estimated %s: complexity=%d, tokens=%d\n", beadID, flagEstimateScore, flagEstimateTokens)
-			fmt.Printf("✅ All %d beads estimated. Task %s complete!\n", len(taskBeadIDs), taskID)
+			fmt.Printf("✓ Estimated %s: complexity=%d, tokens=%d\n", beanID, flagEstimateScore, flagEstimateTokens)
+			fmt.Printf("✅ All %d beads estimated. Task %s complete!\n", len(taskBeanIDs), taskID)
 
 			// Print summary of estimates
 			fmt.Println("\nEstimation Summary:")
-			for _, id := range taskBeadIDs {
+			for _, id := range taskBeanIDs {
 				// Get bead info for display
 				bead, err := proj.Beads.GetBead(ctx, id)
 				if err != nil || bead == nil {
@@ -147,7 +147,7 @@ func runEstimate(cmd *cobra.Command, args []string) error {
 		} else {
 			// Count remaining
 			var remaining []string
-			for _, id := range taskBeadIDs {
+			for _, id := range taskBeanIDs {
 				bead, err := proj.Beads.GetBead(ctx, id)
 				if err == nil && bead != nil {
 					fullDesc := bead.Title + "\n" + bead.Description
@@ -158,13 +158,13 @@ func runEstimate(cmd *cobra.Command, args []string) error {
 					}
 				}
 			}
-			fmt.Printf("✓ Estimated %s: complexity=%d, tokens=%d\n", beadID, flagEstimateScore, flagEstimateTokens)
+			fmt.Printf("✓ Estimated %s: complexity=%d, tokens=%d\n", beanID, flagEstimateScore, flagEstimateTokens)
 			fmt.Printf("Progress: %d/%d estimated. Remaining: %s\n",
-				len(taskBeadIDs)-len(remaining), len(taskBeadIDs), strings.Join(remaining, ", "))
+				len(taskBeanIDs)-len(remaining), len(taskBeanIDs), strings.Join(remaining, ", "))
 		}
 	} else {
 		// Regular implement task, just print confirmation
-		fmt.Printf("✓ Estimated %s: complexity=%d, tokens=%d\n", beadID, flagEstimateScore, flagEstimateTokens)
+		fmt.Printf("✓ Estimated %s: complexity=%d, tokens=%d\n", beanID, flagEstimateScore, flagEstimateTokens)
 	}
 
 	return nil

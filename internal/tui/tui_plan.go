@@ -78,7 +78,7 @@ type planModel struct {
 	addChildToWorkID       string          // Work ID to add newly created child bead to (for add-child-and-run flow)
 
 	// Multi-select state
-	selectedBeads map[string]bool // beadID -> is selected
+	selectedBeads map[string]bool // beanID -> is selected
 
 	// Loading state
 	loading bool
@@ -87,7 +87,7 @@ type planModel struct {
 	searchSeq uint64 // Incremented on each search change
 
 	// Per-bead session tracking
-	activeBeadSessions map[string]bool // beadID -> has active session
+	activeBeadSessions map[string]bool // beanID -> has active session
 	zj                 zellij.SessionManager
 	zmxClient          zmx.Client
 
@@ -109,7 +109,7 @@ type planModel struct {
 	trackingWatcher *trackingwatcher.Watcher
 
 	// New bead animation tracking
-	newBeads map[string]time.Time // beadID -> creation timestamp for animation
+	newBeads map[string]time.Time // beanID -> creation timestamp for animation
 }
 
 // newPlanModel creates a new Plan Mode model
@@ -487,9 +487,9 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.beadFormPanel.Blur()
 
 						// Determine mode and call appropriate action
-						if result.EditBeadID != "" {
+						if result.EditBeanID != "" {
 							// Edit mode
-							return m, m.saveBeadEdit(result.EditBeadID, result.Title, result.Description, result.BeadType, result.Status)
+							return m, m.saveBeadEdit(result.EditBeanID, result.Title, result.Description, result.BeadType, result.Status)
 						}
 
 						// Create or add-child mode
@@ -518,7 +518,7 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						}
 						m.viewMode = ViewNormal
 						m.selectedBeads = make(map[string]bool)
-						return m, m.executeCreateWork(result.BeadID, result.BranchName, false, result.UseExistingBranch)
+						return m, m.executeCreateWork(result.BeanID, result.BranchName, false, result.UseExistingBranch)
 					}
 				} else if clickedDialogButton == "auto" {
 					// Handle auto button for work creation
@@ -531,7 +531,7 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						}
 						m.viewMode = ViewNormal
 						m.selectedBeads = make(map[string]bool)
-						return m, m.executeCreateWork(result.BeadID, result.BranchName, true, result.UseExistingBranch)
+						return m, m.executeCreateWork(result.BeanID, result.BranchName, true, result.UseExistingBranch)
 					}
 				}
 
@@ -625,11 +625,11 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Check if we need to add a newly created bead to a work (add-child-and-run flow)
-		if m.addChildToWorkID != "" && msg.createdBeadID != "" {
+		if m.addChildToWorkID != "" && msg.createdBeanID != "" {
 			workID := m.addChildToWorkID
-			beadID := msg.createdBeadID
+			beanID := msg.createdBeanID
 			// Don't clear addChildToWorkID yet - wait for beadAddedToWorkMsg
-			cmds := append(expireCmds, m.addBeadsToWork([]string{beadID}, workID))
+			cmds := append(expireCmds, m.addBeadsToWork([]string{beanID}, workID))
 			return m, tea.Batch(cmds...)
 		}
 
@@ -649,13 +649,13 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.statusMessage = fmt.Sprintf("Failed: %v", msg.err)
 			m.statusIsError = true
 		} else if msg.resumed {
-			m.statusMessage = fmt.Sprintf("Resumed session for %s", msg.beadID)
+			m.statusMessage = fmt.Sprintf("Resumed session for %s", msg.beanID)
 			m.statusIsError = false
 		} else if msg.sessionCreated && !m.proj.Config.Multiplexer.IsZmx() {
-			m.statusMessage = fmt.Sprintf("Started session for %s | Zellij: zellij attach %s", msg.beadID, msg.sessionName)
+			m.statusMessage = fmt.Sprintf("Started session for %s | Zellij: zellij attach %s", msg.beanID, msg.sessionName)
 			m.statusIsError = false
 		} else {
-			m.statusMessage = fmt.Sprintf("Started session for %s", msg.beadID)
+			m.statusMessage = fmt.Sprintf("Started session for %s", msg.beanID)
 			m.statusIsError = false
 		}
 		// Refresh to update session indicators
@@ -669,7 +669,7 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.sessionCreated && !m.proj.Config.Multiplexer.IsZmx() {
 				m.statusMessage = fmt.Sprintf("Created work %s | Zellij: zellij attach %s", msg.workID, msg.sessionName)
 			} else {
-				m.statusMessage = fmt.Sprintf("Created work %s from %s", msg.workID, msg.beadID)
+				m.statusMessage = fmt.Sprintf("Created work %s from %s", msg.workID, msg.beanID)
 			}
 			m.statusIsError = false
 		}
@@ -683,7 +683,7 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.statusIsError = true
 			m.addChildToWorkID = "" // Clear on error
 		} else {
-			m.statusMessage = fmt.Sprintf("Added %s to work %s", msg.beadID, msg.workID)
+			m.statusMessage = fmt.Sprintf("Added %s to work %s", msg.beanID, msg.workID)
 			m.statusIsError = false
 
 			// Check if we should run the work (add-child-and-run flow)
@@ -821,18 +821,18 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		} else if msg.skipReason != "" {
 			// Single import skipped
-			if len(msg.beadIDs) == 1 {
-				m.statusMessage = fmt.Sprintf("%s: %s", msg.skipReason, msg.beadIDs[0])
+			if len(msg.beanIDs) == 1 {
+				m.statusMessage = fmt.Sprintf("%s: %s", msg.skipReason, msg.beanIDs[0])
 			} else {
 				m.statusMessage = msg.skipReason
 			}
 			m.statusIsError = false
 		} else {
 			// Single import success or legacy format
-			if len(msg.beadIDs) == 1 {
-				m.statusMessage = fmt.Sprintf("Successfully imported %s", msg.beadIDs[0])
-			} else if len(msg.beadIDs) > 1 {
-				m.statusMessage = fmt.Sprintf("Successfully imported %d issues", len(msg.beadIDs))
+			if len(msg.beanIDs) == 1 {
+				m.statusMessage = fmt.Sprintf("Successfully imported %s", msg.beanIDs[0])
+			} else if len(msg.beanIDs) > 1 {
+				m.statusMessage = fmt.Sprintf("Successfully imported %d issues", len(msg.beanIDs))
 			} else {
 				m.statusMessage = "Import completed (no new issues)"
 			}
@@ -880,7 +880,7 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case newBeadExpireMsg:
 		// Remove the bead from the newBeads map to stop animation
-		delete(m.newBeads, msg.beadID)
+		delete(m.newBeads, msg.beanID)
 		return m, nil
 
 	case tea.KeyMsg:
@@ -930,7 +930,7 @@ type planDataMsg struct {
 	activeSessions map[string]bool
 	err            error
 	searchSeq      uint64 // Sequence number to detect stale results
-	createdBeadID  string // ID of newly created bead (for add-child-and-run flow)
+	createdBeanID  string // ID of newly created bead (for add-child-and-run flow)
 }
 
 // planStatusMsg is sent to update status text
@@ -941,7 +941,7 @@ type planStatusMsg struct {
 
 // planSessionSpawnedMsg indicates a planning session was spawned or resumed
 type planSessionSpawnedMsg struct {
-	beadID         string
+	beanID         string
 	resumed        bool
 	err            error
 	sessionCreated bool   // true if a new zellij session was created
@@ -950,7 +950,7 @@ type planSessionSpawnedMsg struct {
 
 // planWorkCreatedMsg indicates work was created from a bead
 type planWorkCreatedMsg struct {
-	beadID         string
+	beanID         string
 	workID         string
 	err            error
 	sessionCreated bool   // true if a new zellij session was created
@@ -959,7 +959,7 @@ type planWorkCreatedMsg struct {
 
 // beadAddedToWorkMsg indicates a bead was added to a work
 type beadAddedToWorkMsg struct {
-	beadID string
+	beanID string
 	workID string
 	err    error
 }
@@ -969,7 +969,7 @@ type editorFinishedMsg struct{}
 
 // linearImportCompleteMsg is sent when a Linear import completes
 type linearImportCompleteMsg struct {
-	beadIDs      []string // IDs of imported beads
+	beanIDs      []string // IDs of imported beads
 	err          error
 	skipReason   string   // For single import: reason for skipping
 	successCount int      // For batch import: number of successful imports
@@ -998,7 +998,7 @@ func clearStatusAfter(d time.Duration) tea.Cmd {
 
 // newBeadExpireMsg is sent when the animation for a new bead should expire
 type newBeadExpireMsg struct {
-	beadID string
+	beanID string
 }
 
 // workCommandMsg indicates a work command completed
@@ -1012,9 +1012,9 @@ type workCommandMsg struct {
 const newBeadAnimationDuration = 5 * time.Second
 
 // scheduleNewBeadExpire returns a command that expires a new bead animation after the duration
-func scheduleNewBeadExpire(beadID string) tea.Cmd {
+func scheduleNewBeadExpire(beanID string) tea.Cmd {
 	return tea.Tick(newBeadAnimationDuration, func(t time.Time) tea.Msg {
-		return newBeadExpireMsg{beadID: beadID}
+		return newBeadExpireMsg{beanID: beanID}
 	})
 }
 
@@ -1052,9 +1052,9 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.beadFormPanel.Blur()
 
 			// Determine mode and call appropriate action
-			if result.EditBeadID != "" {
+			if result.EditBeanID != "" {
 				// Edit mode
-				return m, m.saveBeadEdit(result.EditBeadID, result.Title, result.Description, result.BeadType, result.Status)
+				return m, m.saveBeadEdit(result.EditBeanID, result.Title, result.Description, result.BeadType, result.Status)
 			}
 
 			// Create or add-child mode
@@ -1082,7 +1082,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.viewMode = ViewNormal
 			// Clear selections after work creation
 			m.selectedBeads = make(map[string]bool)
-			return m, m.executeCreateWork(result.BeadID, result.BranchName, false, result.UseExistingBranch)
+			return m, m.executeCreateWork(result.BeanID, result.BranchName, false, result.UseExistingBranch)
 
 		case CreateWorkActionAuto:
 			result := m.createWorkPanel.GetResult()
@@ -1094,7 +1094,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.viewMode = ViewNormal
 			// Clear selections after work creation
 			m.selectedBeads = make(map[string]bool)
-			return m, m.executeCreateWork(result.BeadID, result.BranchName, true, result.UseExistingBranch)
+			return m, m.executeCreateWork(result.BeanID, result.BranchName, true, result.UseExistingBranch)
 		}
 
 		return m, cmd
@@ -1308,9 +1308,9 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			case WorkDetailActionAttachTerminal:
 				return m, m.listZmxSessions()
 			case WorkDetailActionPlan:
-				beadID := m.workDetails.GetSelectedUnassignedBeadID()
-				if beadID != "" {
-					return m, m.spawnPlanSession(beadID)
+				beanID := m.workDetails.GetSelectedUnassignedBeanID()
+				if beanID != "" {
+					return m, m.spawnPlanSession(beanID)
 				}
 				return m, nil
 			case WorkDetailActionNone:
@@ -1553,8 +1553,8 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "p":
 		// Spawn/resume planning session for selected bead (work details panel handles 'p' for Plan)
 		if len(m.beadItems) > 0 && m.beadsCursor < len(m.beadItems) {
-			beadID := m.beadItems[m.beadsCursor].ID
-			return m, m.spawnPlanSession(beadID)
+			beanID := m.beadItems[m.beadsCursor].ID
+			return m, m.spawnPlanSession(beanID)
 		}
 		return m, nil
 

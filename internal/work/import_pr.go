@@ -84,7 +84,7 @@ type CreateBeadOptions struct {
 
 // CreateBeadResult contains the result of creating a bead from a PR.
 type CreateBeadResult struct {
-	BeadID     string
+	BeanID     string
 	Created    bool
 	SkipReason string
 }
@@ -106,10 +106,10 @@ func (s *WorkService) CreateBeadFromPR(ctx context.Context, metadata *github.PRM
 			logging.Warn("failed to check for existing bead", "error", err)
 			// Continue anyway - we'll try to create
 		} else if existingID != "" {
-			result.BeadID = existingID
+			result.BeanID = existingID
 			result.Created = false
 			result.SkipReason = "bead already exists for this PR"
-			logging.Info("found existing bead for PR", "beadID", existingID)
+			logging.Info("found existing bead for PR", "beanID", existingID)
 			return result, nil
 		}
 	}
@@ -143,30 +143,30 @@ func (s *WorkService) CreateBeadFromPR(ctx context.Context, metadata *github.PRM
 	}
 
 	cli := beads.NewCLI(opts.BeadsDir)
-	beadID, err := cli.Create(ctx, createOpts)
+	beanID, err := cli.Create(ctx, createOpts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create bead: %w", err)
 	}
 
 	// Set external reference to PR URL for deduplication
-	if err := cli.SetExternalRef(ctx, beadID, metadata.URL); err != nil {
-		logging.Warn("failed to set external ref on bead", "error", err, "beadID", beadID)
+	if err := cli.SetExternalRef(ctx, beanID, metadata.URL); err != nil {
+		logging.Warn("failed to set external ref on bead", "error", err, "beanID", beanID)
 		// Continue - bead was created successfully
 	}
 
 	// Add labels if present
 	if len(beadOpts.labels) > 0 {
-		if err := cli.AddLabels(ctx, beadID, beadOpts.labels); err != nil {
-			logging.Warn("failed to add labels to bead", "error", err, "beadID", beadID)
+		if err := cli.AddLabels(ctx, beanID, beadOpts.labels); err != nil {
+			logging.Warn("failed to add labels to bead", "error", err, "beanID", beanID)
 			// Continue - bead was created successfully
 		}
 	}
 
-	result.BeadID = beadID
+	result.BeanID = beanID
 	result.Created = true
 
 	logging.Info("successfully created bead from PR",
-		"beadID", beadID,
+		"beanID", beanID,
 		"prNumber", metadata.Number)
 
 	return result, nil

@@ -33,40 +33,40 @@ func (q *Queries) CompleteTask(ctx context.Context, arg CompleteTaskParams) (int
 	return result.RowsAffected()
 }
 
-const completeTaskBead = `-- name: CompleteTaskBead :execrows
-UPDATE task_beads
+const completeTaskBean = `-- name: CompleteTaskBean :execrows
+UPDATE task_beans
 SET status = 'completed'
-WHERE task_id = ? AND bead_id = ?
+WHERE task_id = ? AND bean_id = ?
 `
 
-type CompleteTaskBeadParams struct {
+type CompleteTaskBeanParams struct {
 	TaskID string `json:"task_id"`
-	BeadID string `json:"bead_id"`
+	BeanID string `json:"bean_id"`
 }
 
-func (q *Queries) CompleteTaskBead(ctx context.Context, arg CompleteTaskBeadParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, completeTaskBead, arg.TaskID, arg.BeadID)
+func (q *Queries) CompleteTaskBean(ctx context.Context, arg CompleteTaskBeanParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, completeTaskBean, arg.TaskID, arg.BeanID)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-const countTaskBeadStatuses = `-- name: CountTaskBeadStatuses :one
+const countTaskBeanStatuses = `-- name: CountTaskBeanStatuses :one
 SELECT COUNT(*) as total,
        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed
-FROM task_beads
+FROM task_beans
 WHERE task_id = ?
 `
 
-type CountTaskBeadStatusesRow struct {
+type CountTaskBeanStatusesRow struct {
 	Total     int64 `json:"total"`
 	Completed int64 `json:"completed"`
 }
 
-func (q *Queries) CountTaskBeadStatuses(ctx context.Context, taskID string) (CountTaskBeadStatusesRow, error) {
-	row := q.db.QueryRowContext(ctx, countTaskBeadStatuses, taskID)
-	var i CountTaskBeadStatusesRow
+func (q *Queries) CountTaskBeanStatuses(ctx context.Context, taskID string) (CountTaskBeanStatusesRow, error) {
+	row := q.db.QueryRowContext(ctx, countTaskBeanStatuses, taskID)
+	var i CountTaskBeanStatusesRow
 	err := row.Scan(&i.Total, &i.Completed)
 	return i, err
 }
@@ -95,18 +95,18 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) error {
 	return err
 }
 
-const createTaskBead = `-- name: CreateTaskBead :exec
-INSERT INTO task_beads (task_id, bead_id, status)
+const createTaskBean = `-- name: CreateTaskBean :exec
+INSERT INTO task_beans (task_id, bean_id, status)
 VALUES (?, ?, 'pending')
 `
 
-type CreateTaskBeadParams struct {
+type CreateTaskBeanParams struct {
 	TaskID string `json:"task_id"`
-	BeadID string `json:"bead_id"`
+	BeanID string `json:"bean_id"`
 }
 
-func (q *Queries) CreateTaskBead(ctx context.Context, arg CreateTaskBeadParams) error {
-	_, err := q.db.ExecContext(ctx, createTaskBead, arg.TaskID, arg.BeadID)
+func (q *Queries) CreateTaskBean(ctx context.Context, arg CreateTaskBeanParams) error {
+	_, err := q.db.ExecContext(ctx, createTaskBean, arg.TaskID, arg.BeanID)
 	return err
 }
 
@@ -123,28 +123,28 @@ func (q *Queries) DeleteTask(ctx context.Context, id string) (int64, error) {
 	return result.RowsAffected()
 }
 
-const deleteTaskBeadsByTask = `-- name: DeleteTaskBeadsByTask :execrows
-DELETE FROM task_beads
+const deleteTaskBeansByTask = `-- name: DeleteTaskBeansByTask :execrows
+DELETE FROM task_beans
 WHERE task_id = ?
 `
 
-func (q *Queries) DeleteTaskBeadsByTask(ctx context.Context, taskID string) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteTaskBeadsByTask, taskID)
+func (q *Queries) DeleteTaskBeansByTask(ctx context.Context, taskID string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteTaskBeansByTask, taskID)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-const deleteTaskBeadsForWork = `-- name: DeleteTaskBeadsForWork :execrows
-DELETE FROM task_beads
+const deleteTaskBeansForWork = `-- name: DeleteTaskBeansForWork :execrows
+DELETE FROM task_beans
 WHERE task_id IN (
     SELECT task_id FROM work_tasks WHERE work_id = ?
 )
 `
 
-func (q *Queries) DeleteTaskBeadsForWork(ctx context.Context, workID string) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteTaskBeadsForWork, workID)
+func (q *Queries) DeleteTaskBeansForWork(ctx context.Context, workID string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteTaskBeansForWork, workID)
 	if err != nil {
 		return 0, err
 	}
@@ -199,19 +199,19 @@ func (q *Queries) FailTask(ctx context.Context, arg FailTaskParams) (int64, erro
 	return result.RowsAffected()
 }
 
-const failTaskBead = `-- name: FailTaskBead :execrows
-UPDATE task_beads
+const failTaskBean = `-- name: FailTaskBean :execrows
+UPDATE task_beans
 SET status = 'failed'
-WHERE task_id = ? AND bead_id = ?
+WHERE task_id = ? AND bean_id = ?
 `
 
-type FailTaskBeadParams struct {
+type FailTaskBeanParams struct {
 	TaskID string `json:"task_id"`
-	BeadID string `json:"bead_id"`
+	BeanID string `json:"bean_id"`
 }
 
-func (q *Queries) FailTaskBead(ctx context.Context, arg FailTaskBeadParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, failTaskBead, arg.TaskID, arg.BeadID)
+func (q *Queries) FailTaskBean(ctx context.Context, arg FailTaskBeanParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, failTaskBean, arg.TaskID, arg.BeanID)
 	if err != nil {
 		return 0, err
 	}
@@ -336,43 +336,43 @@ func (q *Queries) GetTask(ctx context.Context, id string) (GetTaskRow, error) {
 	return i, err
 }
 
-const getTaskBeadStatus = `-- name: GetTaskBeadStatus :one
+const getTaskBeanStatus = `-- name: GetTaskBeanStatus :one
 SELECT status
-FROM task_beads
-WHERE task_id = ? AND bead_id = ?
+FROM task_beans
+WHERE task_id = ? AND bean_id = ?
 `
 
-type GetTaskBeadStatusParams struct {
+type GetTaskBeanStatusParams struct {
 	TaskID string `json:"task_id"`
-	BeadID string `json:"bead_id"`
+	BeanID string `json:"bean_id"`
 }
 
-func (q *Queries) GetTaskBeadStatus(ctx context.Context, arg GetTaskBeadStatusParams) (string, error) {
-	row := q.db.QueryRowContext(ctx, getTaskBeadStatus, arg.TaskID, arg.BeadID)
+func (q *Queries) GetTaskBeanStatus(ctx context.Context, arg GetTaskBeanStatusParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, getTaskBeanStatus, arg.TaskID, arg.BeanID)
 	var status string
 	err := row.Scan(&status)
 	return status, err
 }
 
-const getTaskBeads = `-- name: GetTaskBeads :many
-SELECT bead_id
-FROM task_beads
+const getTaskBeans = `-- name: GetTaskBeans :many
+SELECT bean_id
+FROM task_beans
 WHERE task_id = ?
 `
 
-func (q *Queries) GetTaskBeads(ctx context.Context, taskID string) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, getTaskBeads, taskID)
+func (q *Queries) GetTaskBeans(ctx context.Context, taskID string) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, getTaskBeans, taskID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	items := []string{}
 	for rows.Next() {
-		var bead_id string
-		if err := rows.Scan(&bead_id); err != nil {
+		var bean_id string
+		if err := rows.Scan(&bean_id); err != nil {
 			return nil, err
 		}
-		items = append(items, bead_id)
+		items = append(items, bean_id)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -383,23 +383,23 @@ func (q *Queries) GetTaskBeads(ctx context.Context, taskID string) ([]string, er
 	return items, nil
 }
 
-const getTaskBeadsForWork = `-- name: GetTaskBeadsForWork :many
-SELECT tb.task_id, tb.bead_id, tb.status
-FROM task_beads tb
+const getTaskBeansForWork = `-- name: GetTaskBeansForWork :many
+SELECT tb.task_id, tb.bean_id, tb.status
+FROM task_beans tb
 JOIN tasks t ON tb.task_id = t.id
 WHERE t.work_id = ?
 `
 
-func (q *Queries) GetTaskBeadsForWork(ctx context.Context, workID string) ([]TaskBead, error) {
-	rows, err := q.db.QueryContext(ctx, getTaskBeadsForWork, workID)
+func (q *Queries) GetTaskBeansForWork(ctx context.Context, workID string) ([]TaskBean, error) {
+	rows, err := q.db.QueryContext(ctx, getTaskBeansForWork, workID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []TaskBead{}
+	items := []TaskBean{}
 	for rows.Next() {
-		var i TaskBead
-		if err := rows.Scan(&i.TaskID, &i.BeadID, &i.Status); err != nil {
+		var i TaskBean
+		if err := rows.Scan(&i.TaskID, &i.BeanID, &i.Status); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -413,22 +413,22 @@ func (q *Queries) GetTaskBeadsForWork(ctx context.Context, workID string) ([]Tas
 	return items, nil
 }
 
-const getTaskBeadsWithStatus = `-- name: GetTaskBeadsWithStatus :many
-SELECT task_id, bead_id, status
-FROM task_beads
+const getTaskBeansWithStatus = `-- name: GetTaskBeansWithStatus :many
+SELECT task_id, bean_id, status
+FROM task_beans
 WHERE task_id = ?
 `
 
-func (q *Queries) GetTaskBeadsWithStatus(ctx context.Context, taskID string) ([]TaskBead, error) {
-	rows, err := q.db.QueryContext(ctx, getTaskBeadsWithStatus, taskID)
+func (q *Queries) GetTaskBeansWithStatus(ctx context.Context, taskID string) ([]TaskBean, error) {
+	rows, err := q.db.QueryContext(ctx, getTaskBeansWithStatus, taskID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []TaskBead{}
+	items := []TaskBean{}
 	for rows.Next() {
-		var i TaskBead
-		if err := rows.Scan(&i.TaskID, &i.BeadID, &i.Status); err != nil {
+		var i TaskBean
+		if err := rows.Scan(&i.TaskID, &i.BeanID, &i.Status); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -442,14 +442,14 @@ func (q *Queries) GetTaskBeadsWithStatus(ctx context.Context, taskID string) ([]
 	return items, nil
 }
 
-const getTaskForBead = `-- name: GetTaskForBead :one
+const getTaskForBean = `-- name: GetTaskForBean :one
 SELECT task_id
-FROM task_beads
-WHERE bead_id = ?
+FROM task_beans
+WHERE bean_id = ?
 `
 
-func (q *Queries) GetTaskForBead(ctx context.Context, beadID string) (string, error) {
-	row := q.db.QueryRowContext(ctx, getTaskForBead, beadID)
+func (q *Queries) GetTaskForBean(ctx context.Context, beanID string) (string, error) {
+	row := q.db.QueryRowContext(ctx, getTaskForBean, beanID)
 	var task_id string
 	err := row.Scan(&task_id)
 	return task_id, err
@@ -679,33 +679,33 @@ func (q *Queries) ListTasksByStatus(ctx context.Context, status string) ([]ListT
 	return items, nil
 }
 
-const resetTaskBeadStatus = `-- name: ResetTaskBeadStatus :execrows
-UPDATE task_beads
+const resetTaskBeanStatus = `-- name: ResetTaskBeanStatus :execrows
+UPDATE task_beans
 SET status = 'pending'
-WHERE task_id = ? AND bead_id = ?
+WHERE task_id = ? AND bean_id = ?
 `
 
-type ResetTaskBeadStatusParams struct {
+type ResetTaskBeanStatusParams struct {
 	TaskID string `json:"task_id"`
-	BeadID string `json:"bead_id"`
+	BeanID string `json:"bean_id"`
 }
 
-func (q *Queries) ResetTaskBeadStatus(ctx context.Context, arg ResetTaskBeadStatusParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, resetTaskBeadStatus, arg.TaskID, arg.BeadID)
+func (q *Queries) ResetTaskBeanStatus(ctx context.Context, arg ResetTaskBeanStatusParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, resetTaskBeanStatus, arg.TaskID, arg.BeanID)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-const resetTaskBeadStatuses = `-- name: ResetTaskBeadStatuses :execrows
-UPDATE task_beads
+const resetTaskBeanStatuses = `-- name: ResetTaskBeanStatuses :execrows
+UPDATE task_beans
 SET status = 'pending'
 WHERE task_id = ?
 `
 
-func (q *Queries) ResetTaskBeadStatuses(ctx context.Context, taskID string) (int64, error) {
-	result, err := q.db.ExecContext(ctx, resetTaskBeadStatuses, taskID)
+func (q *Queries) ResetTaskBeanStatuses(ctx context.Context, taskID string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, resetTaskBeanStatuses, taskID)
 	if err != nil {
 		return 0, err
 	}

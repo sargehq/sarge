@@ -23,8 +23,8 @@ func TestDestroyWork_CleansUpAllResources(t *testing.T) {
 	h.CreateBead("bead-2", "Test Bead 2")
 
 	workRecord := h.CreateWork("w-test", "feat/test-branch")
-	h.AddBeadToWork("w-test", "bead-1")
-	h.AddBeadToWork("w-test", "bead-2")
+	h.AddBeanToWork("w-test", "bead-1")
+	h.AddBeanToWork("w-test", "bead-2")
 
 	// Create a task associated with the work
 	h.CreateTask("w-test.1", "w-test", []string{"bead-1", "bead-2"})
@@ -35,7 +35,7 @@ func TestDestroyWork_CleansUpAllResources(t *testing.T) {
 	require.NotNil(t, workBefore)
 
 	// Verify beads are associated
-	beadsBefore, err := h.DB.GetWorkBeads(ctx, "w-test")
+	beadsBefore, err := h.DB.GetWorkBeans(ctx, "w-test")
 	require.NoError(t, err)
 	assert.Len(t, beadsBefore, 2)
 
@@ -61,7 +61,7 @@ func TestDestroyWork_CleansUpAllResources(t *testing.T) {
 	assert.Nil(t, workAfter, "work record should be deleted")
 
 	// Verify work_beads cleaned up
-	beadsAfter, err := h.DB.GetWorkBeads(ctx, "w-test")
+	beadsAfter, err := h.DB.GetWorkBeans(ctx, "w-test")
 	require.NoError(t, err)
 	assert.Empty(t, beadsAfter, "work beads should be deleted")
 
@@ -86,10 +86,10 @@ func TestDestroyWork_ClosesRootIssue(t *testing.T) {
 
 	// Track if close was called
 	closeCalled := false
-	var closedBeadID string
-	h.Beads.CloseFunc = func(ctx context.Context, beadID string) error {
+	var closedBeanID string
+	h.Beads.CloseFunc = func(ctx context.Context, beanID string) error {
 		closeCalled = true
-		closedBeadID = beadID
+		closedBeanID = beanID
 		return nil
 	}
 
@@ -99,7 +99,7 @@ func TestDestroyWork_ClosesRootIssue(t *testing.T) {
 
 	// Verify root issue was closed
 	assert.True(t, closeCalled, "beads.Close should have been called")
-	assert.Equal(t, "root-bead", closedBeadID, "should close the root issue")
+	assert.Equal(t, "root-bead", closedBeanID, "should close the root issue")
 }
 
 func TestDestroyWork_TerminatesZellijTabs(t *testing.T) {
@@ -141,7 +141,7 @@ func TestDestroyWork_HandlesPartialFailures(t *testing.T) {
 	require.NoError(t, err)
 
 	// Configure beads close to fail
-	h.Beads.CloseFunc = func(ctx context.Context, beadID string) error {
+	h.Beads.CloseFunc = func(ctx context.Context, beanID string) error {
 		return errors.New("beads service unavailable")
 	}
 
@@ -258,7 +258,7 @@ func TestDestroyWork_NoRootIssue(t *testing.T) {
 
 	// Track if close was called
 	closeCalled := false
-	h.Beads.CloseFunc = func(ctx context.Context, beadID string) error {
+	h.Beads.CloseFunc = func(ctx context.Context, beanID string) error {
 		closeCalled = true
 		return nil
 	}

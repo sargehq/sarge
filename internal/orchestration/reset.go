@@ -76,7 +76,7 @@ func ResetStuckProcessingTasks(ctx context.Context, proj *project.Project, workI
 // Also logs recovery events for audit trail.
 func ResetTaskBeadsWithProgress(ctx context.Context, proj *project.Project, taskID, workID string) (int, int, error) {
 	// Get all beads in this task with their current status
-	taskBeads, err := proj.DB.GetTaskBeadsWithStatus(ctx, taskID)
+	taskBeads, err := proj.DB.GetTaskBeansWithStatus(ctx, taskID)
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to get task beads: %w", err)
 	}
@@ -86,20 +86,20 @@ func ResetTaskBeadsWithProgress(ctx context.Context, proj *project.Project, task
 	}
 
 	// Collect bead IDs to check their actual status
-	beadIDs := make([]string, len(taskBeads))
+	beanIDs := make([]string, len(taskBeads))
 	for i, tb := range taskBeads {
-		beadIDs[i] = tb.BeadID
+		beanIDs[i] = tb.BeanID
 	}
 
 	// Get actual bead status from beads.jsonl
-	beadsResult, err := proj.Beads.GetBeadsWithDeps(ctx, beadIDs)
+	beadsResult, err := proj.Beads.GetBeadsWithDeps(ctx, beanIDs)
 	if err != nil {
 		// If we can't check bead status, fall back to resetting all
 		logging.Warn("could not check bead status, falling back to full reset",
 			"task_id", taskID,
 			"error", err,
 		)
-		if err := proj.DB.ResetTaskBeadStatuses(ctx, taskID); err != nil {
+		if err := proj.DB.ResetTaskBeanStatuses(ctx, taskID); err != nil {
 			return 0, 0, err
 		}
 		return 0, len(taskBeads), nil
@@ -110,14 +110,14 @@ func ResetTaskBeadsWithProgress(ctx context.Context, proj *project.Project, task
 
 	for _, tb := range taskBeads {
 		// Check if the bead is closed in beads.jsonl
-		actualBead, found := beadsResult.Beads[tb.BeadID]
+		actualBead, found := beadsResult.Beads[tb.BeanID]
 		if found && actualBead.Status == beads.StatusClosed {
 			// Bead is closed in beads.jsonl - mark it as completed in task_beads
 			if tb.Status != db.StatusCompleted {
-				if err := proj.DB.CompleteTaskBead(ctx, taskID, tb.BeadID); err != nil {
+				if err := proj.DB.CompleteTaskBean(ctx, taskID, tb.BeanID); err != nil {
 					logging.Warn("failed to mark closed bead as completed",
 						"task_id", taskID,
-						"bead_id", tb.BeadID,
+						"bead_id", tb.BeanID,
 						"error", err,
 					)
 				} else {
@@ -126,7 +126,7 @@ func ResetTaskBeadsWithProgress(ctx context.Context, proj *project.Project, task
 						"event_type", "bead_preserved",
 						"task_id", taskID,
 						"work_id", workID,
-						"bead_id", tb.BeadID,
+						"bead_id", tb.BeanID,
 						"previous_task_status", tb.Status,
 					)
 				}
@@ -137,10 +137,10 @@ func ResetTaskBeadsWithProgress(ctx context.Context, proj *project.Project, task
 		} else {
 			// Bead is not closed - reset to pending
 			if tb.Status != db.StatusPending {
-				if err := proj.DB.ResetTaskBeadStatus(ctx, taskID, tb.BeadID); err != nil {
+				if err := proj.DB.ResetTaskBeanStatus(ctx, taskID, tb.BeanID); err != nil {
 					logging.Warn("failed to reset bead status",
 						"task_id", taskID,
-						"bead_id", tb.BeadID,
+						"bead_id", tb.BeanID,
 						"error", err,
 					)
 				} else {
@@ -149,7 +149,7 @@ func ResetTaskBeadsWithProgress(ctx context.Context, proj *project.Project, task
 						"event_type", "bead_reset",
 						"task_id", taskID,
 						"work_id", workID,
-						"bead_id", tb.BeadID,
+						"bead_id", tb.BeanID,
 						"previous_task_status", tb.Status,
 					)
 				}

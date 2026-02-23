@@ -112,14 +112,14 @@ func EnsureUniqueBranchName(ctx context.Context, gitOps git.Operations, repoPath
 	return "", fmt.Errorf("could not find unique branch name after 100 attempts (base: %s)", baseName)
 }
 
-// ParseBeadIDs parses a comma-delimited string of bead IDs into a slice.
+// ParseBeanIDs parses a comma-delimited string of bead IDs into a slice.
 // It trims whitespace from each ID and filters out empty strings.
-func ParseBeadIDs(beadIDStr string) []string {
-	if beadIDStr == "" {
+func ParseBeanIDs(beanIDStr string) []string {
+	if beanIDStr == "" {
 		return nil
 	}
 
-	parts := strings.Split(beadIDStr, ",")
+	parts := strings.Split(beanIDStr, ",")
 	var result []string
 	for _, part := range parts {
 		id := strings.TrimSpace(part)
