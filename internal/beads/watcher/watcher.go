@@ -27,10 +27,10 @@ type WatcherEvent struct {
 	Error error // Non-nil for WatcherError events
 }
 
-// Watcher monitors the beads database for changes and publishes events via broker.
+// Watcher monitors the beads directory for changes and publishes events via broker.
 type Watcher struct {
 	fsWatcher *fsnotify.Watcher
-	dbPath    string
+	watchDir  string
 	debounce  time.Duration
 	done      chan struct{}
 	broker    *pubsub.Broker[WatcherEvent]
@@ -38,19 +38,21 @@ type Watcher struct {
 
 // Config holds watcher configuration options.
 type Config struct {
-	DBPath      string
+	// WatchDir is the .beads directory to watch for changes.
+	WatchDir    string
 	DebounceDur time.Duration
 }
 
 // DefaultConfig returns sensible defaults for the watcher.
-func DefaultConfig(dbPath string) Config {
+// beadsDir should be the .beads directory path.
+func DefaultConfig(beadsDir string) Config {
 	return Config{
-		DBPath:      dbPath,
+		WatchDir:    beadsDir,
 		DebounceDur: 100 * time.Millisecond,
 	}
 }
 
-// New creates a new database watcher.
+// New creates a new beads watcher.
 func New(cfg Config) (*Watcher, error) {
 	fsw, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -59,20 +61,18 @@ func New(cfg Config) (*Watcher, error) {
 
 	return &Watcher{
 		fsWatcher: fsw,
-		dbPath:    cfg.DBPath,
+		watchDir:  cfg.WatchDir,
 		debounce:  cfg.DebounceDur,
 		done:      make(chan struct{}),
 		broker:    pubsub.NewBroker[WatcherEvent](),
 	}, nil
 }
 
-// Start begins watching the database directory.
+// Start begins watching the beads directory.
 // Subscribe to watcher events using Broker().Subscribe(ctx) instead of the old channel return.
 func (w *Watcher) Start() error {
-	// Watch the directory containing the database
-	dir := filepath.Dir(w.dbPath)
-	if err := w.fsWatcher.Add(dir); err != nil {
-		return fmt.Errorf("watching directory %s: %w", dir, err)
+	if err := w.fsWatcher.Add(w.watchDir); err != nil {
+		return fmt.Errorf("watching directory %s: %w", w.watchDir, err)
 	}
 
 	go w.loop()
@@ -166,11 +166,15 @@ func (w *Watcher) loop() {
 
 // isRelevantEvent checks if the event should trigger a refresh.
 func (w *Watcher) isRelevantEvent(event fsnotify.Event) bool {
-	// Only care about write or create operations (WAL file may be created fresh)
+	// Only care about write or create operations
 	if event.Op&(fsnotify.Write|fsnotify.Create) == 0 {
 		return false
 	}
 
 	base := filepath.Base(event.Name)
-	return base == "beads.db" || base == "beads.db-wal"
+	// Watch for JSONL changes (primary source of truth for bd CLI),
+	// SQLite changes (legacy), and Dolt WAL changes.
+	return base == "issues.jsonl" ||
+		base == "beads.db" || base == "beads.db-wal" ||
+		base == "interactions.jsonl"
 }

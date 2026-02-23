@@ -58,10 +58,10 @@ func FormatTabNameShort(prefix, workID string) string {
 
 // Project represents an orchestrator project.
 type Project struct {
-	Root   string        // Project directory path
-	Config *Config       // Parsed config.toml
-	DB     *db.DB        // Tracking database (lazy loaded)
-	Beads  *beads.Client // Beads database client (for issue tracking)
+	Root   string          // Project directory path
+	Config *Config         // Parsed config.toml
+	DB     *db.DB          // Tracking database (lazy loaded)
+	Beads  *beads.CLIReader // Beads reader (CLI-based, for issue tracking)
 }
 
 // Find finds a project from a flag value or current directory.
@@ -121,15 +121,15 @@ func load(ctx context.Context, root string) (*Project, error) {
 	}
 	proj.DB = database
 
-	// Open the beads client automatically
+	// Open the beads CLI reader
 	// Use the configured beads path (relative to project root)
-	beadsDBPath := filepath.Join(root, cfg.Beads.Path, "beads.db")
-	beadsClient, err := beads.NewClient(ctx, beads.DefaultClientConfig(beadsDBPath))
+	beadsDirPath := filepath.Join(root, cfg.Beads.Path)
+	beadsReader, err := beads.NewCLIReader(ctx, beads.DefaultCLIReaderConfig(beadsDirPath))
 	if err != nil {
 		database.Close() // Clean up the already-opened DB
-		return nil, fmt.Errorf("failed to open beads database: %w", err)
+		return nil, fmt.Errorf("failed to create beads reader: %w", err)
 	}
-	proj.Beads = beadsClient
+	proj.Beads = beadsReader
 
 	// Initialize logging to .co/debug.log
 	if err := logging.Init(root); err != nil {

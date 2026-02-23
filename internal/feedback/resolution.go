@@ -63,7 +63,7 @@ func CheckAndResolveComments(ctx context.Context, proj *project.Project, workID 
 // It checks the provided beads and posts resolution comments for any associated
 // unresolved feedback items. Uses the transactional outbox pattern: atomically marks
 // feedback as resolved and schedules comment tasks, then attempts optimistic execution.
-func ResolveFeedbackForBeads(ctx context.Context, database *db.DB, beadClient *beads.Client, workID string, closedBeadIDs []string) error {
+func ResolveFeedbackForBeads(ctx context.Context, database *db.DB, beadClient beads.Reader, workID string, closedBeadIDs []string) error {
 	if len(closedBeadIDs) == 0 {
 		return nil
 	}

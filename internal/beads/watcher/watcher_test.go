@@ -25,7 +25,7 @@ func TestWatcher_DebounceMultipleWrites(t *testing.T) {
 	// to ensure all writes coalesce into a single notification.
 	// Write loop: 10 writes * 5ms = 50ms, so 150ms debounce ensures coalescing.
 	w, err := watcher.New(watcher.Config{
-		DBPath:      dbPath,
+		WatchDir:      dir,
 		DebounceDur: 150 * time.Millisecond,
 	})
 	require.NoError(t, err, "failed to create watcher")
@@ -74,7 +74,7 @@ func TestWatcher_IgnoresIrrelevantFiles(t *testing.T) {
 	require.NoError(t, err, "failed to create other file")
 
 	w, err := watcher.New(watcher.Config{
-		DBPath:      dbPath,
+		WatchDir:      dir,
 		DebounceDur: 50 * time.Millisecond,
 	})
 	require.NoError(t, err, "failed to create watcher")
@@ -107,7 +107,7 @@ func TestWatcher_Stop(t *testing.T) {
 	require.NoError(t, err, "failed to create test file")
 
 	w, err := watcher.New(watcher.Config{
-		DBPath:      dbPath,
+		WatchDir:      dir,
 		DebounceDur: 50 * time.Millisecond,
 	})
 	require.NoError(t, err, "failed to create watcher")
@@ -141,7 +141,7 @@ func TestWatcher_WatchesWALFile(t *testing.T) {
 	require.NoError(t, err, "failed to create db file")
 
 	w, err := watcher.New(watcher.Config{
-		DBPath:      dbPath,
+		WatchDir:      dir,
 		DebounceDur: 50 * time.Millisecond,
 	})
 	require.NoError(t, err, "failed to create watcher")
@@ -168,10 +168,10 @@ func TestWatcher_WatchesWALFile(t *testing.T) {
 }
 
 func TestDefaultConfig(t *testing.T) {
-	dbPath := "/test/beads.db"
-	cfg := watcher.DefaultConfig(dbPath)
+	beadsDir := "/test/.beads"
+	cfg := watcher.DefaultConfig(beadsDir)
 
-	require.Equal(t, dbPath, cfg.DBPath)
+	require.Equal(t, beadsDir, cfg.WatchDir)
 	require.Equal(t, 100*time.Millisecond, cfg.DebounceDur)
 }
 
@@ -184,7 +184,7 @@ func TestWatcher_BrokerAccessor(t *testing.T) {
 
 	// Create watcher
 	w, err := watcher.New(watcher.Config{
-		DBPath:      dbPath,
+		WatchDir:      dir,
 		DebounceDur: 50 * time.Millisecond,
 	})
 	require.NoError(t, err, "failed to create watcher")
@@ -208,7 +208,7 @@ func TestWatcher_BrokerAccessorBeforeStart(t *testing.T) {
 
 	// Create watcher but do NOT start it
 	w, err := watcher.New(watcher.Config{
-		DBPath:      dbPath,
+		WatchDir:      dir,
 		DebounceDur: 50 * time.Millisecond,
 	})
 	require.NoError(t, err, "failed to create watcher")
@@ -229,7 +229,7 @@ func TestWatcher_BrokerCreatedEvenIfStartFails(t *testing.T) {
 	require.NoError(t, err, "failed to create test file")
 
 	w, err := watcher.New(watcher.Config{
-		DBPath:      dbPath,
+		WatchDir:      dir,
 		DebounceDur: 50 * time.Millisecond,
 	})
 	require.NoError(t, err, "New() should succeed")
@@ -251,7 +251,7 @@ func TestWatcher_PublishesDBChangedEvent(t *testing.T) {
 	require.NoError(t, err, "failed to create test file")
 
 	w, err := watcher.New(watcher.Config{
-		DBPath:      dbPath,
+		WatchDir:      dir,
 		DebounceDur: 50 * time.Millisecond,
 	})
 	require.NoError(t, err, "failed to create watcher")
@@ -308,7 +308,7 @@ func TestWatcher_DebounceWithPubsub(t *testing.T) {
 	// Write loop: 5 writes * 10ms = 50ms, so 200ms debounce ensures all writes coalesce
 	// even when CI scheduling delays stretch sleep times.
 	w, err := watcher.New(watcher.Config{
-		DBPath:      dbPath,
+		WatchDir:      dir,
 		DebounceDur: 200 * time.Millisecond,
 	})
 	require.NoError(t, err, "failed to create watcher")
@@ -353,7 +353,7 @@ func TestWatcher_StopClosesSubscriptions(t *testing.T) {
 	require.NoError(t, err, "failed to create test file")
 
 	w, err := watcher.New(watcher.Config{
-		DBPath:      dbPath,
+		WatchDir:      dir,
 		DebounceDur: 50 * time.Millisecond,
 	})
 	require.NoError(t, err, "failed to create watcher")
@@ -399,7 +399,7 @@ func TestWatcher_ContextCancellation(t *testing.T) {
 	require.NoError(t, err, "failed to create test file")
 
 	w, err := watcher.New(watcher.Config{
-		DBPath:      dbPath,
+		WatchDir:      dir,
 		DebounceDur: 50 * time.Millisecond,
 	})
 	require.NoError(t, err, "failed to create watcher")
@@ -433,7 +433,7 @@ func TestWatcher_MultipleSubscribers(t *testing.T) {
 	require.NoError(t, err, "failed to create test file")
 
 	w, err := watcher.New(watcher.Config{
-		DBPath:      dbPath,
+		WatchDir:      dir,
 		DebounceDur: 50 * time.Millisecond,
 	})
 	require.NoError(t, err, "failed to create watcher")

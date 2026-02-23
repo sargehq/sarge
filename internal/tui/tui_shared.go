@@ -266,7 +266,7 @@ func styleButtonWithHover(text string, hovered bool) string {
 
 
 // fetchBeadsWithFilters fetches and filters beads based on provided filters
-func fetchBeadsWithFilters(ctx context.Context, beadsClient *beads.Client, _ string, filters beadFilters) ([]beadItem, error) {
+func fetchBeadsWithFilters(ctx context.Context, beadsClient beads.Reader, _ string, filters beadFilters) ([]beadItem, error) {
 	// For "ready" status, use bd ready command
 	if filters.status == "ready" {
 		return fetchReadyBeads(ctx, beadsClient, filters)
@@ -350,7 +350,7 @@ func fetchBeadsWithFilters(ctx context.Context, beadsClient *beads.Client, _ str
 	return items, nil
 }
 
-func fetchReadyBeads(ctx context.Context, beadsClient *beads.Client, filters beadFilters) ([]beadItem, error) {
+func fetchReadyBeads(ctx context.Context, beadsClient beads.Reader, filters beadFilters) ([]beadItem, error) {
 	// Get ready issues
 	readyIssues, err := beadsClient.GetReadyBeads(ctx)
 	if err != nil {

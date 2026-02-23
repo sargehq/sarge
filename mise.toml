@@ -1,6 +1,5 @@
 [tools]
 go = "1.25"
-"aqua:steveyegge/beads" = "v0.49.6"
 "go:golang.org/x/tools/cmd/deadcode" = "0.40.0"
 "aqua:sqlc-dev/sqlc" = "1.28.0"
 "aqua:golangci/golangci-lint" = "v2.8.0"

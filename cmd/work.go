@@ -325,7 +325,7 @@ func runWorkCreate(cmd *cobra.Command, args []string) error {
 // Both commas and spaces are treated as separators.
 // Epics are expanded to their child beads.
 // Returns an error if duplicate bead IDs are found.
-func parseBeadArgs(ctx context.Context, args []string, beadsClient *beads.Client) ([]string, error) {
+func parseBeadArgs(ctx context.Context, args []string, beadsClient beads.Reader) ([]string, error) {
 	seenBeads := make(map[string]bool)
 	var allIssueIDs []string
 

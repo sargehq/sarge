@@ -12,7 +12,7 @@ import (
 // treeDepth set for each item.
 // Optional preserveIDs specifies bead IDs that should always be kept in results
 // regardless of the closed-item visibility filter (e.g., root issues).
-func buildBeadTree(ctx context.Context, items []beadItem, client *beads.Client, preserveIDs ...string) []beadItem {
+func buildBeadTree(ctx context.Context, items []beadItem, client beads.Reader, preserveIDs ...string) []beadItem {
 	if len(items) == 0 {
 		return items
 	}
