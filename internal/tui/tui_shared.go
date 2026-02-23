@@ -176,11 +176,12 @@ type beanFilters struct {
 	rootIssue string // root issue ID - always include in results when set
 }
 
-// beanTypes is the list of valid bean types
+// beanTypes is the list of valid bean types.
+// "feature" is first so it is the default when creating a new bean (beanType index 0).
 var beanTypes = []string{
+	"feature",
 	"task",
 	"bug",
-	"feature",
 	"epic",
 	"chore",
 	"merge-request",
