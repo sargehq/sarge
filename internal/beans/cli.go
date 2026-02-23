@@ -282,5 +282,5 @@ func EditCommand(ctx context.Context, beanID, beansDir string) *exec.Cmd {
 
 	// Construct full path: beansDir/beans/<path>
 	fullPath := filepath.Join(beansDir, "beans", beanInfo.Path)
-	return exec.CommandContext(ctx, editor, fullPath)
+	return exec.CommandContext(ctx, editor, fullPath) //nolint:gosec // editor is user-configured $EDITOR
 }
