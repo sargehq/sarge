@@ -213,8 +213,8 @@ linters:
           - staticcheck
         text: "ST1000"
 
-      # G204: bd CLI calls with controlled arguments
-      - path: internal/beads/
+      # G204: beans CLI calls with controlled arguments
+      - path: internal/beans/
         linters:
           - gosec
         text: "G204"

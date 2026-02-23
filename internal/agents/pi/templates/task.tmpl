@@ -11,16 +11,16 @@ Instructions:
    - If there's a "processing" bean:
      * Review the changes with git diff
      * Complete that bean's implementation if needed
-     * Close the bean: bd close <bean-id> --reason "<summary>"
+     * Close the bean: beans close <bean-id> --reason "<summary>"
      * Commit: git add -A && git commit -m "Complete <bean-id>: <description>"
      * Push: git push
    - If no beans are "processing":
      * Mark task as failed: sarge complete {{.TaskID}} --error "Uncommitted changes found. Please commit or stash them before running this task."
      * Stop working.
 3. For each bean that is NOT already completed:
-   - Use 'bd show <bean-id>' to examine the bean's details
+   - Use 'beans show <bean-id>' to examine the bean's details
    - Implement the required changes
-   - Close the bean: bd close <bean-id> --reason "<brief summary>"
+   - Close the bean: beans close <bean-id> --reason "<brief summary>"
    - Commit the work: git add -A && git commit -m "Implement <bean-id>: <brief description>"
    - Push the changes: git push
 4. When ALL beans are complete:

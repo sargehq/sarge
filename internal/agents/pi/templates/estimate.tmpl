@@ -4,7 +4,7 @@ Instructions:
 1. First, check the task details with: sarge task show {{.TaskID}}
    - This will show which beans need estimation and their current status
 2. For each bean that is NOT already completed:
-   - Use 'bd show <bean-id>' to examine the bean's details
+   - Use 'beans show <bean-id>' to examine the bean's details
    - Estimate its complexity and token usage
    - Run: sarge estimate <bean-id> --score <complexity> --tokens <estimated-tokens> --task {{.TaskID}}
 

@@ -181,7 +181,7 @@ func TestBuildLogAnalysisPromptPriorityGuidelines(t *testing.T) {
 func TestBuildLogAnalysisPromptBdCreateCommand(t *testing.T) {
 	agent := mustNewClaudeAgent(t)
 
-	// Verify the prompt includes bd create command examples
+	// Verify the prompt includes beans create command examples
 	params := types.TaskParams{
 		Type:         types.TaskTypeLogAnalysis,
 		TaskID:       "w-test.1",
@@ -195,8 +195,8 @@ func TestBuildLogAnalysisPromptBdCreateCommand(t *testing.T) {
 	result, err := agent.BuildPrompt(params)
 	require.NoError(t, err)
 
-	// Check that bd create command format is included
-	require.Contains(t, result, "bd create", "BuildPrompt() missing bd create command")
+	// Check that beans create command format is included
+	require.Contains(t, result, "beans create", "BuildPrompt() missing beans create command")
 
 	// Check that it includes type options
 	require.Contains(t, result, "--type", "BuildPrompt() missing --type flag")

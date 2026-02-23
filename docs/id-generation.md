@@ -126,7 +126,7 @@ taskID := fmt.Sprintf("%s.%d", workID, nextNum)
 
 ## Bead IDs
 
-Beads use content-based hash IDs managed by the beads system (bd CLI).
+Beads use content-based hash IDs managed by the beads system (beans CLI).
 
 ### Format
 
