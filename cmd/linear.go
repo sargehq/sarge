@@ -45,7 +45,7 @@ Authentication:
   2. [linear] api_key in .co/config.toml
 
 Environment Variables:
-  BEANS_DIR          Beans directory (default: auto-detect)
+  BEANS_PATH         Beans directory (default: auto-detect)
 `,
 	Args: cobra.MinimumNArgs(1),
 	RunE: runLinearImport,
@@ -97,7 +97,7 @@ func runLinearImport(cmd *cobra.Command, args []string) error {
 	// Get beans directory
 	beansDir := linearBeansDir
 	if beansDir == "" {
-		beansDir = os.Getenv("BEANS_DIR")
+		beansDir = os.Getenv("BEANS_PATH")
 	}
 	if beansDir == "" {
 		// Auto-detect: look for .beans directory in current or parent directories

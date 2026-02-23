@@ -25,7 +25,7 @@ Instructions:
 
    For each issue found, create a bean{{if .RootIssueID}} under the root issue{{end}}:
    ```
-   beans create "<issue title>"{{if .RootIssueID}} --parent {{.RootIssueID}}{{end}} --type <bug|task> \
+   beans --beans-path {{.BeansPath}} create "<issue title>"{{if .RootIssueID}} --parent {{.RootIssueID}}{{end}} --type <bug|task> \
      --external-ref "review-{{.TaskID}}" \
      --description "<description with file path and line numbers>"
    ```
@@ -34,11 +34,11 @@ Instructions:
    Example:
    ```
    # Create issues{{if .RootIssueID}} as children of root issue {{.RootIssueID}}{{end}}
-   beans create "Fix SQL injection in user handler"{{if .RootIssueID}} --parent {{.RootIssueID}}{{end}} --type bug \
+   beans --beans-path {{.BeansPath}} create "Fix SQL injection in user handler"{{if .RootIssueID}} --parent {{.RootIssueID}}{{end}} --type bug \
      --external-ref "review-{{.TaskID}}" \
      --description "SQL injection vulnerability in internal/handlers/user.go:45"
 
-   beans create "Add input validation for email field"{{if .RootIssueID}} --parent {{.RootIssueID}}{{end}} --type task \
+   beans --beans-path {{.BeansPath}} create "Add input validation for email field"{{if .RootIssueID}} --parent {{.RootIssueID}}{{end}} --type task \
      --external-ref "review-{{.TaskID}}" \
      --description "Email field accepts invalid formats in cmd/register.go:78"
    ```

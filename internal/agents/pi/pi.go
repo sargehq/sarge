@@ -130,20 +130,24 @@ func (a *Agent) resolveTemplate(params types.TaskParams) (*template.Template, an
 			BeanIDs    []string
 			BranchName string
 			BaseBranch string
+			BeansPath  string
 		}{
 			TaskID:     params.TaskID,
 			BeanIDs:    params.BeanIDs,
 			BranchName: params.BranchName,
 			BaseBranch: params.BaseBranch,
+			BeansPath:  params.BeansPath,
 		}, nil
 
 	case types.TaskTypeEstimate:
 		return a.templates[tmplEstimate], struct {
-			TaskID  string
-			BeanIDs []string
+			TaskID    string
+			BeanIDs   []string
+			BeansPath string
 		}{
-			TaskID:  params.TaskID,
-			BeanIDs: params.BeanIDs,
+			TaskID:    params.TaskID,
+			BeanIDs:   params.BeanIDs,
+			BeansPath: params.BeansPath,
 		}, nil
 
 	case types.TaskTypePR:
@@ -152,11 +156,13 @@ func (a *Agent) resolveTemplate(params types.TaskParams) (*template.Template, an
 			WorkID     string
 			BranchName string
 			BaseBranch string
+			BeansPath  string
 		}{
 			TaskID:     params.TaskID,
 			WorkID:     params.WorkID,
 			BranchName: params.BranchName,
 			BaseBranch: params.BaseBranch,
+			BeansPath:  params.BeansPath,
 		}, nil
 
 	case types.TaskTypeReview:
@@ -166,12 +172,14 @@ func (a *Agent) resolveTemplate(params types.TaskParams) (*template.Template, an
 			BranchName  string
 			BaseBranch  string
 			RootIssueID string
+			BeansPath   string
 		}{
 			TaskID:      params.TaskID,
 			WorkID:      params.WorkID,
 			BranchName:  params.BranchName,
 			BaseBranch:  params.BaseBranch,
 			RootIssueID: params.RootIssueID,
+			BeansPath:   params.BeansPath,
 		}, nil
 
 	case types.TaskTypeUpdatePRDescription:
@@ -181,19 +189,23 @@ func (a *Agent) resolveTemplate(params types.TaskParams) (*template.Template, an
 			PRURL      string
 			BranchName string
 			BaseBranch string
+			BeansPath  string
 		}{
 			TaskID:     params.TaskID,
 			WorkID:     params.WorkID,
 			PRURL:      params.PRURL,
 			BranchName: params.BranchName,
 			BaseBranch: params.BaseBranch,
+			BeansPath:  params.BeansPath,
 		}, nil
 
 	case types.TaskTypePlan:
 		return a.templates[tmplPlan], struct {
-			BeanID string
+			BeanID    string
+			BeansPath string
 		}{
-			BeanID: params.BeanID,
+			BeanID:    params.BeanID,
+			BeansPath: params.BeansPath,
 		}, nil
 
 	case types.TaskTypeLogAnalysis:
@@ -206,6 +218,7 @@ func (a *Agent) resolveTemplate(params types.TaskParams) (*template.Template, an
 			JobName       string
 			LogFilePath   string
 			ExistingBeans []types.BeanSummary
+			BeansPath     string
 		}{
 			TaskID:        params.TaskID,
 			WorkID:        params.WorkID,
@@ -215,6 +228,7 @@ func (a *Agent) resolveTemplate(params types.TaskParams) (*template.Template, an
 			JobName:       params.JobName,
 			LogFilePath:   params.LogFilePath,
 			ExistingBeans: params.ExistingBeans,
+			BeansPath:     params.BeansPath,
 		}, nil
 
 	default:
