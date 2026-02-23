@@ -48,18 +48,18 @@ You only need `git` (usually pre-installed) and [mise](https://mise.jdx.dev/) it
 curl https://mise.run | sh
 ```
 
-### Beads Skill
+### Beans Skill
 
-Your coding agent needs a beads skill to interact with the issue tracker.
+Your coding agent needs a beans skill to interact with the issue tracker.
 
-**Claude Code**: Install the beads plugin. Open Claude Code and run:
+**Claude Code**: Install the beans plugin. Open Claude Code and run:
 
 ```
-/plugin marketplace add steveyegge/beads
-/plugin install beads
+/plugin marketplace add steveyegge/beans
+/plugin install beans
 ```
 
-**pi**: The beads skill is included in `.pi/skills/beads/` and is automatically available — no extra setup needed.
+**pi**: The beans skill is included in `.pi/skills/beans/` and is automatically available — no extra setup needed.
 
 ### Terminal Font (for zellij)
 
