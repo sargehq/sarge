@@ -7,11 +7,11 @@ This document describes how IDs are generated for different entities in the Sarg
 Sarge uses a hierarchical ID system that reflects the 3-tier architecture:
 - **Work** → Content-based hash IDs (e.g., `w-8xa`)
 - **Tasks** → Hierarchical numbering under works (e.g., `w-8xa.1`, `w-8xa.2`)
-- **Beads** → Content-based hash IDs managed by the beads system (e.g., `ac-pjw`)
+- **beans** → Content-based hash IDs managed by the beans system (e.g., `ac-pjw`)
 
 ## Work IDs
 
-Work IDs use content-based hashing similar to beads, ensuring distributed-friendly, deterministic ID generation.
+Work IDs use content-based hashing similar to beans, ensuring distributed-friendly, deterministic ID generation.
 
 ### Generation Algorithm
 
@@ -126,7 +126,7 @@ taskID := fmt.Sprintf("%s.%d", workID, nextNum)
 
 ## Bead IDs
 
-Beads use content-based hash IDs managed by the beads system (beans CLI).
+beans use content-based hash IDs managed by the beans system (beans CLI).
 
 ### Format
 
@@ -136,7 +136,7 @@ Beads use content-based hash IDs managed by the beads system (beans CLI).
 
 Prefixes vary by project configuration (e.g., `ac-` for default).
 
-### Algorithm (from beads system)
+### Algorithm (from beans system)
 
 Similar to work IDs but with:
 - Different content components (title, description, metadata)
@@ -175,10 +175,10 @@ w-8xa                    # Work: Authentication feature
 - **Simple ordering**: Natural sequence within work
 - **No conflicts**: Scoped to work prevents collisions
 
-### Integration with Beads
+### Integration with beans
 - **Consistent patterns**: Similar hash-based approach
 - **Clear separation**: Different prefixes prevent confusion
-- **Flexible assignment**: Beads can be grouped into tasks as needed
+- **Flexible assignment**: beans can be grouped into tasks as needed
 
 ## Database Schema
 
@@ -198,7 +198,7 @@ CREATE TABLE tasks (
     -- ...
 );
 
--- Task beads junction table
+-- Task beans junction table
 CREATE TABLE task_beads (
     task_id TEXT,                  -- e.g., "w-8xa.1"
     bead_id TEXT,                  -- e.g., "ac-pjw"

@@ -91,7 +91,7 @@ linters:
           - errcheck
         text: "KillProcess"
 
-      # Beads cache flush - best effort
+      # beans cache flush - best effort
       - linters:
           - errcheck
         text: "FlushCache"
@@ -269,8 +269,8 @@ linters:
           - gosec
         text: "G104.*(Close|MarkFlagRequired)"
 
-      # G104: Cleanup in beads client
-      - path: internal/beads/client\.go
+      # G104: Cleanup in beans client
+      - path: internal/beans/client\.go
         linters:
           - gosec
         text: "G104"

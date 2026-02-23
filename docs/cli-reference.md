@@ -6,11 +6,11 @@ This document provides detailed documentation for all `sarge` CLI commands.
 
 ### `sarge work create <bead-args...>`
 
-Creates a new work unit from one or more beads.
+Creates a new work unit from one or more beans.
 
 ```bash
 sarge work create bead-1           # Single bead
-sarge work create bead-1 bead-2    # Multiple beads
+sarge work create bead-1 bead-2    # Multiple beans
 sarge work create epic-1           # Epic (includes all children)
 sarge work create bead-1 --auto    # Automated workflow
 ```
@@ -20,7 +20,7 @@ This creates:
 - A git worktree with a generated branch (`w-abc/tree/`)
 - A unique work ID using content-based hashing
 
-If the bead is an epic, all child beads are automatically included.
+If the bead is an epic, all child beans are automatically included.
 Transitive dependencies are also included.
 
 The branch name is generated from bead titles and you're prompted for confirmation.
@@ -36,7 +36,7 @@ Base branch is configured in `config.toml` under `[repo] base_branch` (default: 
 
 ### `sarge work add <bead-args...>`
 
-Adds beads to an existing work.
+Adds beans to an existing work.
 
 ```bash
 sarge work add bead-4 bead-5           # In work directory
@@ -44,12 +44,12 @@ sarge work add bead-4 --work w-abc     # Explicit work ID
 ```
 
 - Detects work from current directory or uses `--work` flag
-- Expands epics to include all child beads
-- Cannot add beads already assigned to a task
+- Expands epics to include all child beans
+- Cannot add beans already assigned to a task
 
 ### `sarge work remove <bead-ids...>`
 
-Removes beads from an existing work.
+Removes beans from an existing work.
 
 ```bash
 sarge work remove bead-4 bead-5        # In work directory
@@ -57,7 +57,7 @@ sarge work remove bead-4 --work w-abc  # Explicit work ID
 ```
 
 - Detects work from current directory or uses `--work` flag
-- Cannot remove beads already assigned to a pending/processing task
+- Cannot remove beans already assigned to a pending/processing task
 
 ### `sarge work list`
 
@@ -78,7 +78,7 @@ sarge work show          # Current directory
 sarge work show w-abc    # Explicit ID
 ```
 
-Displays status, branch, worktree path, PR URL. Lists associated beads and tasks with their status.
+Displays status, branch, worktree path, PR URL. Lists associated beans and tasks with their status.
 
 ### `sarge work destroy <id>`
 
@@ -178,7 +178,7 @@ sarge work review --auto       # Review-fix loop
 |------|-------------|
 | `--auto` | Loop review/fix until clean (max 3 iterations) |
 
-Claude examines the work's branch for quality and security issues and creates beads for issues found.
+Claude examines the work's branch for quality and security issues and creates beans for issues found.
 
 ### `sarge work import-pr <pr-url>`
 
@@ -201,7 +201,7 @@ This command:
 
 ### `sarge work feedback [<id>]`
 
-Processes PR feedback and creates beads from actionable items.
+Processes PR feedback and creates beans from actionable items.
 
 ```bash
 sarge work feedback                    # Current directory
@@ -211,7 +211,7 @@ sarge work feedback --dry-run          # Preview only
 
 | Flag | Description |
 |------|-------------|
-| `--dry-run` | Preview what beads would be created |
+| `--dry-run` | Preview what beans would be created |
 
 The feedback system processes:
 - **CI/Build Failures**: Failed status checks and workflow runs
@@ -238,7 +238,7 @@ sarge run --dry-run            # Preview execution plan
 |------|-------|-------------|
 | `--limit` | `-n` | Maximum number of tasks to process (0 = unlimited) |
 | `--dry-run` | | Show execution plan without running |
-| `--plan` | | Use LLM complexity estimation to auto-group beads |
+| `--plan` | | Use LLM complexity estimation to auto-group beans |
 | `--auto` | | Full automated workflow (implement, review/fix loop, PR) |
 | `--auto-close` | | Automatically close zellij tabs after task completion |
 | `--force-estimate` | | Force re-estimation of complexity (use with `--plan`) |
@@ -270,7 +270,7 @@ Shows detailed information about a task.
 sarge task show w-abc.1
 ```
 
-Displays status, type, budget, timestamps. Lists associated beads and their completion status.
+Displays status, type, budget, timestamps. Lists associated beans and their completion status.
 
 ### `sarge task delete <id>...`
 
@@ -295,14 +295,14 @@ Changes task status from processing/failed back to pending. Resets all bead stat
 
 ### `sarge`
 
-When run without a subcommand, sarge launches the interactive TUI for managing works and beads (lazygit-style).
+When run without a subcommand, sarge launches the interactive TUI for managing works and beans (lazygit-style).
 
 ```bash
 sarge
 ```
 
 Features:
-- Three-panel drill-down: Beads → Works → Tasks
+- Three-panel drill-down: beans → Works → Tasks
 - Create/destroy works, run tasks
 - Bead filtering (ready/open/closed), search, multi-select
 - Keyboard shortcuts for all operations (press `?` for help)
@@ -330,13 +330,13 @@ sarge poll --interval 5s
 Shows bead tracking status.
 
 ```bash
-sarge status           # All processing beads
+sarge status           # All processing beans
 sarge status bead-1    # Specific bead
 ```
 
 ### `sarge list`
 
-Lists tracked beads in the database.
+Lists tracked beans in the database.
 
 ```bash
 sarge list
@@ -402,7 +402,7 @@ sarge migrate rollback
 
 ### `sarge linear import <issues...>`
 
-Import issues from Linear into the beads issue tracker.
+Import issues from Linear into the beans issue tracker.
 
 ```bash
 # Import single issue
@@ -427,8 +427,8 @@ sarge linear import ENG-123 --dry-run
 | `--api-key` | Linear API key (or use `[linear] api_key` in config.toml) |
 | `--create-deps` | Import blocking issues as dependencies |
 | `--max-dep-depth` | Maximum depth for dependency import (default: 1) |
-| `--update` | Update existing beads if already imported |
-| `--dry-run` | Preview import without creating beads |
+| `--update` | Update existing beans if already imported |
+| `--dry-run` | Preview import without creating beans |
 | `--status-filter` | Only import issues matching status |
 | `--priority-filter` | Only import issues matching priority |
 | `--assignee-filter` | Only import issues matching assignee |
@@ -450,7 +450,7 @@ sarge doctor --dry-run   # Preview changes without applying
 
 Checks include:
 - **Config update**: Ensures `config.toml` has all available sections (new sections added commented-out)
-- **Mise beads version**: Ensures the mise config has the correct beads version
+- **Mise beans version**: Ensures the mise config has the correct beans version
 - **Beans skill**: Ensures the coding agent has the beans skill installed (pi skill or Claude plugin)
 - **Sarge extension (pi)**: Ensures the sarge-complete extension is installed for pi agents
 
@@ -523,7 +523,7 @@ Sarge uses a hierarchical ID system:
   - Format: `<work-id>.<sequence>`
   - Sequential numbering within each work
 
-- **Bead IDs**: Managed by beads system (e.g., `ac-pjw`)
+- **Bead IDs**: Managed by beans system (e.g., `ac-pjw`)
   - Project-specific prefixes
   - Content-based hashing similar to works
 
@@ -544,4 +544,4 @@ When a task fails:
   sarge task reset <task-id>    # Reset task status to pending
   sarge run                     # Retry the task
   ```
-- On retry, Claude only processes incomplete beads (already completed beads are skipped)
+- On retry, Claude only processes incomplete beans (already completed beans are skipped)

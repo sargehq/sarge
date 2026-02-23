@@ -8,7 +8,7 @@ Sarge is designed to manage an army of coding agents, turning your issue tracker
 
 ### The Workflow
 
-1. **Create or import issues** - Define work in your issue tracker (beads), or import from Linear
+1. **Create or import issues** - Define work in your issue tracker (beans), or import from Linear
 2. **Plan the implementation** - Use agents interactively to break down complex issues into actionable tasks
 3. **Execute with a Work** - Create a work unit that represents a git worktree and feature branch
 4. **Automatic execution** - Sarge orchestrates agents to solve all issues, commit changes, and push continuously
@@ -160,7 +160,7 @@ These commands must be used via CLI (not available in TUI):
 │   ├── config.toml      # Project configuration
 │   └── tracking.db      # SQLite coordination database
 ├── main/                # Symlink to local repo OR clone from GitHub
-│   └── .beads/          # Beads issue tracker
+│   └── .beans/          # beans issue tracker
 ├── w-8xa/               # Work unit directory
 │   └── tree/            # Git worktree for feature branch
 └── ...
@@ -168,22 +168,22 @@ These commands must be used via CLI (not available in TUI):
 
 ## Concepts
 
-### Why Beads?
+### Why beans?
 
-Sarge uses [Beads](https://github.com/steveyegge/beads), a distributed git-backed issue tracker designed specifically for AI coding agents. Traditional markdown plans lack the sophistication needed for complex, multi-step workflows. Beads provides:
+Sarge uses [Beans](https://github.com/hmans/beans), a distributed git-backed issue tracker designed specifically for AI coding agents. Traditional markdown plans lack the sophistication needed for complex, multi-step workflows. Beans provides:
 
 - **Dependency tracking** - Agents understand task relationships and what's ready to work on
-- **Git-native persistence** - Tasks stored as JSONL in `.beads/`, versioned alongside code
+- **Git-native persistence** - Tasks stored as JSONL in `.beans/`, versioned alongside code
 - **Collision-free IDs** - Hash-based IDs eliminate merge conflicts in multi-branch scenarios
 - **Semantic compaction** - Completed tasks are summarized to conserve AI context windows
 
-**You rarely need to use beads directly.** The coding agent and the TUI handle all issue management. The `beans` CLI is available if you need it, but most users interact with beans through `sarge` or let the agent manage issues automatically.
+**You rarely need to use beans directly.** The coding agent and the TUI handle all issue management. The `beans` CLI is available if you need it, but most users interact with beans through `sarge` or let the agent manage issues automatically.
 
 ### Three-Tier Hierarchy
 
 - **Work**: A feature branch with its own worktree, groups related tasks (ID: `w-8xa`)
 - **Tasks**: Units of agent execution within a work (ID: `w-8xa.1`, `w-8xa.2`)
-- **Beads**: Individual issues from the beads tracker (ID: `ac-pjw`)
+- **beans**: Individual issues from the beans tracker (ID: `ac-pjw`)
 
 ### Automated Workflow
 
@@ -199,7 +199,7 @@ This mode:
 3. Runs review/fix loop until code is clean
 4. Creates PR automatically
 
-Monitor progress by switching to the zellij session. To include additional beads, use `sarge work add`.
+Monitor progress by switching to the zellij session. To include additional beans, use `sarge work add`.
 
 ## Documentation
 
@@ -260,7 +260,7 @@ Authenticate with GitHub:
 gh auth login
 ```
 
-### No beads found
+### No beans found
 
 Create work items in your project's main repo:
 ```bash
