@@ -8,83 +8,6 @@ import (
 	"testing"
 )
 
-func TestPiSkillInstalled(t *testing.T) {
-	t.Run("returns false when skill dir does not exist", func(t *testing.T) {
-		dir := t.TempDir()
-		if PiSkillInstalled(dir) {
-			t.Error("expected false for empty directory")
-		}
-	})
-
-	t.Run("returns true when SKILL.md exists", func(t *testing.T) {
-		dir := t.TempDir()
-		skillDir := filepath.Join(dir, ".pi", "skills", "beans")
-		if err := os.MkdirAll(skillDir, 0o750); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("test"), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		if !PiSkillInstalled(dir) {
-			t.Error("expected true when SKILL.md exists")
-		}
-	})
-}
-
-func TestInstallPiSkill(t *testing.T) {
-	dir := t.TempDir()
-
-	if err := InstallPiSkill(dir); err != nil {
-		t.Fatalf("InstallPiSkill failed: %v", err)
-	}
-
-	// Check that SKILL.md was created
-	skillPath := filepath.Join(dir, ".pi", "skills", "beans", "SKILL.md")
-	if _, err := os.Stat(skillPath); err != nil {
-		t.Errorf("SKILL.md not created: %v", err)
-	}
-
-	// Check that resource files were created
-	resourceFiles := []string{
-		"CLI_REFERENCE.md",
-		"DEPENDENCIES.md",
-		"PITFALLS.md",
-		"WORKFLOWS.md",
-	}
-	for _, name := range resourceFiles {
-		path := filepath.Join(dir, ".pi", "skills", "beans", "resources", name)
-		if _, err := os.Stat(path); err != nil {
-			t.Errorf("resource file %s not created: %v", name, err)
-		}
-	}
-
-	// Verify SKILL.md has expected content
-	data, err := os.ReadFile(skillPath) //nolint:gosec // test code, path from t.TempDir()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(data) == 0 {
-		t.Error("SKILL.md is empty")
-	}
-
-	// Verify it's now detected as installed
-	if !PiSkillInstalled(dir) {
-		t.Error("PiSkillInstalled should return true after install")
-	}
-}
-
-func TestInstallPiSkill_Idempotent(t *testing.T) {
-	dir := t.TempDir()
-
-	// Install twice — should not error
-	if err := InstallPiSkill(dir); err != nil {
-		t.Fatalf("first install failed: %v", err)
-	}
-	if err := InstallPiSkill(dir); err != nil {
-		t.Fatalf("second install failed: %v", err)
-	}
-}
-
 func TestPiExtensionInstalled(t *testing.T) {
 	t.Run("returns false when extension does not exist", func(t *testing.T) {
 		dir := t.TempDir()
@@ -145,6 +68,69 @@ func TestInstallPiExtension_Idempotent(t *testing.T) {
 		t.Fatalf("first install failed: %v", err)
 	}
 	if err := InstallPiExtension(dir); err != nil {
+		t.Fatalf("second install failed: %v", err)
+	}
+}
+
+func TestBeansPrimeExtensionInstalled(t *testing.T) {
+	t.Run("returns false when extension does not exist", func(t *testing.T) {
+		dir := t.TempDir()
+		if BeansPrimeExtensionInstalled(dir) {
+			t.Error("expected false for empty directory")
+		}
+	})
+
+	t.Run("returns true when beans-prime.ts exists", func(t *testing.T) {
+		dir := t.TempDir()
+		extDir := filepath.Join(dir, ".pi", "extensions")
+		if err := os.MkdirAll(extDir, 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(extDir, "beans-prime.ts"), []byte("test"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if !BeansPrimeExtensionInstalled(dir) {
+			t.Error("expected true when beans-prime.ts exists")
+		}
+	})
+}
+
+func TestInstallBeansPrimeExtension(t *testing.T) {
+	dir := t.TempDir()
+
+	if err := InstallBeansPrimeExtension(dir); err != nil {
+		t.Fatalf("InstallBeansPrimeExtension failed: %v", err)
+	}
+
+	extPath := filepath.Join(dir, ".pi", "extensions", "beans-prime.ts")
+	if _, err := os.Stat(extPath); err != nil {
+		t.Errorf("beans-prime.ts not created: %v", err)
+	}
+
+	data, err := os.ReadFile(extPath) //nolint:gosec // test code
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(data) == 0 {
+		t.Error("beans-prime.ts is empty")
+	}
+
+	if !strings.Contains(string(data), "before_agent_start") {
+		t.Error("beans-prime.ts missing expected before_agent_start handler")
+	}
+
+	if !BeansPrimeExtensionInstalled(dir) {
+		t.Error("BeansPrimeExtensionInstalled should return true after install")
+	}
+}
+
+func TestInstallBeansPrimeExtension_Idempotent(t *testing.T) {
+	dir := t.TempDir()
+
+	if err := InstallBeansPrimeExtension(dir); err != nil {
+		t.Fatalf("first install failed: %v", err)
+	}
+	if err := InstallBeansPrimeExtension(dir); err != nil {
 		t.Fatalf("second install failed: %v", err)
 	}
 }

@@ -22,7 +22,7 @@ var doctorCmd = &cobra.Command{
 Checks include:
   - Config update: ensures config.toml has all available sections
   - Mise beans version: ensures the mise config has the correct beans version
-  - Beans skill: ensures the coding agent has the beans skill installed
+  - Beans integration: ensures the coding agent has beans support configured
   - Sarge extension (pi): ensures the sarge-complete extension is installed
 
 Use --dry-run to preview changes without applying them.`,
@@ -198,21 +198,21 @@ func checkBeansSkill(proj *project.Project) (int, error) {
 
 func checkPiBeansSkill(proj *project.Project) (int, error) {
 	repoDir := proj.MainRepoPath()
-	if skill.PiSkillInstalled(repoDir) {
-		fmt.Println("🧩 Beans skill (pi): installed")
+	if skill.BeansPrimeExtensionInstalled(repoDir) {
+		fmt.Println("🧩 Beans extension (pi): installed")
 		return 0, nil
 	}
 
 	if doctorDryRun {
-		fmt.Println("🧩 Beans skill (pi): missing")
-		fmt.Println("   Would install .pi/skills/beans/ in main repo")
+		fmt.Println("🧩 Beans extension (pi): missing")
+		fmt.Println("   Would install .pi/extensions/beans-prime.ts in main repo")
 		return 1, nil
 	}
 
-	if err := skill.InstallPiSkill(repoDir); err != nil {
-		return 0, fmt.Errorf("failed to install pi beans skill: %w", err)
+	if err := skill.InstallBeansPrimeExtension(repoDir); err != nil {
+		return 0, fmt.Errorf("failed to install pi beans-prime extension: %w", err)
 	}
-	fmt.Println("🧩 Beans skill (pi): installed .pi/skills/beans/ in main repo")
+	fmt.Println("🧩 Beans extension (pi): installed .pi/extensions/beans-prime.ts in main repo")
 	return 1, nil
 }
 

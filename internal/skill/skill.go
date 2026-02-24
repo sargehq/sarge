@@ -2,53 +2,18 @@
 package skill
 
 import (
-	"embed"
+	_ "embed"
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 )
 
-//go:embed beans/SKILL.md beans/resources/*.md
-var beansSkillFS embed.FS
-
 //go:embed extensions/sarge-complete.ts
 var sargeCompleteExtension []byte
 
-// PiSkillInstalled checks whether the pi beans skill exists in the given repo directory.
-func PiSkillInstalled(repoDir string) bool {
-	skillPath := filepath.Join(repoDir, ".pi", "skills", "beans", "SKILL.md")
-	_, err := os.Stat(skillPath)
-	return err == nil
-}
-
-// InstallPiSkill copies the embedded beans skill files into the repo's .pi/skills/beans/ directory.
-func InstallPiSkill(repoDir string) error {
-	return fs.WalkDir(beansSkillFS, "beans", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// Map "beans/..." to ".pi/skills/beans/..."
-		destPath := filepath.Join(repoDir, ".pi", "skills", path)
-
-		if d.IsDir() {
-			return os.MkdirAll(destPath, 0o750)
-		}
-
-		data, err := beansSkillFS.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("reading embedded %s: %w", path, err)
-		}
-
-		if err := os.MkdirAll(filepath.Dir(destPath), 0o750); err != nil {
-			return fmt.Errorf("creating directory for %s: %w", destPath, err)
-		}
-
-		return os.WriteFile(destPath, data, 0o600)
-	})
-}
+//go:embed extensions/beans-prime.ts
+var beansPrimeExtension []byte
 
 // PiExtensionInstalled checks whether the sarge-complete pi extension exists in the given repo directory.
 func PiExtensionInstalled(repoDir string) bool {
@@ -66,6 +31,24 @@ func InstallPiExtension(repoDir string) error {
 
 	destPath := filepath.Join(extDir, "sarge-complete.ts")
 	return os.WriteFile(destPath, sargeCompleteExtension, 0o600)
+}
+
+// BeansPrimeExtensionInstalled checks whether the beans-prime pi extension exists in the given repo directory.
+func BeansPrimeExtensionInstalled(repoDir string) bool {
+	extPath := filepath.Join(repoDir, ".pi", "extensions", "beans-prime.ts")
+	_, err := os.Stat(extPath)
+	return err == nil
+}
+
+// InstallBeansPrimeExtension copies the embedded beans-prime extension into the repo's .pi/extensions/ directory.
+func InstallBeansPrimeExtension(repoDir string) error {
+	extDir := filepath.Join(repoDir, ".pi", "extensions")
+	if err := os.MkdirAll(extDir, 0o750); err != nil {
+		return fmt.Errorf("creating extensions directory: %w", err)
+	}
+
+	destPath := filepath.Join(extDir, "beans-prime.ts")
+	return os.WriteFile(destPath, beansPrimeExtension, 0o600)
 }
 
 // ClaudePluginInstalled checks whether the beans plugin is installed for Claude Code.
