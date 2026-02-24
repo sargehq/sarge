@@ -79,7 +79,7 @@ func RegenerateConfigWithSelections(dir string, selections ToolSelections) error
 	configPath := filepath.Join(dir, ".mise.toml")
 
 	// Create a backup of any existing config before overwriting.
-	if existing, err := os.ReadFile(configPath); err == nil {
+	if existing, err := os.ReadFile(configPath); err == nil { //nolint:gosec // path is constructed from caller-supplied dir + hardcoded filename
 		backupPath := configPath + ".bak"
 		if err := os.WriteFile(backupPath, existing, 0600); err != nil {
 			return fmt.Errorf("failed to create backup of mise config: %w", err)
