@@ -490,6 +490,59 @@ func findExistingSections(content string) map[string]bool {
 	return sections
 }
 
+// UpdateConfigFields updates the agent.type and multiplexer.type values in an existing
+// config.toml in-place, preserving all user comments, other fields, and other sections.
+// It uses line-level section-aware replacement: only uncommented "type = ..." lines
+// within the [agent] and [multiplexer] sections are updated.
+// Warns but does not fail if either section is not found.
+func UpdateConfigFields(configPath string, agentType string, multiplexerType string) error {
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to read config: %w", err)
+	}
+
+	lines := strings.Split(string(data), "\n")
+	currentSection := ""
+	agentFound := false
+	multiplexerFound := false
+
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+
+		// Track current section from uncommented [section] headers
+		if strings.HasPrefix(trimmed, "[") && strings.Contains(trimmed, "]") && !strings.HasPrefix(trimmed, "#") {
+			currentSection = extractSectionName(trimmed)
+			continue
+		}
+
+		// Only update uncommented lines that start with "type ="
+		if !strings.HasPrefix(trimmed, "type =") {
+			continue
+		}
+
+		// Determine leading whitespace to preserve indentation
+		leading := line[:len(line)-len(strings.TrimLeft(line, " \t"))]
+
+		switch currentSection {
+		case "agent":
+			lines[i] = fmt.Sprintf("%stype = %q", leading, agentType)
+			agentFound = true
+		case "multiplexer":
+			lines[i] = fmt.Sprintf("%stype = %q", leading, multiplexerType)
+			multiplexerFound = true
+		}
+	}
+
+	if !agentFound {
+		fmt.Fprintf(os.Stderr, "warning: [agent] section not found in %s — skipping agent.type update\n", configPath)
+	}
+	if !multiplexerFound {
+		fmt.Fprintf(os.Stderr, "warning: [multiplexer] section not found in %s — skipping multiplexer.type update\n", configPath)
+	}
+
+	return os.WriteFile(configPath, []byte(strings.Join(lines, "\n")), 0600)
+}
+
 // UpdateConfig merges new config template sections into an existing config file.
 // It preserves all existing user values and comments. New sections from the template
 // that are not present in the existing file are appended (commented out).
