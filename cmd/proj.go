@@ -157,7 +157,6 @@ func promptToolSelections() (agentType string, selections mise.ToolSelections) {
 	agentOptions := []huh.Option[string]{
 		huh.NewOption("Claude — Anthropic's coding agent", "claude"),
 		huh.NewOption("Pi — pi coding agent", "pi"),
-		huh.NewOption("None — no coding agent", "none"),
 	}
 
 	// Agent mise inclusion - default to no if already on PATH
@@ -242,7 +241,7 @@ func promptToolSelections() (agentType string, selections mise.ToolSelections) {
 	}
 
 	selections.AgentType = agentType
-	selections.AgentInMise = includeAgentInMise && agentType != "none"
+	selections.AgentInMise = includeAgentInMise
 	selections.IncludeGH = includeGH
 	selections.IncludeZellij = includeZellij && multiplexerType == "zellij"
 	selections.MultiplexerType = multiplexerType

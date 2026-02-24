@@ -490,6 +490,110 @@ func findExistingSections(content string) map[string]bool {
 	return sections
 }
 
+// lineLeadingWhitespace returns the leading whitespace prefix of a line.
+func lineLeadingWhitespace(line string) string {
+	return line[:len(line)-len(strings.TrimLeft(line, " \t"))]
+}
+
+// UpdateConfigFields updates the agent.type and multiplexer.type values in an existing
+// config.toml in-place, preserving all user comments, other fields, and other sections.
+//
+// If the [agent] section is currently commented out (e.g. "# [agent]") and agentType
+// is non-empty, the header is uncommented and the type field is added or updated.
+//
+// Warns but does not fail if either section is not found.
+func UpdateConfigFields(configPath string, agentType string, multiplexerType string) error {
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to read config: %w", err)
+	}
+
+	lines := strings.Split(string(data), "\n")
+	currentSection := ""
+	currentSectionIsCommented := false
+	agentFound := false
+	multiplexerFound := false
+	// agentHeaderIdx tracks the line index of an [agent] header that was just
+	// uncommented so we can insert a type line below it if none is found.
+	agentHeaderIdx := -1
+
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+
+		// Track current section from uncommented [section] headers.
+		if strings.HasPrefix(trimmed, "[") && strings.Contains(trimmed, "]") && !strings.HasPrefix(trimmed, "#") {
+			sectionName := extractSectionName(trimmed)
+			if sectionName != "" {
+				currentSection = sectionName
+				currentSectionIsCommented = false
+			}
+			continue
+		}
+
+		// Handle commented-out section headers (e.g. "# [agent]").
+		if strings.HasPrefix(trimmed, "# [") && strings.Contains(trimmed, "]") {
+			name := extractSectionName(strings.TrimSpace(trimmed[1:]))
+			if name != "" {
+				currentSection = name
+				currentSectionIsCommented = true
+
+				// If the [agent] header is commented out, uncomment it so the
+				// type field can be added/updated inside it.
+				if name == "agent" && agentType != "" {
+					// Remove the "# " that precedes the "[" in the line.
+					idx := strings.Index(line, "# [")
+					lines[i] = line[:idx] + line[idx+2:]
+					currentSectionIsCommented = false
+					agentHeaderIdx = i
+				}
+			}
+			continue
+		}
+
+		if currentSectionIsCommented {
+			continue
+		}
+
+		// Only update uncommented lines that start with "type ="
+		if !strings.HasPrefix(trimmed, "type =") {
+			continue
+		}
+
+		// Determine leading whitespace to preserve indentation
+		leading := lineLeadingWhitespace(line)
+
+		switch currentSection {
+		case "agent":
+			lines[i] = fmt.Sprintf("%stype = %q", leading, agentType)
+			agentFound = true
+		case "multiplexer":
+			lines[i] = fmt.Sprintf("%stype = %q", leading, multiplexerType)
+			multiplexerFound = true
+		}
+	}
+
+	// If we uncommented an [agent] header but found no type = line underneath it
+	// (e.g. the default template only has commented-out type examples), insert one.
+	if agentHeaderIdx >= 0 && !agentFound && agentType != "" {
+		newLine := fmt.Sprintf("type = %q", agentType)
+		inserted := make([]string, 0, len(lines)+1)
+		inserted = append(inserted, lines[:agentHeaderIdx+1]...)
+		inserted = append(inserted, newLine)
+		inserted = append(inserted, lines[agentHeaderIdx+1:]...)
+		lines = inserted
+		agentFound = true
+	}
+
+	if !agentFound {
+		fmt.Fprintf(os.Stderr, "warning: [agent] section not found in %s — skipping agent.type update\n", configPath)
+	}
+	if !multiplexerFound {
+		fmt.Fprintf(os.Stderr, "warning: [multiplexer] section not found in %s — skipping multiplexer.type update\n", configPath)
+	}
+
+	return os.WriteFile(configPath, []byte(strings.Join(lines, "\n")), 0600)
+}
+
 // UpdateConfig merges new config template sections into an existing config file.
 // It preserves all existing user values and comments. New sections from the template
 // that are not present in the existing file are appended (commented out).
