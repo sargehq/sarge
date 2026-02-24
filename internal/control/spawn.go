@@ -95,25 +95,32 @@ func ensureControlPlaneZmxWith(ctx context.Context, proj *project.Project, zmxCl
 }
 
 // ensureControlPlaneZellij ensures the control plane is running in a zellij session.
+// If we're inside a zellij session, reuses it. Otherwise creates "sarge-<project>".
 func ensureControlPlaneZellij(ctx context.Context, proj *project.Project) (*InitResult, error) {
 	projectName := proj.Config.Project.Name
-	sessionName := project.SessionNameForProject(projectName)
+	sessionName := project.ResolveSessionName(projectName)
+	insideSession := zellij.CurrentSessionName() != ""
 	zc := zellij.New()
 
 	result := &InitResult{
 		SessionName: sessionName,
 	}
 
-	// Ensure session exists with control plane as the initial tab
-	sessionCreated, err := zc.EnsureSessionWithCommand(ctx, sessionName, ControlPlaneTabName, proj.Root, "sarge", []string{"control", "--root", proj.Root})
-	if err != nil {
-		return nil, fmt.Errorf("failed to ensure zellij session: %w", err)
-	}
-	result.SessionCreated = sessionCreated
+	if insideSession {
+		// We're inside a zellij session — it already exists, just ensure the control plane tab
+		logging.Debug("Inside zellij session, reusing for control plane", "sessionName", sessionName)
+	} else {
+		// Not inside a session — create one if needed
+		sessionCreated, err := zc.EnsureSessionWithCommand(ctx, sessionName, ControlPlaneTabName, proj.Root, "sarge", []string{"control", "--root", proj.Root})
+		if err != nil {
+			return nil, fmt.Errorf("failed to ensure zellij session: %w", err)
+		}
+		result.SessionCreated = sessionCreated
 
-	if sessionCreated {
-		logging.Debug("New zellij session created with control plane", "sessionName", sessionName)
-		return result, nil
+		if sessionCreated {
+			logging.Debug("New zellij session created with control plane", "sessionName", sessionName)
+			return result, nil
+		}
 	}
 
 	// Session existed - check if control plane tab exists
@@ -158,7 +165,7 @@ func ensureControlPlaneZellij(ctx context.Context, proj *project.Project) (*Init
 func spawnControlPlane(ctx context.Context, proj *project.Project) error {
 	projectName := proj.Config.Project.Name
 	projectRoot := proj.Root
-	sessionName := project.SessionNameForProject(projectName)
+	sessionName := project.ResolveSessionName(projectName)
 	zc := zellij.New()
 
 	logging.Debug("spawnControlPlane started", "sessionName", sessionName, "projectRoot", projectRoot)

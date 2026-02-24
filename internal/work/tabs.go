@@ -153,7 +153,7 @@ func (m *DefaultOrchestratorManager) openConsoleZmx(ctx context.Context, workID 
 
 // openConsoleZellij creates a zellij tab with a shell in the work's worktree.
 func (m *DefaultOrchestratorManager) openConsoleZellij(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, hooksEnv []string, w io.Writer) error {
-	sessionName := project.SessionNameForProject(projectName)
+	sessionName := project.ResolveSessionName(projectName)
 	tabName := project.FormatTabName("console", workID, friendlyName)
 
 	// Verify session exists - callers must initialize it with control plane
@@ -308,7 +308,7 @@ func (m *DefaultOrchestratorManager) openAgentSessionZellij(ctx context.Context,
 		agentType = cfg.Agent.Type
 	}
 
-	sessionName := project.SessionNameForProject(projectName)
+	sessionName := project.ResolveSessionName(projectName)
 	tabName := project.FormatTabName("agent", workID, friendlyName)
 
 	// Verify session exists - callers must initialize it with control plane
@@ -385,7 +385,7 @@ func (m *DefaultOrchestratorManager) spawnPlanSessionZmx(ctx context.Context, be
 
 // spawnPlanSessionZellij creates a zellij tab running the plan command.
 func (m *DefaultOrchestratorManager) spawnPlanSessionZellij(ctx context.Context, beanID string, projectName string, mainRepoPath string, w io.Writer) error {
-	sessionName := project.SessionNameForProject(projectName)
+	sessionName := project.ResolveSessionName(projectName)
 	tabName := PlanTabName(beanID)
 
 	// Verify session exists - callers must initialize it with control plane
