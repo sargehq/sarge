@@ -1,6 +1,5 @@
 [tools]
 go = "1.25"
-"aqua:hmans/beans" = "v0.49.6"
 "go:golang.org/x/tools/cmd/deadcode" = "0.40.0"
 "aqua:sqlc-dev/sqlc" = "1.28.0"
 "aqua:golangci/golangci-lint" = "v2.8.0"
@@ -8,6 +7,7 @@ go = "1.25"
 "aqua:mikefarah/yq" = "4.50.1"
 "aqua:matryer/moq" = "0.6.0"
 "aqua:goreleaser/goreleaser" = "2.5.1"
+"go:github.com/hmans/beans" = "0.4.0"
 
 [env]
 GOPATH = "{{env.HOME}}/go"

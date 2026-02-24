@@ -12,7 +12,7 @@ import (
 func TestRequiredBeansVersion(t *testing.T) {
 	v := RequiredBeansVersion()
 	assert.NotEmpty(t, v, "should extract beans version from template")
-	assert.True(t, len(v) > 1 && v[0] == 'v', "version should start with 'v': got %q", v)
+	assert.True(t, len(v) > 0, "version should not be empty: got %q", v)
 }
 
 func TestReadBeansVersion(t *testing.T) {
@@ -25,15 +25,15 @@ func TestReadBeansVersion(t *testing.T) {
 	}{
 		{
 			name:      "active beans line",
-			content:   "[tools]\n\"aqua:mariozechner/beans\" = \"v0.49.6\"\ngh = \"latest\"\n",
-			wantVer:   "v0.49.6",
+			content:   "[tools]\n\"go:github.com/hmans/beans\" = \"0.4.0\"\ngh = \"latest\"\n",
+			wantVer:   "0.4.0",
 			wantCom:   false,
 			wantFound: true,
 		},
 		{
 			name:      "commented beans line",
-			content:   "[tools]\n# \"aqua:mariozechner/beans\" = \"v0.48.0\"\n",
-			wantVer:   "v0.48.0",
+			content:   "[tools]\n# \"go:github.com/hmans/beans\" = \"0.3.0\"\n",
+			wantVer:   "0.3.0",
 			wantCom:   true,
 			wantFound: true,
 		},
@@ -75,21 +75,21 @@ func TestUpdateBeansVersion(t *testing.T) {
 	}{
 		{
 			name:       "update version",
-			content:    "[tools]\n\"aqua:mariozechner/beans\" = \"v0.48.0\"\ngh = \"latest\"\n",
-			newVersion: "v0.49.6",
+			content:    "[tools]\n\"go:github.com/hmans/beans\" = \"0.3.0\"\ngh = \"latest\"\n",
+			newVersion: "0.4.0",
 			wantMod:    true,
-			wantLine:   "\"aqua:mariozechner/beans\" = \"v0.49.6\"",
+			wantLine:   "\"go:github.com/hmans/beans\" = \"0.4.0\"",
 		},
 		{
 			name:       "already correct",
-			content:    "[tools]\n\"aqua:mariozechner/beans\" = \"v0.49.6\"\n",
-			newVersion: "v0.49.6",
+			content:    "[tools]\n\"go:github.com/hmans/beans\" = \"0.4.0\"\n",
+			newVersion: "0.4.0",
 			wantMod:    false,
 		},
 		{
 			name:       "no beans line",
 			content:    "[tools]\ngh = \"latest\"\n",
-			newVersion: "v0.49.6",
+			newVersion: "0.4.0",
 			wantMod:    false,
 		},
 	}
