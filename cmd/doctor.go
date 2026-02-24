@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/sargehq/sarge/internal/agentsetup"
 	"github.com/sargehq/sarge/internal/mise"
 	"github.com/sargehq/sarge/internal/project"
-	"github.com/sargehq/sarge/internal/skill"
 	"github.com/spf13/cobra"
 )
 
@@ -22,7 +22,7 @@ var doctorCmd = &cobra.Command{
 Checks include:
   - Config update: ensures config.toml has all available sections
   - Mise beans version: ensures the mise config has the correct beans version
-  - Beans skill: ensures the coding agent has the beans skill installed
+  - Beans integration: ensures the coding agent has beans support configured
   - Sarge extension (pi): ensures the sarge-complete extension is installed
 
 Use --dry-run to preview changes without applying them.`,
@@ -198,32 +198,32 @@ func checkBeansSkill(proj *project.Project) (int, error) {
 
 func checkPiBeansSkill(proj *project.Project) (int, error) {
 	repoDir := proj.MainRepoPath()
-	if skill.PiSkillInstalled(repoDir) {
-		fmt.Println("🧩 Beans skill (pi): installed")
+	if agentsetup.BeansPrimeExtensionInstalled(repoDir) {
+		fmt.Println("🧩 Beans extension (pi): installed")
 		return 0, nil
 	}
 
 	if doctorDryRun {
-		fmt.Println("🧩 Beans skill (pi): missing")
-		fmt.Println("   Would install .pi/skills/beans/ in main repo")
+		fmt.Println("🧩 Beans extension (pi): missing")
+		fmt.Println("   Would install .pi/extensions/beans-prime.ts in main repo")
 		return 1, nil
 	}
 
-	if err := skill.InstallPiSkill(repoDir); err != nil {
-		return 0, fmt.Errorf("failed to install pi beans skill: %w", err)
+	if err := agentsetup.InstallBeansPrimeExtension(repoDir); err != nil {
+		return 0, fmt.Errorf("failed to install pi beans-prime extension: %w", err)
 	}
-	fmt.Println("🧩 Beans skill (pi): installed .pi/skills/beans/ in main repo")
+	fmt.Println("🧩 Beans extension (pi): installed .pi/extensions/beans-prime.ts in main repo")
 	return 1, nil
 }
 
 func checkClaudeBeansPlugin() (int, error) {
-	if skill.ClaudePluginInstalled() {
+	if agentsetup.ClaudePluginInstalled() {
 		fmt.Println("🧩 Beans skill (claude): installed")
 		return 0, nil
 	}
 
 	fmt.Println("🧩 Beans skill (claude): not found")
-	fmt.Println("   " + skill.ClaudeInstallInstructions())
+	fmt.Println("   " + agentsetup.ClaudeInstallInstructions())
 	return 1, nil
 }
 
@@ -237,7 +237,7 @@ func checkPiExtension(proj *project.Project) (int, error) {
 	}
 
 	repoDir := proj.MainRepoPath()
-	if skill.PiExtensionInstalled(repoDir) {
+	if agentsetup.PiExtensionInstalled(repoDir) {
 		fmt.Println("🧩 Sarge extension (pi): installed")
 		return 0, nil
 	}
@@ -248,7 +248,7 @@ func checkPiExtension(proj *project.Project) (int, error) {
 		return 1, nil
 	}
 
-	if err := skill.InstallPiExtension(repoDir); err != nil {
+	if err := agentsetup.InstallPiExtension(repoDir); err != nil {
 		return 0, fmt.Errorf("failed to install pi sarge-complete extension: %w", err)
 	}
 	fmt.Println("🧩 Sarge extension (pi): installed .pi/extensions/sarge-complete.ts in main repo")
