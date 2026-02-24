@@ -205,7 +205,7 @@ func (m *DefaultOrchestratorManager) terminateWorkTabsZmx(ctx context.Context, w
 
 // terminateWorkTabsZellij terminates all zellij tabs associated with a work unit.
 func (m *DefaultOrchestratorManager) terminateWorkTabsZellij(ctx context.Context, workID string, projectName string, w io.Writer) error {
-	sessionName := project.SessionNameForProject(projectName)
+	sessionName := project.ResolveSessionName(projectName)
 
 	logging.Debug("TerminateWorkTabs starting",
 		"work_id", workID,
@@ -351,7 +351,7 @@ func (m *DefaultOrchestratorManager) spawnWorkOrchestratorZmx(ctx context.Contex
 // spawnWorkOrchestratorZellij creates a zellij tab running the orchestrate command.
 func (m *DefaultOrchestratorManager) spawnWorkOrchestratorZellij(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, w io.Writer) error {
 	logging.Debug("SpawnWorkOrchestrator called", "workID", workID, "projectName", projectName, "workDir", workDir)
-	sessionName := project.SessionNameForProject(projectName)
+	sessionName := project.ResolveSessionName(projectName)
 	tabName := project.FormatTabName("orch", workID, friendlyName)
 
 	// Verify session exists - callers must initialize it with control plane
@@ -415,7 +415,7 @@ func (m *DefaultOrchestratorManager) EnsureWorkOrchestrator(ctx context.Context,
 	} else {
 		tabName := project.FormatTabName("orch", workID, friendlyName)
 		displayTabName = tabName
-		sessionName := project.SessionNameForProject(projectName)
+		sessionName := project.ResolveSessionName(projectName)
 		sessionExists = m.tabExists(ctx, sessionName, tabName)
 	}
 

@@ -1098,3 +1098,14 @@ another = "also untouched"
 	require.Contains(t, content, `type = "zmx"`)
 }
 
+func TestResolveSessionName_NoZellijEnv(t *testing.T) {
+	t.Setenv("ZELLIJ_SESSION_NAME", "")
+	result := ResolveSessionName("myproject")
+	require.Equal(t, "sarge-myproject", result)
+}
+
+func TestResolveSessionName_InsideZellijSession(t *testing.T) {
+	t.Setenv("ZELLIJ_SESSION_NAME", "my-daily-session")
+	result := ResolveSessionName("myproject")
+	require.Equal(t, "my-daily-session", result)
+}
