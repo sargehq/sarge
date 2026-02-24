@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/sargehq/sarge/internal/beans"
+	"github.com/sargehq/sarge/internal/zellij"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/git"
 	"github.com/sargehq/sarge/internal/logging"
@@ -32,10 +33,9 @@ const (
 	RepoTypeGitHub = "github"
 )
 
-// SessionNameForProject returns the default zellij session name for a project.
+// sessionNameForProject returns the default zellij session name for a project.
 // This always returns "sarge-<project>" regardless of whether we're inside a zellij session.
-// Most callers should use ResolveSessionName instead.
-func SessionNameForProject(projectName string) string {
+func sessionNameForProject(projectName string) string {
 	return fmt.Sprintf("sarge-%s", projectName)
 }
 
@@ -45,10 +45,10 @@ func SessionNameForProject(projectName string) string {
 // This allows sarge to create tabs in the user's existing zellij session
 // rather than forcing a separate session.
 func ResolveSessionName(projectName string) string {
-	if current := os.Getenv("ZELLIJ_SESSION_NAME"); current != "" {
+	if current := zellij.CurrentSessionName(); current != "" {
 		return current
 	}
-	return SessionNameForProject(projectName)
+	return sessionNameForProject(projectName)
 }
 
 // FormatTabName formats a tab name with an optional friendly name.
