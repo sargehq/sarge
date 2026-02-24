@@ -16,9 +16,8 @@ var miseTemplate = template.Must(template.New("mise").Parse(miseTemplateText))
 
 // miseTemplateData holds the data used to render the mise config template.
 // Each tool has an "active" flag: true = uncommented, false = commented out.
-// AgentType "none" means no agent section at all.
 type miseTemplateData struct {
-	AgentType   string // "claude", "pi", or "none"
+	AgentType   string // "claude" or "pi"
 	AgentActive bool   // true = uncommented, false = commented out
 	GHActive    bool   // true = uncommented, false = commented out
 	ZellijActive bool  // true = uncommented, false = commented out
@@ -26,7 +25,7 @@ type miseTemplateData struct {
 
 // ToolSelections holds user choices about which tools to include in mise config.
 type ToolSelections struct {
-	AgentType       string // "claude", "pi", or "none"/"" — which agent was chosen
+	AgentType       string // "claude" or "pi" — which agent was chosen
 	AgentInMise     bool   // whether to activate (uncomment) the agent in mise
 	IncludeGH       bool   // whether to activate (uncomment) gh in mise
 	IncludeZellij   bool   // whether to activate (uncomment) zellij in mise
@@ -36,7 +35,7 @@ type ToolSelections struct {
 // DefaultToolSelections returns the default tool selections (gh and zellij included, agent not in mise).
 func DefaultToolSelections() ToolSelections {
 	return ToolSelections{
-		AgentType:     "",
+		AgentType:     "claude",
 		AgentInMise:   false,
 		IncludeGH:     true,
 		IncludeZellij: true,
@@ -47,7 +46,7 @@ func DefaultToolSelections() ToolSelections {
 func (s ToolSelections) toTemplateData() miseTemplateData {
 	agentType := s.AgentType
 	if agentType == "" {
-		agentType = "none"
+		agentType = "claude"
 	}
 	return miseTemplateData{
 		AgentType:    agentType,
@@ -58,7 +57,7 @@ func (s ToolSelections) toTemplateData() miseTemplateData {
 }
 
 // GenerateConfig creates a .mise.toml file in the given directory with sarge's required tools.
-// The agentType parameter selects which coding agent tool to include ("claude", "pi", or "" for none).
+// The agentType parameter selects which coding agent tool to include ("claude" or "pi"; defaults to "claude" if empty).
 // Returns nil if a mise config already exists (doesn't overwrite).
 func GenerateConfig(dir string, agentType string) error {
 	selections := DefaultToolSelections()

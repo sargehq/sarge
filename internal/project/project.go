@@ -147,7 +147,7 @@ func Create(ctx context.Context, dir, repoSource string) (*Project, error) {
 }
 
 // CreateWithSelections initializes a new project at the given directory with specific tool selections.
-// agentType is stored in project config ("claude", "pi", or "none").
+// agentType is stored in project config ("claude" or "pi").
 // toolSelections controls which tools are added to .mise.toml (agent may or may not be included).
 // repoSource can be a local path (symlinked) or GitHub URL (cloned).
 func CreateWithSelections(ctx context.Context, dir, repoSource string, agentType string, toolSelections mise.ToolSelections) (*Project, error) {

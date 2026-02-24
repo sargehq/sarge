@@ -191,7 +191,7 @@ func checkBeansSkill(proj *project.Project) (int, error) {
 	case "claude":
 		return checkClaudeBeansPlugin()
 	default:
-		// Unknown or "none" agent — skip
+		// Unknown agent type — skip
 		return 0, nil
 	}
 }

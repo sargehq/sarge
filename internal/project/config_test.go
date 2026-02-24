@@ -1062,26 +1062,6 @@ func TestUpdateConfigFields_CommentedAgentSection_ActivatedWhenSwitchingToPI(t *
 	require.NotContains(t, content, "# [agent]", "agent section header should not remain commented")
 }
 
-func TestUpdateConfigFields_NoneAgentType_CommentsOutActiveSection(t *testing.T) {
-	// main-wlsl: selecting "none" should comment out the [agent] section entirely
-	// instead of writing type = "none".
-	cfg := configWithActiveSections("pi", "zellij")
-
-	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "config.toml")
-	require.NoError(t, os.WriteFile(configPath, []byte(cfg), 0600))
-
-	err := UpdateConfigFields(configPath, "none", "zellij")
-	require.NoError(t, err)
-
-	result, err := os.ReadFile(configPath)
-	require.NoError(t, err)
-	content := string(result)
-
-	require.NotContains(t, content, `type = "none"`, "type=none must never be written")
-	require.NotContains(t, content, "\n[agent]\n", "agent section header should be commented out")
-	require.Contains(t, content, "# [agent]", "agent header should appear commented")
-}
 
 func TestUpdateConfigFields_PreservesIndentationAndOtherFields(t *testing.T) {
 	cfg := `[project]

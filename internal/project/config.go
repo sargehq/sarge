@@ -498,12 +498,8 @@ func lineLeadingWhitespace(line string) string {
 // UpdateConfigFields updates the agent.type and multiplexer.type values in an existing
 // config.toml in-place, preserving all user comments, other fields, and other sections.
 //
-// Special cases:
-//   - If agentType is "none", the [agent] section (if active) is commented out entirely
-//     rather than writing type = "none".
-//   - If the [agent] section is currently commented out (e.g. "# [agent]") and
-//     agentType is a non-empty, non-"none" value, the header is uncommented and
-//     the type field is added or updated.
+// If the [agent] section is currently commented out (e.g. "# [agent]") and agentType
+// is non-empty, the header is uncommented and the type field is added or updated.
 //
 // Warns but does not fail if either section is not found.
 func UpdateConfigFields(configPath string, agentType string, multiplexerType string) error {
@@ -530,13 +526,6 @@ func UpdateConfigFields(configPath string, agentType string, multiplexerType str
 			if sectionName != "" {
 				currentSection = sectionName
 				currentSectionIsCommented = false
-
-				// When agentType is "none", comment out the active [agent] header.
-				if sectionName == "agent" && agentType == "none" {
-					leading := lineLeadingWhitespace(line)
-					lines[i] = leading + "# " + strings.TrimLeft(line, " \t")
-					currentSectionIsCommented = true
-				}
 			}
 			continue
 		}
@@ -548,9 +537,9 @@ func UpdateConfigFields(configPath string, agentType string, multiplexerType str
 				currentSection = name
 				currentSectionIsCommented = true
 
-				// When switching to a real agent, uncomment the [agent] header so
-				// the type field can be added/updated inside it.
-				if name == "agent" && agentType != "" && agentType != "none" {
+				// If the [agent] header is commented out, uncomment it so the
+				// type field can be added/updated inside it.
+				if name == "agent" && agentType != "" {
 					// Remove the "# " that precedes the "[" in the line.
 					idx := strings.Index(line, "# [")
 					lines[i] = line[:idx] + line[idx+2:]
@@ -562,12 +551,6 @@ func UpdateConfigFields(configPath string, agentType string, multiplexerType str
 		}
 
 		if currentSectionIsCommented {
-			// If we just commented out the [agent] header, also comment out any
-			// active type = line still present beneath it.
-			if currentSection == "agent" && agentType == "none" && strings.HasPrefix(trimmed, "type =") {
-				leading := lineLeadingWhitespace(line)
-				lines[i] = leading + "# " + strings.TrimLeft(line, " \t")
-			}
 			continue
 		}
 
@@ -591,7 +574,7 @@ func UpdateConfigFields(configPath string, agentType string, multiplexerType str
 
 	// If we uncommented an [agent] header but found no type = line underneath it
 	// (e.g. the default template only has commented-out type examples), insert one.
-	if agentHeaderIdx >= 0 && !agentFound && agentType != "" && agentType != "none" {
+	if agentHeaderIdx >= 0 && !agentFound && agentType != "" {
 		newLine := fmt.Sprintf("type = %q", agentType)
 		inserted := make([]string, 0, len(lines)+1)
 		inserted = append(inserted, lines[:agentHeaderIdx+1]...)
@@ -601,7 +584,7 @@ func UpdateConfigFields(configPath string, agentType string, multiplexerType str
 		agentFound = true
 	}
 
-	if !agentFound && agentType != "none" {
+	if !agentFound {
 		fmt.Fprintf(os.Stderr, "warning: [agent] section not found in %s — skipping agent.type update\n", configPath)
 	}
 	if !multiplexerFound {
