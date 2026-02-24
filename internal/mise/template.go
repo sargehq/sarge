@@ -68,6 +68,7 @@ func GenerateConfig(dir string, agentType string) error {
 
 // RegenerateConfigWithSelections force-overwrites .mise.toml with the given tool selections,
 // regardless of whether a mise config already exists.
+// If an existing .mise.toml is present, a backup is created at .mise.toml.bak before overwriting.
 func RegenerateConfigWithSelections(dir string, selections ToolSelections) error {
 	data := selections.toTemplateData()
 
@@ -77,6 +78,15 @@ func RegenerateConfigWithSelections(dir string, selections ToolSelections) error
 	}
 
 	configPath := filepath.Join(dir, ".mise.toml")
+
+	// Create a backup of any existing config before overwriting.
+	if existing, err := os.ReadFile(configPath); err == nil {
+		backupPath := configPath + ".bak"
+		if err := os.WriteFile(backupPath, existing, 0600); err != nil {
+			return fmt.Errorf("failed to create backup of mise config: %w", err)
+		}
+	}
+
 	if err := os.WriteFile(configPath, buf.Bytes(), 0600); err != nil {
 		return fmt.Errorf("failed to write mise config: %w", err)
 	}

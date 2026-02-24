@@ -200,3 +200,43 @@ func TestDefaultToolSelections(t *testing.T) {
 	assert.True(t, sel.IncludeGH)
 	assert.True(t, sel.IncludeZellij)
 }
+
+func TestRegenerateConfigWithSelections_CreatesBackupOfExistingConfig(t *testing.T) {
+	dir := t.TempDir()
+
+	// Write an initial config that simulates a user-customized .mise.toml.
+	originalContent := []byte("# user customized config\n[tools]\nmy-custom-tool = \"1.0.0\"\n")
+	configPath := filepath.Join(dir, ".mise.toml")
+	err := os.WriteFile(configPath, originalContent, 0600)
+	require.NoError(t, err)
+
+	sel := DefaultToolSelections()
+	err = RegenerateConfigWithSelections(dir, sel)
+	require.NoError(t, err)
+
+	// The backup should contain the original content.
+	backupContent, err := os.ReadFile(configPath + ".bak") //nolint:gosec // path constructed from t.TempDir()
+	require.NoError(t, err, "backup file should have been created")
+	assert.Equal(t, originalContent, backupContent, "backup should preserve original content")
+
+	// The config file itself should be overwritten with new content.
+	newContent := readMiseConfig(t, dir)
+	assert.NotEqual(t, originalContent, newContent, "config should have been overwritten")
+	assert.Contains(t, string(newContent), "beans", "new config should contain sarge defaults")
+}
+
+func TestRegenerateConfigWithSelections_NoBackupWhenNoExistingConfig(t *testing.T) {
+	dir := t.TempDir()
+
+	sel := DefaultToolSelections()
+	err := RegenerateConfigWithSelections(dir, sel)
+	require.NoError(t, err)
+
+	// No backup file should exist when there was no pre-existing config.
+	_, err = os.Stat(filepath.Join(dir, ".mise.toml.bak"))
+	assert.True(t, os.IsNotExist(err), "no backup should be created when no existing config")
+
+	// The config should have been generated.
+	s := string(readMiseConfig(t, dir))
+	assert.Contains(t, s, "beans")
+}
