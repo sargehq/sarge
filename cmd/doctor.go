@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/sargehq/sarge/internal/agentsetup"
 	"github.com/sargehq/sarge/internal/mise"
 	"github.com/sargehq/sarge/internal/project"
-	"github.com/sargehq/sarge/internal/skill"
 	"github.com/spf13/cobra"
 )
 
@@ -198,7 +198,7 @@ func checkBeansSkill(proj *project.Project) (int, error) {
 
 func checkPiBeansSkill(proj *project.Project) (int, error) {
 	repoDir := proj.MainRepoPath()
-	if skill.BeansPrimeExtensionInstalled(repoDir) {
+	if agentsetup.BeansPrimeExtensionInstalled(repoDir) {
 		fmt.Println("🧩 Beans extension (pi): installed")
 		return 0, nil
 	}
@@ -209,7 +209,7 @@ func checkPiBeansSkill(proj *project.Project) (int, error) {
 		return 1, nil
 	}
 
-	if err := skill.InstallBeansPrimeExtension(repoDir); err != nil {
+	if err := agentsetup.InstallBeansPrimeExtension(repoDir); err != nil {
 		return 0, fmt.Errorf("failed to install pi beans-prime extension: %w", err)
 	}
 	fmt.Println("🧩 Beans extension (pi): installed .pi/extensions/beans-prime.ts in main repo")
@@ -217,13 +217,13 @@ func checkPiBeansSkill(proj *project.Project) (int, error) {
 }
 
 func checkClaudeBeansPlugin() (int, error) {
-	if skill.ClaudePluginInstalled() {
+	if agentsetup.ClaudePluginInstalled() {
 		fmt.Println("🧩 Beans skill (claude): installed")
 		return 0, nil
 	}
 
 	fmt.Println("🧩 Beans skill (claude): not found")
-	fmt.Println("   " + skill.ClaudeInstallInstructions())
+	fmt.Println("   " + agentsetup.ClaudeInstallInstructions())
 	return 1, nil
 }
 
@@ -237,7 +237,7 @@ func checkPiExtension(proj *project.Project) (int, error) {
 	}
 
 	repoDir := proj.MainRepoPath()
-	if skill.PiExtensionInstalled(repoDir) {
+	if agentsetup.PiExtensionInstalled(repoDir) {
 		fmt.Println("🧩 Sarge extension (pi): installed")
 		return 0, nil
 	}
@@ -248,7 +248,7 @@ func checkPiExtension(proj *project.Project) (int, error) {
 		return 1, nil
 	}
 
-	if err := skill.InstallPiExtension(repoDir); err != nil {
+	if err := agentsetup.InstallPiExtension(repoDir); err != nil {
 		return 0, fmt.Errorf("failed to install pi sarge-complete extension: %w", err)
 	}
 	fmt.Println("🧩 Sarge extension (pi): installed .pi/extensions/sarge-complete.ts in main repo")
