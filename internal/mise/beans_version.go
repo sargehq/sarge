@@ -8,7 +8,7 @@ import (
 )
 
 // BeansToolKey is the mise tool key for beans.
-const BeansToolKey = `"aqua:mariozechner/beans"`
+const BeansToolKey = `"go:github.com/hmans/beans"`
 
 // beansLineRegexp matches the beans tool line in a mise config (commented or not).
 // Captures: (1) optional comment prefix, (2) version string.
