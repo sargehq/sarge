@@ -309,7 +309,7 @@ func setupBeans(ctx context.Context, source, projectRoot, mainPath string) (bean
 		prefix := repoNameFromSource(source)
 
 		// Initialize beans in project directory
-		if err := beans.Init(ctx, projectBeansPath, prefix); err != nil {
+		if err := beans.Init(ctx, projectBeansPath, prefix, projectRoot); err != nil {
 			return "", fmt.Errorf("failed to initialize beans: %w", err)
 		}
 	}
