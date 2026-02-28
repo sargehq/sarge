@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/sargehq/sarge/internal/logging"
 )
@@ -248,6 +249,7 @@ func (c *cliImpl) AddDependency(ctx context.Context, beanID, dependsOnID string)
 
 // Init initializes beans in the specified directory.
 // Init initializes a new beans repository in beansDir.
+// prefix is the bean ID prefix (e.g. "a" becomes "a-" in .beans.yml).
 // projectRoot is the project root where mise is configured, used to invoke
 // the mise-installed beans binary via "mise exec -- beans init".
 func Init(ctx context.Context, beansDir, prefix, projectRoot string) error {
@@ -258,7 +260,7 @@ func Init(ctx context.Context, beansDir, prefix, projectRoot string) error {
 
 	// Use "mise exec" to invoke beans, since beans was just installed by mise
 	// and may not be on the global PATH yet.
-	cmd := exec.CommandContext(ctx, "mise", "exec", "--", "beans", "init", "--prefix", prefix)
+	cmd := exec.CommandContext(ctx, "mise", "exec", "--", "beans", "init")
 	cmd.Dir = beansDir
 
 	// Set MISE_PROJECT_DIR so mise loads the project root's .mise.toml
@@ -268,6 +270,39 @@ func Init(ctx context.Context, beansDir, prefix, projectRoot string) error {
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("beans init failed: %w\n%s", err, output)
 	}
+
+	// Update the prefix in .beans.yml (beans init auto-derives it from the
+	// directory name, but we want it based on the repo name).
+	configPath := filepath.Join(beansDir, ".beans.yml")
+	configData, err := os.ReadFile(configPath) // #nosec G304 -- path is constructed internally
+	if err != nil {
+		return fmt.Errorf("failed to read beans config: %w", err)
+	}
+
+	// Replace the auto-derived prefix with our desired prefix
+	updated := strings.Replace(
+		string(configData),
+		"prefix: .beans-",
+		"prefix: "+prefix+"-",
+		1,
+	)
+	if updated == string(configData) {
+		// Try without the dot prefix (directory name may vary)
+		// Fall back to a more general replacement
+		lines := strings.Split(string(configData), "\n")
+		for i, line := range lines {
+			if strings.HasPrefix(strings.TrimSpace(line), "prefix:") {
+				lines[i] = "    prefix: " + prefix + "-"
+				break
+			}
+		}
+		updated = strings.Join(lines, "\n")
+	}
+
+	if err := os.WriteFile(configPath, []byte(updated), 0o600); err != nil {
+		return fmt.Errorf("failed to update beans config: %w", err)
+	}
+
 	return nil
 }
 
