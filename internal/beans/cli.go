@@ -248,6 +248,10 @@ func (c *cliImpl) AddDependency(ctx context.Context, beanID, dependsOnID string)
 
 // Init initializes beans in the specified directory.
 func Init(ctx context.Context, beansDir, prefix string) error {
+	// Ensure the target directory exists before running beans init
+	if err := os.MkdirAll(beansDir, 0o755); err != nil {
+		return fmt.Errorf("failed to create beans directory %s: %w", beansDir, err)
+	}
 	cmd := beansCommand(ctx, "", "init", "--prefix", prefix)
 	// beans init creates .beans/ in the current working directory
 	cmd.Dir = beansDir
