@@ -1,4 +1,4 @@
-//go:generate moq -stub -out control_mock_test.go -pkg control_test . OrchestratorSpawner WorkDestroyer
+//go:generate moq -stub -out control_mock_test.go -pkg control_test . WorkDestroyer
 
 package control
 
@@ -17,33 +17,10 @@ import (
 	"github.com/sargehq/sarge/internal/zellij"
 )
 
-// OrchestratorSpawner defines the interface for spawning work orchestrators.
-// This abstraction enables testing without actual zellij operations.
-type OrchestratorSpawner interface {
-	SpawnWorkOrchestrator(ctx context.Context, workID, projectName, workDir, friendlyName string, w io.Writer) error
-}
-
 // WorkDestroyer defines the interface for destroying work units.
 // This abstraction enables testing without actual file system operations.
 type WorkDestroyer interface {
 	DestroyWork(ctx context.Context, workID string, w io.Writer) error
-}
-
-// DefaultOrchestratorSpawner implements OrchestratorSpawner using the work package.
-type DefaultOrchestratorSpawner struct {
-	orchestratorManager work.OrchestratorManager
-}
-
-// NewOrchestratorSpawner creates a new DefaultOrchestratorSpawner with the given database and config.
-func NewOrchestratorSpawner(database *db.DB, cfg *project.Config) *DefaultOrchestratorSpawner {
-	return &DefaultOrchestratorSpawner{
-		orchestratorManager: work.NewOrchestratorManager(database, cfg),
-	}
-}
-
-// SpawnWorkOrchestrator implements OrchestratorSpawner.
-func (d *DefaultOrchestratorSpawner) SpawnWorkOrchestrator(ctx context.Context, workID, projectName, workDir, friendlyName string, w io.Writer) error {
-	return d.orchestratorManager.SpawnWorkOrchestrator(ctx, workID, projectName, workDir, friendlyName, w)
 }
 
 // DefaultWorkDestroyer implements WorkDestroyer using the work package.
@@ -66,27 +43,25 @@ func (d *DefaultWorkDestroyer) DestroyWork(ctx context.Context, workID string, w
 // ControlPlane manages the execution of scheduled tasks with injectable dependencies.
 // It allows for testing without actual CLI tools, services, or file system operations.
 type ControlPlane struct {
-	Git                 git.Operations
-	Worktree            worktree.Operations
-	Zellij              zellij.SessionManager
-	Mise                func(dir string) mise.Operations
-	FeedbackProcessor   feedback.Processor
-	OrchestratorSpawner OrchestratorSpawner
-	WorkDestroyer       WorkDestroyer
-	GitHubClient        github.ClientInterface
+	Git               git.Operations
+	Worktree          worktree.Operations
+	Zellij            zellij.SessionManager
+	Mise              func(dir string) mise.Operations
+	FeedbackProcessor feedback.Processor
+	WorkDestroyer     WorkDestroyer
+	GitHubClient      github.ClientInterface
 }
 
 // NewControlPlane creates a new ControlPlane with default production dependencies.
 func NewControlPlane(proj *project.Project) *ControlPlane {
 	return &ControlPlane{
-		Git:                 git.NewOperations(),
-		Worktree:            worktree.NewOperations(),
-		Zellij:              zellij.New(),
-		Mise:                mise.NewOperations,
-		FeedbackProcessor:   feedback.NewProcessor(),
-		OrchestratorSpawner: NewOrchestratorSpawner(proj.DB, proj.Config),
-		WorkDestroyer:       NewWorkDestroyer(proj),
-		GitHubClient:        github.NewClient(),
+		Git:               git.NewOperations(),
+		Worktree:          worktree.NewOperations(),
+		Zellij:            zellij.New(),
+		Mise:              mise.NewOperations,
+		FeedbackProcessor: feedback.NewProcessor(),
+		WorkDestroyer:     NewWorkDestroyer(proj),
+		GitHubClient:      github.NewClient(),
 	}
 }
 
@@ -97,19 +72,17 @@ func NewControlPlaneWithDeps(
 	zellijMgr zellij.SessionManager,
 	miseOps func(dir string) mise.Operations,
 	feedbackProc feedback.Processor,
-	orchestratorSpawner OrchestratorSpawner,
 	workDestroyer WorkDestroyer,
 	githubClient github.ClientInterface,
 ) *ControlPlane {
 	return &ControlPlane{
-		Git:                 gitOps,
-		Worktree:            wtOps,
-		Zellij:              zellijMgr,
-		Mise:                miseOps,
-		FeedbackProcessor:   feedbackProc,
-		OrchestratorSpawner: orchestratorSpawner,
-		WorkDestroyer:       workDestroyer,
-		GitHubClient:        githubClient,
+		Git:               gitOps,
+		Worktree:          wtOps,
+		Zellij:            zellijMgr,
+		Mise:              miseOps,
+		FeedbackProcessor: feedbackProc,
+		WorkDestroyer:     workDestroyer,
+		GitHubClient:      githubClient,
 	}
 }
 
@@ -117,7 +90,6 @@ func NewControlPlaneWithDeps(
 func (cp *ControlPlane) GetTaskHandlers() map[string]TaskHandler {
 	return map[string]TaskHandler{
 		db.TaskTypeCreateWorktree:      cp.HandleCreateWorktreeTask,
-		db.TaskTypeSpawnOrchestrator:   cp.HandleSpawnOrchestratorTask,
 		db.TaskTypePRFeedback:          cp.HandlePRFeedbackTask,
 		db.TaskTypeGitPush:             cp.HandleGitPushTask,
 		db.TaskTypeDestroyWorktree:     cp.HandleDestroyWorktreeTask,

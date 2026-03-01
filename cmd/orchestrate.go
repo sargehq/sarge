@@ -29,11 +29,9 @@ var (
 
 var orchestrateCmd = &cobra.Command{
 	Use:   "orchestrate",
-	Short: "[Agent] Execute tasks for a work unit",
-	Long: `[Agent Command - Spawned automatically by the system, not for direct user invocation]
-
-Internal command that polls for ready tasks and executes them. Runs in a zellij tab
-and is spawned automatically when a work unit is created or restarted.`,
+	Short: "[Deprecated] Execute tasks for a work unit as a standalone process",
+	Long: `[Deprecated] Task execution is now handled by the in-process task sequencer inside the TUI.
+This command is kept as a debug fallback for running the orchestrator as a separate process.`,
 	Hidden: true,
 	RunE:   runOrchestrate,
 }

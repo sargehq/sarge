@@ -57,7 +57,6 @@ type testMocks struct {
 	Git       *git.GitOperationsMock
 	Worktree  *worktree.WorktreeOperationsMock
 	Feedback  *feedback.FeedbackProcessorMock
-	Spawner   *OrchestratorSpawnerMock
 	Destroyer *WorkDestroyerMock
 	GitHub    *github.GitHubClientMock
 }
@@ -68,7 +67,6 @@ func setupControlPlane() *testMocks {
 	wtMock := &worktree.WorktreeOperationsMock{}
 	miseMock := &mise.MiseOperationsMock{}
 	feedbackMock := &feedback.FeedbackProcessorMock{}
-	spawnerMock := &OrchestratorSpawnerMock{}
 	destroyerMock := &WorkDestroyerMock{}
 	githubMock := &github.GitHubClientMock{}
 
@@ -78,7 +76,6 @@ func setupControlPlane() *testMocks {
 		nil, // zellij not used in these tests
 		func(dir string) mise.Operations { return miseMock },
 		feedbackMock,
-		spawnerMock,
 		destroyerMock,
 		githubMock,
 	)
@@ -88,7 +85,6 @@ func setupControlPlane() *testMocks {
 		Git:       gitMock,
 		Worktree:  wtMock,
 		Feedback:  feedbackMock,
-		Spawner:   spawnerMock,
 		Destroyer: destroyerMock,
 		GitHub:    githubMock,
 	}
@@ -204,107 +200,6 @@ func TestHandleGitPushTask(t *testing.T) {
 		err := mocks.CP.HandleGitPushTask(ctx, proj, task)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "work not found")
-	})
-}
-
-func TestHandleSpawnOrchestratorTask(t *testing.T) {
-	ctx := context.Background()
-	proj, cleanup := setupTestProject(t)
-	defer cleanup()
-
-	t.Run("succeeds when work exists", func(t *testing.T) {
-		mocks := setupControlPlane()
-
-		mocks.Spawner.SpawnWorkOrchestratorFunc = func(ctx context.Context, workID, projectName, workDir, friendlyName string, w io.Writer) error {
-			return nil
-		}
-
-		// Create work
-		createTestWork(ctx, t, proj.DB, "w-spawn", "spawn-branch", "root-1")
-		err := proj.DB.UpdateWorkWorktreePath(ctx, "w-spawn", "/spawn/tree")
-		require.NoError(t, err)
-		defer proj.DB.DeleteWork(ctx, "w-spawn")
-
-		task := &db.ScheduledTask{
-			ID:       "spawn-task-1",
-			WorkID:   "w-spawn",
-			TaskType: db.TaskTypeSpawnOrchestrator,
-			Metadata: map[string]string{
-				"worker_name": "test-worker",
-			},
-		}
-
-		err = mocks.CP.HandleSpawnOrchestratorTask(ctx, proj, task)
-		require.NoError(t, err)
-
-		// Verify spawner was called with correct args
-		calls := mocks.Spawner.SpawnWorkOrchestratorCalls()
-		require.Len(t, calls, 1)
-		assert.Equal(t, "w-spawn", calls[0].WorkID)
-		assert.Equal(t, "test-project", calls[0].ProjectName)
-		assert.Equal(t, "/spawn/tree", calls[0].WorkDir)
-		assert.Equal(t, "test-worker", calls[0].FriendlyName)
-	})
-
-	t.Run("succeeds when work deleted", func(t *testing.T) {
-		mocks := setupControlPlane()
-
-		// Work doesn't exist - task should complete without error
-		task := &db.ScheduledTask{
-			ID:       "spawn-task-2",
-			WorkID:   "nonexistent",
-			TaskType: db.TaskTypeSpawnOrchestrator,
-			Metadata: map[string]string{},
-		}
-
-		err := mocks.CP.HandleSpawnOrchestratorTask(ctx, proj, task)
-		require.NoError(t, err)
-
-		// Spawner should not have been called
-		assert.Len(t, mocks.Spawner.SpawnWorkOrchestratorCalls(), 0)
-	})
-
-	t.Run("returns error when no worktree path", func(t *testing.T) {
-		mocks := setupControlPlane()
-
-		// Create work without worktree path
-		createTestWork(ctx, t, proj.DB, "w-no-tree", "branch", "root-1")
-		defer proj.DB.DeleteWork(ctx, "w-no-tree")
-
-		task := &db.ScheduledTask{
-			ID:       "spawn-task-3",
-			WorkID:   "w-no-tree",
-			TaskType: db.TaskTypeSpawnOrchestrator,
-			Metadata: map[string]string{},
-		}
-
-		err := mocks.CP.HandleSpawnOrchestratorTask(ctx, proj, task)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "no worktree path")
-	})
-
-	t.Run("returns error when spawner fails", func(t *testing.T) {
-		mocks := setupControlPlane()
-
-		mocks.Spawner.SpawnWorkOrchestratorFunc = func(ctx context.Context, workID, projectName, workDir, friendlyName string, w io.Writer) error {
-			return errors.New("zellij error")
-		}
-
-		createTestWork(ctx, t, proj.DB, "w-fail", "branch", "root-1")
-		err := proj.DB.UpdateWorkWorktreePath(ctx, "w-fail", "/fail/tree")
-		require.NoError(t, err)
-		defer proj.DB.DeleteWork(ctx, "w-fail")
-
-		task := &db.ScheduledTask{
-			ID:       "spawn-task-4",
-			WorkID:   "w-fail",
-			TaskType: db.TaskTypeSpawnOrchestrator,
-			Metadata: map[string]string{},
-		}
-
-		err = mocks.CP.HandleSpawnOrchestratorTask(ctx, proj, task)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to spawn orchestrator")
 	})
 }
 
@@ -469,7 +364,6 @@ func TestGetTaskHandlers(t *testing.T) {
 	// Verify all expected task types have handlers
 	expectedTypes := []string{
 		db.TaskTypeCreateWorktree,
-		db.TaskTypeSpawnOrchestrator,
 		db.TaskTypePRFeedback,
 		db.TaskTypeGitPush,
 		db.TaskTypeDestroyWorktree,
@@ -498,13 +392,7 @@ func TestNewControlPlane(t *testing.T) {
 	assert.NotNil(t, cp.Zellij)
 	assert.NotNil(t, cp.Mise)
 	assert.NotNil(t, cp.FeedbackProcessor)
-	assert.NotNil(t, cp.OrchestratorSpawner)
 	assert.NotNil(t, cp.WorkDestroyer)
-}
-
-func TestDefaultOrchestratorSpawner(t *testing.T) {
-	// Compile-time check that DefaultOrchestratorSpawner implements OrchestratorSpawner
-	var _ control.OrchestratorSpawner = (*control.DefaultOrchestratorSpawner)(nil)
 }
 
 func TestDefaultWorkDestroyer(t *testing.T) {

@@ -21,7 +21,6 @@ const (
 var taskExecutionModes = map[string]TaskExecutionMode{
 	// Sync tasks (fast, < 1 second typically)
 	db.TaskTypeCreateWorktree:      TaskModeSync, // Creates git worktree, fast
-	db.TaskTypeSpawnOrchestrator:   TaskModeSync, // Spawns zellij tab, fast
 	db.TaskTypeDestroyWorktree:     TaskModeSync, // Removes worktree directory, fast
 	db.TaskTypeGitPush:             TaskModeSync, // Git push, usually fast
 	db.TaskTypeGitHubComment:       TaskModeSync, // Posts a GitHub comment, fast

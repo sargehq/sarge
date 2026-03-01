@@ -1,11 +1,11 @@
 ---
 # main-otx3
 title: 'Phase 2: Single-process sarge — bridge execution, in-process control plane, task sequencer'
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-03-01T21:27:06Z
-updated_at: 2026-03-01T21:35:23Z
+updated_at: 2026-03-01T22:10:42Z
 parent: ir72
 blocked_by:
     - main-wzfv

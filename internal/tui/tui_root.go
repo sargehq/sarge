@@ -2,13 +2,21 @@ package tui
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	zone "github.com/lrstanley/bubblezone"
+	"github.com/sargehq/sarge/internal/control"
+	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/logging"
+	"github.com/sargehq/sarge/internal/procmon"
 	"github.com/sargehq/sarge/internal/project"
+	"github.com/sargehq/sarge/internal/taskseq"
+	trackingwatcher "github.com/sargehq/sarge/internal/tracking/watcher"
 )
 
 // Bubblezone setup: NewGlobal() initializes the global zone manager.
@@ -152,9 +160,79 @@ func (m rootModel) View() string {
 	return ""
 }
 
-// RunRootTUI starts the TUI with the new root model
+// RunRootTUI starts the TUI with the new root model.
+// It also starts the control plane and task sequencer as in-process goroutines.
 func RunRootTUI(ctx context.Context, proj *project.Project, enableMouse bool) error {
+	// Apply hooks.env so child processes (bridge sessions) inherit them.
+	for _, e := range proj.Config.Hooks.Env {
+		idx := -1
+		for i, c := range e {
+			if c == '=' {
+				idx = i
+				break
+			}
+		}
+		if idx > 0 {
+			os.Setenv(e[:idx], os.ExpandEnv(e[idx+1:]))
+		}
+	}
+	_ = os.Setenv("BEANS_PATH", proj.BeansPath())
+
+	// Create a cancellable context for background goroutines.
+	bgCtx, bgCancel := context.WithCancel(ctx)
+	defer bgCancel()
+
+	// Start the control plane as an in-process goroutine.
+	procManager := procmon.NewManager(proj.DB, db.DefaultHeartbeatInterval)
+	if err := procManager.RegisterControlPlane(bgCtx); err != nil {
+		logging.Warn("failed to register control plane process", "error", err)
+	}
+	defer procManager.Stop()
+
+	go func() {
+		err := control.RunControlPlaneLoop(bgCtx, proj, procManager)
+		if err != nil && err != control.ErrBinaryChanged {
+			logging.Warn("in-process control plane exited", "error", err)
+		}
+	}()
+
+	// Start the task sequencer as an in-process goroutine.
 	model := newRootModel(ctx, proj)
+	sequencer := taskseq.New(proj, model.planModel.bridgeClient)
+
+	// Wire up DB watcher to notify the sequencer on changes.
+	trackingDBPath := filepath.Join(proj.Root, ".co", "tracking.db")
+	seqWatcher, err := trackingwatcher.New(trackingwatcher.DefaultConfig(trackingDBPath))
+	if err != nil {
+		logging.Warn("failed to create sequencer DB watcher", "error", err)
+	} else {
+		if err := seqWatcher.Start(); err != nil {
+			logging.Warn("failed to start sequencer DB watcher", "error", err)
+			_ = seqWatcher.Stop()
+			seqWatcher = nil
+		} else {
+			defer seqWatcher.Stop()
+			// Forward DB change events to sequencer.
+			seqSub := seqWatcher.Broker().Subscribe(bgCtx)
+			go func() {
+				for {
+					select {
+					case <-bgCtx.Done():
+						return
+					case evt, ok := <-seqSub:
+						if !ok {
+							return
+						}
+						if evt.Payload.Type == trackingwatcher.DBChanged {
+							sequencer.Notify()
+						}
+					}
+				}
+			}()
+		}
+	}
+
+	go sequencer.Run(bgCtx)
 
 	opts := []tea.ProgramOption{tea.WithAltScreen()}
 	if enableMouse {
@@ -165,6 +243,10 @@ func RunRootTUI(ctx context.Context, proj *project.Project, enableMouse bool) er
 	if _, err := p.Run(); err != nil {
 		return err
 	}
+
+	// Cancel background goroutines and wait for sequencer to finish.
+	bgCancel()
+	sequencer.Wait()
 
 	return nil
 }
