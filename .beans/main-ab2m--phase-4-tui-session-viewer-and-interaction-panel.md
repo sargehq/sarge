@@ -1,10 +1,11 @@
 ---
 # main-ab2m
 title: 'Phase 4: TUI session viewer and interaction panel'
-status: todo
+status: completed
 type: feature
+priority: normal
 created_at: 2026-03-01T21:27:52Z
-updated_at: 2026-03-01T21:27:52Z
+updated_at: 2026-03-01T21:52:27Z
 parent: ir72
 blocked_by:
     - main-nies

@@ -54,6 +54,9 @@ func (m *planModel) renderFocusedWorkSplitView() string {
 	case ViewCreateWork:
 		m.createWorkPanel.SetSize(detailsWidth, planPanelHeight)
 		detailsPanel = m.createWorkPanel.RenderWithPanel(planPanelHeight)
+	case ViewSessionViewer:
+		m.sessionPanel.SetSize(detailsWidth, planPanelHeight)
+		detailsPanel = m.sessionPanel.RenderWithPanel(planPanelHeight)
 	default:
 		detailsPanel = m.detailsPanel.RenderWithPanel(planPanelHeight)
 	}
@@ -90,6 +93,8 @@ func (m *planModel) renderTwoColumnLayout() string {
 		rightPanel = m.prImportPanel.RenderWithPanel(contentHeight)
 	case ViewCreateWork:
 		rightPanel = m.createWorkPanel.RenderWithPanel(contentHeight)
+	case ViewSessionViewer:
+		rightPanel = m.sessionPanel.RenderWithPanel(contentHeight)
 	default:
 		rightPanel = m.detailsPanel.RenderWithPanel(contentHeight)
 	}
@@ -302,7 +307,7 @@ func (m *planModel) renderHelp() string {
 			entry("d", "Destroy work / Delete issue"),
 			entry("x", "Reset failed task"),
 			entry("a", "Add child issue to work"),
-			entry("g", "Pick zmx session to attach"),
+			entry("g", "Pick session to view"),
 		}, "Panel-aware: d changes behavior based on\nfocused panel. t/c/i/r/o/v/f/g are exclusively\nwork actions when a work is selected.") + "\n" +
 
 		renderSection("Filters", [][]string{
@@ -315,6 +320,15 @@ func (m *planModel) renderHelp() string {
 			entry("s", "Cycle sort mode"),
 			entry("*", "Show all (clear filters)"),
 		}, "") + "\n" +
+
+		renderSection("Session Viewer", [][]string{
+			entry("j/k ↑/↓", "Scroll output"),
+			entry("g/G", "Jump to top/bottom"),
+			entry("i/enter", "Type a prompt"),
+			entry("ctrl+c", "Abort current run"),
+			entry("ctrl+s", "Steer (interrupt)"),
+			entry("esc", "Exit session viewer"),
+		}, "Available when viewing a bridge session.") + "\n" +
 
 		renderSection("Indicators", [][]string{
 			entry("●", "Multi-selected"),
