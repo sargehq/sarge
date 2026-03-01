@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -813,9 +812,4 @@ func (s *Sequencer) createUpdatePRDescriptionTask(ctx context.Context, w *db.Wor
 		return fmt.Errorf("failed to add dependency: %w", err)
 	}
 	return nil
-}
-
-// projectRoot derives the project root from a worktree path.
-func projectRoot(workDir string) string {
-	return filepath.Dir(filepath.Dir(workDir))
 }
