@@ -1,10 +1,11 @@
 ---
 # main-wzfv
 title: 'Phase 1: Pi Bridge — Unix socket RPC bridge for pi sessions'
-status: todo
+status: completed
 type: feature
+priority: normal
 created_at: 2026-03-01T21:26:46Z
-updated_at: 2026-03-01T21:26:46Z
+updated_at: 2026-03-01T21:46:57Z
 parent: ir72
 ---
 
