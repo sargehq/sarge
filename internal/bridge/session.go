@@ -207,6 +207,7 @@ func (s *Session) PromptWithBehavior(message string, behavior string) error {
 	if SessionState(s.state.Load()) == SessionDead {
 		return fmt.Errorf("session %s is dead", s.id)
 	}
+	s.streaming.Store(true)
 	return s.sendCommand(map[string]string{
 		"type":              "prompt",
 		"message":           message,
