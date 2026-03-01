@@ -28,8 +28,7 @@ type Config struct {
 	Pi          PiConfig          `toml:"pi"`
 	Workflow    WorkflowConfig    `toml:"workflow"`
 	Scheduler   SchedulerConfig   `toml:"scheduler"`
-	Zellij      ZellijConfig      `toml:"zellij"`
-	Multiplexer MultiplexerConfig `toml:"multiplexer"`
+
 	LogParser   LogParserConfig   `toml:"log_parser"`
 	IDE         IDEConfig         `toml:"ide"`
 	Debug       DebugConfig       `toml:"debug"`
@@ -187,7 +186,7 @@ func (r *RepoConfig) GetBaseBranch() string {
 type HooksConfig struct {
 	// Env is a list of environment variables to set before running commands.
 	// Format: ["KEY=value", "ANOTHER_KEY=value"]
-	// These are applied when spawning Claude in zellij tabs.
+	// These are applied when spawning agent sessions.
 	Env []string `toml:"env"`
 }
 
@@ -267,60 +266,7 @@ func (s *SchedulerConfig) GetActivityUpdateInterval() time.Duration {
 	return 30 * time.Second
 }
 
-// ZellijConfig contains zellij tab management configuration.
-type ZellijConfig struct {
-	// KillTabsOnDestroy controls whether to automatically kill zellij tabs
-	// when work is destroyed. Includes work, task, console, and claude tabs.
-	// Defaults to true when not specified.
-	KillTabsOnDestroy *bool `toml:"kill_tabs_on_destroy"`
-}
 
-// MultiplexerConfig contains terminal multiplexer configuration.
-type MultiplexerConfig struct {
-	// Type selects which terminal multiplexer to use: "zellij" (default) or "zmx".
-	Type string `toml:"type"`
-
-	// Terminal is the command template for opening a new terminal window attached to a zmx session.
-	// Used when type is "zmx".
-	// Default: "ghostty -e zmx attach {session}"
-	// The placeholder {session} is replaced with the zmx session name.
-	Terminal string `toml:"terminal"`
-
-	// AttachMode controls how new sessions are attached to terminal windows.
-	// "window" (default): opens a new Ghostty window per session.
-	// "tab": opens a new tab in the current Ghostty window via AppleScript (macOS only).
-	// On non-macOS platforms, "tab" mode falls back to "window" mode.
-	AttachMode string `toml:"attach_mode"`
-
-	// AttachOrchestrator controls whether orchestrator sessions are automatically
-	// attached to a terminal window when spawned. When false (default), orchestrators
-	// run detached. When true, a terminal window opens attached to the orchestrator.
-	// Only applies when type is "zmx".
-	AttachOrchestrator bool `toml:"attach_orchestrator"`
-}
-
-// IsZmx returns true if the multiplexer type is zmx.
-func (m *MultiplexerConfig) IsZmx() bool {
-	return m.Type == "zmx"
-}
-
-// GetAttachMode returns the configured attach mode.
-// Returns "window" (default) or "tab".
-func (m *MultiplexerConfig) GetAttachMode() string {
-	if m.AttachMode == "tab" {
-		return "tab"
-	}
-	return "window"
-}
-
-// GetTerminalCommand returns the terminal launch command template.
-// Returns the configured value, or a platform-appropriate default.
-func (m *MultiplexerConfig) GetTerminalCommand() string {
-	if m.Terminal != "" {
-		return m.Terminal
-	}
-	return "ghostty -e zmx attach {session}"
-}
 
 // BeansConfig contains beans path configuration.
 type BeansConfig struct {
@@ -330,14 +276,7 @@ type BeansConfig struct {
 	Path string `toml:"path"`
 }
 
-// ShouldKillTabsOnDestroy returns true if zellij tabs should be killed when work is destroyed.
-// Defaults to true when not explicitly configured.
-func (z *ZellijConfig) ShouldKillTabsOnDestroy() bool {
-	if z.KillTabsOnDestroy == nil {
-		return true // default to true
-	}
-	return *z.KillTabsOnDestroy
-}
+
 
 // LoadConfig reads and parses a config.toml file.
 func LoadConfig(path string) (*Config, error) {
@@ -389,7 +328,7 @@ type configTemplateData struct {
 	RepoPath       string
 	BeansPath      string
 	AgentType      string
-	MultiplexerType string // "zellij" (default) or "zmx"
+
 }
 
 // tomlString formats a string for TOML output with proper escaping.
@@ -495,13 +434,13 @@ func lineLeadingWhitespace(line string) string {
 	return line[:len(line)-len(strings.TrimLeft(line, " \t"))]
 }
 
-// UpdateConfigFields updates the agent.type and multiplexer.type values in an existing
+// UpdateConfigFields updates the agent.type value in an existing
 // config.toml in-place, preserving all user comments, other fields, and other sections.
 //
 // If the [agent] section is currently commented out (e.g. "# [agent]") and agentType
 // is non-empty, the header is uncommented and the type field is added or updated.
 //
-// Warns but does not fail if either section is not found.
+// Warns but does not fail if the section is not found.
 func UpdateConfigFields(configPath string, agentType string, multiplexerType string) error {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
@@ -512,7 +451,7 @@ func UpdateConfigFields(configPath string, agentType string, multiplexerType str
 	currentSection := ""
 	currentSectionIsCommented := false
 	agentFound := false
-	multiplexerFound := false
+
 	// agentHeaderIdx tracks the line index of an [agent] header that was just
 	// uncommented so we can insert a type line below it if none is found.
 	agentHeaderIdx := -1
@@ -566,9 +505,7 @@ func UpdateConfigFields(configPath string, agentType string, multiplexerType str
 		case "agent":
 			lines[i] = fmt.Sprintf("%stype = %q", leading, agentType)
 			agentFound = true
-		case "multiplexer":
-			lines[i] = fmt.Sprintf("%stype = %q", leading, multiplexerType)
-			multiplexerFound = true
+
 		}
 	}
 
@@ -587,9 +524,7 @@ func UpdateConfigFields(configPath string, agentType string, multiplexerType str
 	if !agentFound {
 		fmt.Fprintf(os.Stderr, "warning: [agent] section not found in %s — skipping agent.type update\n", configPath)
 	}
-	if !multiplexerFound {
-		fmt.Fprintf(os.Stderr, "warning: [multiplexer] section not found in %s — skipping multiplexer.type update\n", configPath)
-	}
+
 
 	return os.WriteFile(configPath, []byte(strings.Join(lines, "\n")), 0600)
 }
@@ -716,7 +651,7 @@ func (c *Config) GenerateDocumentedConfig() string {
 		RepoPath:        c.Repo.Path,
 		BeansPath:       c.Beans.Path,
 		AgentType:       c.Agent.Type,
-		MultiplexerType: c.Multiplexer.Type,
+
 	}
 
 	var buf bytes.Buffer

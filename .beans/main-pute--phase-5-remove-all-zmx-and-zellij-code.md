@@ -1,7 +1,7 @@
 ---
 # main-pute
 title: 'Phase 5: Remove all zmx and zellij code'
-status: todo
+status: done
 type: task
 created_at: 2026-03-01T21:28:17Z
 updated_at: 2026-03-01T21:28:17Z

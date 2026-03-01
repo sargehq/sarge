@@ -26,7 +26,7 @@ const (
 
 // WorkTabsBar renders a horizontal tab bar showing all works.
 // Each tab can be clicked to focus that work. Running works show a spinner.
-// Styled similar to zellij with seamless color transitions between tabs.
+// Styled with seamless color transitions between tabs.
 type WorkTabsBar struct {
 	// Dimensions
 	width int
@@ -141,7 +141,7 @@ func (b *WorkTabsBar) getWorkState(work *progress.WorkProgress) WorkState {
 	return WorkStateIdle
 }
 
-// Render renders the tab bar with zellij-like styling
+// Render renders the tab bar with styled tabs
 func (b *WorkTabsBar) Render() string {
 	// Colors
 	barBg := lipgloss.Color("235")      // Dark background
@@ -152,7 +152,7 @@ func (b *WorkTabsBar) Render() string {
 	activeBg := lipgloss.Color("214")   // Orange for active
 	activeFg := lipgloss.Color("232")   // Dark text
 
-	// Zellij-style: uses right-pointing triangle on both sides
+	// Uses right-pointing triangle on both sides
 	triangle := "\ue0b0" // U+E0B0 - right-pointing solid triangle
 
 	var content string

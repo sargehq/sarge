@@ -18,7 +18,7 @@ import (
 	workpkg "github.com/sargehq/sarge/internal/work"
 )
 
-// sessionName returns the zellij session name for this project
+// sessionName returns the session name for this project.
 func (m *planModel) sessionName() string {
 	return fmt.Sprintf("sarge-%s", m.proj.Config.Project.Name)
 }
@@ -58,7 +58,7 @@ func (m *planModel) spawnPlanSession(beanID string) tea.Cmd {
 // This uses the shared CreateWorkFromBean method which handles:
 // 1. Expanding the bean to collect all issue IDs
 // 2. Creating work record in DB (with auto flag)
-// 3. Initializing the zellij session
+// 3. Initializing the session
 // 4. Ensuring control plane is running
 func (m *planModel) executeCreateWork(beanID string, branchName string, auto bool, useExistingBranch bool) tea.Cmd {
 	return func() tea.Msg {
@@ -87,8 +87,7 @@ func (m *planModel) executeCreateWork(beanID string, branchName string, auto boo
 		}
 
 		msg := planWorkCreatedMsg{beanID: beanID, workID: result.WorkID}
-		if sessionResult.SessionCreated {
-			msg.sessionCreated = true
+		if sessionResult != nil {
 			msg.sessionName = sessionResult.SessionName
 		}
 		return msg
@@ -357,7 +356,7 @@ func (m *planModel) restartOrchestrator() tea.Cmd {
 			time.Sleep(500 * time.Millisecond)
 		}
 
-		// Ensure control plane is running (may have been killed along with zellij)
+		// Ensure control plane is running
 		if _, err := control.EnsureControlPlane(m.ctx, m.proj); err != nil {
 			return workCommandMsg{action: "Restart orchestrator", workID: workID, err: fmt.Errorf("failed to ensure control plane: %w", err)}
 		}
@@ -453,30 +452,4 @@ func (m *planModel) openIDE() tea.Cmd {
 	}
 }
 
-// listZmxSessions fires an async command to list zmx sessions for the focused work.
-func (m *planModel) listZmxSessions() tea.Cmd {
-	workID := m.focusedWorkID
-	return func() tea.Msg {
-		if !m.proj.Config.Multiplexer.IsZmx() {
-			return zmxSessionsLoadedMsg{err: fmt.Errorf("session picker requires [multiplexer] type = \"zmx\" in config")}
-		}
-		if workID == "" {
-			return zmxSessionsLoadedMsg{err: fmt.Errorf("no work focused")}
-		}
 
-		sessions, err := m.workService.OrchestratorManager.ListWorkSessions(m.ctx, workID, m.proj.Config.Project.Name)
-		return zmxSessionsLoadedMsg{sessions: sessions, err: err}
-	}
-}
-
-// attachToZmxSession fires an async command to attach to a specific zmx session.
-func (m *planModel) attachToZmxSession(sessionName string) tea.Cmd {
-	workID := m.focusedWorkID
-	return func() tea.Msg {
-		err := m.workService.OrchestratorManager.AttachToSession(m.ctx, sessionName)
-		if err != nil {
-			return zmxSessionAttachedMsg{sessionName: sessionName, err: err}
-		}
-		return workCommandMsg{action: "Attached to session", workID: workID}
-	}
-}

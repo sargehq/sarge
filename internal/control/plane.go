@@ -14,7 +14,6 @@ import (
 	"github.com/sargehq/sarge/internal/project"
 	"github.com/sargehq/sarge/internal/work"
 	"github.com/sargehq/sarge/internal/worktree"
-	"github.com/sargehq/sarge/internal/zellij"
 )
 
 // WorkDestroyer defines the interface for destroying work units.
@@ -45,7 +44,6 @@ func (d *DefaultWorkDestroyer) DestroyWork(ctx context.Context, workID string, w
 type ControlPlane struct {
 	Git               git.Operations
 	Worktree          worktree.Operations
-	Zellij            zellij.SessionManager
 	Mise              func(dir string) mise.Operations
 	FeedbackProcessor feedback.Processor
 	WorkDestroyer     WorkDestroyer
@@ -57,7 +55,6 @@ func NewControlPlane(proj *project.Project) *ControlPlane {
 	return &ControlPlane{
 		Git:               git.NewOperations(),
 		Worktree:          worktree.NewOperations(),
-		Zellij:            zellij.New(),
 		Mise:              mise.NewOperations,
 		FeedbackProcessor: feedback.NewProcessor(),
 		WorkDestroyer:     NewWorkDestroyer(proj),
@@ -69,7 +66,6 @@ func NewControlPlane(proj *project.Project) *ControlPlane {
 func NewControlPlaneWithDeps(
 	gitOps git.Operations,
 	wtOps worktree.Operations,
-	zellijMgr zellij.SessionManager,
 	miseOps func(dir string) mise.Operations,
 	feedbackProc feedback.Processor,
 	workDestroyer WorkDestroyer,
@@ -78,7 +74,6 @@ func NewControlPlaneWithDeps(
 	return &ControlPlane{
 		Git:               gitOps,
 		Worktree:          wtOps,
-		Zellij:            zellijMgr,
 		Mise:              miseOps,
 		FeedbackProcessor: feedbackProc,
 		WorkDestroyer:     workDestroyer,

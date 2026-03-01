@@ -203,8 +203,7 @@ func TestTaskExecution_WorkStatusTransitions(t *testing.T) {
 	work, err := h.DB.GetWork(ctx, "w-test")
 	require.NoError(t, err)
 	assert.Equal(t, db.StatusProcessing, work.Status)
-	assert.Equal(t, "session-1", work.ZellijSession)
-	assert.Equal(t, "tab-1", work.ZellijTab)
+
 	assert.NotNil(t, work.StartedAt)
 
 	// Create and complete a task

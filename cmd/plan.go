@@ -20,7 +20,7 @@ var planCmd = &cobra.Command{
 	Long: `Plan launches Claude Code for planning work on a specific issue.
 
 This command is typically invoked by the TUI's Plan mode, which creates a
-zellij tab for each issue and runs 'sarge plan <id>' within it.
+session for each issue and runs 'sarge plan <id>' within it.
 
 Claude can then be used to:
 - Investigate the issue (beans show <id>)
@@ -48,7 +48,7 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	defer proj.Close()
 
 	beanID := args[0]
-	zellijSession := fmt.Sprintf("sarge-%s", proj.Config.Project.Name)
+	sessionName := fmt.Sprintf("sarge-%s", proj.Config.Project.Name)
 	tabName := db.TabNameForBean(beanID)
 
 	// Apply hooks.env to current process - inherited by child processes (Claude)
@@ -58,7 +58,7 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	_ = os.Setenv("BEANS_PATH", proj.BeansPath())
 
 	// Register the plan session in the database
-	if err := proj.DB.RegisterPlanSession(ctx, beanID, zellijSession, tabName, os.Getpid()); err != nil {
+	if err := proj.DB.RegisterPlanSession(ctx, beanID, sessionName, tabName, os.Getpid()); err != nil {
 		return fmt.Errorf("failed to register plan session: %w", err)
 	}
 	defer func() {

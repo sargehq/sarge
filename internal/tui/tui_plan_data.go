@@ -7,7 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/sargehq/sarge/internal/beans"
-	"github.com/sargehq/sarge/internal/db"
+
 	"github.com/sargehq/sarge/internal/github"
 	"github.com/sargehq/sarge/internal/linear"
 	"github.com/sargehq/sarge/internal/control"
@@ -264,13 +264,9 @@ func (m *planModel) closeBean(beanID string) tea.Cmd {
 	return func() tea.Msg {
 		beansPath := m.proj.BeansPath()
 		session := m.sessionName()
-		tabName := db.TabNameForBean(beanID)
 
-		// If there's an active session for this bean, close it
+		// If there's an active session for this bean, unregister it
 		if m.activeBeanSessions[beanID] {
-			// Terminate and close the tab
-			_ = m.zj.Session(session).TerminateAndCloseTab(m.ctx, tabName)
-			// Unregister from database
 			_ = m.proj.DB.UnregisterPlanSession(m.ctx, beanID)
 		}
 
@@ -291,14 +287,9 @@ func (m *planModel) closeBeans(beanIDs []string) tea.Cmd {
 		beansPath := m.proj.BeansPath()
 		session := m.sessionName()
 
-		// First, close any active sessions for these beans
-		zjSession := m.zj.Session(session)
+		// First, unregister any active sessions for these beans
 		for _, beanID := range beanIDs {
 			if m.activeBeanSessions[beanID] {
-				tabName := db.TabNameForBean(beanID)
-				// Terminate and close the tab
-				_ = zjSession.TerminateAndCloseTab(m.ctx, tabName)
-				// Unregister from database
 				_ = m.proj.DB.UnregisterPlanSession(m.ctx, beanID)
 			}
 		}
@@ -322,13 +313,9 @@ func (m *planModel) deleteBean(beanID string) tea.Cmd {
 	return func() tea.Msg {
 		beansPath := m.proj.BeansPath()
 		session := m.sessionName()
-		tabName := db.TabNameForBean(beanID)
 
-		// If there's an active session for this bean, close it
+		// If there's an active session for this bean, unregister it
 		if m.activeBeanSessions[beanID] {
-			// Terminate and close the tab
-			_ = m.zj.Session(session).TerminateAndCloseTab(m.ctx, tabName)
-			// Unregister from database
 			_ = m.proj.DB.UnregisterPlanSession(m.ctx, beanID)
 		}
 
@@ -349,14 +336,9 @@ func (m *planModel) deleteBeans(beanIDs []string) tea.Cmd {
 		beansPath := m.proj.BeansPath()
 		session := m.sessionName()
 
-		// First, close any active sessions for these beans
-		zjSession := m.zj.Session(session)
+		// First, unregister any active sessions for these beans
 		for _, beanID := range beanIDs {
 			if m.activeBeanSessions[beanID] {
-				tabName := db.TabNameForBean(beanID)
-				// Terminate and close the tab
-				_ = zjSession.TerminateAndCloseTab(m.ctx, tabName)
-				// Unregister from database
 				_ = m.proj.DB.UnregisterPlanSession(m.ctx, beanID)
 			}
 		}

@@ -15,7 +15,7 @@ var configCmd = &cobra.Command{
 	Long: `Reconfigure the current project interactively.
 
 Re-runs tool selection, regenerates .mise.toml, runs mise install,
-and updates config.toml with the new agent and multiplexer settings.`,
+and updates config.toml with the new agent settings.`,
 	RunE: runConfig,
 }
 
@@ -55,8 +55,8 @@ func runConfig(cmd *cobra.Command, args []string) error {
 		fmt.Printf("  Added new sections: %v\n", added)
 	}
 
-	// 6. Update agent.type and multiplexer.type fields in-place
-	if err := project.UpdateConfigFields(configPath, agentType, selections.MultiplexerType); err != nil {
+	// 6. Update agent.type field in-place
+	if err := project.UpdateConfigFields(configPath, agentType, ""); err != nil {
 		return fmt.Errorf("failed to update config fields: %w", err)
 	}
 
@@ -64,7 +64,6 @@ func runConfig(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 	fmt.Println("✓ Project reconfigured successfully!")
 	fmt.Printf("  Agent:       %s\n", agentType)
-	fmt.Printf("  Multiplexer: %s\n", selections.MultiplexerType)
 	fmt.Printf("  Config:      %s\n", configPath)
 
 	return nil

@@ -42,7 +42,7 @@ path = {{.BeansPath | tomlString}}
 # =============================================================================
 # Hooks Configuration (Optional)
 # =============================================================================
-# Environment variables set when spawning Claude in zellij tabs.
+# Environment variables set when spawning agent sessions.
 # Useful for configuring Claude Code to use Vertex AI, setting PATH, etc.
 #
 # [hooks]
@@ -171,61 +171,6 @@ type = {{.AgentType | tomlString}}
 # # Interval for updating task activity timestamps in seconds.
 # # Defaults to 30 seconds when not specified.
 # activity_update_seconds = 60
-
-# =============================================================================
-# Multiplexer Configuration (Optional)
-# =============================================================================
-# Controls which terminal multiplexer is used for managing work sessions.
-{{- if eq .MultiplexerType "zmx"}}
-
-[multiplexer]
-# Which multiplexer to use: "zellij" (default) or "zmx"
-type = "zmx"
-
-# Terminal command template for opening new windows (zmx only).
-# The {session} placeholder is replaced with the zmx session name.
-# macOS default: "open -na Ghostty.app --args -e zmx attach {session}"
-# Linux default: "ghostty -e zmx attach {session}"
-# terminal = "open -na Ghostty.app --args -e zmx attach {session}"
-
-# Attach mode: how new sessions connect to terminal windows.
-# "window" (default): opens a new Ghostty window per session.
-# "tab": opens a new tab in the current Ghostty window via AppleScript.
-# Note: "tab" mode is macOS-only and requires Accessibility permissions.
-# attach_mode = "tab"
-
-# Whether to auto-attach a terminal window to orchestrator sessions when spawned.
-# When false (default), orchestrators run detached.
-# attach_orchestrator = false
-{{- else}}
-#
-# [multiplexer]
-# # Which multiplexer to use: "zellij" (default) or "zmx"
-# type = "zmx"
-#
-# # Terminal command template for opening new windows (zmx only).
-# # The {session} placeholder is replaced with the zmx session name.
-# # macOS default: "open -na Ghostty.app --args -e zmx attach {session}"
-# # Linux default: "ghostty -e zmx attach {session}"
-# terminal = "open -na Ghostty.app --args -e zmx attach {session}"
-#
-# # Attach mode: how new sessions connect to terminal windows.
-# # "window" (default): opens a new Ghostty window per session.
-# # "tab": opens a new tab in the current Ghostty window via AppleScript.
-# # Note: "tab" mode is macOS-only and requires Accessibility permissions.
-# attach_mode = "tab"
-{{- end}}
-
-# =============================================================================
-# Zellij Configuration (Optional)
-# =============================================================================
-# Controls zellij tab management behavior.
-#
-# [zellij]
-# # Whether to automatically kill zellij tabs when work is destroyed.
-# # Includes work, task, console, and claude tabs for the work unit.
-# # Defaults to true when not specified.
-# kill_tabs_on_destroy = false
 
 # =============================================================================
 # Log Parser Configuration (Optional)

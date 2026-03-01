@@ -143,7 +143,6 @@ const (
 	ViewLabelFilter
 	ViewLinearImportInline // Import from Linear (inline in details panel)
 	ViewPRImportInline     // Import from GitHub PR (inline in details panel)
-	ViewZmxSessionPicker   // Zmx session picker (g key)
 	ViewBridgeSessionPicker // Bridge session picker
 	ViewSessionViewer      // Session viewer mode
 	ViewHelp

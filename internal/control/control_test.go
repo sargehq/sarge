@@ -73,7 +73,6 @@ func setupControlPlane() *testMocks {
 	cp := control.NewControlPlaneWithDeps(
 		gitMock,
 		wtMock,
-		nil, // zellij not used in these tests
 		func(dir string) mise.Operations { return miseMock },
 		feedbackMock,
 		destroyerMock,
@@ -389,7 +388,7 @@ func TestNewControlPlane(t *testing.T) {
 	// Verify default dependencies are set
 	assert.NotNil(t, cp.Git)
 	assert.NotNil(t, cp.Worktree)
-	assert.NotNil(t, cp.Zellij)
+	assert.NotNil(t, cp.Mise)
 	assert.NotNil(t, cp.Mise)
 	assert.NotNil(t, cp.FeedbackProcessor)
 	assert.NotNil(t, cp.WorkDestroyer)

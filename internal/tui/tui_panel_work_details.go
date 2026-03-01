@@ -25,7 +25,7 @@ const (
 	WorkDetailActionDestroy                              // Destroy work (d)
 	WorkDetailActionAddChildIssue                        // Add child issue to root issue (a)
 	WorkDetailActionResetTask                            // Reset failed task (x)
-	WorkDetailActionAttachTerminal                       // Attach terminal to zmx session (g)
+	WorkDetailActionAttachTerminal                       // Attach terminal to session (g)
 )
 
 // WorkDetailsPanel is a coordinator that manages the work detail sub-panels.

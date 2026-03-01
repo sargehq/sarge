@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// ControlPlaneTabName is the name of the control plane tab in zellij
+// ControlPlaneTabName is the name of the control plane session
 const ControlPlaneTabName = control.ControlPlaneTabName
 
 var controlCmd = &cobra.Command{

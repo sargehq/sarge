@@ -21,8 +21,7 @@ import (
 	trackingwatcher "github.com/sargehq/sarge/internal/tracking/watcher"
 	"github.com/sargehq/sarge/internal/work"
 	"github.com/sargehq/sarge/internal/bridge"
-	"github.com/sargehq/sarge/internal/zellij"
-	"github.com/sargehq/sarge/internal/zmx"
+
 )
 
 // bridgeEventMsg wraps a bridge event for the Bubbletea message loop.
@@ -57,8 +56,7 @@ type planModel struct {
 	beanFormPanel     *BeanFormPanel
 	createWorkPanel   *CreateWorkPanel
 
-	// Zmx session picker
-	zmxPicker *ZmxPickerPanel
+
 
 	// Bridge session support
 	bridgeClient        *bridge.Bridge
@@ -102,8 +100,7 @@ type planModel struct {
 
 	// Per-bean session tracking
 	activeBeanSessions map[string]bool // beanID -> has active session
-	zj                 zellij.SessionManager
-	zmxClient          zmx.Client
+
 
 	// Two-column layout settings
 	columnRatio float64 // Ratio of issues column width (0.0-1.0), default 0.4 for 40/60 split
@@ -179,8 +176,7 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 		activeBeanSessions:     make(map[string]bool),
 		selectedBeans:          make(map[string]bool),
 		newBeans:               make(map[string]time.Time),
-		zj:                     zellij.New(),
-		zmxClient:              zmx.New(),
+
 		columnRatio:            0.4,  // Default 40/60 split (issues/details)
 		hoveredIssue:           -1,   // No issue hovered initially
 		hoveredWorkItem:        -1,   // No work item hovered initially
@@ -204,13 +200,13 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 	m.prImportPanel = NewPRImportPanel()
 	m.beanFormPanel = NewBeanFormPanel()
 	m.createWorkPanel = NewCreateWorkPanel()
-	m.zmxPicker = NewZmxPickerPanel()
+
 	m.sessionPanel = NewSessionPanel()
 	m.sessionPicker = NewSessionPickerPanel()
 	m.bridgeClient = bridge.NewBridge()
 
 	// Wire bridge into the WorkService's OrchestratorManager so plan/agent
-	// sessions are routed through pi RPC instead of zmx/zellij tabs.
+	// sessions are routed through pi RPC via the bridge.
 	m.workService.OrchestratorManager = work.NewOrchestratorManagerWithBridge(
 		proj.DB, proj.Config, m.bridgeClient, proj.BeansPath(),
 	)
@@ -701,9 +697,6 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else if msg.resumed {
 			m.statusMessage = fmt.Sprintf("Resumed session for %s", msg.beanID)
 			m.statusIsError = false
-		} else if msg.sessionCreated && !m.proj.Config.Multiplexer.IsZmx() {
-			m.statusMessage = fmt.Sprintf("Started session for %s | Zellij: zellij attach %s", msg.beanID, msg.sessionName)
-			m.statusIsError = false
 		} else {
 			m.statusMessage = fmt.Sprintf("Started session for %s", msg.beanID)
 			m.statusIsError = false
@@ -734,11 +727,7 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.statusMessage = fmt.Sprintf("Failed to create work: %v", msg.err)
 			m.statusIsError = true
 		} else {
-			if msg.sessionCreated && !m.proj.Config.Multiplexer.IsZmx() {
-				m.statusMessage = fmt.Sprintf("Created work %s | Zellij: zellij attach %s", msg.workID, msg.sessionName)
-			} else {
-				m.statusMessage = fmt.Sprintf("Created work %s from %s", msg.workID, msg.beanID)
-			}
+			m.statusMessage = fmt.Sprintf("Created work %s from %s", msg.workID, msg.beanID)
 			m.statusIsError = false
 		}
 		// Refresh work tiles to show the new work in the tabs bar
@@ -763,37 +752,6 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// Refresh work tiles to update the tabs bar
 		return m, tea.Batch(m.refreshData(), m.loadWorkTiles())
-
-	case zmxSessionsLoadedMsg:
-		if msg.err != nil {
-			m.statusMessage = fmt.Sprintf("Session list failed: %v", msg.err)
-			m.statusIsError = true
-			return m, nil
-		}
-		if len(msg.sessions) == 0 {
-			m.statusMessage = "No active zmx sessions for this work"
-			m.statusIsError = false
-			return m, nil
-		}
-		if len(msg.sessions) == 1 {
-			// Only one session — attach directly
-			return m, m.attachToZmxSession(msg.sessions[0].Name)
-		}
-		// Multiple sessions — open the picker
-		m.zmxPicker.SetSize(m.width/2, m.height/2)
-		m.zmxPicker.SetSessions(msg.sessions)
-		m.viewMode = ViewZmxSessionPicker
-		return m, m.zmxPicker.Init()
-
-	case zmxSessionAttachedMsg:
-		if msg.err != nil {
-			m.statusMessage = fmt.Sprintf("Attach failed: %v", msg.err)
-			m.statusIsError = true
-		} else {
-			m.statusMessage = fmt.Sprintf("Attached to %s", msg.sessionName)
-			m.statusIsError = false
-		}
-		return m, nil
 
 	case workCommandMsg:
 		// Reset to normal mode
@@ -1012,8 +970,7 @@ type planSessionSpawnedMsg struct {
 	beanID          string
 	resumed         bool
 	err             error
-	sessionCreated  bool   // true if a new zellij session was created (legacy)
-	sessionName     string // e.g., 'co-myproject' (legacy)
+
 	bridgeSessionID string // non-empty when session was created via bridge
 }
 
@@ -1022,8 +979,7 @@ type planWorkCreatedMsg struct {
 	beanID         string
 	workID         string
 	err            error
-	sessionCreated bool   // true if a new zellij session was created
-	sessionName    string // e.g., 'co-myproject'
+	sessionName    string
 }
 
 // beanAddedToWorkMsg indicates a bean was added to a work
@@ -1222,22 +1178,6 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 		return m, cmd
-	case ViewZmxSessionPicker:
-		cmd, action := m.zmxPicker.Update(msg)
-		switch action {
-		case ZmxPickerActionCancel:
-			m.viewMode = ViewNormal
-			return m, cmd
-		case ZmxPickerActionSelect:
-			selected := m.zmxPicker.SelectedSession()
-			if selected != nil {
-				m.viewMode = ViewNormal
-				return m, m.attachToZmxSession(selected.Name)
-			}
-			return m, cmd
-		}
-		return m, cmd
-
 	case ViewBridgeSessionPicker:
 		cmd, action := m.sessionPicker.Update(msg)
 		switch action {
@@ -1439,13 +1379,17 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			case WorkDetailActionResetTask:
 				return m, m.resetSelectedTask()
 			case WorkDetailActionAttachTerminal:
-				// Check for bridge sessions first, fall back to zmx
-				sessions := m.bridgeClient.ListSessions()
-				if len(sessions) > 0 {
-					m.openBridgeSessionPicker()
-					return m, nil
+				// Open bridge session picker
+				if m.bridgeClient != nil {
+					sessions := m.bridgeClient.ListSessions()
+					if len(sessions) > 0 {
+						m.openBridgeSessionPicker()
+						return m, nil
+					}
 				}
-				return m, m.listZmxSessions()
+				m.statusMessage = "No active sessions for this work"
+				m.statusIsError = false
+				return m, nil
 			case WorkDetailActionPlan:
 				beanID := m.workDetails.GetSelectedUnassignedBeanID()
 				if beanID != "" {
@@ -2023,8 +1967,6 @@ func (m *planModel) View() string {
 		return m.renderWithDialog(m.renderDeleteBeanConfirmContent())
 	case ViewDestroyConfirm:
 		return m.renderWithDialog(m.renderDestroyConfirmContent())
-	case ViewZmxSessionPicker:
-		return m.renderWithDialog(m.zmxPicker.View())
 	case ViewBridgeSessionPicker:
 		return m.renderWithDialog(m.sessionPicker.View())
 	case ViewSessionViewer:

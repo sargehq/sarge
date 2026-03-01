@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/sargehq/sarge/internal/beans"
-	"github.com/sargehq/sarge/internal/zellij"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/git"
 	"github.com/sargehq/sarge/internal/logging"
@@ -33,27 +32,14 @@ const (
 	RepoTypeGitHub = "github"
 )
 
-// sessionNameForProject returns the default zellij session name for a project.
-// This always returns "sarge-<project>" regardless of whether we're inside a zellij session.
-func sessionNameForProject(projectName string) string {
-	return fmt.Sprintf("sarge-%s", projectName)
-}
-
-// ResolveSessionName returns the zellij session to use for tab management.
-// If we're already inside a zellij session (detected via $ZELLIJ_SESSION_NAME),
-// it reuses that session. Otherwise, it returns the default "sarge-<project>" name.
-// This allows sarge to create tabs in the user's existing zellij session
-// rather than forcing a separate session.
+// ResolveSessionName returns the session name for a project.
+// Returns "sarge-<project>".
 func ResolveSessionName(projectName string) string {
-	if current := zellij.CurrentSessionName(); current != "" {
-		return current
-	}
-	return sessionNameForProject(projectName)
+	return fmt.Sprintf("sarge-%s", projectName)
 }
 
 // FormatTabName formats a tab name with an optional friendly name.
 // If friendlyName is not empty, formats as "prefix-workID (friendlyName)", otherwise just "prefix-workID".
-// This is used for zellij tab titles where the friendly name is nice for display.
 func FormatTabName(prefix, workID, friendlyName string) string {
 	baseName := fmt.Sprintf("%s-%s", prefix, workID)
 	if friendlyName != "" {
@@ -63,8 +49,6 @@ func FormatTabName(prefix, workID, friendlyName string) string {
 }
 
 // FormatTabNameShort formats a tab name without the friendly name.
-// This is used for zmx session names where the full name becomes a Unix socket
-// path and must stay under the 104-byte macOS sun_path limit.
 func FormatTabNameShort(prefix, workID string) string {
 	return fmt.Sprintf("%s-%s", prefix, workID)
 }
@@ -205,9 +189,6 @@ func CreateWithSelections(ctx context.Context, dir, repoSource string, agentType
 		},
 		Agent: AgentConfig{
 			Type: agentType,
-		},
-		Multiplexer: MultiplexerConfig{
-			Type: toolSelections.MultiplexerType,
 		},
 		// Beans path will be set after setupBeans
 	}

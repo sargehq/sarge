@@ -118,11 +118,11 @@ Beans that are already assigned to a pending or processing task cannot be remove
 var workConsoleCmd = &cobra.Command{
 	Use:   "console [<id>]",
 	Short: "Open a console tab in the work's worktree",
-	Long: `Open a zellij tab with a shell in the work's worktree.
+	Long: `Open a shell session in the work's worktree.
 If no ID is provided, uses the work for the current directory context.
 
 This is useful for running tests, exploring the codebase, or debugging
-while the orchestrator runs in a separate tab.`,
+while the orchestrator runs separately.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runWorkConsole,
 }
@@ -130,11 +130,11 @@ while the orchestrator runs in a separate tab.`,
 var workClaudeCmd = &cobra.Command{
 	Use:   "claude [<id>]",
 	Short: "Open a Claude Code session in the work's worktree",
-	Long: `Open a zellij tab with an interactive Claude Code session in the work's worktree.
+	Long: `Open an interactive Claude Code session in the work's worktree.
 If no ID is provided, uses the work for the current directory context.
 
 This is useful for manual exploration, debugging, or ad-hoc changes
-while the orchestrator runs in a separate tab.`,
+while the orchestrator runs separately.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runWorkClaude,
 }
@@ -303,7 +303,7 @@ func runWorkCreate(cmd *cobra.Command, args []string) error {
 		fmt.Printf("  - %s: %s\n", issue.ID, issue.Title)
 	}
 
-	// Ensure zellij session and control plane are running
+	// Ensure control plane is running
 	sessionResult, err := control.EnsureControlPlane(ctx, proj)
 	if err != nil {
 		fmt.Printf("Warning: failed to ensure control plane: %v\n", err)
@@ -316,7 +316,7 @@ func runWorkCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("\nThe control plane will create the worktree and start the orchestrator.\n")
-	fmt.Printf("Switch to the zellij session to monitor progress.\n")
+	fmt.Printf("Use 'sarge' TUI to monitor progress.\n")
 
 	return nil
 }
@@ -587,12 +587,7 @@ func runWorkShow(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Error: %s\n", work.ErrorMessage)
 	}
 
-	if work.ZellijSession != "" {
-		fmt.Printf("Zellij Session: %s\n", work.ZellijSession)
-		if work.ZellijTab != "" {
-			fmt.Printf("Zellij Tab: %s\n", work.ZellijTab)
-		}
-	}
+
 
 	fmt.Printf("Created: %s\n", work.CreatedAt.Format("2006-01-02 15:04:05"))
 
@@ -1062,7 +1057,7 @@ func runWorkClaude(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to ensure control plane: %w", err)
 	}
 
-	// Open agent session in the work's worktree (CLI mode - no bridge, uses zmx/zellij)
+	// Open agent session in the work's worktree (CLI mode)
 	orchestratorMgr := workpkg.NewOrchestratorManager(proj.DB, proj.Config)
 	_, err = orchestratorMgr.OpenAgentSession(ctx, workID, proj.Config.Project.Name, work.WorktreePath, work.Name, proj.Config.Hooks.Env, proj.Config, os.Stdout)
 	return err
@@ -1107,14 +1102,13 @@ func runWorkRestart(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// printSessionCreatedNotification displays a prominent notification when a new zellij session is created.
+// printSessionCreatedNotification displays a prominent notification when a new session is created.
 func printSessionCreatedNotification(sessionName string) {
 	fmt.Println()
 	fmt.Println(strings.Repeat("=", 50))
-	fmt.Printf("  Zellij session created: %s\n", sessionName)
+	fmt.Printf("  Session created: %s\n", sessionName)
 	fmt.Println()
-	fmt.Println("  To attach to the session, run:")
-	fmt.Printf("    zellij attach %s\n", sessionName)
+	fmt.Println("  Use 'sarge' TUI to monitor and interact.")
 	fmt.Println(strings.Repeat("=", 50))
 	fmt.Println()
 }

@@ -102,7 +102,7 @@ func TestDestroyWork_ClosesRootIssue(t *testing.T) {
 	assert.Equal(t, "root-bean", closedBeanID, "should close the root issue")
 }
 
-func TestDestroyWork_TerminatesZellijTabs(t *testing.T) {
+func TestDestroyWork_TerminatesSessions(t *testing.T) {
 	h := testutil.NewTestHarness(t)
 	defer h.Cleanup()
 
@@ -124,7 +124,7 @@ func TestDestroyWork_TerminatesZellijTabs(t *testing.T) {
 	err := h.WorkService.DestroyWork(ctx, "w-test", io.Discard)
 	require.NoError(t, err)
 
-	// Verify zellij tabs were terminated
+	// Verify sessions were terminated
 	assert.True(t, terminateCalled, "TerminateWorkTabs should have been called")
 	assert.Equal(t, "w-test", terminatedWorkID)
 }
@@ -147,7 +147,7 @@ func TestDestroyWork_HandlesPartialFailures(t *testing.T) {
 
 	// Configure tab termination to fail
 	h.OrchestratorManager.TerminateWorkTabsFunc = func(ctx context.Context, workID string, projName string, w io.Writer) error {
-		return errors.New("zellij not running")
+		return errors.New("session termination failed")
 	}
 
 	// Configure worktree removal to fail
@@ -269,33 +269,6 @@ func TestDestroyWork_NoRootIssue(t *testing.T) {
 
 	// Close should NOT have been called
 	assert.False(t, closeCalled, "should not try to close non-existent root issue")
-}
-
-func TestDestroyWork_KillTabsDisabled(t *testing.T) {
-	h := testutil.NewTestHarness(t)
-	defer h.Cleanup()
-
-	ctx := context.Background()
-
-	// Configure zellij to not kill tabs on destroy
-	h.Config.Zellij.KillTabsOnDestroy = boolPtr(false)
-
-	// Create work
-	h.CreateWork("w-test", "feat/test")
-
-	// Track if tab termination was called
-	terminateCalled := false
-	h.OrchestratorManager.TerminateWorkTabsFunc = func(ctx context.Context, workID string, projName string, w io.Writer) error {
-		terminateCalled = true
-		return nil
-	}
-
-	// Destroy the work
-	err := h.WorkService.DestroyWork(ctx, "w-test", io.Discard)
-	require.NoError(t, err)
-
-	// Tab termination should NOT have been called
-	assert.False(t, terminateCalled, "TerminateWorkTabs should not be called when disabled")
 }
 
 // boolPtr returns a pointer to the given bool value.
