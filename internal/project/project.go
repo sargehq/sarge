@@ -140,14 +140,13 @@ func load(ctx context.Context, root string) (*Project, error) {
 // Create initializes a new project at the given directory with default tool selections.
 // repoSource can be a local path (symlinked) or GitHub URL (cloned).
 func Create(ctx context.Context, dir, repoSource string) (*Project, error) {
-	return CreateWithSelections(ctx, dir, repoSource, "claude", mise.DefaultToolSelections())
+	return CreateWithSelections(ctx, dir, repoSource, mise.DefaultToolSelections())
 }
 
 // CreateWithSelections initializes a new project at the given directory with specific tool selections.
-// agentType is stored in project config ("claude" or "pi").
-// toolSelections controls which tools are added to .mise.toml (agent may or may not be included).
+// toolSelections controls which tools are added to .mise.toml.
 // repoSource can be a local path (symlinked) or GitHub URL (cloned).
-func CreateWithSelections(ctx context.Context, dir, repoSource string, agentType string, toolSelections mise.ToolSelections) (*Project, error) {
+func CreateWithSelections(ctx context.Context, dir, repoSource string, toolSelections mise.ToolSelections) (*Project, error) {
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve path: %w", err)
@@ -186,9 +185,6 @@ func CreateWithSelections(ctx context.Context, dir, repoSource string, agentType
 			Type:   repoType,
 			Source: repoSource,
 			Path:   MainDir,
-		},
-		Agent: AgentConfig{
-			Type: agentType,
 		},
 		// Beans path will be set after setupBeans
 	}

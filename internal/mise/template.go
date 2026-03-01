@@ -17,50 +17,36 @@ var miseTemplate = template.Must(template.New("mise").Parse(miseTemplateText))
 // miseTemplateData holds the data used to render the mise config template.
 // Each tool has an "active" flag: true = uncommented, false = commented out.
 type miseTemplateData struct {
-	AgentType   string // "claude" or "pi"
-	AgentActive bool   // true = uncommented, false = commented out
-	GHActive    bool   // true = uncommented, false = commented out
-
+	AgentActive bool // true = uncommented, false = commented out
+	GHActive    bool // true = uncommented, false = commented out
 }
 
 // ToolSelections holds user choices about which tools to include in mise config.
 type ToolSelections struct {
-	AgentType       string // "claude" or "pi" — which agent was chosen
-	AgentInMise     bool   // whether to activate (uncomment) the agent in mise
-	IncludeGH       bool   // whether to activate (uncomment) gh in mise
-
+	AgentInMise bool // whether to activate (uncomment) the agent in mise
+	IncludeGH   bool // whether to activate (uncomment) gh in mise
 }
 
 // DefaultToolSelections returns the default tool selections (gh included, agent not in mise).
 func DefaultToolSelections() ToolSelections {
 	return ToolSelections{
-		AgentType:     "claude",
-		AgentInMise:   false,
-		IncludeGH:     true,
-
+		AgentInMise: false,
+		IncludeGH:   true,
 	}
 }
 
 // toTemplateData converts ToolSelections to miseTemplateData for rendering.
 func (s ToolSelections) toTemplateData() miseTemplateData {
-	agentType := s.AgentType
-	if agentType == "" {
-		agentType = "claude"
-	}
 	return miseTemplateData{
-		AgentType:    agentType,
-		AgentActive:  s.AgentInMise,
-		GHActive:     s.IncludeGH,
-
+		AgentActive: s.AgentInMise,
+		GHActive:    s.IncludeGH,
 	}
 }
 
 // GenerateConfig creates a .mise.toml file in the given directory with sarge's required tools.
-// The agentType parameter selects which coding agent tool to include ("claude" or "pi"; defaults to "claude" if empty).
 // Returns nil if a mise config already exists (doesn't overwrite).
-func GenerateConfig(dir string, agentType string) error {
+func GenerateConfig(dir string) error {
 	selections := DefaultToolSelections()
-	selections.AgentType = agentType
 	return GenerateConfigWithSelections(dir, selections)
 }
 

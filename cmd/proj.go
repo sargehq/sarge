@@ -76,9 +76,9 @@ func runProjCreate(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Creating project at %s from %s...\n", dir, repo)
 
 	// Interactive tool selection
-	agentType, selections := promptToolSelections()
+	selections := promptToolSelections()
 
-	proj, err := project.CreateWithSelections(ctx, dir, repo, agentType, selections)
+	proj, err := project.CreateWithSelections(ctx, dir, repo, selections)
 	if err != nil {
 		return fmt.Errorf("failed to create project: %w", err)
 	}
@@ -102,9 +102,9 @@ func isCommandAvailable(name string) bool {
 // promptToolSelections interactively asks the user which tools to include.
 // It uses charmbracelet/huh for a polished interactive UI.
 // It detects already-installed tools and adjusts defaults accordingly.
-// Returns the agent type (for project config) and mise tool selections separately.
-func promptToolSelections() (agentType string, selections mise.ToolSelections) {
-	selections = mise.DefaultToolSelections()
+// Returns the mise tool selections.
+func promptToolSelections() mise.ToolSelections {
+	selections := mise.DefaultToolSelections()
 
 	// Styled header
 	headerStyle := lipgloss.NewStyle().
@@ -118,15 +118,10 @@ func promptToolSelections() (agentType string, selections mise.ToolSelections) {
 	fmt.Println()
 
 	// Detect installed tools and report
-	hasClaude := isCommandAvailable("claude")
 	hasPi := isCommandAvailable("pi")
 	hasGH := isCommandAvailable("gh")
 
-
 	detected := []string{}
-	if hasClaude {
-		detected = append(detected, "claude")
-	}
 	if hasPi {
 		detected = append(detected, "pi")
 	}
@@ -142,20 +137,9 @@ func promptToolSelections() (agentType string, selections mise.ToolSelections) {
 		fmt.Println()
 	}
 
-	// Agent type selection - default to what's detected
-	agentType = "claude"
-	if hasPi && !hasClaude {
-		agentType = "pi"
-	}
-
-	agentOptions := []huh.Option[string]{
-		huh.NewOption("Claude — Anthropic's coding agent", "claude"),
-		huh.NewOption("Pi — pi coding agent", "pi"),
-	}
-
 	// Agent mise inclusion - default to no if already on PATH
 	var includeAgentInMise bool
-	agentMiseDefault := (!hasClaude || agentType != "claude") && (!hasPi || agentType != "pi")
+	agentMiseDefault := !hasPi
 
 	// GitHub CLI description varies based on detection
 	ghDescription := "Include gh (GitHub CLI) in mise?"
@@ -169,15 +153,9 @@ func promptToolSelections() (agentType string, selections mise.ToolSelections) {
 
 	form := huh.NewForm(
 		huh.NewGroup(
-			huh.NewSelect[string]().
-				Title("Coding Agent").
-				Description("Which coding agent would you like to use?").
-				Options(agentOptions...).
-				Value(&agentType),
-
 			huh.NewConfirm().
-				Title("Include coding agent in mise?").
-				Description("Let mise manage the agent installation for this project.").
+				Title("Include pi (coding agent) in mise?").
+				Description("Let mise manage the pi installation for this project.").
 				Value(&includeAgentInMise).
 				Affirmative("Yes").
 				Negative("No"),
@@ -198,16 +176,14 @@ func promptToolSelections() (agentType string, selections mise.ToolSelections) {
 	if err != nil {
 		// If user cancelled (ctrl+c), use defaults
 		fmt.Println("\nUsing default selections.")
-		return "claude", mise.DefaultToolSelections()
+		return mise.DefaultToolSelections()
 	}
 
-	selections.AgentType = agentType
 	selections.AgentInMise = includeAgentInMise
 	selections.IncludeGH = includeGH
 
-
 	fmt.Println()
-	return agentType, selections
+	return selections
 }
 
 func runProjDestroy(cmd *cobra.Command, args []string) error {

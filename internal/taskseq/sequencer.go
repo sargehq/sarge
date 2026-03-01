@@ -231,7 +231,7 @@ func (s *Sequencer) executeTask(ctx context.Context, w *db.Work, t *db.Task) {
 	}
 
 	// Set up timeout
-	timeout := s.proj.Config.Claude.GetTaskTimeout()
+	timeout := s.proj.Config.Workflow.GetTaskTimeout()
 	taskCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 

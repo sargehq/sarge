@@ -49,10 +49,10 @@ func runOrchestrate(cmd *cobra.Command, args []string) error {
 	}
 	defer proj.Close()
 
-	// Apply hooks.env to current process - inherited by child processes (Claude)
+	// Apply hooks.env to current process - inherited by child processes
 	applyHooksEnv(proj.Config.Hooks.Env)
 
-	// Set BEANS_PATH so beans commands work in Claude
+	// Set BEANS_PATH so beans commands work in agent sessions
 	_ = os.Setenv("BEANS_PATH", proj.BeansPath())
 
 	// Get theWork ID
@@ -102,7 +102,7 @@ func runOrchestrate(cmd *cobra.Command, args []string) error {
 
 	// Reset any stuck processing tasks from a previous run
 	// When the orchestrator restarts, any tasks that were processing are now orphaned
-	// since the Claude process was killed along with the orchestrator
+	// since the agent process was killed along with the orchestrator
 	if err := orchestration.ResetStuckProcessingTasks(ctx, proj, workID); err != nil {
 		return fmt.Errorf("failed to reset stuck tasks: %w", err)
 	}
@@ -306,13 +306,13 @@ func executeTask(proj *project.Project, t *db.Task, work *db.Work, agent agents.
 	ctx := GetContext()
 
 	// Create a context with timeout from configuration
-	timeout := proj.Config.Claude.GetTaskTimeout()
+	timeout := proj.Config.Workflow.GetTaskTimeout()
 	taskCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	fmt.Printf("Task timeout: %v\n", timeout)
 
-	// Build params for Claude based on task type
+	// Build params for agent based on task type
 	taskInput, err := taskInputForTask(taskCtx, proj, t, work)
 	if err != nil {
 		return err
@@ -323,7 +323,7 @@ func executeTask(proj *project.Project, t *db.Task, work *db.Work, agent agents.
 		defer func() { _ = os.Remove(taskInput.TempFilePath) }()
 	}
 
-	// Execute Claude inline with timeout context
+	// Execute agent inline with timeout context
 	if err = agent.Run(taskCtx, proj.DB, t.ID, taskInput.Params, work.WorktreePath, proj.Config); err != nil {
 		// Check if it was a timeout error
 		if errors.Is(err, context.DeadlineExceeded) {

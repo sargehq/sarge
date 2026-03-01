@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// PlanSession represents a running plan mode Claude session for a specific bean.
+// PlanSession represents a running plan mode agent session for a specific bean.
 type PlanSession struct {
 	BeanID        string
 	ZellijSession string

@@ -35,8 +35,8 @@ func SetVersionInfo(v, c, d string) {
 
 var rootCmd = &cobra.Command{
 	Use:   "sarge",
-	Short: "Sarge - orchestrates Claude Code to process issues",
-	Long:  `Sarge is a CLI tool that orchestrates Claude Code to process issues, creating PRs for each.`,
+	Short: "Sarge - orchestrates coding agents to process issues",
+	Long:  `Sarge is a CLI tool that orchestrates coding agents to process issues, creating PRs for each.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// Create a cancellable context with signal handling
 		rootCtx, rootCancel = cosignal.WithSignalCancel(context.Background())

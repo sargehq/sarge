@@ -20,7 +20,7 @@ import (
 const controlPlaneTabName = "control"
 
 // tabBelongsToWork returns true if a tab name belongs to the given work ID.
-// Matches orch, task, console, claude, and pi tabs for this work.
+// Matches orch, task, console, and agent tabs for this work.
 func tabBelongsToWork(tabName, workID string) bool {
 	for _, prefix := range []string{"orch-", "task-", "console-", "agent-"} {
 		if strings.HasPrefix(tabName, prefix+workID) {

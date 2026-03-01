@@ -16,7 +16,7 @@ var SpinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "�
 // Does not print a newline so the spinner can continue on the same line.
 func SpinnerWait(msg string, duration time.Duration) {
 	// Reduce polling intervals - control plane handles scheduler tasks globally
-	// Claude monitoring uses database watcher (monitorClaude)
+	// Agent monitoring uses database watcher
 	// This polling is just a safety net for the main orchestrator loop
 	maxDuration := 2 * time.Second
 	if duration > maxDuration {

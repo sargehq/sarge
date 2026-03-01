@@ -433,9 +433,9 @@ func (h *TestHarness) MockGitPushSucceeds() {
 	}
 }
 
-// MockClaudeCompletesSuccessfully configures the orchestrator mock to
+// MockAgentCompletesSuccessfully configures the orchestrator mock to
 // indicate successful completion.
-func (h *TestHarness) MockClaudeCompletesSuccessfully() {
+func (h *TestHarness) MockAgentCompletesSuccessfully() {
 	h.OrchestratorManager.SpawnWorkOrchestratorFunc = func(ctx context.Context, workID string, projName string, workDir string, friendlyName string, w io.Writer) error {
 		return nil
 	}
@@ -444,8 +444,8 @@ func (h *TestHarness) MockClaudeCompletesSuccessfully() {
 	}
 }
 
-// MockClaudeFails configures the orchestrator mock to return an error.
-func (h *TestHarness) MockClaudeFails(err error) {
+// MockAgentFails configures the orchestrator mock to return an error.
+func (h *TestHarness) MockAgentFails(err error) {
 	h.OrchestratorManager.SpawnWorkOrchestratorFunc = func(ctx context.Context, workID string, projName string, workDir string, friendlyName string, w io.Writer) error {
 		return err
 	}

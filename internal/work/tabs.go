@@ -142,28 +142,19 @@ func (m *DefaultOrchestratorManager) openAgentSessionBridge(ctx context.Context,
 	return session, nil
 }
 
-// buildAgentCommand builds the agent command and args based on config.
-func buildAgentCommand(agentType string, hooksEnv []string, cfg *project.Config) (command string, args []string, err error) {
-	var agentBinary string
+// buildAgentCommand builds the pi agent command and args based on config.
+func buildAgentCommand(hooksEnv []string, cfg *project.Config) (command string, args []string, err error) {
+	agentBinary := "pi"
 	var agentArgs []string
-	switch agentType {
-	case "pi":
-		agentBinary = "pi"
-		if cfg != nil {
-			if cfg.Pi.Provider != "" {
-				agentArgs = append(agentArgs, "--provider", cfg.Pi.Provider)
-			}
-			if cfg.Pi.Model != "" {
-				agentArgs = append(agentArgs, "--model", cfg.Pi.Model)
-			}
-			if cfg.Pi.Thinking != "" {
-				agentArgs = append(agentArgs, "--thinking", cfg.Pi.Thinking)
-			}
+	if cfg != nil {
+		if cfg.Pi.Provider != "" {
+			agentArgs = append(agentArgs, "--provider", cfg.Pi.Provider)
 		}
-	default: // "claude"
-		agentBinary = "claude"
-		if cfg != nil && cfg.Claude.ShouldSkipPermissions() {
-			agentArgs = []string{"--dangerously-skip-permissions"}
+		if cfg.Pi.Model != "" {
+			agentArgs = append(agentArgs, "--model", cfg.Pi.Model)
+		}
+		if cfg.Pi.Thinking != "" {
+			agentArgs = append(agentArgs, "--thinking", cfg.Pi.Thinking)
 		}
 	}
 

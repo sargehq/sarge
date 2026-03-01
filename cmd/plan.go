@@ -16,13 +16,13 @@ import (
 
 var planCmd = &cobra.Command{
 	Use:   "plan <bean-id>",
-	Short: "Launch Claude for planning a specific issue",
-	Long: `Plan launches Claude Code for planning work on a specific issue.
+	Short: "Launch agent for planning a specific issue",
+	Long: `Plan launches the coding agent for planning work on a specific issue.
 
 This command is typically invoked by the TUI's Plan mode, which creates a
 session for each issue and runs 'sarge plan <id>' within it.
 
-Claude can then be used to:
+The agent can then be used to:
 - Investigate the issue (beans show <id>)
 - Break down the issue into subtasks
 - Plan implementation strategies
@@ -51,10 +51,10 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	sessionName := fmt.Sprintf("sarge-%s", proj.Config.Project.Name)
 	tabName := db.TabNameForBean(beanID)
 
-	// Apply hooks.env to current process - inherited by child processes (Claude)
+	// Apply hooks.env to current process - inherited by child processes
 	applyHooksEnv(proj.Config.Hooks.Env)
 
-	// Set BEANS_PATH so beans commands work in Claude
+	// Set BEANS_PATH so beans commands work in agent sessions
 	_ = os.Setenv("BEANS_PATH", proj.BeansPath())
 
 	// Register the plan session in the database

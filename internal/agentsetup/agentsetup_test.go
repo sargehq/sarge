@@ -1,7 +1,6 @@
 package agentsetup
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -73,40 +72,4 @@ func TestInstallBeansPrimeExtension_Idempotent(t *testing.T) {
 	require.NoError(t, InstallBeansPrimeExtension(dir))
 }
 
-func TestClaudePluginInstalled(t *testing.T) {
-	// Just verify it doesn't panic in any environment.
-	_ = ClaudePluginInstalled()
-}
 
-func TestClaudePluginInstalledFromFile(t *testing.T) {
-	writePlugins := func(t *testing.T, dir string, plugins map[string]any) string {
-		t.Helper()
-		b, err := json.Marshal(map[string]any{"version": 2, "plugins": plugins})
-		require.NoError(t, err)
-		path := filepath.Join(dir, "installed_plugins.json")
-		require.NoError(t, os.WriteFile(path, b, 0o644))
-		return path
-	}
-
-	t.Run("true when beans plugin present", func(t *testing.T) {
-		path := writePlugins(t, t.TempDir(), map[string]any{
-			"beans@beans-marketplace": []any{map[string]any{"scope": "project"}},
-		})
-		assert.True(t, claudePluginInstalledFromFile(path))
-	})
-
-	t.Run("false when beans plugin absent", func(t *testing.T) {
-		path := writePlugins(t, t.TempDir(), map[string]any{
-			"other-plugin@marketplace": []any{},
-		})
-		assert.False(t, claudePluginInstalledFromFile(path))
-	})
-
-	t.Run("false for empty path", func(t *testing.T) {
-		assert.False(t, claudePluginInstalledFromFile(""))
-	})
-
-	t.Run("false for missing file", func(t *testing.T) {
-		assert.False(t, claudePluginInstalledFromFile("/nonexistent/path.json"))
-	})
-}

@@ -91,34 +91,6 @@ func TestGeneratedConfigWithSpecialCharacters(t *testing.T) {
 	require.Equal(t, cfg.Repo.Source, parsed.Repo.Source)
 }
 
-func TestShouldSkipPermissionsDefault(t *testing.T) {
-	// When Claude config is not specified in TOML, ShouldSkipPermissions should default to true
-	tomlContent := `
-[project]
-  name = "test"
-`
-	var cfg Config
-	_, err := toml.Decode(tomlContent, &cfg)
-	require.NoError(t, err)
-
-	require.True(t, cfg.Claude.ShouldSkipPermissions(), "Expected ShouldSkipPermissions() to return true by default")
-}
-
-func TestShouldSkipPermissionsExplicitFalse(t *testing.T) {
-	// When explicitly set to false, ShouldSkipPermissions should return false
-	tomlContent := `
-[project]
-  name = "test"
-
-[claude]
-  skip_permissions = false
-`
-	var cfg Config
-	_, err := toml.Decode(tomlContent, &cfg)
-	require.NoError(t, err)
-
-	require.False(t, cfg.Claude.ShouldSkipPermissions(), "Expected ShouldSkipPermissions() to return false when explicitly set")
-}
 
 func TestGeneratedConfigWithUTF8(t *testing.T) {
 	// Test with UTF-8 characters
@@ -517,7 +489,7 @@ path = "main/.beans"
 	// Should have added new sections
 	require.NotEmpty(t, added, "Expected new sections to be added")
 	require.Contains(t, added, "hooks")
-	require.Contains(t, added, "claude")
+	require.Contains(t, added, "pi")
 
 	// Read back the merged config
 	mergedBytes, err := os.ReadFile(configPath)
@@ -530,8 +502,11 @@ path = "main/.beans"
 
 	// New sections should be present (check for commented section headers)
 	require.Contains(t, merged, "# [hooks]")
-	// When AgentType is empty (default), [claude] section is rendered uncommented
-	require.Contains(t, merged, "[claude]")
+	require.Contains(t, merged, "# [pi]")
+
+	// Should not contain agent or claude sections
+	require.NotContains(t, merged, "[agent]")
+	require.NotContains(t, merged, "[claude]")
 
 	// Backup should exist
 	backupBytes, err := os.ReadFile(configPath + ".bak")
@@ -545,7 +520,7 @@ path = "main/.beans"
 }
 
 func TestUpdateConfig_ExistingSectionsNotModified(t *testing.T) {
-	// Config with user-configured claude section
+	// Config with user-configured pi section
 	existingContent := `# =============================================================================
 # Project Metadata
 # =============================================================================
@@ -568,11 +543,11 @@ path = "main"
 path = ".co/.beans"
 
 # =============================================================================
-# Claude Configuration
+# Pi Configuration
 # =============================================================================
-[claude]
-skip_permissions = false
-time_limit = 45
+[pi]
+provider = "anthropic"
+model = "claude-sonnet-4-5-20250929"
 `
 
 	tmpDir := t.TempDir()
@@ -597,18 +572,18 @@ time_limit = 45
 	added, err := UpdateConfig(configPath, cfg)
 	require.NoError(t, err)
 
-	// Claude section already existed, so it should NOT be in the added list
+	// Pi section already existed, so it should NOT be in the added list
 	for _, name := range added {
-		require.NotEqual(t, "claude", name, "claude section should not be re-added")
+		require.NotEqual(t, "pi", name, "pi section should not be re-added")
 	}
 
-	// Read merged config and verify claude values preserved
+	// Read merged config and verify pi values preserved
 	mergedBytes, err := os.ReadFile(configPath)
 	require.NoError(t, err)
 	merged := string(mergedBytes)
 
-	require.Contains(t, merged, "skip_permissions = false")
-	require.Contains(t, merged, "time_limit = 45")
+	require.Contains(t, merged, `provider = "anthropic"`)
+	require.Contains(t, merged, `model = "claude-sonnet-4-5-20250929"`)
 }
 
 func TestUpdateConfig_Idempotent(t *testing.T) {
@@ -674,96 +649,37 @@ path = "main/.beans"
 	require.Equal(t, string(firstResult), string(secondResult))
 }
 
-func TestGenerateDocumentedConfig_AgentType(t *testing.T) {
-	baseCfg := func(agentType string) *Config {
-		return &Config{
-			Project: ProjectConfig{
-				Name:      "test-project",
-				CreatedAt: time.Date(2026, 1, 26, 10, 30, 0, 0, time.UTC),
-			},
-			Repo: RepoConfig{
-				Type:   "github",
-				Source: "https://github.com/example/repo",
-				Path:   "main",
-			},
-			Beans: BeansConfig{
-				Path: "main/.beans",
-			},
-			Agent: AgentConfig{
-				Type: agentType,
-			},
-		}
+func TestGenerateDocumentedConfig_NoAgentSection(t *testing.T) {
+	cfg := &Config{
+		Project: ProjectConfig{
+			Name:      "test-project",
+			CreatedAt: time.Date(2026, 1, 26, 10, 30, 0, 0, time.UTC),
+		},
+		Repo: RepoConfig{
+			Type:   "github",
+			Source: "https://github.com/example/repo",
+			Path:   "main",
+		},
+		Beans: BeansConfig{
+			Path: "main/.beans",
+		},
 	}
 
-	t.Run("default empty agent type renders claude section uncommented", func(t *testing.T) {
-		cfg := baseCfg("")
-		content := cfg.GenerateDocumentedConfig()
+	content := cfg.GenerateDocumentedConfig()
 
-		// Valid TOML
-		var parsed map[string]interface{}
-		_, err := toml.Decode(content, &parsed)
-		require.NoError(t, err, "Generated config is not valid TOML:\n%s", content)
+	// Valid TOML
+	var parsed map[string]interface{}
+	_, err := toml.Decode(content, &parsed)
+	require.NoError(t, err, "Generated config is not valid TOML:\n%s", content)
 
-		// [agent] should be commented out (default = claude)
-		require.NotContains(t, content, "\n[agent]\n")
-		require.Contains(t, content, "# [agent]")
+	// Should not contain [agent] or [claude] sections
+	require.NotContains(t, content, "[agent]")
+	require.NotContains(t, content, "[claude]")
 
-		// [claude] should be uncommented
-		require.Contains(t, content, "\n[claude]\n")
+	// Pi section should be commented out
+	require.Contains(t, content, "# [pi]")
 
-		// [pi] should be commented out
-		require.NotContains(t, content, "\n[pi]\n")
-		require.Contains(t, content, "# [pi]")
-	})
-
-	t.Run("claude agent type renders claude section uncommented", func(t *testing.T) {
-		cfg := baseCfg("claude")
-		content := cfg.GenerateDocumentedConfig()
-
-		var parsed map[string]interface{}
-		_, err := toml.Decode(content, &parsed)
-		require.NoError(t, err, "Generated config is not valid TOML:\n%s", content)
-
-		// [agent] should be commented out (claude is default)
-		require.NotContains(t, content, "\n[agent]\n")
-		require.Contains(t, content, "# [agent]")
-
-		// [claude] should be uncommented
-		require.Contains(t, content, "\n[claude]\n")
-
-		// [pi] should be commented out
-		require.NotContains(t, content, "\n[pi]\n")
-		require.Contains(t, content, "# [pi]")
-	})
-
-	t.Run("pi agent type renders agent and pi sections uncommented", func(t *testing.T) {
-		cfg := baseCfg("pi")
-		content := cfg.GenerateDocumentedConfig()
-
-		var parsed map[string]interface{}
-		_, err := toml.Decode(content, &parsed)
-		require.NoError(t, err, "Generated config is not valid TOML:\n%s", content)
-
-		// [agent] should be uncommented with type = "pi"
-		require.Contains(t, content, "\n[agent]\n")
-		require.Contains(t, content, `type = "pi"`)
-
-		// [pi] should be uncommented
-		require.Contains(t, content, "\n[pi]\n")
-
-		// [claude] should be commented out
-		require.NotContains(t, content, "\n[claude]\n")
-		require.Contains(t, content, "# [claude]")
-
-		// Verify round-trip: parse back and check Agent.Type
-		var loaded Config
-		_, err = toml.Decode(content, &loaded)
-		require.NoError(t, err)
-		require.Equal(t, "pi", loaded.Agent.Type)
-	})
-
-	t.Run("pi agent type round-trips through write and load", func(t *testing.T) {
-		cfg := baseCfg("pi")
+	t.Run("round-trips through write and load", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := tmpDir + "/config.toml"
 
@@ -772,71 +688,8 @@ func TestGenerateDocumentedConfig_AgentType(t *testing.T) {
 
 		loaded, err := LoadConfig(configPath)
 		require.NoError(t, err)
-		require.Equal(t, "pi", loaded.Agent.Type)
 		require.Equal(t, "test-project", loaded.Project.Name)
 	})
-
-	t.Run("default agent type round-trips through write and load", func(t *testing.T) {
-		cfg := baseCfg("")
-		tmpDir := t.TempDir()
-		configPath := tmpDir + "/config.toml"
-
-		err := cfg.SaveDocumentedConfig(configPath)
-		require.NoError(t, err)
-
-		loaded, err := LoadConfig(configPath)
-		require.NoError(t, err)
-		// Empty agent type means default (claude), no [agent] section written
-		require.Equal(t, "", loaded.Agent.Type)
-	})
-}
-
-func TestAgentConfigFromTOML(t *testing.T) {
-	tests := []struct {
-		name     string
-		toml     string
-		wantType string
-	}{
-		{
-			name: "Default empty",
-			toml: `
-[project]
-name = "test"
-`,
-			wantType: "",
-		},
-		{
-			name: "Claude agent",
-			toml: `
-[project]
-name = "test"
-
-[agent]
-type = "claude"
-`,
-			wantType: "claude",
-		},
-		{
-			name: "Pi agent",
-			toml: `
-[project]
-name = "test"
-
-[agent]
-type = "pi"
-`,
-			wantType: "pi",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var cfg Config
-			_, err := toml.Decode(tt.toml, &cfg)
-			require.NoError(t, err)
-			require.Equal(t, tt.wantType, cfg.Agent.Type)
-		})
-	}
 }
 
 func TestLoadConfig_DetectsUndecodedKeys(t *testing.T) {
@@ -923,130 +776,6 @@ bogus_key = "oops"
 }
 
 // ---------------------------------------------------------------------------
-// UpdateConfigFields tests
-// ---------------------------------------------------------------------------
-
-// configWithActiveSections returns a config string that has an active [agent] section.
-func configWithActiveSections(agentType string) string {
-	return `# Sarge Project Configuration
-
-[project]
-name = "test-project"
-
-[repo]
-type = "github"
-source = "https://github.com/example/repo"
-path = "main"
-
-[agent]
-# Agent type: "claude" (default) or "pi"
-type = ` + `"` + agentType + `"` + `
-`
-}
-
-// configWithCommentedAgentSection returns a config where [agent] is fully
-// commented out (as generated by default when AgentType is "claude" or "").
-func configWithCommentedAgentSection() string {
-	return `# Sarge Project Configuration
-
-[project]
-name = "test-project"
-
-[repo]
-type = "github"
-
-# [agent]
-# # Agent type: "claude" (default) or "pi"
-# type = "claude"
-`
-}
-
-func TestUpdateConfigFields_UpdateActiveAgentType(t *testing.T) {
-	cfg := configWithActiveSections("pi")
-
-	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "config.toml")
-	require.NoError(t, os.WriteFile(configPath, []byte(cfg), 0600))
-
-	err := UpdateConfigFields(configPath, "claude", "")
-	require.NoError(t, err)
-
-	result, err := os.ReadFile(configPath)
-	require.NoError(t, err)
-	content := string(result)
-
-	require.Contains(t, content, `type = "claude"`, "agent type should be updated to claude")
-	require.NotContains(t, content, `type = "pi"`, "old agent type should be replaced")
-}
-
-func TestUpdateConfigFields_SectionMissing_NoFailure(t *testing.T) {
-	cfg := `[project]
-name = "test-project"
-`
-	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "config.toml")
-	require.NoError(t, os.WriteFile(configPath, []byte(cfg), 0600))
-
-	// Should warn but not fail
-	err := UpdateConfigFields(configPath, "pi", "")
-	require.NoError(t, err)
-
-	// File should be unchanged (no sections to update)
-	result, err := os.ReadFile(configPath)
-	require.NoError(t, err)
-	require.Equal(t, cfg, string(result))
-}
-
-func TestUpdateConfigFields_CommentedAgentSection_ActivatedWhenSwitchingToPI(t *testing.T) {
-	cfg := configWithCommentedAgentSection()
-
-	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "config.toml")
-	require.NoError(t, os.WriteFile(configPath, []byte(cfg), 0600))
-
-	err := UpdateConfigFields(configPath, "pi", "")
-	require.NoError(t, err)
-
-	result, err := os.ReadFile(configPath)
-	require.NoError(t, err)
-	content := string(result)
-
-	// The [agent] header must now be active (uncommented)
-	require.Contains(t, content, "[agent]", "agent section header should be uncommented")
-	// The type field must be present
-	require.Contains(t, content, `type = "pi"`, "agent type should be written as pi")
-	// No longer commented out
-	require.NotContains(t, content, "# [agent]", "agent section header should not remain commented")
-}
-
-func TestUpdateConfigFields_PreservesIndentationAndOtherFields(t *testing.T) {
-	cfg := `[project]
-name = "preserve-me"
-extra = "keep this"
-
-[agent]
-# a comment
-  type = "claude"
-other_field = "untouched"
-`
-	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "config.toml")
-	require.NoError(t, os.WriteFile(configPath, []byte(cfg), 0600))
-
-	err := UpdateConfigFields(configPath, "pi", "")
-	require.NoError(t, err)
-
-	result, err := os.ReadFile(configPath)
-	require.NoError(t, err)
-	content := string(result)
-
-	// Agent type updated with original indentation preserved
-	require.Contains(t, content, `  type = "pi"`, "indentation should be preserved")
-	// Unrelated fields untouched
-	require.Contains(t, content, `extra = "keep this"`)
-	require.Contains(t, content, `other_field = "untouched"`)
-}
-
 func TestResolveSessionName(t *testing.T) {
 	result := ResolveSessionName("myproject")
 	require.Equal(t, "sarge-myproject", result)

@@ -38,7 +38,7 @@ type Integration struct {
 }
 
 // NewIntegrationWithProject creates a new feedback integration with project context.
-// This enables Claude-based log analysis when configured.
+// This enables agent-based log analysis when configured.
 func NewIntegrationWithProject(proj *project.Project, workID string) *Integration {
 	client := github.NewClient()
 	processor := NewFeedbackProcessorWithProject(client, proj, workID)

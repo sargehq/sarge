@@ -23,8 +23,6 @@ type Config struct {
 	Beans       BeansConfig       `toml:"beans"`
 	Hooks       HooksConfig       `toml:"hooks"`
 	Linear      LinearConfig      `toml:"linear"`
-	Agent       AgentConfig       `toml:"agent"`
-	Claude      ClaudeConfig      `toml:"claude"`
 	Pi          PiConfig          `toml:"pi"`
 	Workflow    WorkflowConfig    `toml:"workflow"`
 	Scheduler   SchedulerConfig   `toml:"scheduler"`
@@ -85,12 +83,6 @@ func (l *LogParserConfig) GetModel() string {
 	return l.Model
 }
 
-// AgentConfig contains coding agent configuration.
-type AgentConfig struct {
-	// Type selects which coding agent to use: "claude" (default) or "pi".
-	Type string `toml:"type"`
-}
-
 // PiConfig contains pi coding agent configuration.
 type PiConfig struct {
 	// Provider selects the AI provider (e.g., "anthropic", "openai", "google").
@@ -101,63 +93,6 @@ type PiConfig struct {
 
 	// Thinking sets the reasoning/thinking level (e.g., "low", "medium", "high").
 	Thinking string `toml:"thinking"`
-}
-
-// ClaudeConfig contains Claude Code configuration.
-type ClaudeConfig struct {
-	// SkipPermissions controls whether to run Claude with --dangerously-skip-permissions.
-	// Defaults to true when not specified in config.
-	SkipPermissions *bool `toml:"skip_permissions"`
-
-	// TimeLimitMinutes is the maximum duration in minutes for a Claude session.
-	// When set to 0 or omitted, there is no time limit.
-	TimeLimitMinutes int `toml:"time_limit"`
-
-	// TaskTimeoutMinutes controls the maximum execution time for a task in minutes.
-	// Defaults to 60 minutes when not specified.
-	TaskTimeoutMinutes *int `toml:"task_timeout_minutes"`
-}
-
-// ShouldSkipPermissions returns true if Claude should run with --dangerously-skip-permissions.
-// Defaults to true when not explicitly configured.
-func (c *ClaudeConfig) ShouldSkipPermissions() bool {
-	if c.SkipPermissions == nil {
-		return true // default to true
-	}
-	return *c.SkipPermissions
-}
-
-// TimeLimit returns the maximum duration for a Claude session.
-// Returns 0 if no time limit is configured.
-func (c *ClaudeConfig) TimeLimit() time.Duration {
-	if c.TimeLimitMinutes <= 0 {
-		return 0
-	}
-	return time.Duration(c.TimeLimitMinutes) * time.Minute
-}
-
-// GetTaskTimeout returns the task timeout duration.
-// Defaults to 60 minutes when not explicitly configured.
-// If time_limit is set and is less than the default/configured task_timeout_minutes,
-// time_limit takes precedence.
-func (c *ClaudeConfig) GetTaskTimeout() time.Duration {
-	// Calculate the task timeout
-	var taskTimeout time.Duration
-	if c.TaskTimeoutMinutes == nil || *c.TaskTimeoutMinutes <= 0 {
-		taskTimeout = 60 * time.Minute // default to 60 minutes
-	} else {
-		taskTimeout = time.Duration(*c.TaskTimeoutMinutes) * time.Minute
-	}
-
-	// If time_limit is set and is less than task timeout, use time_limit
-	if c.TimeLimitMinutes > 0 {
-		timeLimit := time.Duration(c.TimeLimitMinutes) * time.Minute
-		if timeLimit < taskTimeout {
-			return timeLimit
-		}
-	}
-
-	return taskTimeout
 }
 
 // ProjectConfig contains project metadata.
@@ -201,6 +136,10 @@ type WorkflowConfig struct {
 	// MaxReviewIterations limits the number of review/fix cycles.
 	// Defaults to 2 when not specified.
 	MaxReviewIterations *int `toml:"max_review_iterations"`
+
+	// TaskTimeoutMinutes controls the maximum execution time for a task in minutes.
+	// Defaults to 60 minutes when not specified.
+	TaskTimeoutMinutes *int `toml:"task_timeout_minutes"`
 }
 
 // GetMaxReviewIterations returns the configured max review iterations or 2 if not specified.
@@ -209,6 +148,15 @@ func (w *WorkflowConfig) GetMaxReviewIterations() int {
 		return 2
 	}
 	return *w.MaxReviewIterations
+}
+
+// GetTaskTimeout returns the task timeout duration.
+// Defaults to 60 minutes when not explicitly configured.
+func (w *WorkflowConfig) GetTaskTimeout() time.Duration {
+	if w.TaskTimeoutMinutes == nil || *w.TaskTimeoutMinutes <= 0 {
+		return 60 * time.Minute
+	}
+	return time.Duration(*w.TaskTimeoutMinutes) * time.Minute
 }
 
 // SchedulerConfig contains scheduler timing configuration.
@@ -327,8 +275,6 @@ type configTemplateData struct {
 	RepoSource     string
 	RepoPath       string
 	BeansPath      string
-	AgentType      string
-
 }
 
 // tomlString formats a string for TOML output with proper escaping.
@@ -427,106 +373,6 @@ func findExistingSections(content string) map[string]bool {
 		}
 	}
 	return sections
-}
-
-// lineLeadingWhitespace returns the leading whitespace prefix of a line.
-func lineLeadingWhitespace(line string) string {
-	return line[:len(line)-len(strings.TrimLeft(line, " \t"))]
-}
-
-// UpdateConfigFields updates the agent.type value in an existing
-// config.toml in-place, preserving all user comments, other fields, and other sections.
-//
-// If the [agent] section is currently commented out (e.g. "# [agent]") and agentType
-// is non-empty, the header is uncommented and the type field is added or updated.
-//
-// Warns but does not fail if the section is not found.
-func UpdateConfigFields(configPath string, agentType string, multiplexerType string) error {
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return fmt.Errorf("failed to read config: %w", err)
-	}
-
-	lines := strings.Split(string(data), "\n")
-	currentSection := ""
-	currentSectionIsCommented := false
-	agentFound := false
-
-	// agentHeaderIdx tracks the line index of an [agent] header that was just
-	// uncommented so we can insert a type line below it if none is found.
-	agentHeaderIdx := -1
-
-	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
-
-		// Track current section from uncommented [section] headers.
-		if strings.HasPrefix(trimmed, "[") && strings.Contains(trimmed, "]") && !strings.HasPrefix(trimmed, "#") {
-			sectionName := extractSectionName(trimmed)
-			if sectionName != "" {
-				currentSection = sectionName
-				currentSectionIsCommented = false
-			}
-			continue
-		}
-
-		// Handle commented-out section headers (e.g. "# [agent]").
-		if strings.HasPrefix(trimmed, "# [") && strings.Contains(trimmed, "]") {
-			name := extractSectionName(strings.TrimSpace(trimmed[1:]))
-			if name != "" {
-				currentSection = name
-				currentSectionIsCommented = true
-
-				// If the [agent] header is commented out, uncomment it so the
-				// type field can be added/updated inside it.
-				if name == "agent" && agentType != "" {
-					// Remove the "# " that precedes the "[" in the line.
-					idx := strings.Index(line, "# [")
-					lines[i] = line[:idx] + line[idx+2:]
-					currentSectionIsCommented = false
-					agentHeaderIdx = i
-				}
-			}
-			continue
-		}
-
-		if currentSectionIsCommented {
-			continue
-		}
-
-		// Only update uncommented lines that start with "type ="
-		if !strings.HasPrefix(trimmed, "type =") {
-			continue
-		}
-
-		// Determine leading whitespace to preserve indentation
-		leading := lineLeadingWhitespace(line)
-
-		switch currentSection {
-		case "agent":
-			lines[i] = fmt.Sprintf("%stype = %q", leading, agentType)
-			agentFound = true
-
-		}
-	}
-
-	// If we uncommented an [agent] header but found no type = line underneath it
-	// (e.g. the default template only has commented-out type examples), insert one.
-	if agentHeaderIdx >= 0 && !agentFound && agentType != "" {
-		newLine := fmt.Sprintf("type = %q", agentType)
-		inserted := make([]string, 0, len(lines)+1)
-		inserted = append(inserted, lines[:agentHeaderIdx+1]...)
-		inserted = append(inserted, newLine)
-		inserted = append(inserted, lines[agentHeaderIdx+1:]...)
-		lines = inserted
-		agentFound = true
-	}
-
-	if !agentFound {
-		fmt.Fprintf(os.Stderr, "warning: [agent] section not found in %s — skipping agent.type update\n", configPath)
-	}
-
-
-	return os.WriteFile(configPath, []byte(strings.Join(lines, "\n")), 0600)
 }
 
 // UpdateConfig merges new config template sections into an existing config file.
@@ -650,8 +496,6 @@ func (c *Config) GenerateDocumentedConfig() string {
 		RepoSource:      c.Repo.Source,
 		RepoPath:        c.Repo.Path,
 		BeansPath:       c.Beans.Path,
-		AgentType:       c.Agent.Type,
-
 	}
 
 	var buf bytes.Buffer

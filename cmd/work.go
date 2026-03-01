@@ -71,11 +71,11 @@ This is a destructive operation that cannot be undone.`,
 
 var workPRCmd = &cobra.Command{
 	Use:   "pr [<id>]",
-	Short: "Create a PR task for Claude to generate pull request",
-	Long: `Create a special task for Claude to review the work and create a pull request.
+	Short: "Create a PR task for the agent to generate pull request",
+	Long: `Create a special task for the agent to review the work and create a pull request.
 If no ID is provided, uses the work for the current directory context.
 
-Claude will analyze all completed tasks and beans to generate a comprehensive PR description.`,
+The agent will analyze all completed tasks and beans to generate a comprehensive PR description.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runWorkPR,
 }
@@ -83,10 +83,10 @@ Claude will analyze all completed tasks and beans to generate a comprehensive PR
 var workReviewCmd = &cobra.Command{
 	Use:   "review [<id>]",
 	Short: "Create a review task to examine code changes",
-	Long: `Create a task for Claude to review code changes in a work unit.
+	Long: `Create a task for the agent to review code changes in a work unit.
 If no ID is provided, uses the work for the current directory context.
 
-Claude will examine the work's branch/PR for quality, security issues,
+The agent will examine the work's branch/PR for quality, security issues,
 and adherence to project standards.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runWorkReview,
@@ -127,16 +127,16 @@ while the orchestrator runs separately.`,
 	RunE: runWorkConsole,
 }
 
-var workClaudeCmd = &cobra.Command{
-	Use:   "claude [<id>]",
-	Short: "Open a Claude Code session in the work's worktree",
-	Long: `Open an interactive Claude Code session in the work's worktree.
+var workAgentCmd = &cobra.Command{
+	Use:   "agent [<id>]",
+	Short: "Open an agent session in the work's worktree",
+	Long: `Open an interactive agent session in the work's worktree.
 If no ID is provided, uses the work for the current directory context.
 
 This is useful for manual exploration, debugging, or ad-hoc changes
 while the orchestrator runs separately.`,
 	Args: cobra.MaximumNArgs(1),
-	RunE: runWorkClaude,
+	RunE: runWorkAgent,
 }
 
 var workRestartCmd = &cobra.Command{
@@ -189,7 +189,7 @@ func init() {
 	workCmd.AddCommand(workAddCmd)
 	workCmd.AddCommand(workRemoveCmd)
 	workCmd.AddCommand(workConsoleCmd)
-	workCmd.AddCommand(workClaudeCmd)
+	workCmd.AddCommand(workAgentCmd)
 	workCmd.AddCommand(workFeedbackCmd)
 	workCmd.AddCommand(workRestartCmd)
 	workCmd.AddCommand(workCompleteCmd)
@@ -1023,7 +1023,7 @@ func runWorkConsole(cmd *cobra.Command, args []string) error {
 	return orchestratorMgr.OpenConsole(ctx, workID, proj.Config.Project.Name, work.WorktreePath, work.Name, proj.Config.Hooks.Env, os.Stdout)
 }
 
-func runWorkClaude(cmd *cobra.Command, args []string) error {
+func runWorkAgent(cmd *cobra.Command, args []string) error {
 	ctx := GetContext()
 
 	proj, err := project.Find(ctx, "")

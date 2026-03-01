@@ -1,10 +1,11 @@
 ---
 # main-to0t
 title: 'Phase 5b: Remove Claude agent backend, make pi the only agent'
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-03-01T21:31:45Z
-updated_at: 2026-03-01T21:31:45Z
+updated_at: 2026-03-01T22:39:08Z
 parent: ir72
 blocked_by:
     - main-otx3

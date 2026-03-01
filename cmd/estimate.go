@@ -18,9 +18,9 @@ var (
 var estimateCmd = &cobra.Command{
 	Use:   "estimate <bean-id>",
 	Short: "[Agent] Report complexity estimate for a bean",
-	Long: `[Agent Command - Called by Claude Code, not for direct user invocation]
+	Long: `[Agent Command - Called by the coding agent, not for direct user invocation]
 
-Report complexity estimate for a bean. This command is called by Claude Code
+Report complexity estimate for a bean. This command is called by the coding agent
 during estimation tasks to report complexity scores and token estimates.`,
 	Args: cobra.ExactArgs(1),
 	RunE: runEstimate,

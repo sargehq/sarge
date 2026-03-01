@@ -4,21 +4,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sargehq/sarge/internal/agents/claude"
 	"github.com/sargehq/sarge/internal/agents/pi"
 	"github.com/sargehq/sarge/internal/agents/types"
 	"github.com/sargehq/sarge/internal/project"
 	"github.com/stretchr/testify/require"
 )
 
-// mustNewClaudeAgent is a test helper that creates a Claude agent for prompt testing.
-func mustNewClaudeAgent(t *testing.T) *claude.Agent {
-	t.Helper()
-	return claude.New()
-}
-
 func TestBuildLogAnalysisPrompt(t *testing.T) {
-	agent := mustNewClaudeAgent(t)
+	agent := pi.New()
 
 	tests := []struct {
 		name           string
@@ -149,7 +142,7 @@ func TestTaskParams(t *testing.T) {
 }
 
 func TestBuildLogAnalysisPromptPriorityGuidelines(t *testing.T) {
-	agent := mustNewClaudeAgent(t)
+	agent := pi.New()
 
 	// Verify the prompt includes priority guidelines
 	params := types.TaskParams{
@@ -179,7 +172,7 @@ func TestBuildLogAnalysisPromptPriorityGuidelines(t *testing.T) {
 }
 
 func TestBuildLogAnalysisPromptBdCreateCommand(t *testing.T) {
-	agent := mustNewClaudeAgent(t)
+	agent := pi.New()
 
 	// Verify the prompt includes beans create command examples
 	params := types.TaskParams{
@@ -229,7 +222,7 @@ func TestTaskParamsExistingBeansField(t *testing.T) {
 }
 
 func TestBuildLogAnalysisPromptWithExistingBeans(t *testing.T) {
-	agent := mustNewClaudeAgent(t)
+	agent := pi.New()
 
 	t.Run("renders existing beans section", func(t *testing.T) {
 		params := types.TaskParams{
@@ -314,9 +307,9 @@ func TestBuildLogAnalysisPromptWithExistingBeans(t *testing.T) {
 
 func TestBeanSummaryStruct(t *testing.T) {
 	summary := types.BeanSummary{
-		ID:          "bean-test",
-		Title:       "Test Title",
-		Body: "Test Description",
+		ID:    "bean-test",
+		Title: "Test Title",
+		Body:  "Test Description",
 	}
 
 	require.Equal(t, "bean-test", summary.ID)
@@ -326,38 +319,19 @@ func TestBeanSummaryStruct(t *testing.T) {
 
 func TestNewAgent(t *testing.T) {
 	tests := []struct {
-		name        string
-		cfg         *project.Config
-		wantPrompt  bool // can build a prompt without error
-		wantType    string
+		name       string
+		cfg        *project.Config
+		wantPrompt bool // can build a prompt without error
 	}{
 		{
-			name:       "Nil config defaults to claude",
+			name:       "Nil config returns pi agent",
 			cfg:        nil,
 			wantPrompt: true,
-			wantType:   "*claude.Agent",
 		},
 		{
-			name:       "Empty type defaults to claude",
+			name:       "Empty config returns pi agent",
 			cfg:        &project.Config{},
 			wantPrompt: true,
-			wantType:   "*claude.Agent",
-		},
-		{
-			name: "Claude type",
-			cfg: &project.Config{
-				Agent: project.AgentConfig{Type: "claude"},
-			},
-			wantPrompt: true,
-			wantType:   "*claude.Agent",
-		},
-		{
-			name: "Pi type",
-			cfg: &project.Config{
-				Agent: project.AgentConfig{Type: "pi"},
-			},
-			wantPrompt: true,
-			wantType:   "*pi.Agent",
 		},
 	}
 
@@ -367,56 +341,34 @@ func TestNewAgent(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, agent)
 			if tt.wantPrompt {
-				// Use the concrete type to call BuildPrompt
-				switch a := agent.(type) {
-				case *claude.Agent:
-					prompt, err := a.BuildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeanID: "test-123"})
-					require.NoError(t, err)
-					require.NotEmpty(t, prompt)
-					require.Contains(t, prompt, "test-123")
-				case *pi.Agent:
-					prompt, err := a.BuildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeanID: "test-123"})
-					require.NoError(t, err)
-					require.NotEmpty(t, prompt)
-					require.Contains(t, prompt, "test-123")
-				default:
-					t.Fatalf("unexpected agent type: %T", agent)
-				}
+				prompt, err := agent.BuildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeanID: "test-123"})
+				require.NoError(t, err)
+				require.NotEmpty(t, prompt)
+				require.Contains(t, prompt, "test-123")
 			}
 		})
 	}
 }
 
 func TestBuildPlanPromptForPi(t *testing.T) {
-	claudeAgent := claude.New()
 	piAgent := pi.New()
 
-	claudePrompt, err := claudeAgent.BuildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeanID: "bean-123"})
-	require.NoError(t, err)
 	piPrompt, err := piAgent.BuildPrompt(types.TaskParams{Type: types.TaskTypePlan, BeanID: "bean-123"})
 	require.NoError(t, err)
 
-	require.Contains(t, claudePrompt, "bean-123")
 	require.Contains(t, piPrompt, "bean-123")
-	require.NotEmpty(t, claudePrompt)
 	require.NotEmpty(t, piPrompt)
 }
 
-func TestNewAgentUnknownType(t *testing.T) {
-	_, err := NewAgent(&project.Config{Agent: project.AgentConfig{Type: "unknown-agent"}})
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "unknown agent type")
-}
-
 func TestBuildPromptUnknownType(t *testing.T) {
-	agent := mustNewClaudeAgent(t)
+	agent := pi.New()
 	_, err := agent.BuildPrompt(types.TaskParams{Type: "nonexistent"})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "unknown task type")
 }
 
 func TestBuildPromptAllTypes(t *testing.T) {
-	agent := mustNewClaudeAgent(t)
+	agent := pi.New()
 
 	tests := []struct {
 		name         string
