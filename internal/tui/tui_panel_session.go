@@ -441,7 +441,6 @@ func (p *SessionPanel) Update(msg tea.KeyMsg) (tea.Cmd, SessionPanelAction) {
 		if p.inputMode {
 			val := p.input.Value()
 			if val != "" {
-				p.GetPendingPrompt()
 				return nil, SessionPanelActionPrompt
 			}
 			return nil, SessionPanelActionNone
