@@ -1,10 +1,11 @@
 ---
 # main-nies
 title: 'Phase 3: Route plan and interactive sessions through bridge'
-status: todo
+status: completed
 type: feature
+priority: normal
 created_at: 2026-03-01T21:27:30Z
-updated_at: 2026-03-01T21:27:30Z
+updated_at: 2026-03-01T22:00:55Z
 parent: ir72
 blocked_by:
     - main-otx3

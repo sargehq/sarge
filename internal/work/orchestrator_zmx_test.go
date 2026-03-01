@@ -349,7 +349,7 @@ func TestOpenAgentSessionZmx_CreatesClaudeSession(t *testing.T) {
 	cfg := &project.Config{}
 
 	var buf bytes.Buffer
-	err := mgr.OpenAgentSession(ctx, "w-abc", "myproj", "/tmp/work", "", nil, cfg, &buf)
+	_, err := mgr.OpenAgentSession(ctx, "w-abc", "myproj", "/tmp/work", "", nil, cfg, &buf)
 	require.NoError(t, err)
 
 	// Should create session with agent command in one call
@@ -372,7 +372,7 @@ func TestOpenAgentSessionZmx_CreatesPiSession(t *testing.T) {
 	cfg.Agent.Type = "pi"
 
 	var buf bytes.Buffer
-	err := mgr.OpenAgentSession(ctx, "w-abc", "myproj", "/tmp/work", "feat", nil, cfg, &buf)
+	_, err := mgr.OpenAgentSession(ctx, "w-abc", "myproj", "/tmp/work", "feat", nil, cfg, &buf)
 	require.NoError(t, err)
 
 	runCalls := zmxMock.RunSessionCalls()
@@ -393,7 +393,7 @@ func TestOpenAgentSessionZmx_ExistingSessionAttaches(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := mgr.OpenAgentSession(ctx, "w-abc", "myproj", "/tmp/work", "", nil, &project.Config{}, &buf)
+	_, err := mgr.OpenAgentSession(ctx, "w-abc", "myproj", "/tmp/work", "", nil, &project.Config{}, &buf)
 	require.NoError(t, err)
 
 	// Should NOT create session
@@ -416,7 +416,7 @@ func TestOpenAgentSessionZmx_ExistingSessionWithClientsSkipsAttach(t *testing.T)
 	}
 
 	var buf bytes.Buffer
-	err := mgr.OpenAgentSession(ctx, "w-abc", "myproj", "/tmp/work", "", nil, &project.Config{}, &buf)
+	_, err := mgr.OpenAgentSession(ctx, "w-abc", "myproj", "/tmp/work", "", nil, &project.Config{}, &buf)
 	require.NoError(t, err)
 
 	// Should NOT create session
@@ -434,7 +434,7 @@ func TestSpawnPlanSessionZmx_CreatesSession(t *testing.T) {
 	ctx := context.Background()
 
 	var buf bytes.Buffer
-	err := mgr.SpawnPlanSession(ctx, "ac-cdo.5", "myproj", "/tmp/repo", &buf)
+	_, err := mgr.SpawnPlanSession(ctx, "ac-cdo.5", "myproj", "/tmp/repo", &buf)
 	require.NoError(t, err)
 
 	// Should create via RunSession with correct cwd
@@ -463,7 +463,7 @@ func TestSpawnPlanSessionZmx_KillsExistingSession(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := mgr.SpawnPlanSession(ctx, "ac-cdo.5", "myproj", "/tmp/repo", &buf)
+	_, err := mgr.SpawnPlanSession(ctx, "ac-cdo.5", "myproj", "/tmp/repo", &buf)
 	require.NoError(t, err)
 
 	killCalls := zmxMock.KillSessionCalls()

@@ -5,6 +5,7 @@ package work
 
 import (
 	"context"
+	"github.com/sargehq/sarge/internal/bridge"
 	"github.com/sargehq/sarge/internal/project"
 	"io"
 	"sync"
@@ -29,13 +30,13 @@ var _ OrchestratorManager = &OrchestratorManagerMock{}
 //			ListWorkSessionsFunc: func(ctx context.Context, workID string, projectName string) ([]WorkSession, error) {
 //				panic("mock out the ListWorkSessions method")
 //			},
-//			OpenAgentSessionFunc: func(ctx context.Context, workID string, projName string, workDir string, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) error {
+//			OpenAgentSessionFunc: func(ctx context.Context, workID string, projName string, workDir string, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) (*bridge.Session, error) {
 //				panic("mock out the OpenAgentSession method")
 //			},
 //			OpenConsoleFunc: func(ctx context.Context, workID string, projName string, workDir string, friendlyName string, hooksEnv []string, w io.Writer) error {
 //				panic("mock out the OpenConsole method")
 //			},
-//			SpawnPlanSessionFunc: func(ctx context.Context, beanID string, projName string, mainRepoPath string, w io.Writer) error {
+//			SpawnPlanSessionFunc: func(ctx context.Context, beanID string, projName string, mainRepoPath string, w io.Writer) (*bridge.Session, error) {
 //				panic("mock out the SpawnPlanSession method")
 //			},
 //			SpawnWorkOrchestratorFunc: func(ctx context.Context, workID string, projName string, workDir string, friendlyName string, w io.Writer) error {
@@ -61,13 +62,13 @@ type OrchestratorManagerMock struct {
 	ListWorkSessionsFunc func(ctx context.Context, workID string, projectName string) ([]WorkSession, error)
 
 	// OpenAgentSessionFunc mocks the OpenAgentSession method.
-	OpenAgentSessionFunc func(ctx context.Context, workID string, projName string, workDir string, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) error
+	OpenAgentSessionFunc func(ctx context.Context, workID string, projName string, workDir string, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) (*bridge.Session, error)
 
 	// OpenConsoleFunc mocks the OpenConsole method.
 	OpenConsoleFunc func(ctx context.Context, workID string, projName string, workDir string, friendlyName string, hooksEnv []string, w io.Writer) error
 
 	// SpawnPlanSessionFunc mocks the SpawnPlanSession method.
-	SpawnPlanSessionFunc func(ctx context.Context, beanID string, projName string, mainRepoPath string, w io.Writer) error
+	SpawnPlanSessionFunc func(ctx context.Context, beanID string, projName string, mainRepoPath string, w io.Writer) (*bridge.Session, error)
 
 	// SpawnWorkOrchestratorFunc mocks the SpawnWorkOrchestrator method.
 	SpawnWorkOrchestratorFunc func(ctx context.Context, workID string, projName string, workDir string, friendlyName string, w io.Writer) error
@@ -334,7 +335,7 @@ func (mock *OrchestratorManagerMock) ListWorkSessionsCalls() []struct {
 }
 
 // OpenAgentSession calls OpenAgentSessionFunc.
-func (mock *OrchestratorManagerMock) OpenAgentSession(ctx context.Context, workID string, projName string, workDir string, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) error {
+func (mock *OrchestratorManagerMock) OpenAgentSession(ctx context.Context, workID string, projName string, workDir string, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) (*bridge.Session, error) {
 	callInfo := struct {
 		Ctx          context.Context
 		WorkID       string
@@ -359,9 +360,10 @@ func (mock *OrchestratorManagerMock) OpenAgentSession(ctx context.Context, workI
 	mock.lockOpenAgentSession.Unlock()
 	if mock.OpenAgentSessionFunc == nil {
 		var (
-			errOut error
+			sessionOut *bridge.Session
+			errOut     error
 		)
-		return errOut
+		return sessionOut, errOut
 	}
 	return mock.OpenAgentSessionFunc(ctx, workID, projName, workDir, friendlyName, hooksEnv, cfg, w)
 }
@@ -456,7 +458,7 @@ func (mock *OrchestratorManagerMock) OpenConsoleCalls() []struct {
 }
 
 // SpawnPlanSession calls SpawnPlanSessionFunc.
-func (mock *OrchestratorManagerMock) SpawnPlanSession(ctx context.Context, beanID string, projName string, mainRepoPath string, w io.Writer) error {
+func (mock *OrchestratorManagerMock) SpawnPlanSession(ctx context.Context, beanID string, projName string, mainRepoPath string, w io.Writer) (*bridge.Session, error) {
 	callInfo := struct {
 		Ctx          context.Context
 		BeanID       string
@@ -475,9 +477,10 @@ func (mock *OrchestratorManagerMock) SpawnPlanSession(ctx context.Context, beanI
 	mock.lockSpawnPlanSession.Unlock()
 	if mock.SpawnPlanSessionFunc == nil {
 		var (
-			errOut error
+			sessionOut *bridge.Session
+			errOut     error
 		)
-		return errOut
+		return sessionOut, errOut
 	}
 	return mock.SpawnPlanSessionFunc(ctx, beanID, projName, mainRepoPath, w)
 }

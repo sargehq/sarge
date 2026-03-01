@@ -8,6 +8,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/sargehq/sarge/internal/bridge"
 	"github.com/sargehq/sarge/internal/control"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/logging"
@@ -22,51 +23,33 @@ func (m *planModel) sessionName() string {
 	return fmt.Sprintf("sarge-%s", m.proj.Config.Project.Name)
 }
 
-// spawnPlanSession spawns or resumes a planning session for a specific bean
+// spawnPlanSession spawns or resumes a planning session for a specific bean.
+// When a bridge is available, creates a bridge session and opens the session viewer.
 func (m *planModel) spawnPlanSession(beanID string) tea.Cmd {
 	return func() tea.Msg {
-		tabName := workpkg.PlanTabName(beanID)
 		mainRepoPath := m.proj.MainRepoPath()
 
-		logging.Debug("spawnPlanSession started", "beanID", beanID, "tabName", tabName)
+		logging.Debug("spawnPlanSession started", "beanID", beanID)
 
-		// Check if session already running for this bean
-		running, _ := m.proj.DB.IsPlanSessionRunning(m.ctx, beanID)
-		logging.Debug("spawnPlanSession checked if running", "beanID", beanID, "running", running)
-		if running {
-			// Session exists - for zellij, switch to it; for zmx, it's a no-op (attach handled separately)
-			if !m.proj.Config.Multiplexer.IsZmx() {
-				zellijSession := m.sessionName()
-				if err := m.zj.Session(zellijSession).SwitchToTab(m.ctx, tabName); err != nil {
-					return planSessionSpawnedMsg{beanID: beanID, err: err}
-				}
-			}
-			return planSessionSpawnedMsg{beanID: beanID, resumed: true}
+		// Check if a bridge session already exists for this bean
+		sessionID := workpkg.PlanTabName(beanID)
+		if existing := m.bridgeClient.GetSession(sessionID); existing != nil && existing.State() != bridge.SessionDead {
+			logging.Debug("spawnPlanSession resuming existing bridge session", "beanID", beanID, "sessionID", sessionID)
+			return planSessionSpawnedMsg{beanID: beanID, resumed: true, bridgeSessionID: sessionID}
 		}
 
-		// Ensure control plane is running
-		sessionResult, err := control.EnsureControlPlane(m.ctx, m.proj)
+		// Spawn the plan session via the orchestrator manager (uses bridge when available)
+		session, err := m.workService.OrchestratorManager.SpawnPlanSession(m.ctx, beanID, m.proj.Config.Project.Name, mainRepoPath, io.Discard)
 		if err != nil {
-			logging.Error("spawnPlanSession EnsureControlPlane failed", "beanID", beanID, "error", err)
-			return planSessionSpawnedMsg{beanID: beanID, err: err}
-		}
-		logging.Debug("spawnPlanSession EnsureControlPlane completed",
-			"beanID", beanID,
-			"sessionCreated", sessionResult.SessionCreated,
-			"sessionName", sessionResult.SessionName)
-
-		// Use the orchestrator manager to spawn the plan session
-		if err := m.workService.OrchestratorManager.SpawnPlanSession(m.ctx, beanID, m.proj.Config.Project.Name, mainRepoPath, io.Discard); err != nil {
 			logging.Error("spawnPlanSession SpawnPlanSession failed", "beanID", beanID, "error", err)
 			return planSessionSpawnedMsg{beanID: beanID, err: err}
 		}
 
 		msg := planSessionSpawnedMsg{beanID: beanID, resumed: false}
-		if sessionResult.SessionCreated {
-			msg.sessionCreated = true
-			msg.sessionName = sessionResult.SessionName
+		if session != nil {
+			msg.bridgeSessionID = session.ID()
 		}
-		logging.Debug("spawnPlanSession completed", "beanID", beanID, "sessionCreated", msg.sessionCreated, "sessionName", msg.sessionName)
+		logging.Debug("spawnPlanSession completed", "beanID", beanID, "bridgeSessionID", msg.bridgeSessionID)
 		return msg
 	}
 }
@@ -308,31 +291,37 @@ func (m *planModel) openConsole() tea.Cmd {
 	}
 }
 
-// openAgent opens an agent session tab for the focused work
+// agentSessionOpenedMsg indicates an agent session was opened (possibly via bridge)
+type agentSessionOpenedMsg struct {
+	workID          string
+	err             error
+	bridgeSessionID string // non-empty when session was created via bridge
+}
+
+// openAgent opens an agent session for the focused work.
+// When a bridge is available, creates a bridge session and opens the session viewer.
 func (m *planModel) openAgent() tea.Cmd {
 	workID := m.focusedWorkID
 	return func() tea.Msg {
 		// Get work details
 		work, err := m.proj.DB.GetWork(m.ctx, workID)
 		if err != nil {
-			return workCommandMsg{action: "Open Agent", workID: workID, err: fmt.Errorf("failed to get work: %w", err)}
+			return agentSessionOpenedMsg{workID: workID, err: fmt.Errorf("failed to get work: %w", err)}
 		}
 		if work == nil {
-			return workCommandMsg{action: "Open Agent", workID: workID, err: fmt.Errorf("work %s not found", workID)}
+			return agentSessionOpenedMsg{workID: workID, err: fmt.Errorf("work %s not found", workID)}
 		}
 
-		// Ensure control plane is running (creates session if needed)
-		_, err = control.EnsureControlPlane(m.ctx, m.proj)
+		session, err := m.workService.OrchestratorManager.OpenAgentSession(m.ctx, workID, m.proj.Config.Project.Name, work.WorktreePath, work.Name, m.proj.Config.Hooks.Env, m.proj.Config, io.Discard)
 		if err != nil {
-			return workCommandMsg{action: "Control plane", workID: workID, err: err}
+			return agentSessionOpenedMsg{workID: workID, err: err}
 		}
 
-		err = m.workService.OrchestratorManager.OpenAgentSession(m.ctx, workID, m.proj.Config.Project.Name, work.WorktreePath, work.Name, m.proj.Config.Hooks.Env, m.proj.Config, io.Discard)
-		if err != nil {
-			return workCommandMsg{action: "Open Agent", workID: workID, err: err}
+		msg := agentSessionOpenedMsg{workID: workID}
+		if session != nil {
+			msg.bridgeSessionID = session.ID()
 		}
-
-		return workCommandMsg{action: "Open Agent", workID: workID}
+		return msg
 	}
 }
 

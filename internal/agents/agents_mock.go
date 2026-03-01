@@ -22,6 +22,9 @@ var _ Agent = &AgentMock{}
 //
 //		// make and configure a mocked Agent
 //		mockedAgent := &AgentMock{
+//			BuildPromptFunc: func(params types.TaskParams) (string, error) {
+//				panic("mock out the BuildPrompt method")
+//			},
 //			RunFunc: func(ctx context.Context, database *db.DB, taskID string, params types.TaskParams, workDir string, cfg *project.Config) error {
 //				panic("mock out the Run method")
 //			},
@@ -35,6 +38,9 @@ var _ Agent = &AgentMock{}
 //
 //	}
 type AgentMock struct {
+	// BuildPromptFunc mocks the BuildPrompt method.
+	BuildPromptFunc func(params types.TaskParams) (string, error)
+
 	// RunFunc mocks the Run method.
 	RunFunc func(ctx context.Context, database *db.DB, taskID string, params types.TaskParams, workDir string, cfg *project.Config) error
 
@@ -43,6 +49,11 @@ type AgentMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// BuildPrompt holds details about calls to the BuildPrompt method.
+		BuildPrompt []struct {
+			// Params is the params argument value.
+			Params types.TaskParams
+		}
 		// Run holds details about calls to the Run method.
 		Run []struct {
 			// Ctx is the ctx argument value.
@@ -76,8 +87,45 @@ type AgentMock struct {
 			Cfg *project.Config
 		}
 	}
+	lockBuildPrompt    sync.RWMutex
 	lockRun            sync.RWMutex
 	lockRunInteractive sync.RWMutex
+}
+
+// BuildPrompt calls BuildPromptFunc.
+func (mock *AgentMock) BuildPrompt(params types.TaskParams) (string, error) {
+	callInfo := struct {
+		Params types.TaskParams
+	}{
+		Params: params,
+	}
+	mock.lockBuildPrompt.Lock()
+	mock.calls.BuildPrompt = append(mock.calls.BuildPrompt, callInfo)
+	mock.lockBuildPrompt.Unlock()
+	if mock.BuildPromptFunc == nil {
+		var (
+			sOut   string
+			errOut error
+		)
+		return sOut, errOut
+	}
+	return mock.BuildPromptFunc(params)
+}
+
+// BuildPromptCalls gets all the calls that were made to BuildPrompt.
+// Check the length with:
+//
+//	len(mockedAgent.BuildPromptCalls())
+func (mock *AgentMock) BuildPromptCalls() []struct {
+	Params types.TaskParams
+} {
+	var calls []struct {
+		Params types.TaskParams
+	}
+	mock.lockBuildPrompt.RLock()
+	calls = mock.calls.BuildPrompt
+	mock.lockBuildPrompt.RUnlock()
+	return calls
 }
 
 // Run calls RunFunc.

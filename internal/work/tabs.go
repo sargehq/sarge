@@ -10,6 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sargehq/sarge/internal/agents"
+	"github.com/sargehq/sarge/internal/agents/types"
+	"github.com/sargehq/sarge/internal/bridge"
+	"github.com/sargehq/sarge/internal/logging"
 	"github.com/sargehq/sarge/internal/project"
 	"github.com/sargehq/sarge/internal/zmx"
 )
@@ -188,21 +192,46 @@ func (m *DefaultOrchestratorManager) openConsoleZellij(ctx context.Context, work
 	return nil
 }
 
-// OpenAgentSession creates a zellij tab with an interactive agent session in the work's worktree.
-// The tab is named "<agent>-<work-id>" or "<agent>-<work-id> (friendlyName)" for easy identification.
-// The agent type is determined by cfg.Agent.Type (defaults to "claude").
-// The hooksEnv parameter contains environment variables to export (format: "KEY=value").
-// The config parameter controls agent settings like --dangerously-skip-permissions.
-// Progress messages are written to the provided writer. Pass io.Discard to suppress output.
-//
-// IMPORTANT: The zellij session must already exist before calling this function.
-// Callers should use control.EnsureControlPlane to ensure
-// the session exists with the control plane running.
-func (m *DefaultOrchestratorManager) OpenAgentSession(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) error {
-	if m.isZmx() {
-		return m.openAgentSessionZmx(ctx, workID, projectName, workDir, hooksEnv, cfg, w)
+// OpenAgentSession creates an interactive agent session in the work's worktree.
+// When a bridge is configured, spawns a pi RPC session (user interacts via TUI).
+// Otherwise falls back to zmx/zellij tabs with the agent binary.
+// Returns the bridge session (non-nil only when using bridge mode).
+func (m *DefaultOrchestratorManager) OpenAgentSession(ctx context.Context, workID string, projectName string, workDir string, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) (*bridge.Session, error) {
+	if m.bridge != nil {
+		return m.openAgentSessionBridge(ctx, workID, workDir, hooksEnv, cfg, w)
 	}
-	return m.openAgentSessionZellij(ctx, workID, projectName, workDir, friendlyName, hooksEnv, cfg, w)
+	var err error
+	if m.isZmx() {
+		err = m.openAgentSessionZmx(ctx, workID, projectName, workDir, hooksEnv, cfg, w)
+	} else {
+		err = m.openAgentSessionZellij(ctx, workID, projectName, workDir, friendlyName, hooksEnv, cfg, w)
+	}
+	return nil, err
+}
+
+// openAgentSessionBridge creates a bridge session for interactive agent use.
+func (m *DefaultOrchestratorManager) openAgentSessionBridge(ctx context.Context, workID string, workDir string, hooksEnv []string, cfg *project.Config, w io.Writer) (*bridge.Session, error) {
+	sessionID := fmt.Sprintf("agent-%s", workID)
+
+	// Check if session already exists and is alive
+	if existing := m.bridge.GetSession(sessionID); existing != nil && existing.State() != bridge.SessionDead {
+		fmt.Fprintf(w, "Agent session %s already exists\n", sessionID)
+		return existing, nil
+	}
+
+	// Build session config
+	sessionCfg := bridge.SessionConfigFromProject(workDir, cfg)
+	sessionCfg.Env = append(sessionCfg.Env, hooksEnv...)
+
+	// Spawn the bridge session
+	session, err := m.bridge.SpawnSession(sessionID, sessionCfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to spawn bridge agent session: %w", err)
+	}
+
+	logging.Debug("openAgentSessionBridge completed", "workID", workID, "sessionID", sessionID)
+	fmt.Fprintf(w, "Created bridge agent session: %s\n", sessionID)
+	return session, nil
 }
 
 // buildAgentCommand builds the agent command and args based on config.
@@ -343,19 +372,70 @@ func (m *DefaultOrchestratorManager) openAgentSessionZellij(ctx context.Context,
 	return nil
 }
 
-// SpawnPlanSession creates a zellij tab and runs the plan command for a bean.
-// The tab is named "plan-<bean-id>" for easy identification.
-// The function returns immediately after spawning - the plan session runs in the tab.
-// Progress messages are written to the provided writer. Pass io.Discard to suppress output.
-//
-// IMPORTANT: The zellij session must already exist before calling this function.
-// Callers should use control.EnsureControlPlane to ensure
-// the session exists with the control plane running.
-func (m *DefaultOrchestratorManager) SpawnPlanSession(ctx context.Context, beanID string, projectName string, mainRepoPath string, w io.Writer) error {
-	if m.isZmx() {
-		return m.spawnPlanSessionZmx(ctx, beanID, projectName, mainRepoPath, w)
+// SpawnPlanSession creates a plan session for a bean.
+// When a bridge is configured, spawns a pi RPC session and sends the plan prompt.
+// Otherwise falls back to zmx/zellij tabs running `sarge plan <beanID>`.
+// Returns the bridge session (non-nil only when using bridge mode).
+func (m *DefaultOrchestratorManager) SpawnPlanSession(ctx context.Context, beanID string, projectName string, mainRepoPath string, w io.Writer) (*bridge.Session, error) {
+	if m.bridge != nil {
+		return m.spawnPlanSessionBridge(ctx, beanID, mainRepoPath, w)
 	}
-	return m.spawnPlanSessionZellij(ctx, beanID, projectName, mainRepoPath, w)
+	var err error
+	if m.isZmx() {
+		err = m.spawnPlanSessionZmx(ctx, beanID, projectName, mainRepoPath, w)
+	} else {
+		err = m.spawnPlanSessionZellij(ctx, beanID, projectName, mainRepoPath, w)
+	}
+	return nil, err
+}
+
+// spawnPlanSessionBridge creates a bridge session and sends the plan prompt.
+func (m *DefaultOrchestratorManager) spawnPlanSessionBridge(ctx context.Context, beanID string, mainRepoPath string, w io.Writer) (*bridge.Session, error) {
+	sessionID := PlanTabName(beanID)
+
+	// Kill existing session if present
+	if existing := m.bridge.GetSession(sessionID); existing != nil && existing.State() != bridge.SessionDead {
+		_ = m.bridge.KillSession(sessionID)
+		fmt.Fprintf(w, "Killed existing plan session: %s\n", sessionID)
+	}
+
+	// Build session config from project config
+	cfg := bridge.SessionConfigFromProject(mainRepoPath, m.projCfg)
+	if m.beansPath != "" {
+		cfg.Env = append(cfg.Env, "BEANS_PATH="+m.beansPath)
+	}
+
+	// Spawn the bridge session
+	session, err := m.bridge.SpawnSession(sessionID, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to spawn bridge plan session: %w", err)
+	}
+	fmt.Fprintf(w, "Created bridge plan session: %s\n", sessionID)
+
+	// Build and send the plan prompt
+	agent, err := agents.NewAgent(m.projCfg)
+	if err != nil {
+		_ = m.bridge.KillSession(sessionID)
+		return nil, fmt.Errorf("failed to create agent for prompt: %w", err)
+	}
+
+	prompt, err := agent.BuildPrompt(types.TaskParams{
+		Type:      types.TaskTypePlan,
+		BeanID:    beanID,
+		BeansPath: m.beansPath,
+	})
+	if err != nil {
+		_ = m.bridge.KillSession(sessionID)
+		return nil, fmt.Errorf("failed to build plan prompt: %w", err)
+	}
+
+	if err := session.Prompt(prompt); err != nil {
+		_ = m.bridge.KillSession(sessionID)
+		return nil, fmt.Errorf("failed to send plan prompt: %w", err)
+	}
+
+	logging.Debug("spawnPlanSessionBridge completed", "beanID", beanID, "sessionID", sessionID)
+	return session, nil
 }
 
 // spawnPlanSessionZmx opens a terminal window with a zmx plan session.

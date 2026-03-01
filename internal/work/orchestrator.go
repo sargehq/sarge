@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/sargehq/sarge/internal/bridge"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/logging"
 	"github.com/sargehq/sarge/internal/project"
@@ -76,19 +77,23 @@ type OrchestratorManager interface {
 	// TerminateWorkTabs terminates all zellij tabs associated with a work unit.
 	TerminateWorkTabs(ctx context.Context, workID, projName string, w io.Writer) error
 
-	// SpawnPlanSession creates a zellij tab and runs the plan command for a bean.
-	SpawnPlanSession(ctx context.Context, beanID, projName, mainRepoPath string, w io.Writer) error
+	// SpawnPlanSession creates a bridge session and sends a plan prompt for a bean.
+	// If a bridge is configured, uses pi RPC; otherwise falls back to zmx/zellij tabs.
+	SpawnPlanSession(ctx context.Context, beanID, projName, mainRepoPath string, w io.Writer) (*bridge.Session, error)
 
 	// OpenConsole creates a zellij tab with a shell in the work's worktree.
 	OpenConsole(ctx context.Context, workID, projName, workDir, friendlyName string, hooksEnv []string, w io.Writer) error
 
-	// OpenAgentSession creates a zellij tab with an interactive agent session.
-	OpenAgentSession(ctx context.Context, workID, projName, workDir, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) error
+	// OpenAgentSession creates a bridge session for interactive agent use.
+	// If a bridge is configured, uses pi RPC; otherwise falls back to zmx/zellij tabs.
+	OpenAgentSession(ctx context.Context, workID, projName, workDir, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) (*bridge.Session, error)
 
-	// ListWorkSessions returns active zmx sessions for a given work unit.
+	// ListWorkSessions returns active sessions for a given work unit.
+	// When a bridge is configured, returns bridge sessions; otherwise returns zmx sessions.
 	ListWorkSessions(ctx context.Context, workID, projectName string) ([]WorkSession, error)
 
-	// AttachToSession attaches to a named zmx session.
+	// AttachToSession attaches to a named zmx session in a new terminal window.
+	// Used for zmx sessions that are not bridge-managed (e.g., orchestrator tabs).
 	AttachToSession(ctx context.Context, sessionName string) error
 }
 
@@ -99,9 +104,13 @@ type DefaultOrchestratorManager struct {
 	zellij    zellij.SessionManager
 	zmx       zmx.Client
 	muxConfig *project.MultiplexerConfig
+	bridge    *bridge.Bridge // Optional: when set, plan/agent sessions use pi RPC via bridge
+	projCfg   *project.Config
+	beansPath string // Path to beans directory (needed for bridge plan prompts)
 }
 
 // NewOrchestratorManager creates a new DefaultOrchestratorManager with the given database and config.
+// Plan and agent sessions will use zmx/zellij tabs (no bridge).
 func NewOrchestratorManager(database *db.DB, cfg *project.Config) OrchestratorManager {
 	var muxCfg *project.MultiplexerConfig
 	if cfg != nil {
@@ -112,6 +121,25 @@ func NewOrchestratorManager(database *db.DB, cfg *project.Config) OrchestratorMa
 		zellij:    zellij.New(),
 		zmx:       zmx.New(),
 		muxConfig: muxCfg,
+		projCfg:   cfg,
+	}
+}
+
+// NewOrchestratorManagerWithBridge creates a DefaultOrchestratorManager that routes
+// plan and agent sessions through the given bridge (pi RPC) instead of zmx/zellij tabs.
+func NewOrchestratorManagerWithBridge(database *db.DB, cfg *project.Config, b *bridge.Bridge, beansPath string) OrchestratorManager {
+	var muxCfg *project.MultiplexerConfig
+	if cfg != nil {
+		muxCfg = &cfg.Multiplexer
+	}
+	return &DefaultOrchestratorManager{
+		database:  database,
+		zellij:    zellij.New(),
+		zmx:       zmx.New(),
+		muxConfig: muxCfg,
+		bridge:    b,
+		projCfg:   cfg,
+		beansPath: beansPath,
 	}
 }
 
@@ -442,39 +470,63 @@ func (m *DefaultOrchestratorManager) EnsureWorkOrchestrator(ctx context.Context,
 	return true, nil
 }
 
-// ListWorkSessions returns active zmx sessions for a given work unit.
-// For non-zmx multiplexers, returns an empty list.
+// ListWorkSessions returns active sessions for a given work unit.
+// When a bridge is configured, returns bridge sessions for the work.
+// Also includes zmx sessions when using zmx multiplexer.
 func (m *DefaultOrchestratorManager) ListWorkSessions(ctx context.Context, workID, projectName string) ([]WorkSession, error) {
-	if !m.isZmx() {
-		return nil, nil
-	}
-
-	projectPrefix := zmx.SessionName(projectName, "")
-	sessions, err := m.zmx.ListSessions(ctx, projectPrefix)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list zmx sessions: %w", err)
-	}
-
 	var result []WorkSession
-	for _, name := range sessions {
-		_, tabName := zmx.ParseSessionName(name)
-		if tabName == "" {
-			continue
-		}
-		if tabBelongsToWork(tabName, workID) || tabName == controlPlaneTabName {
-			sessionType := parseSessionType(tabName)
+
+	// Include bridge sessions if bridge is configured
+	if m.bridge != nil {
+		bridgeSessions := m.bridge.ListSessions()
+		for id, state := range bridgeSessions {
+			// Match sessions belonging to this work by ID prefix convention
+			if !strings.Contains(id, workID) && !strings.HasPrefix(id, "plan-") {
+				continue
+			}
+			sessionType := "orch"
+			if strings.Contains(id, "agent") {
+				sessionType = "agent"
+			} else if strings.Contains(id, "plan") {
+				sessionType = "plan"
+			}
 			result = append(result, WorkSession{
-				Name:        name,
-				TabName:     tabName,
+				Name:        id,
+				TabName:     id,
 				Type:        sessionType,
-				DisplayName: sessionDisplayName(sessionType, tabName),
+				DisplayName: fmt.Sprintf("%s (%s) [%s]", sessionType, id, state),
 			})
+		}
+	}
+
+	// Also include zmx sessions if using zmx multiplexer
+	if m.isZmx() {
+		projectPrefix := zmx.SessionName(projectName, "")
+		sessions, err := m.zmx.ListSessions(ctx, projectPrefix)
+		if err != nil {
+			return result, fmt.Errorf("failed to list zmx sessions: %w", err)
+		}
+
+		for _, name := range sessions {
+			_, tabName := zmx.ParseSessionName(name)
+			if tabName == "" {
+				continue
+			}
+			if tabBelongsToWork(tabName, workID) || tabName == controlPlaneTabName {
+				sessionType := parseSessionType(tabName)
+				result = append(result, WorkSession{
+					Name:        name,
+					TabName:     tabName,
+					Type:        sessionType,
+					DisplayName: sessionDisplayName(sessionType, tabName),
+				})
+			}
 		}
 	}
 	return result, nil
 }
 
-// AttachToSession attaches to a named zmx session.
+// AttachToSession attaches to a named zmx session in a new terminal window.
 func (m *DefaultOrchestratorManager) AttachToSession(ctx context.Context, sessionName string) error {
 	return m.attachZmxSession(ctx, sessionName)
 }

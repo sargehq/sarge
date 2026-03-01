@@ -209,6 +209,12 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 	m.sessionPicker = NewSessionPickerPanel()
 	m.bridgeClient = bridge.NewBridge()
 
+	// Wire bridge into the WorkService's OrchestratorManager so plan/agent
+	// sessions are routed through pi RPC instead of zmx/zellij tabs.
+	m.workService.OrchestratorManager = work.NewOrchestratorManagerWithBridge(
+		proj.DB, proj.Config, m.bridgeClient, proj.BeansPath(),
+	)
+
 	// Set up status bar data providers
 	m.statusBar.SetDataProviders(
 		func() []beanItem { return m.beanItems },
@@ -680,6 +686,18 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.statusMessage = fmt.Sprintf("Failed: %v", msg.err)
 			m.statusIsError = true
+		} else if msg.bridgeSessionID != "" {
+			// Bridge session - open session viewer
+			m.viewBridgeSession(msg.bridgeSessionID)
+			m.viewMode = ViewSessionViewer
+			m.activePanel = PanelSession
+			if msg.resumed {
+				m.statusMessage = fmt.Sprintf("Resumed plan session for %s", msg.beanID)
+			} else {
+				m.statusMessage = fmt.Sprintf("Started plan session for %s", msg.beanID)
+			}
+			m.statusIsError = false
+			return m, tea.Batch(m.refreshData(), m.waitForBridgeEvent(msg.bridgeSessionID))
 		} else if msg.resumed {
 			m.statusMessage = fmt.Sprintf("Resumed session for %s", msg.beanID)
 			m.statusIsError = false
@@ -691,6 +709,24 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.statusIsError = false
 		}
 		// Refresh to update session indicators
+		return m, m.refreshData()
+
+	case agentSessionOpenedMsg:
+		if msg.err != nil {
+			m.statusMessage = fmt.Sprintf("Open Agent failed: %v", msg.err)
+			m.statusIsError = true
+		} else if msg.bridgeSessionID != "" {
+			// Bridge session - open session viewer
+			m.viewBridgeSession(msg.bridgeSessionID)
+			m.viewMode = ViewSessionViewer
+			m.activePanel = PanelSession
+			m.statusMessage = fmt.Sprintf("Agent session opened for %s", msg.workID)
+			m.statusIsError = false
+			return m, tea.Batch(m.refreshData(), m.waitForBridgeEvent(msg.bridgeSessionID))
+		} else {
+			m.statusMessage = fmt.Sprintf("Agent session opened for %s", msg.workID)
+			m.statusIsError = false
+		}
 		return m, m.refreshData()
 
 	case planWorkCreatedMsg:
@@ -973,11 +1009,12 @@ type planStatusMsg struct {
 
 // planSessionSpawnedMsg indicates a planning session was spawned or resumed
 type planSessionSpawnedMsg struct {
-	beanID         string
-	resumed        bool
-	err            error
-	sessionCreated bool   // true if a new zellij session was created
-	sessionName    string // e.g., 'co-myproject'
+	beanID          string
+	resumed         bool
+	err             error
+	sessionCreated  bool   // true if a new zellij session was created (legacy)
+	sessionName     string // e.g., 'co-myproject' (legacy)
+	bridgeSessionID string // non-empty when session was created via bridge
 }
 
 // planWorkCreatedMsg indicates work was created from a bean

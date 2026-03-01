@@ -37,6 +37,9 @@ func agentTypeFromConfig(cfg *project.Config) agentType {
 
 // Agent encapsulates all agent-specific behavior: prompt building and execution.
 type Agent interface {
+	// BuildPrompt builds a prompt string from the given task parameters.
+	BuildPrompt(params types.TaskParams) (string, error)
+
 	// Run builds a prompt from params and executes the agent directly in the current terminal (fork/exec).
 	Run(ctx context.Context, database *db.DB, taskID string, params types.TaskParams, workDir string, cfg *project.Config) error
 
