@@ -67,9 +67,10 @@ type Session struct {
 	stdout io.ReadCloser
 	stderr io.ReadCloser
 
-	events    chan Event
-	state     atomic.Int32
-	streaming atomic.Bool
+	events      chan Event
+	state       atomic.Int32
+	streaming   atomic.Bool
+	droppedEvts atomic.Int64
 
 	mu       sync.Mutex
 	err      error // last error, protected by mu
@@ -84,7 +85,7 @@ func newSession(id string, cfg SessionConfig) *Session {
 	s := &Session{
 		id:     id,
 		config: cfg,
-		events: make(chan Event, 256),
+		events: make(chan Event, 4096),
 		done:   make(chan struct{}),
 	}
 	s.state.Store(int32(SessionStarting))
@@ -99,6 +100,9 @@ func (s *Session) State() SessionState { return SessionState(s.state.Load()) }
 
 // IsStreaming returns true if the session is currently processing a prompt.
 func (s *Session) IsStreaming() bool { return s.streaming.Load() }
+
+// DroppedEvents returns the number of events dropped due to a full channel.
+func (s *Session) DroppedEvents() int64 { return s.droppedEvts.Load() }
 
 // Events returns a read-only channel of events from this session.
 // The channel is closed when the session dies.
@@ -305,7 +309,25 @@ func (s *Session) readLoop() {
 		select {
 		case s.events <- evt:
 		default:
-			// Drop event if channel is full to avoid blocking.
+			// Channel full. Critical lifecycle events (e.g. agent_end)
+			// must not be dropped or the TUI may get stuck in a
+			// streaming state, so force-drain one older event to make
+			// room.
+			if base.Type == EventAgentEnd || base.Type == EventAgentStart {
+				select {
+				case <-s.events: // drain oldest
+					s.droppedEvts.Add(1)
+				default:
+				}
+				// Retry send after drain.
+				select {
+				case s.events <- evt:
+				default:
+					s.droppedEvts.Add(1)
+				}
+			} else {
+				s.droppedEvts.Add(1)
+			}
 		}
 	}
 }

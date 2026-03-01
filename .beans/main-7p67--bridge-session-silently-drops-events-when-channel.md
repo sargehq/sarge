@@ -1,12 +1,13 @@
 ---
 # main-7p67
 title: Bridge session silently drops events when channel full
-status: todo
+status: completed
 type: task
+priority: normal
 tags:
     - review-w-2fo.8
 created_at: 2026-03-01T22:41:22Z
-updated_at: 2026-03-01T22:41:22Z
+updated_at: 2026-03-01T22:44:33Z
 parent: ir72
 ---
 
