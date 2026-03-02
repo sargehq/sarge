@@ -270,8 +270,3 @@ func TestDestroyWork_NoRootIssue(t *testing.T) {
 	// Close should NOT have been called
 	assert.False(t, closeCalled, "should not try to close non-existent root issue")
 }
-
-// boolPtr returns a pointer to the given bool value.
-func boolPtr(b bool) *bool {
-	return &b
-}

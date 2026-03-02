@@ -14,50 +14,12 @@ import (
 	"github.com/sargehq/sarge/internal/project"
 )
 
-// controlPlaneTabName is the tab name used for the control plane session.
-// This must match control.ControlPlaneTabName but is duplicated here to avoid
-// a circular import.
-const controlPlaneTabName = "control"
-
-// tabBelongsToWork returns true if a tab name belongs to the given work ID.
-// Matches orch, task, console, and agent tabs for this work.
-func tabBelongsToWork(tabName, workID string) bool {
-	for _, prefix := range []string{"orch-", "task-", "console-", "agent-"} {
-		if strings.HasPrefix(tabName, prefix+workID) {
-			return true
-		}
-	}
-	return false
-}
-
 // WorkSession represents an active session for a work unit.
 type WorkSession struct {
 	Name        string // Session name/ID
 	TabName     string // Parsed tab name, e.g. "orch-w123"
 	Type        string // Session type: "orch", "console", "agent", "task"
 	DisplayName string // Human-friendly label for the picker
-}
-
-// parseSessionType extracts the session type from a tab name.
-// e.g. "orch-w123-my-feature" → "orch", "task-w123.1" → "task", "control" → "control"
-func parseSessionType(tabName string) string {
-	if tabName == controlPlaneTabName {
-		return "control"
-	}
-	for _, prefix := range []string{"orch-", "task-", "console-", "agent-"} {
-		if strings.HasPrefix(tabName, prefix) {
-			return strings.TrimSuffix(prefix, "-")
-		}
-	}
-	return "unknown"
-}
-
-// sessionDisplayName returns a human-friendly display name for a session.
-func sessionDisplayName(sessionType, tabName string) string {
-	if sessionType == "control" {
-		return "control plane"
-	}
-	return fmt.Sprintf("%s (%s)", sessionType, tabName)
 }
 
 // OrchestratorManager provides operations for managing work orchestrators and related sessions.
@@ -125,16 +87,6 @@ func NewOrchestratorManagerWithDeps(database *db.DB) OrchestratorManager {
 	return &DefaultOrchestratorManager{
 		database: database,
 	}
-}
-
-// tabExists checks if a tab with the given name exists in the session.
-// With the bridge architecture, this checks for bridge sessions.
-func (m *DefaultOrchestratorManager) tabExists(ctx context.Context, sessionName, tabName string) bool {
-	if m.bridge != nil {
-		session := m.bridge.GetSession(tabName)
-		return session != nil && session.State() != bridge.SessionDead
-	}
-	return false
 }
 
 // TerminateWorkTabs terminates all sessions associated with a work unit.

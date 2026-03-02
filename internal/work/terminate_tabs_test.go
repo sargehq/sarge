@@ -40,7 +40,3 @@ func TestTerminateWorkTabs_NoBridge(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, buf.String())
 }
-
-func strPtr(s string) *string {
-	return &s
-}

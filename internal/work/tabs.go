@@ -5,9 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/sargehq/sarge/internal/agents"
 	"github.com/sargehq/sarge/internal/agents/types"
@@ -57,56 +54,6 @@ func (m *DefaultOrchestratorManager) openConsoleBridge(ctx context.Context, work
 	return nil
 }
 
-// shellQuoteEnv quotes the value portion of a KEY=value env string for safe shell use.
-// e.g. "FOO=hello world" becomes "FOO='hello world'"
-// Returns an error if the format is invalid or the key contains invalid characters.
-func shellQuoteEnv(env string) (string, error) {
-	i := strings.IndexByte(env, '=')
-	if i < 0 {
-		return "", fmt.Errorf("invalid env var %q: missing '='", env)
-	}
-	key := env[:i]
-	if key == "" {
-		return "", fmt.Errorf("invalid env var %q: empty key", env)
-	}
-	for _, c := range key {
-		if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') && (c < '0' || c > '9') && c != '_' {
-			return "", fmt.Errorf("invalid env var key %q: contains invalid character %q", key, c)
-		}
-	}
-	val := env[i+1:]
-	// Single-quote the value, escaping any embedded single quotes
-	val = "'" + strings.ReplaceAll(val, "'", "'\\''") + "'"
-	return key + "=" + val, nil
-}
-
-// buildShellCommand builds the shell command and args for a console session.
-func buildShellCommand(hooksEnv []string) (command string, args []string, shellName string, err error) {
-	shell := os.Getenv("SHELL")
-	if shell == "" {
-		shell = "bash"
-	}
-	shellName = filepath.Base(shell)
-
-	if len(hooksEnv) > 0 {
-		var exports []string
-		for _, env := range hooksEnv {
-			quoted, qerr := shellQuoteEnv(env)
-			if qerr != nil {
-				return "", nil, "", qerr
-			}
-			exports = append(exports, "export "+quoted)
-		}
-		shellCmd := fmt.Sprintf("%s && exec %s", strings.Join(exports, " && "), shell)
-		command = shell
-		args = []string{"-c", shellCmd}
-	} else {
-		command = shell
-		args = nil
-	}
-	return
-}
-
 // OpenAgentSession creates an interactive agent session in the work's worktree.
 // When a bridge is configured, spawns a pi RPC session (user interacts via TUI).
 // Returns the bridge session (non-nil only when using bridge mode).
@@ -140,45 +87,6 @@ func (m *DefaultOrchestratorManager) openAgentSessionBridge(ctx context.Context,
 	logging.Debug("openAgentSessionBridge completed", "workID", workID, "sessionID", sessionID)
 	fmt.Fprintf(w, "Created bridge agent session: %s\n", sessionID)
 	return session, nil
-}
-
-// buildAgentCommand builds the pi agent command and args based on config.
-func buildAgentCommand(hooksEnv []string, cfg *project.Config) (command string, args []string, err error) {
-	agentBinary := "pi"
-	var agentArgs []string
-	if cfg != nil {
-		if cfg.Pi.Provider != "" {
-			agentArgs = append(agentArgs, "--provider", cfg.Pi.Provider)
-		}
-		if cfg.Pi.Model != "" {
-			agentArgs = append(agentArgs, "--model", cfg.Pi.Model)
-		}
-		if cfg.Pi.Thinking != "" {
-			agentArgs = append(agentArgs, "--thinking", cfg.Pi.Thinking)
-		}
-	}
-
-	if len(hooksEnv) > 0 {
-		var exports []string
-		for _, env := range hooksEnv {
-			quoted, qerr := shellQuoteEnv(env)
-			if qerr != nil {
-				return "", nil, qerr
-			}
-			exports = append(exports, "export "+quoted)
-		}
-		agentCmd := agentBinary
-		if len(agentArgs) > 0 {
-			agentCmd = agentBinary + " " + strings.Join(agentArgs, " ")
-		}
-		shellCmd := fmt.Sprintf("%s && %s", strings.Join(exports, " && "), agentCmd)
-		command = "bash"
-		args = []string{"-c", shellCmd}
-	} else {
-		command = agentBinary
-		args = agentArgs
-	}
-	return
 }
 
 // SpawnPlanSession creates a plan session for a bean.
