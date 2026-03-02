@@ -1211,12 +1211,11 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			return m, cmd
 		case SessionPanelActionSteer:
-			// Enter steer mode - prompt will be sent as steer
-			if m.activeSessionID != "" {
+			steerMsg := m.sessionPanel.GetPendingSteer()
+			if steerMsg != "" && m.activeSessionID != "" {
 				session := m.bridgeClient.GetSession(m.activeSessionID)
 				if session != nil {
-					// TODO: Get steer message from input
-					if err := session.Steer("Please adjust your approach"); err != nil {
+					if err := session.Steer(steerMsg); err != nil {
 						m.statusMessage = fmt.Sprintf("Failed to steer session: %v", err)
 						m.statusIsError = true
 					}

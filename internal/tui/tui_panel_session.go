@@ -44,6 +44,7 @@ type SessionPanel struct {
 	// Text input for interactive prompts
 	input     textinput.Model
 	inputMode bool // true when user is typing a prompt
+	steerMode bool // true when input is for a steer message
 
 	// Session content
 	lines      []sessionLine // Accumulated output lines
@@ -376,6 +377,28 @@ func (p *SessionPanel) GetPendingPrompt() string {
 	return val
 }
 
+// GetPendingSteer returns the submitted steer text and clears the input.
+// Returns empty string if no steer message was submitted.
+func (p *SessionPanel) GetPendingSteer() string {
+	val := p.input.Value()
+	if val != "" {
+		// Record the steer in the output
+		p.flushCurrentLine()
+		p.lines = append(p.lines, sessionLine{
+			text: p.statusStyle.Render("⟳ steer: " + val),
+		})
+		p.input.Reset()
+		p.inputMode = false
+		p.steerMode = false
+		p.input.Placeholder = "Type a message..."
+		p.input.Blur()
+		p.autoScroll = true
+		p.refreshViewport()
+		p.viewport.GotoBottom()
+	}
+	return val
+}
+
 // GetPendingUIRequest returns and clears any pending extension UI request.
 func (p *SessionPanel) GetPendingUIRequest() *extensionUIRequest {
 	req := p.pendingUIRequest
@@ -422,6 +445,8 @@ func (p *SessionPanel) Update(msg tea.KeyMsg) (tea.Cmd, SessionPanelAction) {
 	case "esc":
 		if p.inputMode {
 			p.inputMode = false
+			p.steerMode = false
+			p.input.Placeholder = "Type a message..."
 			p.input.Blur()
 			return nil, SessionPanelActionNone
 		}
@@ -431,9 +456,13 @@ func (p *SessionPanel) Update(msg tea.KeyMsg) (tea.Cmd, SessionPanelAction) {
 		return nil, SessionPanelActionAbort
 
 	case "ctrl+s":
-		// Switch to steer mode - prompt input for steering message
-		if p.streaming {
-			return nil, SessionPanelActionSteer
+		// Enter steer input mode - user types a steering message
+		if p.streaming && !p.inputMode {
+			p.inputMode = true
+			p.steerMode = true
+			p.input.Placeholder = "Type a steer message..."
+			p.input.Focus()
+			return nil, SessionPanelActionNone
 		}
 		return nil, SessionPanelActionNone
 
@@ -441,6 +470,9 @@ func (p *SessionPanel) Update(msg tea.KeyMsg) (tea.Cmd, SessionPanelAction) {
 		if p.inputMode {
 			val := p.input.Value()
 			if val != "" {
+				if p.steerMode {
+					return nil, SessionPanelActionSteer
+				}
 				return nil, SessionPanelActionPrompt
 			}
 			return nil, SessionPanelActionNone
