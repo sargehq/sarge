@@ -482,9 +482,9 @@ func (p *SessionPanel) Update(msg tea.KeyMsg) (tea.Cmd, SessionPanelAction) {
 		p.viewport.GotoBottom()
 		p.autoScroll = true
 	case "pgdown", "ctrl+d":
-		p.viewport.HalfViewDown()
+		p.viewport.HalfPageDown()
 	case "pgup", "ctrl+u":
-		p.viewport.HalfViewUp()
+		p.viewport.HalfPageUp()
 		p.autoScroll = false
 	}
 
