@@ -173,7 +173,7 @@ func RunRootTUI(ctx context.Context, proj *project.Project, enableMouse bool) er
 			}
 		}
 		if idx > 0 {
-			os.Setenv(e[:idx], os.ExpandEnv(e[idx+1:]))
+			_ = os.Setenv(e[:idx], os.ExpandEnv(e[idx+1:])) //nolint:errcheck // best-effort env setup
 		}
 	}
 	_ = os.Setenv("BEANS_PATH", proj.BeansPath())
@@ -211,7 +211,11 @@ func RunRootTUI(ctx context.Context, proj *project.Project, enableMouse bool) er
 			_ = seqWatcher.Stop()
 			seqWatcher = nil
 		} else {
-			defer seqWatcher.Stop()
+			defer func() {
+				if err := seqWatcher.Stop(); err != nil {
+					logging.Warn("failed to stop sequencer DB watcher", "error", err)
+				}
+			}()
 			// Forward DB change events to sequencer.
 			seqSub := seqWatcher.Broker().Subscribe(bgCtx)
 			go func() {
@@ -232,7 +236,11 @@ func RunRootTUI(ctx context.Context, proj *project.Project, enableMouse bool) er
 		}
 	}
 
-	go sequencer.Run(bgCtx)
+	go func() {
+		if err := sequencer.Run(bgCtx); err != nil {
+			logging.Warn("task sequencer exited with error", "error", err)
+		}
+	}()
 
 	opts := []tea.ProgramOption{tea.WithAltScreen()}
 	if enableMouse {
