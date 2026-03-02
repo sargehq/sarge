@@ -12,30 +12,30 @@ import (
 
 // PlanSession represents a running plan mode agent session for a specific bean.
 type PlanSession struct {
-	BeanID        string
-	ZellijSession string
-	TabName       string
-	PID           int
-	StartedAt     time.Time
+	BeanID      string
+	SessionName string
+	TabName     string
+	PID         int
+	StartedAt   time.Time
 }
 
-// TabNameForBean returns the zellij tab name for a bean's planning session.
+// TabNameForBean returns the tab name for a bean's planning session.
 func TabNameForBean(beanID string) string {
 	return fmt.Sprintf("plan-%s", beanID)
 }
 
 // RegisterPlanSession registers a plan session for a specific bean.
 // It also cleans up any stale sessions (where the process is no longer running).
-func (db *DB) RegisterPlanSession(ctx context.Context, beanID, zellijSession, tabName string, pid int) error {
+func (db *DB) RegisterPlanSession(ctx context.Context, beanID, sessionName, tabName string, pid int) error {
 	// First, clean up stale sessions
 	if err := db.CleanupStalePlanSessions(ctx); err != nil {
 		return err
 	}
 
 	_, err := db.ExecContext(ctx, `
-		INSERT OR REPLACE INTO plan_sessions (bean_id, zellij_session, tab_name, pid, started_at)
+		INSERT OR REPLACE INTO plan_sessions (bean_id, session_name, tab_name, pid, started_at)
 		VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-	`, beanID, zellijSession, tabName, pid)
+	`, beanID, sessionName, tabName, pid)
 	return err
 }
 
@@ -51,13 +51,13 @@ func (db *DB) UnregisterPlanSession(ctx context.Context, beanID string) error {
 // Returns nil if no session is registered.
 func (db *DB) GetPlanSession(ctx context.Context, beanID string) (*PlanSession, error) {
 	row := db.QueryRowContext(ctx, `
-		SELECT bean_id, zellij_session, tab_name, pid, started_at
+		SELECT bean_id, session_name, tab_name, pid, started_at
 		FROM plan_sessions
 		WHERE bean_id = ?
 	`, beanID)
 
 	var ps PlanSession
-	err := row.Scan(&ps.BeanID, &ps.ZellijSession, &ps.TabName, &ps.PID, &ps.StartedAt)
+	err := row.Scan(&ps.BeanID, &ps.SessionName, &ps.TabName, &ps.PID, &ps.StartedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -88,13 +88,13 @@ func (db *DB) IsPlanSessionRunning(ctx context.Context, beanID string) (bool, er
 	return true, nil
 }
 
-// ListPlanSessions returns all plan sessions for a zellij session.
-func (db *DB) ListPlanSessions(ctx context.Context, zellijSession string) ([]*PlanSession, error) {
+// ListPlanSessions returns all plan sessions for a given session name.
+func (db *DB) ListPlanSessions(ctx context.Context, sessionName string) ([]*PlanSession, error) {
 	rows, err := db.QueryContext(ctx, `
-		SELECT bean_id, zellij_session, tab_name, pid, started_at
+		SELECT bean_id, session_name, tab_name, pid, started_at
 		FROM plan_sessions
-		WHERE zellij_session = ?
-	`, zellijSession)
+		WHERE session_name = ?
+	`, sessionName)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func (db *DB) ListPlanSessions(ctx context.Context, zellijSession string) ([]*Pl
 	var sessions []*PlanSession
 	for rows.Next() {
 		var ps PlanSession
-		if err := rows.Scan(&ps.BeanID, &ps.ZellijSession, &ps.TabName, &ps.PID, &ps.StartedAt); err != nil {
+		if err := rows.Scan(&ps.BeanID, &ps.SessionName, &ps.TabName, &ps.PID, &ps.StartedAt); err != nil {
 			return nil, err
 		}
 		sessions = append(sessions, &ps)
@@ -114,8 +114,8 @@ func (db *DB) ListPlanSessions(ctx context.Context, zellijSession string) ([]*Pl
 
 // GetBeansWithActiveSessions returns a map of bean IDs that have active planning sessions.
 // It validates that processes are still alive and cleans up stale sessions.
-func (db *DB) GetBeansWithActiveSessions(ctx context.Context, zellijSession string) (map[string]bool, error) {
-	sessions, err := db.ListPlanSessions(ctx, zellijSession)
+func (db *DB) GetBeansWithActiveSessions(ctx context.Context, sessionName string) (map[string]bool, error) {
+	sessions, err := db.ListPlanSessions(ctx, sessionName)
 	if err != nil {
 		return nil, err
 	}

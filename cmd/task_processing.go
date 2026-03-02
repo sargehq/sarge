@@ -268,7 +268,7 @@ func processTask(proj *project.Project, taskID string, agent agents.Agent) error
 	switch work.Status {
 	case db.StatusPending:
 		// First time starting - use StartWork
-		if err := proj.DB.StartWork(ctx, work.ID, "", ""); err != nil {
+		if err := proj.DB.StartWork(ctx, work.ID); err != nil {
 			fmt.Printf("Warning: failed to start work: %v\n", err)
 		}
 	case db.StatusIdle, db.StatusCompleted:

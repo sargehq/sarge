@@ -197,7 +197,7 @@ func TestTaskExecution_WorkStatusTransitions(t *testing.T) {
 	assert.Equal(t, db.StatusPending, workRecord.Status)
 
 	// Start work (transition to processing)
-	err := h.DB.StartWork(ctx, "w-test", "session-1", "tab-1")
+	err := h.DB.StartWork(ctx, "w-test")
 	require.NoError(t, err)
 
 	work, err := h.DB.GetWork(ctx, "w-test")
@@ -257,7 +257,7 @@ func TestTaskExecution_WorkFailureAndRestart(t *testing.T) {
 	h.AddBeanToWork("w-test", "bean-1")
 
 	// Start work
-	err := h.DB.StartWork(ctx, "w-test", "session-1", "tab-1")
+	err := h.DB.StartWork(ctx, "w-test")
 	require.NoError(t, err)
 
 	// Create and fail a task
@@ -398,7 +398,7 @@ func TestTaskExecution_WorkMergedTransition(t *testing.T) {
 	h.CreateWork("w-test", "feat/test-branch")
 
 	// Start work
-	err := h.DB.StartWork(ctx, "w-test", "session-1", "tab-1")
+	err := h.DB.StartWork(ctx, "w-test")
 	require.NoError(t, err)
 
 	// Mark work as idle with PR URL
@@ -441,7 +441,7 @@ func TestTaskExecution_MultiTaskSequentialExecution(t *testing.T) {
 	h.CreateTask("w-test.3", "w-test", []string{"bean-3"})
 
 	// Start work
-	err := h.DB.StartWork(ctx, "w-test", "session-1", "tab-1")
+	err := h.DB.StartWork(ctx, "w-test")
 	require.NoError(t, err)
 
 	// Execute tasks sequentially
