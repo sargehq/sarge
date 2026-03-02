@@ -1203,7 +1203,10 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if m.activeSessionID != "" {
 				session := m.bridgeClient.GetSession(m.activeSessionID)
 				if session != nil {
-					_ = session.Abort()
+					if err := session.Abort(); err != nil {
+						m.statusMessage = fmt.Sprintf("Failed to abort session: %v", err)
+						m.statusIsError = true
+					}
 				}
 			}
 			return m, cmd
@@ -1213,7 +1216,10 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				session := m.bridgeClient.GetSession(m.activeSessionID)
 				if session != nil {
 					// TODO: Get steer message from input
-					_ = session.Steer("Please adjust your approach")
+					if err := session.Steer("Please adjust your approach"); err != nil {
+						m.statusMessage = fmt.Sprintf("Failed to steer session: %v", err)
+						m.statusIsError = true
+					}
 				}
 			}
 			return m, cmd
@@ -1222,7 +1228,10 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if prompt != "" && m.activeSessionID != "" {
 				session := m.bridgeClient.GetSession(m.activeSessionID)
 				if session != nil {
-					_ = session.Prompt(prompt)
+					if err := session.Prompt(prompt); err != nil {
+						m.statusMessage = fmt.Sprintf("Failed to send prompt: %v", err)
+						m.statusIsError = true
+					}
 				}
 			}
 			return m, cmd
