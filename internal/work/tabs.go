@@ -30,7 +30,7 @@ func (m *DefaultOrchestratorManager) OpenConsole(ctx context.Context, workID str
 }
 
 // openConsoleBridge opens a console via the bridge.
-func (m *DefaultOrchestratorManager) openConsoleBridge(ctx context.Context, workID string, workDir string, hooksEnv []string, w io.Writer) error {
+func (m *DefaultOrchestratorManager) openConsoleBridge(_ context.Context, workID string, workDir string, hooksEnv []string, w io.Writer) error {
 	sessionID := fmt.Sprintf("console-%s", workID)
 
 	// Check if session already exists and is alive
@@ -65,7 +65,7 @@ func (m *DefaultOrchestratorManager) OpenAgentSession(ctx context.Context, workI
 }
 
 // openAgentSessionBridge creates a bridge session for interactive agent use.
-func (m *DefaultOrchestratorManager) openAgentSessionBridge(ctx context.Context, workID string, workDir string, hooksEnv []string, cfg *project.Config, w io.Writer) (*bridge.Session, error) {
+func (m *DefaultOrchestratorManager) openAgentSessionBridge(_ context.Context, workID string, workDir string, hooksEnv []string, cfg *project.Config, w io.Writer) (*bridge.Session, error) {
 	sessionID := fmt.Sprintf("agent-%s", workID)
 
 	// Check if session already exists and is alive
@@ -100,7 +100,7 @@ func (m *DefaultOrchestratorManager) SpawnPlanSession(ctx context.Context, beanI
 }
 
 // spawnPlanSessionBridge creates a bridge session and sends the plan prompt.
-func (m *DefaultOrchestratorManager) spawnPlanSessionBridge(ctx context.Context, beanID string, mainRepoPath string, w io.Writer) (*bridge.Session, error) {
+func (m *DefaultOrchestratorManager) spawnPlanSessionBridge(_ context.Context, beanID string, mainRepoPath string, w io.Writer) (*bridge.Session, error) {
 	sessionID := PlanTabName(beanID)
 
 	// Kill existing session if present

@@ -49,9 +49,9 @@ func newTestSequencer(t *testing.T) (*Sequencer, *project.Project) {
 }
 
 // createTestWork creates a work record for testing.
-func createTestWork(ctx context.Context, t *testing.T, database *db.DB, id, branch string, auto bool) {
+func createTestWork(ctx context.Context, t *testing.T, database *db.DB, id, branch string) {
 	t.Helper()
-	err := database.CreateWork(ctx, id, id, "/tmp/"+id, branch, "main", "root-1", auto)
+	err := database.CreateWork(ctx, id, id, "/tmp/"+id, branch, "main", "root-1", false)
 	require.NoError(t, err)
 }
 
@@ -108,7 +108,7 @@ func TestPoll_SkipsCompletedWorks(t *testing.T) {
 	s, proj := newTestSequencer(t)
 
 	// Create a completed work
-	createTestWork(ctx, t, proj.DB, "w-done", "branch-done", false)
+	createTestWork(ctx, t, proj.DB, "w-done", "branch-done")
 	err := proj.DB.CompleteWork(ctx, "w-done", "")
 	require.NoError(t, err)
 
@@ -126,7 +126,7 @@ func TestPoll_SkipsWorksWithActiveTasks(t *testing.T) {
 	ctx := context.Background()
 	s, proj := newTestSequencer(t)
 
-	createTestWork(ctx, t, proj.DB, "w-active", "branch-active", false)
+	createTestWork(ctx, t, proj.DB, "w-active", "branch-active")
 
 	// Simulate an active task already running
 	s.mu.Lock()
@@ -145,7 +145,7 @@ func TestPoll_NoReadyTasks_ChecksWorkStatus(t *testing.T) {
 	ctx := context.Background()
 	s, proj := newTestSequencer(t)
 
-	createTestWork(ctx, t, proj.DB, "w-nort", "branch-nort", false)
+	createTestWork(ctx, t, proj.DB, "w-nort", "branch-nort")
 
 	// Create and complete a task so checkWorkStatus has something to transition
 	err := proj.DB.CreateTask(ctx, "w-nort.1", "implement", []string{"b1"}, 10, "w-nort", 1)
@@ -169,7 +169,7 @@ func TestCheckWorkStatus_AllCompleted_TransitionsToIdle(t *testing.T) {
 	ctx := context.Background()
 	s, proj := newTestSequencer(t)
 
-	createTestWork(ctx, t, proj.DB, "w-idle", "branch-idle", false)
+	createTestWork(ctx, t, proj.DB, "w-idle", "branch-idle")
 
 	// Create and complete two tasks
 	for i, id := range []string{"w-idle.1", "w-idle.2"} {
@@ -195,7 +195,7 @@ func TestCheckWorkStatus_WithFailures_TransitionsToFailed(t *testing.T) {
 	ctx := context.Background()
 	s, proj := newTestSequencer(t)
 
-	createTestWork(ctx, t, proj.DB, "w-fail", "branch-fail", false)
+	createTestWork(ctx, t, proj.DB, "w-fail", "branch-fail")
 
 	// One completed, one failed
 	err := proj.DB.CreateTask(ctx, "w-fail.1", "implement", []string{"b1"}, 10, "w-fail", 1)
@@ -226,7 +226,7 @@ func TestCheckWorkStatus_WithPendingTasks_NoTransition(t *testing.T) {
 	ctx := context.Background()
 	s, proj := newTestSequencer(t)
 
-	createTestWork(ctx, t, proj.DB, "w-pend", "branch-pend", false)
+	createTestWork(ctx, t, proj.DB, "w-pend", "branch-pend")
 
 	err := proj.DB.CreateTask(ctx, "w-pend.1", "implement", []string{"b1"}, 10, "w-pend", 1)
 	require.NoError(t, err)
@@ -246,7 +246,7 @@ func TestCheckWorkStatus_WithProcessingTasks_NoTransition(t *testing.T) {
 	ctx := context.Background()
 	s, proj := newTestSequencer(t)
 
-	createTestWork(ctx, t, proj.DB, "w-proc", "branch-proc", false)
+	createTestWork(ctx, t, proj.DB, "w-proc", "branch-proc")
 
 	err := proj.DB.CreateTask(ctx, "w-proc.1", "implement", []string{"b1"}, 10, "w-proc", 1)
 	require.NoError(t, err)
@@ -268,7 +268,7 @@ func TestCheckWorkStatus_PRURLFromPRTask(t *testing.T) {
 	ctx := context.Background()
 	s, proj := newTestSequencer(t)
 
-	createTestWork(ctx, t, proj.DB, "w-pr", "branch-pr", false)
+	createTestWork(ctx, t, proj.DB, "w-pr", "branch-pr")
 
 	err := proj.DB.CreateTask(ctx, "w-pr.1", "pr", nil, 0, "w-pr", 1)
 	require.NoError(t, err)
@@ -292,7 +292,7 @@ func TestCheckWorkStatus_NoTasks_NoTransition(t *testing.T) {
 	ctx := context.Background()
 	s, proj := newTestSequencer(t)
 
-	createTestWork(ctx, t, proj.DB, "w-empty", "branch-empty", false)
+	createTestWork(ctx, t, proj.DB, "w-empty", "branch-empty")
 
 	w, err := proj.DB.GetWork(ctx, "w-empty")
 	require.NoError(t, err)
@@ -391,7 +391,7 @@ func TestBuildTaskInput_ImplementTask(t *testing.T) {
 	ctx := context.Background()
 	s, proj := newTestSequencer(t)
 
-	createTestWork(ctx, t, proj.DB, "w-impl", "feat/impl", false)
+	createTestWork(ctx, t, proj.DB, "w-impl", "feat/impl")
 
 	err := proj.DB.CreateTask(ctx, "w-impl.1", "implement", []string{"bean-1", "bean-2"}, 10, "w-impl", 1)
 	require.NoError(t, err)
@@ -416,7 +416,7 @@ func TestBuildTaskInput_EstimateTask(t *testing.T) {
 	ctx := context.Background()
 	s, proj := newTestSequencer(t)
 
-	createTestWork(ctx, t, proj.DB, "w-est", "feat/est", false)
+	createTestWork(ctx, t, proj.DB, "w-est", "feat/est")
 
 	err := proj.DB.CreateTask(ctx, "w-est.1", "estimate", []string{"bean-a"}, 0, "w-est", 1)
 	require.NoError(t, err)
@@ -437,7 +437,7 @@ func TestBuildTaskInput_ReviewTask(t *testing.T) {
 	ctx := context.Background()
 	s, proj := newTestSequencer(t)
 
-	createTestWork(ctx, t, proj.DB, "w-rev", "feat/rev", false)
+	createTestWork(ctx, t, proj.DB, "w-rev", "feat/rev")
 
 	err := proj.DB.CreateTask(ctx, "w-rev.1", "review", nil, 0, "w-rev", 1)
 	require.NoError(t, err)
@@ -458,7 +458,7 @@ func TestBuildTaskInput_PRTask(t *testing.T) {
 	ctx := context.Background()
 	s, proj := newTestSequencer(t)
 
-	createTestWork(ctx, t, proj.DB, "w-prt", "feat/prt", false)
+	createTestWork(ctx, t, proj.DB, "w-prt", "feat/prt")
 
 	err := proj.DB.CreateTask(ctx, "w-prt.1", "pr", nil, 0, "w-prt", 1)
 	require.NoError(t, err)
@@ -478,7 +478,7 @@ func TestBuildTaskInput_UpdatePRDescription_NoPRURL(t *testing.T) {
 	ctx := context.Background()
 	s, proj := newTestSequencer(t)
 
-	createTestWork(ctx, t, proj.DB, "w-upd", "feat/upd", false)
+	createTestWork(ctx, t, proj.DB, "w-upd", "feat/upd")
 
 	err := proj.DB.CreateTask(ctx, "w-upd.1", "update-pr-description", nil, 0, "w-upd", 1)
 	require.NoError(t, err)
@@ -498,7 +498,7 @@ func TestBuildTaskInput_UnknownType(t *testing.T) {
 	ctx := context.Background()
 	s, proj := newTestSequencer(t)
 
-	createTestWork(ctx, t, proj.DB, "w-unk", "feat/unk", false)
+	createTestWork(ctx, t, proj.DB, "w-unk", "feat/unk")
 
 	err := proj.DB.CreateTask(ctx, "w-unk.1", "nonexistent_type", nil, 0, "w-unk", 1)
 	require.NoError(t, err)
@@ -565,7 +565,7 @@ func TestBuildTaskInput_LogAnalysis_MissingLogContent(t *testing.T) {
 	ctx := context.Background()
 	s, proj := newTestSequencer(t)
 
-	createTestWork(ctx, t, proj.DB, "w-la", "feat/la", false)
+	createTestWork(ctx, t, proj.DB, "w-la", "feat/la")
 
 	err := proj.DB.CreateTask(ctx, "w-la.1", "log_analysis", nil, 0, "w-la", 1)
 	require.NoError(t, err)
@@ -585,7 +585,7 @@ func TestBuildTaskInput_LogAnalysis_WithMetadata(t *testing.T) {
 	ctx := context.Background()
 	s, proj := newTestSequencer(t)
 
-	createTestWork(ctx, t, proj.DB, "w-la2", "feat/la2", false)
+	createTestWork(ctx, t, proj.DB, "w-la2", "feat/la2")
 
 	err := proj.DB.CreateTask(ctx, "w-la2.1", "log_analysis", nil, 0, "w-la2", 1)
 	require.NoError(t, err)
@@ -627,7 +627,7 @@ func TestBuildTaskInput_LogAnalysis_UsesMetadataBranch(t *testing.T) {
 	ctx := context.Background()
 	s, proj := newTestSequencer(t)
 
-	createTestWork(ctx, t, proj.DB, "w-la3", "feat/la3", false)
+	createTestWork(ctx, t, proj.DB, "w-la3", "feat/la3")
 
 	err := proj.DB.CreateTask(ctx, "w-la3.1", "log_analysis", nil, 0, "w-la3", 1)
 	require.NoError(t, err)
@@ -658,7 +658,7 @@ func TestBuildTaskInput_LogAnalysis_FallsBackToWorkFields(t *testing.T) {
 	ctx := context.Background()
 	s, proj := newTestSequencer(t)
 
-	createTestWork(ctx, t, proj.DB, "w-la4", "feat/la4", false)
+	createTestWork(ctx, t, proj.DB, "w-la4", "feat/la4")
 
 	err := proj.DB.CreateTask(ctx, "w-la4.1", "log_analysis", nil, 0, "w-la4", 1)
 	require.NoError(t, err)
@@ -688,7 +688,7 @@ func TestCreatePRTask(t *testing.T) {
 	ctx := context.Background()
 	s, proj := newTestSequencer(t)
 
-	createTestWork(ctx, t, proj.DB, "w-cpr", "feat/cpr", false)
+	createTestWork(ctx, t, proj.DB, "w-cpr", "feat/cpr")
 
 	// Use GetNextTaskNumber to keep the counter in sync
 	num, err := proj.DB.GetNextTaskNumber(ctx, "w-cpr")
@@ -724,7 +724,7 @@ func TestCreatePRTask_AlreadyExistsPending_Noop(t *testing.T) {
 	ctx := context.Background()
 	s, proj := newTestSequencer(t)
 
-	createTestWork(ctx, t, proj.DB, "w-cpr2", "feat/cpr2", false)
+	createTestWork(ctx, t, proj.DB, "w-cpr2", "feat/cpr2")
 
 	num1, err := proj.DB.GetNextTaskNumber(ctx, "w-cpr2")
 	require.NoError(t, err)
@@ -760,7 +760,7 @@ func TestCreatePRTask_CompletedPR_CreatesUpdateTask(t *testing.T) {
 	ctx := context.Background()
 	s, proj := newTestSequencer(t)
 
-	createTestWork(ctx, t, proj.DB, "w-cpr3", "feat/cpr3", false)
+	createTestWork(ctx, t, proj.DB, "w-cpr3", "feat/cpr3")
 
 	num1, err := proj.DB.GetNextTaskNumber(ctx, "w-cpr3")
 	require.NoError(t, err)
@@ -835,7 +835,7 @@ func TestResetAllStuckTasks_NoStuckTasks(t *testing.T) {
 	ctx := context.Background()
 	s, proj := newTestSequencer(t)
 
-	createTestWork(ctx, t, proj.DB, "w-nostuck", "feat/nostuck", false)
+	createTestWork(ctx, t, proj.DB, "w-nostuck", "feat/nostuck")
 
 	// Create a pending task (not stuck)
 	err := proj.DB.CreateTask(ctx, "w-nostuck.1", "implement", []string{"b1"}, 10, "w-nostuck", 1)
@@ -851,7 +851,7 @@ func TestBeanIDsForTask(t *testing.T) {
 	ctx := context.Background()
 	s, proj := newTestSequencer(t)
 
-	createTestWork(ctx, t, proj.DB, "w-beans", "feat/beans", false)
+	createTestWork(ctx, t, proj.DB, "w-beans", "feat/beans")
 
 	err := proj.DB.CreateTask(ctx, "w-beans.1", "implement", []string{"bean-x", "bean-y", "bean-z"}, 10, "w-beans", 1)
 	require.NoError(t, err)
@@ -865,7 +865,7 @@ func TestBeanIDsForTask_NoBeans(t *testing.T) {
 	ctx := context.Background()
 	s, proj := newTestSequencer(t)
 
-	createTestWork(ctx, t, proj.DB, "w-nb", "feat/nb", false)
+	createTestWork(ctx, t, proj.DB, "w-nb", "feat/nb")
 
 	err := proj.DB.CreateTask(ctx, "w-nb.1", "review", nil, 0, "w-nb", 1)
 	require.NoError(t, err)
@@ -881,7 +881,7 @@ func TestPoll_TransitionsIdleWhenAllTasksComplete(t *testing.T) {
 	ctx := context.Background()
 	s, proj := newTestSequencer(t)
 
-	createTestWork(ctx, t, proj.DB, "w-poll-idle", "feat/poll-idle", false)
+	createTestWork(ctx, t, proj.DB, "w-poll-idle", "feat/poll-idle")
 
 	// Create two tasks, complete both with dependencies satisfied
 	err := proj.DB.CreateTask(ctx, "w-poll-idle.1", "implement", []string{"b1"}, 10, "w-poll-idle", 1)
@@ -912,7 +912,7 @@ func TestPoll_TransitionsFailedWhenTasksFail(t *testing.T) {
 	ctx := context.Background()
 	s, proj := newTestSequencer(t)
 
-	createTestWork(ctx, t, proj.DB, "w-poll-fail", "feat/poll-fail", false)
+	createTestWork(ctx, t, proj.DB, "w-poll-fail", "feat/poll-fail")
 
 	err := proj.DB.CreateTask(ctx, "w-poll-fail.1", "implement", []string{"b1"}, 10, "w-poll-fail", 1)
 	require.NoError(t, err)

@@ -14,12 +14,11 @@ import (
 
 // writeMockPi creates a shell script that acts as a mock pi RPC process.
 // It reads JSON commands from stdin and writes JSON events to stdout.
-func writeMockPi(t *testing.T, dir string, script string) string {
+func writeMockPi(t *testing.T, dir string, script string) {
 	t.Helper()
 	path := filepath.Join(dir, "pi")
 	err := os.WriteFile(path, []byte("#!/bin/sh\n"+script), 0755)
 	require.NoError(t, err)
-	return path
 }
 
 // TestSessionStates verifies the session state transitions.
@@ -61,7 +60,7 @@ while IFS= read -r line; do
 	esac
 done
 `
-	mockPath := writeMockPi(t, dir, mockScript)
+	writeMockPi(t, dir, mockScript)
 
 	// Override PATH so "pi" resolves to our mock.
 	origPath := os.Getenv("PATH")
@@ -106,7 +105,6 @@ done
 	err = b.KillSession("nonexistent")
 	assert.Error(t, err)
 
-	_ = mockPath // used via PATH
 }
 
 // TestSessionPromptAndEvents verifies sending a prompt and receiving events.

@@ -346,7 +346,7 @@ func (s *Sequencer) executeTask(ctx context.Context, w *db.Work, t *db.Task) {
 }
 
 // waitForCompletion blocks until the bridge session ends or context is cancelled.
-func (s *Sequencer) waitForCompletion(ctx context.Context, session *bridge.Session, taskID string) error {
+func (s *Sequencer) waitForCompletion(ctx context.Context, session *bridge.Session, _ string) error {
 	for {
 		select {
 		case <-ctx.Done():
