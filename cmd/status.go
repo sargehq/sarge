@@ -15,8 +15,8 @@ var statusCmd = &cobra.Command{
 	Short: "Show bean tracking status",
 	Long: `Show tracking status for beans.
 
-With a bean ID: Show detailed status including zellij session/pane info.
-Without ID: Show all beans currently processing with their session/pane.`,
+With a bean ID: Show detailed status including session info.
+Without ID: Show all beans currently processing with their session info.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runStatus,
 }
@@ -73,12 +73,7 @@ func printBeanDetails(bean *db.TrackedBean) {
 	fmt.Printf("Title:   %s\n", bean.Title)
 	fmt.Printf("Status:  %s\n", bean.Status)
 
-	if bean.ZellijSession != "" {
-		fmt.Printf("Session: %s\n", bean.ZellijSession)
-	}
-	if bean.ZellijPane != "" {
-		fmt.Printf("Pane:    %s\n", bean.ZellijPane)
-	}
+
 	if bean.WorktreePath != "" {
 		fmt.Printf("Worktree: %s\n", bean.WorktreePath)
 	}

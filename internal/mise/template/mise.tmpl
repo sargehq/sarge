@@ -10,7 +10,6 @@
 # Used for tracking issues, dependencies, and persistent memory
 # Pinned to ensure schema compatibility with sarge's database queries
 "go:github.com/hmans/beans" = "0.4.0"
-{{- if eq .AgentType "pi"}}
 
 # Pi - AI coding agent
 # Used to run AI-powered coding sessions
@@ -18,16 +17,6 @@
 "npm:@mariozechner/pi-coding-agent" = "latest"
 {{- else}}
 # "npm:@mariozechner/pi-coding-agent" = "latest"
-{{- end}}
-{{- else if eq .AgentType "claude"}}
-
-# Claude Code - Anthropic's CLI for Claude
-# Used to run AI-powered coding sessions
-{{- if .AgentActive}}
-claude = "latest"
-{{- else}}
-# claude = "latest"
-{{- end}}
 {{- end}}
 
 {{- if .GHActive}}
@@ -40,15 +29,7 @@ gh = "latest"
 # gh = "latest"
 {{- end}}
 
-{{- if .ZellijActive}}
-# Zellij - Terminal multiplexer
-# Used for session management and parallel task execution
-zellij = "latest"
-{{- else}}
-# Zellij - Terminal multiplexer
-# Used for session management and parallel task execution
-# zellij = "latest"
-{{- end}}
+
 
 # =============================================================================
 # Tasks (Optional)

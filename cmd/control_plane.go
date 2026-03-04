@@ -14,17 +14,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// ControlPlaneTabName is the name of the control plane tab in zellij
+// ControlPlaneTabName is the name of the control plane session
 const ControlPlaneTabName = control.ControlPlaneTabName
 
 var controlCmd = &cobra.Command{
 	Use:   "control",
-	Short: "[Agent] Run the control plane for background task execution",
-	Long: `[Agent Command - Spawned automatically by the system, not for direct user invocation]
-
-The control plane runs as a long-lived process that watches for scheduled tasks
-across all works and executes them with retry support. It runs in a dedicated
-zellij tab named "control" and is spawned automatically.`,
+	Short: "[Deprecated] Run the control plane as a standalone process",
+	Long: `[Deprecated] The control plane now runs as an in-process goroutine inside the TUI.
+This command is kept as a debug fallback for running it as a separate process.`,
 	Hidden: true,
 	RunE:   runControlPlane,
 }

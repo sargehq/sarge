@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/sargehq/sarge/internal/project"
-	"github.com/sargehq/sarge/internal/control"
 	"github.com/sargehq/sarge/internal/work"
 	"github.com/sargehq/sarge/internal/worktree"
 	"github.com/spf13/cobra"
@@ -131,18 +130,14 @@ func runTasks(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to run automated workflow: %w", err)
 		}
 		fmt.Println("\nAutomated workflow started.")
-		if result.OrchestratorSpawned {
-			fmt.Println("Orchestrator spawned in zellij tab.")
+		if result.EstimateTaskCreated {
+			fmt.Println("Estimate task created. Tasks will be executed by the in-process sequencer.")
 		}
-		// Ensure control plane is running (handles scheduled tasks like PR feedback polling)
-		if _, err := control.EnsureControlPlane(ctx, proj); err != nil {
-			fmt.Printf("Warning: failed to ensure control plane: %v\n", err)
-		}
-		fmt.Println("Switch to the zellij session to monitor progress.")
+		fmt.Println("Run 'sarge' to open the TUI and monitor progress.")
 		return nil
 	}
 
-	// Run work (creates tasks and ensures orchestrator is running)
+	// Run work (creates tasks from unassigned beans)
 	result, err := svc.RunWorkWithOptions(ctx, workID, work.RunWorkOptions{UsePlan: flagRunPlan, ForceEstimate: flagForceEstimate}, os.Stdout)
 	if err != nil {
 		return fmt.Errorf("failed to run work: %w", err)
@@ -152,17 +147,7 @@ func runTasks(cmd *cobra.Command, args []string) error {
 		fmt.Printf("\nCreated %d task(s) from work beans.\n", result.TasksCreated)
 	}
 
-	if result.OrchestratorSpawned {
-		fmt.Println("\nOrchestrator spawned in zellij tab.")
-	} else {
-		fmt.Println("\nOrchestrator is already running.")
-	}
-
-	// Ensure control plane is running (handles scheduled tasks like PR feedback polling)
-	if _, err := control.EnsureControlPlane(ctx, proj); err != nil {
-		fmt.Printf("Warning: failed to ensure control plane: %v\n", err)
-	}
-
-	fmt.Println("Switch to the zellij session to monitor progress.")
+	fmt.Println("\nTasks will be executed by the in-process sequencer when the TUI is running.")
+	fmt.Println("Run 'sarge' to open the TUI and start task execution.")
 	return nil
 }

@@ -7,8 +7,6 @@ CREATE TABLE works (
     id TEXT PRIMARY KEY,
     status TEXT NOT NULL DEFAULT 'pending',
     name TEXT NOT NULL DEFAULT '',
-    zellij_session TEXT NOT NULL DEFAULT '',
-    zellij_tab TEXT NOT NULL DEFAULT '',
     worktree_path TEXT NOT NULL DEFAULT '',
     branch_name TEXT NOT NULL DEFAULT '',
     base_branch TEXT NOT NULL DEFAULT 'main',
@@ -38,8 +36,6 @@ CREATE TABLE beans (
     title TEXT NOT NULL DEFAULT '',
     pr_url TEXT NOT NULL DEFAULT '',
     error_message TEXT NOT NULL DEFAULT '',
-    zellij_session TEXT NOT NULL DEFAULT '',
-    zellij_pane TEXT NOT NULL DEFAULT '',
     worktree_path TEXT NOT NULL DEFAULT '',
     started_at DATETIME,
     completed_at DATETIME,
@@ -165,13 +161,13 @@ CREATE TABLE schema_migrations (
 -- Plan sessions table: tracks running plan mode Claude sessions per bean
 CREATE TABLE plan_sessions (
     bean_id TEXT PRIMARY KEY,
-    zellij_session TEXT NOT NULL,
+    session_name TEXT NOT NULL,
     tab_name TEXT NOT NULL,
     pid INTEGER NOT NULL,
     started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_plan_sessions_zellij_session ON plan_sessions(zellij_session);
+CREATE INDEX idx_plan_sessions_session_name ON plan_sessions(session_name);
 
 -- PR Feedback table: tracks feedback from PRs (comments, CI failures, etc.)
 CREATE TABLE pr_feedback (

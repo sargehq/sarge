@@ -71,11 +71,11 @@ This is a destructive operation that cannot be undone.`,
 
 var workPRCmd = &cobra.Command{
 	Use:   "pr [<id>]",
-	Short: "Create a PR task for Claude to generate pull request",
-	Long: `Create a special task for Claude to review the work and create a pull request.
+	Short: "Create a PR task for the agent to generate pull request",
+	Long: `Create a special task for the agent to review the work and create a pull request.
 If no ID is provided, uses the work for the current directory context.
 
-Claude will analyze all completed tasks and beans to generate a comprehensive PR description.`,
+The agent will analyze all completed tasks and beans to generate a comprehensive PR description.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runWorkPR,
 }
@@ -83,10 +83,10 @@ Claude will analyze all completed tasks and beans to generate a comprehensive PR
 var workReviewCmd = &cobra.Command{
 	Use:   "review [<id>]",
 	Short: "Create a review task to examine code changes",
-	Long: `Create a task for Claude to review code changes in a work unit.
+	Long: `Create a task for the agent to review code changes in a work unit.
 If no ID is provided, uses the work for the current directory context.
 
-Claude will examine the work's branch/PR for quality, security issues,
+The agent will examine the work's branch/PR for quality, security issues,
 and adherence to project standards.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runWorkReview,
@@ -118,25 +118,25 @@ Beans that are already assigned to a pending or processing task cannot be remove
 var workConsoleCmd = &cobra.Command{
 	Use:   "console [<id>]",
 	Short: "Open a console tab in the work's worktree",
-	Long: `Open a zellij tab with a shell in the work's worktree.
+	Long: `Open a shell session in the work's worktree.
 If no ID is provided, uses the work for the current directory context.
 
 This is useful for running tests, exploring the codebase, or debugging
-while the orchestrator runs in a separate tab.`,
+while the orchestrator runs separately.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runWorkConsole,
 }
 
-var workClaudeCmd = &cobra.Command{
-	Use:   "claude [<id>]",
-	Short: "Open a Claude Code session in the work's worktree",
-	Long: `Open a zellij tab with an interactive Claude Code session in the work's worktree.
+var workAgentCmd = &cobra.Command{
+	Use:   "agent [<id>]",
+	Short: "Open an agent session in the work's worktree",
+	Long: `Open an interactive agent session in the work's worktree.
 If no ID is provided, uses the work for the current directory context.
 
 This is useful for manual exploration, debugging, or ad-hoc changes
-while the orchestrator runs in a separate tab.`,
+while the orchestrator runs separately.`,
 	Args: cobra.MaximumNArgs(1),
-	RunE: runWorkClaude,
+	RunE: runWorkAgent,
 }
 
 var workRestartCmd = &cobra.Command{
@@ -189,7 +189,7 @@ func init() {
 	workCmd.AddCommand(workAddCmd)
 	workCmd.AddCommand(workRemoveCmd)
 	workCmd.AddCommand(workConsoleCmd)
-	workCmd.AddCommand(workClaudeCmd)
+	workCmd.AddCommand(workAgentCmd)
 	workCmd.AddCommand(workFeedbackCmd)
 	workCmd.AddCommand(workRestartCmd)
 	workCmd.AddCommand(workCompleteCmd)
@@ -303,7 +303,7 @@ func runWorkCreate(cmd *cobra.Command, args []string) error {
 		fmt.Printf("  - %s: %s\n", issue.ID, issue.Title)
 	}
 
-	// Ensure zellij session and control plane are running
+	// Ensure control plane is running
 	sessionResult, err := control.EnsureControlPlane(ctx, proj)
 	if err != nil {
 		fmt.Printf("Warning: failed to ensure control plane: %v\n", err)
@@ -316,7 +316,7 @@ func runWorkCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("\nThe control plane will create the worktree and start the orchestrator.\n")
-	fmt.Printf("Switch to the zellij session to monitor progress.\n")
+	fmt.Printf("Use 'sarge' TUI to monitor progress.\n")
 
 	return nil
 }
@@ -587,12 +587,7 @@ func runWorkShow(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Error: %s\n", work.ErrorMessage)
 	}
 
-	if work.ZellijSession != "" {
-		fmt.Printf("Zellij Session: %s\n", work.ZellijSession)
-		if work.ZellijTab != "" {
-			fmt.Printf("Zellij Tab: %s\n", work.ZellijTab)
-		}
-	}
+
 
 	fmt.Printf("Created: %s\n", work.CreatedAt.Format("2006-01-02 15:04:05"))
 
@@ -1028,7 +1023,7 @@ func runWorkConsole(cmd *cobra.Command, args []string) error {
 	return orchestratorMgr.OpenConsole(ctx, workID, proj.Config.Project.Name, work.WorktreePath, work.Name, proj.Config.Hooks.Env, os.Stdout)
 }
 
-func runWorkClaude(cmd *cobra.Command, args []string) error {
+func runWorkAgent(cmd *cobra.Command, args []string) error {
 	ctx := GetContext()
 
 	proj, err := project.Find(ctx, "")
@@ -1062,9 +1057,10 @@ func runWorkClaude(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to ensure control plane: %w", err)
 	}
 
-	// Open agent session in the work's worktree
+	// Open agent session in the work's worktree (CLI mode)
 	orchestratorMgr := workpkg.NewOrchestratorManager(proj.DB, proj.Config)
-	return orchestratorMgr.OpenAgentSession(ctx, workID, proj.Config.Project.Name, work.WorktreePath, work.Name, proj.Config.Hooks.Env, proj.Config, os.Stdout)
+	_, err = orchestratorMgr.OpenAgentSession(ctx, workID, proj.Config.Project.Name, work.WorktreePath, work.Name, proj.Config.Hooks.Env, proj.Config, os.Stdout)
+	return err
 }
 
 func runWorkRestart(cmd *cobra.Command, args []string) error {
@@ -1106,14 +1102,13 @@ func runWorkRestart(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// printSessionCreatedNotification displays a prominent notification when a new zellij session is created.
+// printSessionCreatedNotification displays a prominent notification when a new session is created.
 func printSessionCreatedNotification(sessionName string) {
 	fmt.Println()
 	fmt.Println(strings.Repeat("=", 50))
-	fmt.Printf("  Zellij session created: %s\n", sessionName)
+	fmt.Printf("  Session created: %s\n", sessionName)
 	fmt.Println()
-	fmt.Println("  To attach to the session, run:")
-	fmt.Printf("    zellij attach %s\n", sessionName)
+	fmt.Println("  Use 'sarge' TUI to monitor and interact.")
 	fmt.Println(strings.Repeat("=", 50))
 	fmt.Println()
 }

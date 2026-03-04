@@ -21,12 +21,12 @@ var (
 var completeCmd = &cobra.Command{
 	Use:   "complete <bean-id|task-id>",
 	Short: "[Agent] Mark a bean or task as completed (or failed with --error)",
-	Long: `[Agent Command - Called by Claude Code, not for direct user invocation]
+	Long: `[Agent Command - Called by the coding agent, not for direct user invocation]
 
 Mark a bean or task as completed in the tracking database.
 With --error flag, marks the task as failed instead.
 
-This command is called by Claude Code during task execution to report completion status.`,
+This command is called by the coding agent during task execution to report completion status.`,
 	Args: cobra.ExactArgs(1),
 	RunE: runComplete,
 }

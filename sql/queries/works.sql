@@ -5,8 +5,6 @@ VALUES (?, 'pending', ?, ?, ?, ?, ?, ?);
 -- name: StartWork :execrows
 UPDATE works
 SET status = 'processing',
-    zellij_session = ?,
-    zellij_tab = ?,
     started_at = ?
 WHERE id = ?;
 
@@ -49,8 +47,6 @@ WHERE id = ? AND status IN ('idle', 'completed');
 -- name: GetWork :one
 SELECT id, status,
        name,
-       zellij_session,
-       zellij_tab,
        worktree_path,
        branch_name,
        base_branch,
@@ -74,8 +70,6 @@ WHERE id = ?;
 -- name: ListWorks :many
 SELECT id, status,
        name,
-       zellij_session,
-       zellij_tab,
        worktree_path,
        branch_name,
        base_branch,
@@ -99,8 +93,6 @@ ORDER BY created_at DESC;
 -- name: ListWorksByStatus :many
 SELECT id, status,
        name,
-       zellij_session,
-       zellij_tab,
        worktree_path,
        branch_name,
        base_branch,
@@ -130,8 +122,6 @@ LIMIT 1;
 -- name: GetWorkByDirectory :one
 SELECT id, status,
        name,
-       zellij_session,
-       zellij_tab,
        worktree_path,
        branch_name,
        base_branch,
@@ -230,8 +220,6 @@ WHERE id = ?;
 -- name: GetWorksWithUnseenChanges :many
 SELECT id, status,
        name,
-       zellij_session,
-       zellij_tab,
        worktree_path,
        branch_name,
        base_branch,
@@ -256,8 +244,6 @@ ORDER BY created_at DESC;
 -- name: GetWorksWithPRs :many
 SELECT id, status,
        name,
-       zellij_session,
-       zellij_tab,
        worktree_path,
        branch_name,
        base_branch,

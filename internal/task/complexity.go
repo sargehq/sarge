@@ -9,7 +9,7 @@ import (
 	"github.com/sargehq/sarge/internal/db"
 )
 
-// LLMEstimator uses Claude Code via estimate tasks to estimate bean complexity.
+// LLMEstimator uses the coding agent via estimate tasks to estimate bean complexity.
 type LLMEstimator struct {
 	database    *db.DB
 	workDir     string

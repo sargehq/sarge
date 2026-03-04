@@ -22,7 +22,7 @@ var doctorCmd = &cobra.Command{
 Checks include:
   - Config update: ensures config.toml has all available sections
   - Mise beans version: ensures the mise config has the correct beans version
-  - Beans integration: ensures the coding agent has beans support configured
+  - Beans extension (pi): ensures the beans-prime extension is installed
   - Sarge extension (pi): ensures the sarge-complete extension is installed
 
 Use --dry-run to preview changes without applying them.`,
@@ -63,10 +63,10 @@ func runDoctor(proj *project.Project) error {
 	}
 	issues += miseIssues
 
-	// Check 3: Beans skill for the configured agent
-	skillIssues, err := checkBeansSkill(proj)
+	// Check 3: Beans extension for pi
+	skillIssues, err := checkPiBeansSkill(proj)
 	if err != nil {
-		return fmt.Errorf("beans skill check failed: %w", err)
+		return fmt.Errorf("beans extension check failed: %w", err)
 	}
 	issues += skillIssues
 
@@ -179,23 +179,6 @@ func checkMiseBeansVersion(proj *project.Project) (int, error) {
 	return issues, nil
 }
 
-func checkBeansSkill(proj *project.Project) (int, error) {
-	agentType := proj.Config.Agent.Type
-	if agentType == "" {
-		agentType = "claude" // default
-	}
-
-	switch agentType {
-	case "pi":
-		return checkPiBeansSkill(proj)
-	case "claude":
-		return checkClaudeBeansPlugin()
-	default:
-		// Unknown agent type — skip
-		return 0, nil
-	}
-}
-
 func checkPiBeansSkill(proj *project.Project) (int, error) {
 	repoDir := proj.MainRepoPath()
 	if agentsetup.BeansPrimeExtensionInstalled(repoDir) {
@@ -216,26 +199,7 @@ func checkPiBeansSkill(proj *project.Project) (int, error) {
 	return 1, nil
 }
 
-func checkClaudeBeansPlugin() (int, error) {
-	if agentsetup.ClaudePluginInstalled() {
-		fmt.Println("🧩 Beans skill (claude): installed")
-		return 0, nil
-	}
-
-	fmt.Println("🧩 Beans skill (claude): not found")
-	fmt.Println("   " + agentsetup.ClaudeInstallInstructions())
-	return 1, nil
-}
-
 func checkPiExtension(proj *project.Project) (int, error) {
-	agentType := proj.Config.Agent.Type
-	if agentType == "" {
-		agentType = "claude" // default
-	}
-	if agentType != "pi" {
-		return 0, nil
-	}
-
 	repoDir := proj.MainRepoPath()
 	if agentsetup.PiExtensionInstalled(repoDir) {
 		fmt.Println("🧩 Sarge extension (pi): installed")

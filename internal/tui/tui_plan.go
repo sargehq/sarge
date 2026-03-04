@@ -20,9 +20,16 @@ import (
 	"github.com/sargehq/sarge/internal/project"
 	trackingwatcher "github.com/sargehq/sarge/internal/tracking/watcher"
 	"github.com/sargehq/sarge/internal/work"
-	"github.com/sargehq/sarge/internal/zellij"
-	"github.com/sargehq/sarge/internal/zmx"
+	"github.com/sargehq/sarge/internal/bridge"
+
 )
+
+// bridgeEventMsg wraps a bridge event for the Bubbletea message loop.
+type bridgeEventMsg struct {
+	sessionID string
+	event     bridge.Event
+	closed    bool // true when the session's event channel was closed
+}
 
 // watcherEventMsg wraps beans watcher events for tea.Msg
 type watcherEventMsg beanswatcher.WatcherEvent
@@ -49,8 +56,13 @@ type planModel struct {
 	beanFormPanel     *BeanFormPanel
 	createWorkPanel   *CreateWorkPanel
 
-	// Zmx session picker
-	zmxPicker *ZmxPickerPanel
+
+
+	// Bridge session support
+	bridgeClient        *bridge.Bridge
+	sessionPanel        *SessionPanel
+	sessionPicker       *SessionPickerPanel
+	activeSessionID     string // Currently viewed bridge session ID
 
 	// Panel state
 	activePanel Panel
@@ -88,8 +100,7 @@ type planModel struct {
 
 	// Per-bean session tracking
 	activeBeanSessions map[string]bool // beanID -> has active session
-	zj                 zellij.SessionManager
-	zmxClient          zmx.Client
+
 
 	// Two-column layout settings
 	columnRatio float64 // Ratio of issues column width (0.0-1.0), default 0.4 for 40/60 split
@@ -165,8 +176,7 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 		activeBeanSessions:     make(map[string]bool),
 		selectedBeans:          make(map[string]bool),
 		newBeans:               make(map[string]time.Time),
-		zj:                     zellij.New(),
-		zmxClient:              zmx.New(),
+
 		columnRatio:            0.4,  // Default 40/60 split (issues/details)
 		hoveredIssue:           -1,   // No issue hovered initially
 		hoveredWorkItem:        -1,   // No work item hovered initially
@@ -190,7 +200,16 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 	m.prImportPanel = NewPRImportPanel()
 	m.beanFormPanel = NewBeanFormPanel()
 	m.createWorkPanel = NewCreateWorkPanel()
-	m.zmxPicker = NewZmxPickerPanel()
+
+	m.sessionPanel = NewSessionPanel()
+	m.sessionPicker = NewSessionPickerPanel()
+	m.bridgeClient = bridge.NewBridge()
+
+	// Wire bridge into the WorkService's OrchestratorManager so plan/agent
+	// sessions are routed through pi RPC via the bridge.
+	m.workService.OrchestratorManager = work.NewOrchestratorManagerWithBridge(
+		proj.DB, proj.Config, m.bridgeClient, proj.BeansPath(),
+	)
 
 	// Set up status bar data providers
 	m.statusBar.SetDataProviders(
@@ -301,6 +320,21 @@ func (m *planModel) waitForTrackingWatcherEvent() tea.Cmd {
 // Update implements tea.Model
 func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case bridgeEventMsg:
+		if msg.closed {
+			// Session ended - update streaming state
+			if msg.sessionID == m.activeSessionID {
+				m.sessionPanel.SetStreaming(false)
+			}
+			return m, nil
+		}
+		// Route event to session panel if it's the active session
+		if msg.sessionID == m.activeSessionID {
+			m.sessionPanel.HandleEvent(msg.event)
+		}
+		// Continue listening for more events from this session
+		return m, m.waitForBridgeEvent(msg.sessionID)
+
 	case watcherEventMsg:
 		// Handle watcher events
 		if msg.Type == beanswatcher.BeansChanged {
@@ -648,11 +682,20 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.statusMessage = fmt.Sprintf("Failed: %v", msg.err)
 			m.statusIsError = true
+		} else if msg.bridgeSessionID != "" {
+			// Bridge session - open session viewer
+			m.viewBridgeSession(msg.bridgeSessionID)
+			m.viewMode = ViewSessionViewer
+			m.activePanel = PanelSession
+			if msg.resumed {
+				m.statusMessage = fmt.Sprintf("Resumed plan session for %s", msg.beanID)
+			} else {
+				m.statusMessage = fmt.Sprintf("Started plan session for %s", msg.beanID)
+			}
+			m.statusIsError = false
+			return m, tea.Batch(m.refreshData(), m.waitForBridgeEvent(msg.bridgeSessionID))
 		} else if msg.resumed {
 			m.statusMessage = fmt.Sprintf("Resumed session for %s", msg.beanID)
-			m.statusIsError = false
-		} else if msg.sessionCreated && !m.proj.Config.Multiplexer.IsZmx() {
-			m.statusMessage = fmt.Sprintf("Started session for %s | Zellij: zellij attach %s", msg.beanID, msg.sessionName)
 			m.statusIsError = false
 		} else {
 			m.statusMessage = fmt.Sprintf("Started session for %s", msg.beanID)
@@ -661,16 +704,30 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Refresh to update session indicators
 		return m, m.refreshData()
 
+	case agentSessionOpenedMsg:
+		if msg.err != nil {
+			m.statusMessage = fmt.Sprintf("Open Agent failed: %v", msg.err)
+			m.statusIsError = true
+		} else if msg.bridgeSessionID != "" {
+			// Bridge session - open session viewer
+			m.viewBridgeSession(msg.bridgeSessionID)
+			m.viewMode = ViewSessionViewer
+			m.activePanel = PanelSession
+			m.statusMessage = fmt.Sprintf("Agent session opened for %s", msg.workID)
+			m.statusIsError = false
+			return m, tea.Batch(m.refreshData(), m.waitForBridgeEvent(msg.bridgeSessionID))
+		} else {
+			m.statusMessage = fmt.Sprintf("Agent session opened for %s", msg.workID)
+			m.statusIsError = false
+		}
+		return m, m.refreshData()
+
 	case planWorkCreatedMsg:
 		if msg.err != nil {
 			m.statusMessage = fmt.Sprintf("Failed to create work: %v", msg.err)
 			m.statusIsError = true
 		} else {
-			if msg.sessionCreated && !m.proj.Config.Multiplexer.IsZmx() {
-				m.statusMessage = fmt.Sprintf("Created work %s | Zellij: zellij attach %s", msg.workID, msg.sessionName)
-			} else {
-				m.statusMessage = fmt.Sprintf("Created work %s from %s", msg.workID, msg.beanID)
-			}
+			m.statusMessage = fmt.Sprintf("Created work %s from %s", msg.workID, msg.beanID)
 			m.statusIsError = false
 		}
 		// Refresh work tiles to show the new work in the tabs bar
@@ -695,37 +752,6 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// Refresh work tiles to update the tabs bar
 		return m, tea.Batch(m.refreshData(), m.loadWorkTiles())
-
-	case zmxSessionsLoadedMsg:
-		if msg.err != nil {
-			m.statusMessage = fmt.Sprintf("Session list failed: %v", msg.err)
-			m.statusIsError = true
-			return m, nil
-		}
-		if len(msg.sessions) == 0 {
-			m.statusMessage = "No active zmx sessions for this work"
-			m.statusIsError = false
-			return m, nil
-		}
-		if len(msg.sessions) == 1 {
-			// Only one session — attach directly
-			return m, m.attachToZmxSession(msg.sessions[0].Name)
-		}
-		// Multiple sessions — open the picker
-		m.zmxPicker.SetSize(m.width/2, m.height/2)
-		m.zmxPicker.SetSessions(msg.sessions)
-		m.viewMode = ViewZmxSessionPicker
-		return m, m.zmxPicker.Init()
-
-	case zmxSessionAttachedMsg:
-		if msg.err != nil {
-			m.statusMessage = fmt.Sprintf("Attach failed: %v", msg.err)
-			m.statusIsError = true
-		} else {
-			m.statusMessage = fmt.Sprintf("Attached to %s", msg.sessionName)
-			m.statusIsError = false
-		}
-		return m, nil
 
 	case workCommandMsg:
 		// Reset to normal mode
@@ -941,11 +967,11 @@ type planStatusMsg struct {
 
 // planSessionSpawnedMsg indicates a planning session was spawned or resumed
 type planSessionSpawnedMsg struct {
-	beanID         string
-	resumed        bool
-	err            error
-	sessionCreated bool   // true if a new zellij session was created
-	sessionName    string // e.g., 'co-myproject'
+	beanID          string
+	resumed         bool
+	err             error
+
+	bridgeSessionID string // non-empty when session was created via bridge
 }
 
 // planWorkCreatedMsg indicates work was created from a bean
@@ -953,8 +979,7 @@ type planWorkCreatedMsg struct {
 	beanID         string
 	workID         string
 	err            error
-	sessionCreated bool   // true if a new zellij session was created
-	sessionName    string // e.g., 'co-myproject'
+	sessionName    string
 }
 
 // beanAddedToWorkMsg indicates a bean was added to a work
@@ -1153,19 +1178,68 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 		return m, cmd
-	case ViewZmxSessionPicker:
-		cmd, action := m.zmxPicker.Update(msg)
+	case ViewBridgeSessionPicker:
+		cmd, action := m.sessionPicker.Update(msg)
 		switch action {
-		case ZmxPickerActionCancel:
+		case SessionPickerActionCancel:
 			m.viewMode = ViewNormal
 			return m, cmd
-		case ZmxPickerActionSelect:
-			selected := m.zmxPicker.SelectedSession()
-			if selected != nil {
-				m.viewMode = ViewNormal
-				return m, m.attachToZmxSession(selected.Name)
+		case SessionPickerActionSelect:
+			selectedID := m.sessionPicker.SelectedSessionID()
+			if selectedID != "" {
+				m.viewBridgeSession(selectedID)
+				m.viewMode = ViewSessionViewer
+				m.activePanel = PanelSession
+				return m, m.waitForBridgeEvent(selectedID)
 			}
 			return m, cmd
+		}
+		return m, cmd
+
+	case ViewSessionViewer:
+		cmd, action := m.sessionPanel.Update(msg)
+		switch action {
+		case SessionPanelActionAbort:
+			if m.activeSessionID != "" {
+				session := m.bridgeClient.GetSession(m.activeSessionID)
+				if session != nil {
+					if err := session.Abort(); err != nil {
+						m.statusMessage = fmt.Sprintf("Failed to abort session: %v", err)
+						m.statusIsError = true
+					}
+				}
+			}
+			return m, cmd
+		case SessionPanelActionSteer:
+			steerMsg := m.sessionPanel.GetPendingSteer()
+			if steerMsg != "" && m.activeSessionID != "" {
+				session := m.bridgeClient.GetSession(m.activeSessionID)
+				if session != nil {
+					if err := session.Steer(steerMsg); err != nil {
+						m.statusMessage = fmt.Sprintf("Failed to steer session: %v", err)
+						m.statusIsError = true
+					}
+				}
+			}
+			return m, cmd
+		case SessionPanelActionPrompt:
+			prompt := m.sessionPanel.GetPendingPrompt()
+			if prompt != "" && m.activeSessionID != "" {
+				session := m.bridgeClient.GetSession(m.activeSessionID)
+				if session != nil {
+					if err := session.Prompt(prompt); err != nil {
+						m.statusMessage = fmt.Sprintf("Failed to send prompt: %v", err)
+						m.statusIsError = true
+					}
+				}
+			}
+			return m, cmd
+		}
+		// Handle Esc to leave session viewer
+		if msg.String() == "esc" && !m.sessionPanel.inputMode {
+			m.viewMode = ViewNormal
+			m.activePanel = PanelLeft
+			return m, nil
 		}
 		return m, cmd
 	case ViewDestroyConfirm:
@@ -1313,7 +1387,17 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			case WorkDetailActionResetTask:
 				return m, m.resetSelectedTask()
 			case WorkDetailActionAttachTerminal:
-				return m, m.listZmxSessions()
+				// Open bridge session picker
+				if m.bridgeClient != nil {
+					sessions := m.bridgeClient.ListSessions()
+					if len(sessions) > 0 {
+						m.openBridgeSessionPicker()
+						return m, nil
+					}
+				}
+				m.statusMessage = "No active sessions for this work"
+				m.statusIsError = false
+				return m, nil
 			case WorkDetailActionPlan:
 				beanID := m.workDetails.GetSelectedUnassignedBeanID()
 				if beanID != "" {
@@ -1703,8 +1787,69 @@ func (m *planModel) cleanup() {
 	if m.beansWatcher != nil {
 		_ = m.beansWatcher.Stop()
 	}
+	// Kill all bridge sessions
+	if m.bridgeClient != nil {
+		_ = m.bridgeClient.KillAll()
+	}
 	// Note: m.proj.Beans is owned by the Project and closed by proj.Close()
 	// which is deferred in runTUI. Do not close it here to avoid double-close.
+}
+
+// waitForBridgeEvent returns a tea.Cmd that waits for the next event from a bridge session.
+func (m *planModel) waitForBridgeEvent(sessionID string) tea.Cmd {
+	session := m.bridgeClient.GetSession(sessionID)
+	if session == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		evt, ok := <-session.Events()
+		if !ok {
+			return bridgeEventMsg{sessionID: sessionID, closed: true}
+		}
+		return bridgeEventMsg{sessionID: sessionID, event: evt}
+	}
+}
+
+// viewBridgeSession switches the session panel to display a specific bridge session.
+func (m *planModel) viewBridgeSession(sessionID string) {
+	m.activeSessionID = sessionID
+	session := m.bridgeClient.GetSession(sessionID)
+	if session == nil {
+		return
+	}
+
+	// Determine session type from ID
+	sessionType := "orch"
+	if strings.Contains(sessionID, "agent") {
+		sessionType = "agent"
+	} else if strings.Contains(sessionID, "plan") {
+		sessionType = "plan"
+	}
+
+	m.sessionPanel.SetSession(sessionID, sessionType)
+	m.sessionPanel.SetStreaming(session.IsStreaming())
+}
+
+// openBridgeSessionPicker shows the bridge session picker for the focused work.
+func (m *planModel) openBridgeSessionPicker() {
+	sessions := m.bridgeClient.ListSessions()
+	if len(sessions) == 0 {
+		m.statusMessage = "No active bridge sessions"
+		m.statusIsError = false
+		return
+	}
+	if len(sessions) == 1 {
+		// Only one session - view it directly
+		for id := range sessions {
+			m.viewBridgeSession(id)
+			m.viewMode = ViewSessionViewer
+			m.activePanel = PanelSession
+		}
+		return
+	}
+	m.sessionPicker.SetSessions(sessions)
+	m.sessionPicker.SetSize(m.width/2, m.height/2)
+	m.viewMode = ViewBridgeSessionPicker
 }
 
 // syncPanels synchronizes data from planModel to the panel components
@@ -1803,6 +1948,10 @@ func (m *planModel) syncPanels() {
 	m.createWorkPanel.SetSize(detailsWidth, m.height)
 	m.createWorkPanel.SetFocus(m.activePanel == PanelRight && m.viewMode == ViewCreateWork)
 	m.createWorkPanel.SetHoveredButton(m.hoveredDialogButton)
+
+	// Sync session panel
+	m.sessionPanel.SetSize(detailsWidth, m.height)
+	m.sessionPanel.SetFocus(m.activePanel == PanelSession || m.viewMode == ViewSessionViewer)
 }
 
 // View implements tea.Model
@@ -1826,8 +1975,11 @@ func (m *planModel) View() string {
 		return m.renderWithDialog(m.renderDeleteBeanConfirmContent())
 	case ViewDestroyConfirm:
 		return m.renderWithDialog(m.renderDestroyConfirmContent())
-	case ViewZmxSessionPicker:
-		return m.renderWithDialog(m.zmxPicker.View())
+	case ViewBridgeSessionPicker:
+		return m.renderWithDialog(m.sessionPicker.View())
+	case ViewSessionViewer:
+		// Session viewer takes over the right panel (or full width)
+		// Fall through to normal rendering - handled in renderTwoColumnLayout
 	case ViewLinearImportInline:
 		// Inline import mode - render normal view with import form in details area
 		// Fall through to normal rendering

@@ -118,8 +118,8 @@ func logAnalysisInputFromMetadata(ctx context.Context, proj *project.Project, ta
 		return nil, fmt.Errorf("log_content metadata is missing for task %s", task.ID)
 	}
 
-	// Write log content to a temp file for Claude to read
-	// This keeps the prompt small and lets Claude read only what it needs
+	// Write log content to a temp file for the agent to read
+	// This keeps the prompt small and lets the agent read only what it needs
 	logFile, err := os.CreateTemp("", "ci-log-*.txt")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp file for log content: %w", err)
@@ -131,7 +131,7 @@ func logAnalysisInputFromMetadata(ctx context.Context, proj *project.Project, ta
 	}
 	_ = logFile.Close()
 
-	// Fetch existing open beans for this work to help Claude match against them
+	// Fetch existing open beans for this work to help the agent match against them
 	existingBeans := fetchExistingBeanSummaries(ctx, proj, work.ID)
 
 	return &TaskInput{
@@ -268,7 +268,7 @@ func processTask(proj *project.Project, taskID string, agent agents.Agent) error
 	switch work.Status {
 	case db.StatusPending:
 		// First time starting - use StartWork
-		if err := proj.DB.StartWork(ctx, work.ID, "", ""); err != nil {
+		if err := proj.DB.StartWork(ctx, work.ID); err != nil {
 			fmt.Printf("Warning: failed to start work: %v\n", err)
 		}
 	case db.StatusIdle, db.StatusCompleted:

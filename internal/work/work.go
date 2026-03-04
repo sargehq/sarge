@@ -354,13 +354,10 @@ func (s *WorkService) DestroyWork(ctx context.Context, workID string, w io.Write
 		}
 	}
 
-	// Terminate any running zellij tabs (orchestrator, task, console, and claude tabs) for this work
-	// Only if configured to do so (defaults to true)
-	if s.Config.Zellij.ShouldKillTabsOnDestroy() {
-		if err := s.OrchestratorManager.TerminateWorkTabs(ctx, workID, s.Config.Project.Name, w); err != nil {
-			// Warn but continue - tab termination is non-fatal
-			fmt.Fprintf(w, "Warning: failed to terminate work tabs: %v\n", err)
-		}
+	// Terminate any running sessions (orchestrator, task, console, and agent sessions) for this work
+	if err := s.OrchestratorManager.TerminateWorkTabs(ctx, workID, s.Config.Project.Name, w); err != nil {
+		// Warn but continue - session termination is non-fatal
+		fmt.Fprintf(w, "Warning: failed to terminate work sessions: %v\n", err)
 	}
 
 	// Remove git worktree if it exists

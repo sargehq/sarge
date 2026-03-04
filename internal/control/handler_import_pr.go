@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/logging"
@@ -112,13 +111,8 @@ func HandleImportPRTask(ctx context.Context, proj *project.Project, task *db.Sch
 
 	logging.Info("PR imported successfully", "work_id", workID, "worktree", worktreePath)
 
-	// Schedule orchestrator spawn task (but it won't auto-start since auto=false)
-	_, err = proj.DB.ScheduleTask(ctx, workID, db.TaskTypeSpawnOrchestrator, time.Now(), map[string]string{
-		"worker_name": workRecord.Name,
-	})
-	if err != nil {
-		logging.Warn("failed to schedule orchestrator spawn", "error", err, "work_id", workID)
-	}
+	// Task execution is now handled by the in-process task sequencer.
+	// No need to spawn a separate orchestrator process.
 
 	return nil
 }

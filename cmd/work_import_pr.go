@@ -106,7 +106,7 @@ func runWorkImportPR(cmd *cobra.Command, args []string) error {
 	fmt.Printf("PR URL: %s\n", prURL)
 	fmt.Printf("\nWorktree setup is in progress via control plane.\n")
 
-	// Ensure zellij session and control plane are running
+	// Ensure control plane is running
 	sessionResult, err := control.EnsureControlPlane(ctx, proj)
 	if err != nil {
 		fmt.Printf("Warning: failed to ensure control plane: %v\n", err)

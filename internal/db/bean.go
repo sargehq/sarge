@@ -26,8 +26,6 @@ func beanToTracked(b *sqlc.Bean) *TrackedBean {
 		Title:         b.Title,
 		PRURL:         b.PrUrl,
 		ErrorMessage:  b.ErrorMessage,
-		ZellijSession: b.ZellijSession,
-		ZellijPane:    b.ZellijPane,
 		WorktreePath:  b.WorktreePath,
 		CreatedAt:     b.CreatedAt,
 		UpdatedAt:     b.UpdatedAt,
@@ -48,8 +46,6 @@ type TrackedBean struct {
 	Title         string
 	PRURL         string
 	ErrorMessage  string
-	ZellijSession string
-	ZellijPane    string
 	WorktreePath  string
 	StartedAt     *time.Time
 	CompletedAt   *time.Time
@@ -57,22 +53,20 @@ type TrackedBean struct {
 	UpdatedAt     time.Time
 }
 
-// StartBean marks a bean as processing with session info.
-func (db *DB) StartBean(ctx context.Context, id, title, zellijSession, zellijPane string) error {
-	return db.StartBeanWithWorktree(ctx, id, title, zellijSession, zellijPane, "")
+// StartBean marks a bean as processing with a title.
+func (db *DB) StartBean(ctx context.Context, id, title string) error {
+	return db.StartBeanWithWorktree(ctx, id, title, "")
 }
 
-// StartBeanWithWorktree marks a bean as processing with session and worktree info.
-func (db *DB) StartBeanWithWorktree(ctx context.Context, id, title, zellijSession, zellijPane, worktreePath string) error {
+// StartBeanWithWorktree marks a bean as processing with worktree info.
+func (db *DB) StartBeanWithWorktree(ctx context.Context, id, title, worktreePath string) error {
 	now := time.Now()
 	err := db.queries.StartBean(ctx, sqlc.StartBeanParams{
-		ID:            id,
-		Title:         title,
-		ZellijSession: zellijSession,
-		ZellijPane:    zellijPane,
-		WorktreePath:  worktreePath,
-		StartedAt:     nullTime(now),
-		UpdatedAt:     now,
+		ID:           id,
+		Title:        title,
+		WorktreePath: worktreePath,
+		StartedAt:    nullTime(now),
+		UpdatedAt:    now,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to start bean %s: %w", id, err)

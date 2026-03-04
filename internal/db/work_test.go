@@ -232,7 +232,7 @@ func TestWorkStatusTransitionToCompleted(t *testing.T) {
 	assert.Equal(t, StatusPending, work.Status)
 
 	// Start the work (transitions to processing)
-	err = db.StartWork(ctx, workID, "test-session", "test-tab")
+	err = db.StartWork(ctx, workID)
 	require.NoError(t, err)
 
 	work, err = db.GetWork(ctx, workID)
@@ -292,7 +292,7 @@ func TestWorkStatusTransitionToCompletedWithoutPR(t *testing.T) {
 	workID := "w-test"
 	err := db.CreateWork(ctx, workID, "", "/tmp/tree", "feature/test", "main", "", false)
 	require.NoError(t, err)
-	err = db.StartWork(ctx, workID, "test-session", "test-tab")
+	err = db.StartWork(ctx, workID)
 	require.NoError(t, err)
 
 	// Create and complete a task

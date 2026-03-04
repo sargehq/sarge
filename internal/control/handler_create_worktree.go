@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/logging"
@@ -18,7 +17,6 @@ func (cp *ControlPlane) HandleCreateWorktreeTask(ctx context.Context, proj *proj
 	workID := task.WorkID
 	branchName := task.Metadata["branch"]
 	baseBranch := task.Metadata["base_branch"]
-	workerName := task.Metadata["worker_name"]
 	useExisting := task.Metadata["use_existing"] == "true"
 
 	if baseBranch == "" {
@@ -118,13 +116,8 @@ func (cp *ControlPlane) HandleCreateWorktreeTask(ctx context.Context, proj *proj
 
 	logging.Info("Worktree created and pushed successfully", "work_id", workID)
 
-	// Schedule orchestrator spawn task
-	_, err = proj.DB.ScheduleTask(ctx, workID, db.TaskTypeSpawnOrchestrator, time.Now(), map[string]string{
-		"worker_name": workerName,
-	})
-	if err != nil {
-		logging.Warn("failed to schedule orchestrator spawn", "error", err, "work_id", workID)
-	}
+	// Task execution is now handled by the in-process task sequencer.
+	// No need to spawn a separate orchestrator process.
 
 	return nil
 }

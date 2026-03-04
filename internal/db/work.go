@@ -21,8 +21,6 @@ func workToLocal(w *sqlc.Work) *Work {
 		ID:                 w.ID,
 		Status:             w.Status,
 		Name:               w.Name,
-		ZellijSession:      w.ZellijSession,
-		ZellijTab:          w.ZellijTab,
 		WorktreePath:       w.WorktreePath,
 		BranchName:         w.BranchName,
 		BaseBranch:         w.BaseBranch,
@@ -55,8 +53,6 @@ type Work struct {
 	ID                 string
 	Status             string
 	Name               string
-	ZellijSession      string
-	ZellijTab          string
 	WorktreePath       string
 	BranchName         string
 	BaseBranch         string
@@ -187,14 +183,12 @@ func (db *DB) CreateWorkAndSchedulePush(ctx context.Context, id, name, worktreeP
 	return idempotencyKey, nil
 }
 
-// StartWork marks a work as processing with session info.
-func (db *DB) StartWork(ctx context.Context, id, zellijSession, zellijTab string) error {
+// StartWork marks a work as processing.
+func (db *DB) StartWork(ctx context.Context, id string) error {
 	now := time.Now()
 	rows, err := db.queries.StartWork(ctx, sqlc.StartWorkParams{
-		ZellijSession: zellijSession,
-		ZellijTab:     zellijTab,
-		StartedAt:     nullTime(now),
-		ID:            id,
+		StartedAt: nullTime(now),
+		ID:        id,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to start work %s: %w", id, err)

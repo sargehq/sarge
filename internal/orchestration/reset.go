@@ -13,7 +13,7 @@ import (
 // ResetStuckProcessingTasks resets any processing tasks back to pending.
 // This is called when the orchestrator starts and finds tasks that were
 // marked as processing from a previous run. When the orchestrator is killed
-// while a task is running - the Claude process is also killed, but the task
+// while a task is running - the agent process is also killed, but the task
 // remains marked as processing in the database.
 //
 // This function preserves partial bean progress by checking the actual bean

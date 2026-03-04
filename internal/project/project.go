@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/sargehq/sarge/internal/beans"
-	"github.com/sargehq/sarge/internal/zellij"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/git"
 	"github.com/sargehq/sarge/internal/logging"
@@ -33,27 +32,14 @@ const (
 	RepoTypeGitHub = "github"
 )
 
-// sessionNameForProject returns the default zellij session name for a project.
-// This always returns "sarge-<project>" regardless of whether we're inside a zellij session.
-func sessionNameForProject(projectName string) string {
-	return fmt.Sprintf("sarge-%s", projectName)
-}
-
-// ResolveSessionName returns the zellij session to use for tab management.
-// If we're already inside a zellij session (detected via $ZELLIJ_SESSION_NAME),
-// it reuses that session. Otherwise, it returns the default "sarge-<project>" name.
-// This allows sarge to create tabs in the user's existing zellij session
-// rather than forcing a separate session.
+// ResolveSessionName returns the session name for a project.
+// Returns "sarge-<project>".
 func ResolveSessionName(projectName string) string {
-	if current := zellij.CurrentSessionName(); current != "" {
-		return current
-	}
-	return sessionNameForProject(projectName)
+	return fmt.Sprintf("sarge-%s", projectName)
 }
 
 // FormatTabName formats a tab name with an optional friendly name.
 // If friendlyName is not empty, formats as "prefix-workID (friendlyName)", otherwise just "prefix-workID".
-// This is used for zellij tab titles where the friendly name is nice for display.
 func FormatTabName(prefix, workID, friendlyName string) string {
 	baseName := fmt.Sprintf("%s-%s", prefix, workID)
 	if friendlyName != "" {
@@ -63,8 +49,6 @@ func FormatTabName(prefix, workID, friendlyName string) string {
 }
 
 // FormatTabNameShort formats a tab name without the friendly name.
-// This is used for zmx session names where the full name becomes a Unix socket
-// path and must stay under the 104-byte macOS sun_path limit.
 func FormatTabNameShort(prefix, workID string) string {
 	return fmt.Sprintf("%s-%s", prefix, workID)
 }
@@ -156,14 +140,13 @@ func load(ctx context.Context, root string) (*Project, error) {
 // Create initializes a new project at the given directory with default tool selections.
 // repoSource can be a local path (symlinked) or GitHub URL (cloned).
 func Create(ctx context.Context, dir, repoSource string) (*Project, error) {
-	return CreateWithSelections(ctx, dir, repoSource, "claude", mise.DefaultToolSelections())
+	return CreateWithSelections(ctx, dir, repoSource, mise.DefaultToolSelections())
 }
 
 // CreateWithSelections initializes a new project at the given directory with specific tool selections.
-// agentType is stored in project config ("claude" or "pi").
-// toolSelections controls which tools are added to .mise.toml (agent may or may not be included).
+// toolSelections controls which tools are added to .mise.toml.
 // repoSource can be a local path (symlinked) or GitHub URL (cloned).
-func CreateWithSelections(ctx context.Context, dir, repoSource string, agentType string, toolSelections mise.ToolSelections) (*Project, error) {
+func CreateWithSelections(ctx context.Context, dir, repoSource string, toolSelections mise.ToolSelections) (*Project, error) {
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve path: %w", err)
@@ -202,12 +185,6 @@ func CreateWithSelections(ctx context.Context, dir, repoSource string, agentType
 			Type:   repoType,
 			Source: repoSource,
 			Path:   MainDir,
-		},
-		Agent: AgentConfig{
-			Type: agentType,
-		},
-		Multiplexer: MultiplexerConfig{
-			Type: toolSelections.MultiplexerType,
 		},
 		// Beans path will be set after setupBeans
 	}

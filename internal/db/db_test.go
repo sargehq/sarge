@@ -40,7 +40,7 @@ func TestStartBean(t *testing.T) {
 	defer cleanup()
 	ctx := context.Background()
 
-	err := db.StartBean(ctx, "test-1", "Test Bean", "session-1", "pane-1")
+	err := db.StartBean(ctx, "test-1", "Test Bean")
 	require.NoError(t, err, "StartBean failed")
 
 	// Verify bean was created
@@ -50,8 +50,6 @@ func TestStartBean(t *testing.T) {
 	assert.Equal(t, "test-1", bean.ID)
 	assert.Equal(t, "Test Bean", bean.Title)
 	assert.Equal(t, StatusProcessing, bean.Status)
-	assert.Equal(t, "session-1", bean.ZellijSession)
-	assert.Equal(t, "pane-1", bean.ZellijPane)
 	assert.NotNil(t, bean.StartedAt, "expected StartedAt to be set")
 }
 
@@ -61,18 +59,17 @@ func TestStartBeanUpsert(t *testing.T) {
 	ctx := context.Background()
 
 	// Create initial bean
-	err := db.StartBean(ctx, "test-1", "Original Title", "session-1", "pane-1")
+	err := db.StartBean(ctx, "test-1", "Original Title")
 	require.NoError(t, err, "first StartBean failed")
 
 	// Update with new values (upsert)
-	err = db.StartBean(ctx, "test-1", "Updated Title", "session-2", "pane-2")
+	err = db.StartBean(ctx, "test-1", "Updated Title")
 	require.NoError(t, err, "second StartBean failed")
 
 	// Verify bean was updated
 	bean, err := db.GetBean(ctx, "test-1")
 	require.NoError(t, err, "GetBean failed")
 	assert.Equal(t, "Updated Title", bean.Title)
-	assert.Equal(t, "session-2", bean.ZellijSession)
 }
 
 func TestCompleteBean(t *testing.T) {
@@ -81,7 +78,7 @@ func TestCompleteBean(t *testing.T) {
 	ctx := context.Background()
 
 	// Create bean first
-	err := db.StartBean(ctx, "test-1", "Test Bean", "session-1", "pane-1")
+	err := db.StartBean(ctx, "test-1", "Test Bean")
 	require.NoError(t, err, "StartBean failed")
 
 	// Complete it
@@ -111,7 +108,7 @@ func TestFailBean(t *testing.T) {
 	ctx := context.Background()
 
 	// Create bean first
-	err := db.StartBean(ctx, "test-1", "Test Bean", "session-1", "pane-1")
+	err := db.StartBean(ctx, "test-1", "Test Bean")
 	require.NoError(t, err, "StartBean failed")
 
 	// Fail it
@@ -156,7 +153,7 @@ func TestIsCompleted(t *testing.T) {
 	assert.False(t, completed, "expected false for nonexistent bean")
 
 	// Processing bean
-	db.StartBean(ctx, "test-1", "Test", "s", "p")
+	db.StartBean(ctx, "test-1", "Test")
 	completed, err = db.IsCompleted(ctx, "test-1")
 	require.NoError(t, err, "IsCompleted failed")
 	assert.False(t, completed, "expected false for processing bean")
@@ -168,7 +165,7 @@ func TestIsCompleted(t *testing.T) {
 	assert.True(t, completed, "expected true for completed bean")
 
 	// Failed bean also counts as completed
-	db.StartBean(ctx, "test-2", "Test 2", "s", "p")
+	db.StartBean(ctx, "test-2", "Test 2")
 	db.FailBean(ctx, "test-2", "error")
 	completed, err = db.IsCompleted(ctx, "test-2")
 	require.NoError(t, err, "IsCompleted failed")
@@ -181,11 +178,11 @@ func TestListBeans(t *testing.T) {
 	ctx := context.Background()
 
 	// Create several beans with different statuses
-	db.StartBean(ctx, "test-1", "Processing 1", "s", "p")
-	db.StartBean(ctx, "test-2", "Processing 2", "s", "p")
-	db.StartBean(ctx, "test-3", "Will Complete", "s", "p")
+	db.StartBean(ctx, "test-1", "Processing 1")
+	db.StartBean(ctx, "test-2", "Processing 2")
+	db.StartBean(ctx, "test-3", "Will Complete")
 	db.CompleteBean(ctx, "test-3", "")
-	db.StartBean(ctx, "test-4", "Will Fail", "s", "p")
+	db.StartBean(ctx, "test-4", "Will Fail")
 	db.FailBean(ctx, "test-4", "error")
 
 	// List all
@@ -215,7 +212,7 @@ func TestTimestamps(t *testing.T) {
 	ctx := context.Background()
 
 	before := time.Now().Add(-time.Second)
-	db.StartBean(ctx, "test-1", "Test", "s", "p")
+	db.StartBean(ctx, "test-1", "Test")
 	after := time.Now().Add(time.Second)
 
 	bean, _ := db.GetBean(ctx, "test-1")
