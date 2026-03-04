@@ -12,6 +12,7 @@ import (
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/logging"
 	"github.com/sargehq/sarge/internal/project"
+	"github.com/sargehq/sarge/internal/ptysession"
 )
 
 // WorkSession represents an active session for a work unit.
@@ -37,14 +38,14 @@ type OrchestratorManager interface {
 	// TerminateWorkTabs terminates all sessions associated with a work unit.
 	TerminateWorkTabs(ctx context.Context, workID, projName string, w io.Writer) error
 
-	// SpawnPlanSession creates a bridge session and sends a plan prompt for a bean.
-	SpawnPlanSession(ctx context.Context, beanID, projName, mainRepoPath string, w io.Writer) (*bridge.Session, error)
+	// SpawnPlanSession creates an interactive PTY session and sends a plan prompt for a bean.
+	SpawnPlanSession(ctx context.Context, beanID, projName, mainRepoPath string, w io.Writer) (*ptysession.Session, error)
 
 	// OpenConsole opens a shell session in the work's worktree.
 	OpenConsole(ctx context.Context, workID, projName, workDir, friendlyName string, hooksEnv []string, w io.Writer) error
 
-	// OpenAgentSession creates a bridge session for interactive agent use.
-	OpenAgentSession(ctx context.Context, workID, projName, workDir, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) (*bridge.Session, error)
+	// OpenAgentSession creates an interactive PTY session for agent use.
+	OpenAgentSession(ctx context.Context, workID, projName, workDir, friendlyName string, hooksEnv []string, cfg *project.Config, w io.Writer) (*ptysession.Session, error)
 
 	// ListWorkSessions returns active sessions for a given work unit.
 	ListWorkSessions(ctx context.Context, workID, projectName string) ([]WorkSession, error)
@@ -56,10 +57,11 @@ type OrchestratorManager interface {
 // DefaultOrchestratorManager is the default implementation of OrchestratorManager.
 // It holds the database reference needed for orchestrator heartbeat checking.
 type DefaultOrchestratorManager struct {
-	database  *db.DB
-	bridge    *bridge.Bridge // Optional: when set, plan/agent sessions use pi RPC via bridge
-	projCfg   *project.Config
-	beansPath string // Path to beans directory (needed for bridge plan prompts)
+	database   *db.DB
+	bridge     *bridge.Bridge           // Optional: headless RPC sessions (sequencer)
+	ptyManager *ptysession.Manager      // PTY sessions for interactive use (plan/agent/console)
+	projCfg    *project.Config
+	beansPath  string // Path to beans directory (needed for plan prompts)
 }
 
 // NewOrchestratorManager creates a new DefaultOrchestratorManager with the given database and config.
@@ -71,13 +73,15 @@ func NewOrchestratorManager(database *db.DB, cfg *project.Config) OrchestratorMa
 }
 
 // NewOrchestratorManagerWithBridge creates a DefaultOrchestratorManager that routes
-// plan and agent sessions through the given bridge (pi RPC).
-func NewOrchestratorManagerWithBridge(database *db.DB, cfg *project.Config, b *bridge.Bridge, beansPath string) OrchestratorManager {
+// plan and agent sessions through the given bridge (pi RPC) for headless use,
+// and uses PTY sessions for interactive use.
+func NewOrchestratorManagerWithBridge(database *db.DB, cfg *project.Config, b *bridge.Bridge, ptyMgr *ptysession.Manager, beansPath string) OrchestratorManager {
 	return &DefaultOrchestratorManager{
-		database:  database,
-		bridge:    b,
-		projCfg:   cfg,
-		beansPath: beansPath,
+		database:   database,
+		bridge:     b,
+		ptyManager: ptyMgr,
+		projCfg:    cfg,
+		beansPath:  beansPath,
 	}
 }
 
@@ -102,13 +106,25 @@ func (m *DefaultOrchestratorManager) TerminateWorkTabs(ctx context.Context, work
 	// SIGTERM the orchestrator process first so it shuts down cleanly
 	m.terminateOrchestratorProcess(ctx, workID)
 
+	// Kill PTY sessions belonging to this work
+	if m.ptyManager != nil {
+		sessions := m.ptyManager.List()
+		for id := range sessions {
+			if strings.Contains(id, workID) {
+				if err := m.ptyManager.Kill(id); err == nil {
+					fmt.Fprintf(w, "  Killed PTY session: %s\n", id)
+				}
+			}
+		}
+	}
+
 	// Kill bridge sessions belonging to this work
 	if m.bridge != nil {
 		sessions := m.bridge.ListSessions()
 		for id := range sessions {
 			if strings.Contains(id, workID) {
 				if err := m.bridge.KillSession(id); err == nil {
-					fmt.Fprintf(w, "  Killed session: %s\n", id)
+					fmt.Fprintf(w, "  Killed bridge session: %s\n", id)
 				}
 			}
 		}
@@ -184,15 +200,14 @@ func (m *DefaultOrchestratorManager) EnsureWorkOrchestrator(ctx context.Context,
 }
 
 // ListWorkSessions returns active sessions for a given work unit.
-// Returns bridge sessions for the work.
+// Returns PTY sessions and bridge sessions for the work.
 func (m *DefaultOrchestratorManager) ListWorkSessions(ctx context.Context, workID, projectName string) ([]WorkSession, error) {
 	var result []WorkSession
 
-	// Include bridge sessions if bridge is configured
-	if m.bridge != nil {
-		bridgeSessions := m.bridge.ListSessions()
-		for id, state := range bridgeSessions {
-			// Match sessions belonging to this work by ID prefix convention
+	// Include PTY sessions
+	if m.ptyManager != nil {
+		ptySessions := m.ptyManager.List()
+		for id, state := range ptySessions {
 			if !strings.Contains(id, workID) && !strings.HasPrefix(id, "plan-") {
 				continue
 			}
@@ -201,12 +216,30 @@ func (m *DefaultOrchestratorManager) ListWorkSessions(ctx context.Context, workI
 				sessionType = "agent"
 			} else if strings.Contains(id, "plan") {
 				sessionType = "plan"
+			} else if strings.Contains(id, "console") {
+				sessionType = "console"
 			}
 			result = append(result, WorkSession{
 				Name:        id,
 				TabName:     id,
 				Type:        sessionType,
 				DisplayName: fmt.Sprintf("%s (%s) [%s]", sessionType, id, state),
+			})
+		}
+	}
+
+	// Include bridge sessions (headless tasks from sequencer)
+	if m.bridge != nil {
+		bridgeSessions := m.bridge.ListSessions()
+		for id, state := range bridgeSessions {
+			if !strings.Contains(id, workID) {
+				continue
+			}
+			result = append(result, WorkSession{
+				Name:        id,
+				TabName:     id,
+				Type:        "task",
+				DisplayName: fmt.Sprintf("task (%s) [%s]", id, state),
 			})
 		}
 	}

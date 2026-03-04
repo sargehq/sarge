@@ -248,6 +248,12 @@ func RunRootTUI(ctx context.Context, proj *project.Project, enableMouse bool) er
 	}
 	p := tea.NewProgram(model, opts...)
 
+	// Give the plan model a reference to the program so PTY sessions can
+	// send async messages to wake the event loop.
+	if model.planModel != nil {
+		model.planModel.teaProgram = p
+	}
+
 	if _, err := p.Run(); err != nil {
 		return err
 	}
