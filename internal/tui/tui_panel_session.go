@@ -1,11 +1,7 @@
 package tui
 
 import (
-	"fmt"
-	"strings"
-
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/sargehq/sarge/internal/ptysession"
 )
 
@@ -43,16 +39,13 @@ func NewSessionPanel() *SessionPanel {
 }
 
 // SetSize updates the panel dimensions and propagates to the PTY session.
+// The full width/height is given to the PTY — no borders or chrome.
 func (p *SessionPanel) SetSize(width, height int) {
 	p.width = width
 	p.height = height
 
-	// Reserve space for the panel border (2) and title (1).
-	innerWidth := max(width-2, 1)
-	innerHeight := max(height-4, 1)
-
 	if p.session != nil {
-		p.session.Resize(innerWidth, innerHeight)
+		p.session.Resize(width, height)
 	}
 }
 
@@ -73,9 +66,7 @@ func (p *SessionPanel) SetSession(session *ptysession.Session, sessionType strin
 
 	// Resize the session to match the panel.
 	if session != nil {
-		innerWidth := max(p.width-2, 1)
-		innerHeight := max(p.height-4, 1)
-		session.Resize(innerWidth, innerHeight)
+		session.Resize(p.width, p.height)
 	}
 }
 
@@ -120,32 +111,10 @@ func (p *SessionPanel) Render() string {
 	return p.session.Render()
 }
 
-// RenderWithPanel returns the session panel with border styling.
+// RenderWithPanel returns the session output directly — no borders or chrome.
+// Pi renders its own UI natively via the PTY.
 func (p *SessionPanel) RenderWithPanel(contentHeight int) string {
-	var content strings.Builder
-
-	// Title with session info.
-	title := "Session"
-	if p.sessionID != "" {
-		title = fmt.Sprintf("Session [%s]", p.sessionType)
-		if p.session != nil && p.session.State() == ptysession.SessionRunning {
-			title += " ●"
-		} else if p.session != nil && p.session.State() == ptysession.SessionDead {
-			title += " ✗"
-		}
-	}
-	content.WriteString(tuiTitleStyle.Render(title))
-	content.WriteString("\n")
-
-	// Terminal output.
-	content.WriteString(p.Render())
-
-	panelStyle := tuiPanelStyle.Width(p.width).Height(contentHeight - 2)
-	if p.focused {
-		panelStyle = panelStyle.BorderForeground(lipgloss.Color("214"))
-	}
-
-	return panelStyle.Render(content.String())
+	return p.Render()
 }
 
 // keyMsgToBytes converts a bubbletea KeyMsg to raw bytes suitable for a PTY.
