@@ -5,7 +5,7 @@ status: in-progress
 type: feature
 priority: normal
 created_at: 2026-03-04T00:13:20Z
-updated_at: 2026-03-04T00:20:59Z
+updated_at: 2026-03-04T00:21:29Z
 ---
 
 Replace the custom RPC event rendering in SessionPanel with embedded PTY output using charmbracelet/x/vt virtual terminal emulator.
@@ -30,4 +30,22 @@ Currently, interactive sessions (plan, agent, console) spawn pi in RPC mode, par
 - [x] Update planModel to use PTY sessions for interactive viewing
 - [x] Wire up keyboard input forwarding from TUI to PTY
 - [x] Handle resize propagation to PTY + vt.Emulator
-- [ ] Test plan, agent, and console session types
+- [ ] Test plan, agent, and console session types (manual testing needed)
+
+## Summary of Changes
+
+### New packages
+- `internal/ptysession/session.go` — PTY session backed by `creack/pty` + `x/vt` emulator. Handles spawn, I/O forwarding, resize, render, and async output notification.
+- `internal/ptysession/manager.go` — Session registry (spawn, get, kill, list) analogous to `bridge.Bridge`.
+
+### Modified files
+- `internal/tui/tui_panel_session.go` — Completely rewritten. Now just renders `session.Render()` and forwards all key input to PTY via `keyMsgToBytes()`. No more custom event parsing, text accumulation, viewport management, or input modes.
+- `internal/tui/tui_plan.go` — Replaced `bridgeEventMsg` with `ptyOutputMsg`. Added `ptyManager` and `teaProgram` fields. Replaced `viewBridgeSession`/`waitForBridgeEvent` with `viewPTYSession`. PTY output callback wakes Bubbletea via `Program.Send()`.
+- `internal/tui/tui_plan_work.go` — Updated spawn/open methods to check PTY manager instead of bridge. Updated msg types.
+- `internal/tui/tui_root.go` — Wires `tea.Program` reference to planModel after creation.
+- `internal/work/orchestrator.go` — Interface now returns `*ptysession.Session`. `DefaultOrchestratorManager` holds both bridge (headless) and PTY manager (interactive).
+- `internal/work/tabs.go` — Rewrote `OpenConsole`, `OpenAgentSession`, `SpawnPlanSession` to use PTY sessions. Added `buildPTYConfig` helper.
+
+### Architecture
+- **Bridge/RPC**: Preserved for sequencer only (headless task execution with structured events)
+- **PTY + x/vt**: Used for all interactive sessions (plan, agent, console) — pi renders its own UI natively
