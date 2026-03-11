@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -110,15 +111,22 @@ func (m *planModel) renderSessionFullscreen() string {
 		Width(m.width)
 	titleBar := titleStyle.Render(" " + title)
 
+	// Render session content RAW — do not pass through lipgloss.
+	// The vt emulator outputs precisely formatted ANSI escape codes;
+	// lipgloss.Render() would rewrite/corrupt them causing flicker.
 	sessionContent := m.sessionPanel.Render()
 
-	// Ensure the session content fills the allocated height.
-	// Without this, when there's no session or minimal output, the view
-	// collapses to a few lines instead of filling the screen.
-	contentStyle := lipgloss.NewStyle().
-		Width(m.width).
-		Height(sessionHeight)
-	return titleBar + "\n" + contentStyle.Render(sessionContent)
+	// Pad with blank lines if session output is shorter than allocated height.
+	lines := strings.Count(sessionContent, "\n") + 1
+	if sessionContent == "" {
+		lines = 0
+	}
+	for lines < sessionHeight {
+		sessionContent += "\n"
+		lines++
+	}
+
+	return titleBar + "\n" + sessionContent
 }
 
 // renderWorkTabContent renders a work tab with work details + session split.
@@ -170,11 +178,17 @@ func (m *planModel) renderWorkTabContent(tab *WorkTab) string {
 		Width(m.width)
 	titleBar := titleStyle.Render(" " + subLabel + " " + tuiDimStyle.Render("[z] maximize  [ctrl+1/2/3] switch"))
 
+	// Render session content RAW — do not pass through lipgloss.
 	sessionContent := m.sessionPanel.Render()
-	contentStyle := lipgloss.NewStyle().
-		Width(m.width).
-		Height(ptyHeight)
-	sessionPanel := titleBar + "\n" + contentStyle.Render(sessionContent)
+	lines := strings.Count(sessionContent, "\n") + 1
+	if sessionContent == "" {
+		lines = 0
+	}
+	for lines < ptyHeight {
+		sessionContent += "\n"
+		lines++
+	}
+	sessionPanel := titleBar + "\n" + sessionContent
 
 	return lipgloss.JoinVertical(lipgloss.Left, workPanel, sessionPanel)
 }
