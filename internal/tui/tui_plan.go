@@ -1774,7 +1774,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			apiKey = m.proj.Config.Linear.APIKey
 		}
 		if apiKey == "" {
-			m.statusMessage = "Linear API key not configured (set [linear] api_key in config.toml)"
+			m.statusMessage = "Linear API key not configured (set [linear] api_key in config2.toml)"
 			m.statusIsError = true
 			return m, nil
 		}

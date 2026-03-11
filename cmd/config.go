@@ -15,7 +15,7 @@ var configCmd = &cobra.Command{
 	Long: `Reconfigure the current project interactively.
 
 Re-runs tool selection, regenerates .mise.toml, runs mise install,
-and updates config.toml with new settings.`,
+and updates config2.toml with new settings.`,
 	RunE: runConfig,
 }
 
@@ -44,9 +44,9 @@ func runConfig(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to run mise install: %w", err)
 	}
 
-	// 5. Merge new config sections into config.toml
+	// 5. Merge new config sections into config2.toml
 	configPath := filepath.Join(proj.Root, project.ConfigDir, project.ConfigFile)
-	fmt.Println("Updating config.toml...")
+	fmt.Println("Updating config2.toml...")
 	added, err := project.UpdateConfig(configPath, proj.Config)
 	if err != nil {
 		return fmt.Errorf("failed to update config: %w", err)
