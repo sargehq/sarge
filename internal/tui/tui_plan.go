@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -1427,12 +1428,14 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Handle [1-9] keys to select work by index (works from issues panel and work details panel)
-	if key := msg.String(); len(key) == 1 && key[0] >= '0' && key[0] <= '9' {
+	if key := msg.String(); len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
 		digit := int(key[0] - '0')
-		if digit == 0 {
-			// '0' selects the Main tab
-			return m.activateTab("main")
+		// 1-9 maps to tab positions: 1=first tab (Main), 2=second tab, etc.
+		tabIndex := digit - 1
+		if tabIndex < len(m.tabs) {
+			return m.activateTab(m.tabs[tabIndex].ID)
 		}
+		// Fall back to legacy work selection if tabs not yet populated
 		return m.selectWorkByIndex(digit)
 	}
 
@@ -1883,12 +1886,32 @@ func (m *planModel) viewPTYSession(sessionID string) {
 	m.sessionPanel.SetSession(session, sessionType)
 
 	// Set up the output callback to wake the Bubbletea event loop.
-	// We capture the program reference via a closure.
+	// We throttle notifications to avoid overwhelming bubbletea with render
+	// cycles when the PTY produces rapid output (e.g., pi startup).
+	var lastNotify atomic.Int64
+	var pendingTimer atomic.Int32 // 1 = timer scheduled
 	session.SetOnOutput(func() {
-		// Send a ptyOutputMsg to trigger a re-render.
-		// This is safe to call from any goroutine.
-		if m.teaProgram != nil {
-			m.teaProgram.Send(ptyOutputMsg{sessionID: sessionID})
+		if m.teaProgram == nil {
+			return
+		}
+		now := time.Now().UnixMilli()
+		prev := lastNotify.Load()
+		// Throttle to at most one notification every 16ms (~60fps)
+		if now-prev >= 16 {
+			if lastNotify.CompareAndSwap(prev, now) {
+				pendingTimer.Store(0)
+				m.teaProgram.Send(ptyOutputMsg{sessionID: sessionID})
+			}
+		} else if pendingTimer.CompareAndSwap(0, 1) {
+			// Schedule a trailing notification to catch final output
+			go func() {
+				time.Sleep(20 * time.Millisecond)
+				pendingTimer.Store(0)
+				lastNotify.Store(time.Now().UnixMilli())
+				if m.teaProgram != nil {
+					m.teaProgram.Send(ptyOutputMsg{sessionID: sessionID})
+				}
+			}()
 		}
 	})
 }
