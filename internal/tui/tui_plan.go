@@ -271,6 +271,25 @@ func (m *planModel) InModal() bool {
 	return m.viewMode != ViewNormal
 }
 
+// IsShowingSession returns true if the view is currently dominated by a PTY session.
+// Used by the root model to skip zone.Scan which corrupts raw terminal output.
+func (m *planModel) IsShowingSession() bool {
+	if m.viewMode != ViewNormal {
+		return false
+	}
+	activeTab := m.getActiveTab()
+	if activeTab == nil {
+		return false
+	}
+	switch activeTab.Type {
+	case WorkTabDefault, WorkTabPlan:
+		return true
+	case WorkTabWork:
+		return activeTab.SessionMaximized
+	}
+	return false
+}
+
 // Init implements tea.Model
 func (m *planModel) Init() tea.Cmd {
 	cmds := []tea.Cmd{
@@ -334,8 +353,9 @@ func (m *planModel) waitForTrackingWatcherEvent() tea.Cmd {
 func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ptyOutputMsg:
-		// PTY session has new output — just trigger a re-render.
-		// The session panel will call session.Render() in its View().
+		// PTY session has new output — only meaningful if it's the active session.
+		// Bubbletea always calls View() after Update(), so we can't skip the render,
+		// but we avoid doing any extra work for non-active sessions.
 		return m, nil
 
 	case defaultSessionSpawnedMsg:
