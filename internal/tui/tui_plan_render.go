@@ -111,7 +111,14 @@ func (m *planModel) renderSessionFullscreen() string {
 	titleBar := titleStyle.Render(" " + title)
 
 	sessionContent := m.sessionPanel.Render()
-	return titleBar + "\n" + sessionContent
+
+	// Ensure the session content fills the allocated height.
+	// Without this, when there's no session or minimal output, the view
+	// collapses to a few lines instead of filling the screen.
+	contentStyle := lipgloss.NewStyle().
+		Width(m.width).
+		Height(sessionHeight)
+	return titleBar + "\n" + contentStyle.Render(sessionContent)
 }
 
 // renderWorkTabContent renders a work tab with work details + session split.
@@ -164,7 +171,10 @@ func (m *planModel) renderWorkTabContent(tab *WorkTab) string {
 	titleBar := titleStyle.Render(" " + subLabel + " " + tuiDimStyle.Render("[z] maximize  [ctrl+1/2/3] switch"))
 
 	sessionContent := m.sessionPanel.Render()
-	sessionPanel := titleBar + "\n" + sessionContent
+	contentStyle := lipgloss.NewStyle().
+		Width(m.width).
+		Height(ptyHeight)
+	sessionPanel := titleBar + "\n" + contentStyle.Render(sessionContent)
 
 	return lipgloss.JoinVertical(lipgloss.Left, workPanel, sessionPanel)
 }
