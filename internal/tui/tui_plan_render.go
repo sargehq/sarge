@@ -73,12 +73,17 @@ func (m *planModel) renderFocusedWorkSplitView() string {
 func (m *planModel) renderSessionFullscreen() string {
 	contentHeight := m.height - 1 // -1 for status bar
 
-	// Update session panel size to full width/height
-	m.sessionPanel.SetSize(m.width, contentHeight)
+	// panelStyle border takes 2 lines, title takes 1 line
+	// So the session gets: contentHeight - 2 (border) - 1 (title) inner lines
+	innerHeight := contentHeight - 2 // border top + bottom
+	sessionHeight := innerHeight - 1 // title line
+
+	// Update session panel size — give it the actual space it has
+	// Width: full width minus border (2) minus padding (2)
+	m.sessionPanel.SetSize(m.width-4, sessionHeight)
 	m.sessionPanel.SetFocus(true)
 
-	// Render with a simple border
-	panelStyle := tuiPanelStyle.Width(m.width - 2).Height(contentHeight - 2)
+	panelStyle := tuiPanelStyle.Width(m.width - 2).Height(innerHeight)
 	if m.activePanel == PanelSession {
 		panelStyle = panelStyle.BorderForeground(lipgloss.Color("214"))
 	}
@@ -134,7 +139,13 @@ func (m *planModel) renderWorkTabContent(tab *WorkTab) string {
 	if s := m.ptyManager.Get(sessionID); s != nil && m.sessionPanel.Session() != s {
 		m.viewPTYSession(sessionID)
 	}
-	m.sessionPanel.SetSize(m.width-2, sessionHeight)
+
+	// sessionHeight is total height for session area
+	// border takes 2, title takes 1, so PTY gets sessionHeight - 3
+	innerSessionHeight := sessionHeight - 2 // border
+	ptyHeight := innerSessionHeight - 1     // title line
+
+	m.sessionPanel.SetSize(m.width-4, ptyHeight) // -4 for border + padding
 	m.sessionPanel.SetFocus(m.activePanel == PanelSession)
 
 	// Sub-session indicator
@@ -148,7 +159,7 @@ func (m *planModel) renderWorkTabContent(tab *WorkTab) string {
 		subLabel = "Plan"
 	}
 
-	sessionPanelStyle := tuiPanelStyle.Width(m.width - 2).Height(sessionHeight - 2)
+	sessionPanelStyle := tuiPanelStyle.Width(m.width - 2).Height(innerSessionHeight)
 	if m.activePanel == PanelSession {
 		sessionPanelStyle = sessionPanelStyle.BorderForeground(lipgloss.Color("214"))
 	}
