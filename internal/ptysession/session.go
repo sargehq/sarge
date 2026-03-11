@@ -11,12 +11,24 @@ import (
 	"os"
 	"os/exec"
 	"sync"
+	"math"
 	"sync/atomic"
 
 	"github.com/charmbracelet/x/vt"
 	pty "github.com/creack/pty/v2"
 	"github.com/sargehq/sarge/internal/logging"
 )
+
+// clampUint16 safely converts an int to uint16, clamping to [0, math.MaxUint16].
+func clampUint16(v int) uint16 {
+	if v <= 0 {
+		return 0
+	}
+	if v > math.MaxUint16 {
+		return math.MaxUint16
+	}
+	return uint16(v) //nolint:gosec // bounds checked above
+}
 
 // SessionState describes the current state of a PTY session.
 type SessionState int
@@ -124,7 +136,7 @@ func (s *Session) Start(ctx context.Context) error {
 	args := make([]string, len(s.config.Args))
 	copy(args, s.config.Args)
 
-	s.cmd = exec.CommandContext(ctx, "pi", args...)
+	s.cmd = exec.CommandContext(ctx, "pi", args...) //nolint:gosec // "pi" is the intended subprocess
 	if s.config.WorkDir != "" {
 		s.cmd.Dir = s.config.WorkDir
 	}
@@ -137,8 +149,8 @@ func (s *Session) Start(ctx context.Context) error {
 
 	// Start the process with a PTY.
 	ptm, err := pty.StartWithSize(s.cmd, &pty.Winsize{
-		Rows: uint16(s.config.Height),
-		Cols: uint16(s.config.Width),
+		Rows: clampUint16(s.config.Height),
+		Cols: clampUint16(s.config.Width),
 	})
 	if err != nil {
 		cancel()
@@ -186,8 +198,8 @@ func (s *Session) Resize(width, height int) {
 	}
 	if s.ptm != nil {
 		_ = pty.Setsize(s.ptm, &pty.Winsize{
-			Rows: uint16(height),
-			Cols: uint16(width),
+			Rows: clampUint16(height),
+			Cols: clampUint16(width),
 		})
 	}
 	if s.emu != nil {
