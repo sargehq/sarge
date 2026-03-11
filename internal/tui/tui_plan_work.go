@@ -8,12 +8,12 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/sargehq/sarge/internal/bridge"
 	"github.com/sargehq/sarge/internal/control"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/logging"
 	"github.com/sargehq/sarge/internal/process"
 	"github.com/sargehq/sarge/internal/progress"
+	"github.com/sargehq/sarge/internal/ptysession"
 
 	workpkg "github.com/sargehq/sarge/internal/work"
 )
@@ -24,21 +24,21 @@ func (m *planModel) sessionName() string {
 }
 
 // spawnPlanSession spawns or resumes a planning session for a specific bean.
-// When a bridge is available, creates a bridge session and opens the session viewer.
+// Creates a PTY session and opens the session viewer.
 func (m *planModel) spawnPlanSession(beanID string) tea.Cmd {
 	return func() tea.Msg {
 		mainRepoPath := m.proj.MainRepoPath()
 
 		logging.Debug("spawnPlanSession started", "beanID", beanID)
 
-		// Check if a bridge session already exists for this bean
+		// Check if a PTY session already exists for this bean
 		sessionID := workpkg.PlanTabName(beanID)
-		if existing := m.bridgeClient.GetSession(sessionID); existing != nil && existing.State() != bridge.SessionDead {
-			logging.Debug("spawnPlanSession resuming existing bridge session", "beanID", beanID, "sessionID", sessionID)
-			return planSessionSpawnedMsg{beanID: beanID, resumed: true, bridgeSessionID: sessionID}
+		if existing := m.ptyManager.Get(sessionID); existing != nil && existing.State() != ptysession.SessionDead {
+			logging.Debug("spawnPlanSession resuming existing PTY session", "beanID", beanID, "sessionID", sessionID)
+			return planSessionSpawnedMsg{beanID: beanID, resumed: true, ptySessionID: sessionID}
 		}
 
-		// Spawn the plan session via the orchestrator manager (uses bridge when available)
+		// Spawn the plan session via the orchestrator manager
 		session, err := m.workService.OrchestratorManager.SpawnPlanSession(m.ctx, beanID, m.proj.Config.Project.Name, mainRepoPath, io.Discard)
 		if err != nil {
 			logging.Error("spawnPlanSession SpawnPlanSession failed", "beanID", beanID, "error", err)
@@ -47,9 +47,9 @@ func (m *planModel) spawnPlanSession(beanID string) tea.Cmd {
 
 		msg := planSessionSpawnedMsg{beanID: beanID, resumed: false}
 		if session != nil {
-			msg.bridgeSessionID = session.ID()
+			msg.ptySessionID = session.ID()
 		}
-		logging.Debug("spawnPlanSession completed", "beanID", beanID, "bridgeSessionID", msg.bridgeSessionID)
+		logging.Debug("spawnPlanSession completed", "beanID", beanID, "ptySessionID", msg.ptySessionID)
 		return msg
 	}
 }
@@ -290,11 +290,11 @@ func (m *planModel) openConsole() tea.Cmd {
 	}
 }
 
-// agentSessionOpenedMsg indicates an agent session was opened (possibly via bridge)
+// agentSessionOpenedMsg indicates an agent session was opened
 type agentSessionOpenedMsg struct {
-	workID          string
-	err             error
-	bridgeSessionID string // non-empty when session was created via bridge
+	workID       string
+	err          error
+	ptySessionID string // non-empty when a PTY session was created
 }
 
 // openAgent opens an agent session for the focused work.
@@ -318,7 +318,7 @@ func (m *planModel) openAgent() tea.Cmd {
 
 		msg := agentSessionOpenedMsg{workID: workID}
 		if session != nil {
-			msg.bridgeSessionID = session.ID()
+			msg.ptySessionID = session.ID()
 		}
 		return msg
 	}

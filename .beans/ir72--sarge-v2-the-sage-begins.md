@@ -5,7 +5,7 @@ status: completed
 type: epic
 priority: normal
 created_at: 2026-03-01T21:22:15Z
-updated_at: 2026-03-01T21:44:41Z
+updated_at: 2026-03-11T18:30:55Z
 ---
 
 The primary interface to search becomes a pi session.

@@ -15,20 +15,18 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/sargehq/sarge/internal/beans"
 	beanswatcher "github.com/sargehq/sarge/internal/beans/watcher"
+	"github.com/sargehq/sarge/internal/bridge"
 	"github.com/sargehq/sarge/internal/git"
 	"github.com/sargehq/sarge/internal/progress"
 	"github.com/sargehq/sarge/internal/project"
+	"github.com/sargehq/sarge/internal/ptysession"
 	trackingwatcher "github.com/sargehq/sarge/internal/tracking/watcher"
 	"github.com/sargehq/sarge/internal/work"
-	"github.com/sargehq/sarge/internal/bridge"
-
 )
 
-// bridgeEventMsg wraps a bridge event for the Bubbletea message loop.
-type bridgeEventMsg struct {
+// ptyOutputMsg signals that a PTY session has new output to render.
+type ptyOutputMsg struct {
 	sessionID string
-	event     bridge.Event
-	closed    bool // true when the session's event channel was closed
 }
 
 // watcherEventMsg wraps beans watcher events for tea.Msg
@@ -58,11 +56,13 @@ type planModel struct {
 
 
 
-	// Bridge session support
-	bridgeClient        *bridge.Bridge
+	// Session support
+	bridgeClient        *bridge.Bridge          // For headless sequencer sessions only
+	ptyManager          *ptysession.Manager     // For interactive PTY sessions (plan/agent/console)
 	sessionPanel        *SessionPanel
 	sessionPicker       *SessionPickerPanel
-	activeSessionID     string // Currently viewed bridge session ID
+	activeSessionID     string // Currently viewed PTY session ID
+	teaProgram          *tea.Program            // Set after tea.NewProgram; used for async PTY output
 
 	// Panel state
 	activePanel Panel
@@ -204,11 +204,13 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 	m.sessionPanel = NewSessionPanel()
 	m.sessionPicker = NewSessionPickerPanel()
 	m.bridgeClient = bridge.NewBridge()
+	m.ptyManager = ptysession.NewManager()
 
-	// Wire bridge into the WorkService's OrchestratorManager so plan/agent
-	// sessions are routed through pi RPC via the bridge.
+	// Wire PTY manager and bridge into the WorkService's OrchestratorManager.
+	// PTY sessions are used for interactive display (plan/agent/console).
+	// Bridge sessions are used by the sequencer for headless task execution.
 	m.workService.OrchestratorManager = work.NewOrchestratorManagerWithBridge(
-		proj.DB, proj.Config, m.bridgeClient, proj.BeansPath(),
+		proj.DB, proj.Config, m.bridgeClient, m.ptyManager, proj.BeansPath(),
 	)
 
 	// Set up status bar data providers
@@ -320,20 +322,10 @@ func (m *planModel) waitForTrackingWatcherEvent() tea.Cmd {
 // Update implements tea.Model
 func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case bridgeEventMsg:
-		if msg.closed {
-			// Session ended - update streaming state
-			if msg.sessionID == m.activeSessionID {
-				m.sessionPanel.SetStreaming(false)
-			}
-			return m, nil
-		}
-		// Route event to session panel if it's the active session
-		if msg.sessionID == m.activeSessionID {
-			m.sessionPanel.HandleEvent(msg.event)
-		}
-		// Continue listening for more events from this session
-		return m, m.waitForBridgeEvent(msg.sessionID)
+	case ptyOutputMsg:
+		// PTY session has new output — just trigger a re-render.
+		// The session panel will call session.Render() in its View().
+		return m, nil
 
 	case watcherEventMsg:
 		// Handle watcher events
@@ -682,9 +674,9 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.statusMessage = fmt.Sprintf("Failed: %v", msg.err)
 			m.statusIsError = true
-		} else if msg.bridgeSessionID != "" {
-			// Bridge session - open session viewer
-			m.viewBridgeSession(msg.bridgeSessionID)
+		} else if msg.ptySessionID != "" {
+			// PTY session — open session viewer
+			m.viewPTYSession(msg.ptySessionID)
 			m.viewMode = ViewSessionViewer
 			m.activePanel = PanelSession
 			if msg.resumed {
@@ -693,7 +685,7 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.statusMessage = fmt.Sprintf("Started plan session for %s", msg.beanID)
 			}
 			m.statusIsError = false
-			return m, tea.Batch(m.refreshData(), m.waitForBridgeEvent(msg.bridgeSessionID))
+			return m, m.refreshData()
 		} else if msg.resumed {
 			m.statusMessage = fmt.Sprintf("Resumed session for %s", msg.beanID)
 			m.statusIsError = false
@@ -708,14 +700,14 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.statusMessage = fmt.Sprintf("Open Agent failed: %v", msg.err)
 			m.statusIsError = true
-		} else if msg.bridgeSessionID != "" {
-			// Bridge session - open session viewer
-			m.viewBridgeSession(msg.bridgeSessionID)
+		} else if msg.ptySessionID != "" {
+			// PTY session — open session viewer
+			m.viewPTYSession(msg.ptySessionID)
 			m.viewMode = ViewSessionViewer
 			m.activePanel = PanelSession
 			m.statusMessage = fmt.Sprintf("Agent session opened for %s", msg.workID)
 			m.statusIsError = false
-			return m, tea.Batch(m.refreshData(), m.waitForBridgeEvent(msg.bridgeSessionID))
+			return m, m.refreshData()
 		} else {
 			m.statusMessage = fmt.Sprintf("Agent session opened for %s", msg.workID)
 			m.statusIsError = false
@@ -967,11 +959,10 @@ type planStatusMsg struct {
 
 // planSessionSpawnedMsg indicates a planning session was spawned or resumed
 type planSessionSpawnedMsg struct {
-	beanID          string
-	resumed         bool
-	err             error
-
-	bridgeSessionID string // non-empty when session was created via bridge
+	beanID       string
+	resumed      bool
+	err          error
+	ptySessionID string // non-empty when a PTY session was created
 }
 
 // planWorkCreatedMsg indicates work was created from a bean
@@ -1187,10 +1178,9 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case SessionPickerActionSelect:
 			selectedID := m.sessionPicker.SelectedSessionID()
 			if selectedID != "" {
-				m.viewBridgeSession(selectedID)
+				m.viewPTYSession(selectedID)
 				m.viewMode = ViewSessionViewer
 				m.activePanel = PanelSession
-				return m, m.waitForBridgeEvent(selectedID)
 			}
 			return m, cmd
 		}
@@ -1198,45 +1188,8 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case ViewSessionViewer:
 		cmd, action := m.sessionPanel.Update(msg)
-		switch action {
-		case SessionPanelActionAbort:
-			if m.activeSessionID != "" {
-				session := m.bridgeClient.GetSession(m.activeSessionID)
-				if session != nil {
-					if err := session.Abort(); err != nil {
-						m.statusMessage = fmt.Sprintf("Failed to abort session: %v", err)
-						m.statusIsError = true
-					}
-				}
-			}
-			return m, cmd
-		case SessionPanelActionSteer:
-			steerMsg := m.sessionPanel.GetPendingSteer()
-			if steerMsg != "" && m.activeSessionID != "" {
-				session := m.bridgeClient.GetSession(m.activeSessionID)
-				if session != nil {
-					if err := session.Steer(steerMsg); err != nil {
-						m.statusMessage = fmt.Sprintf("Failed to steer session: %v", err)
-						m.statusIsError = true
-					}
-				}
-			}
-			return m, cmd
-		case SessionPanelActionPrompt:
-			prompt := m.sessionPanel.GetPendingPrompt()
-			if prompt != "" && m.activeSessionID != "" {
-				session := m.bridgeClient.GetSession(m.activeSessionID)
-				if session != nil {
-					if err := session.Prompt(prompt); err != nil {
-						m.statusMessage = fmt.Sprintf("Failed to send prompt: %v", err)
-						m.statusIsError = true
-					}
-				}
-			}
-			return m, cmd
-		}
-		// Handle Esc to leave session viewer
-		if msg.String() == "esc" && !m.sessionPanel.inputMode {
+		if action == SessionPanelActionExit {
+			// Session is dead and user pressed esc — leave viewer
 			m.viewMode = ViewNormal
 			m.activePanel = PanelLeft
 			return m, nil
@@ -1787,33 +1740,22 @@ func (m *planModel) cleanup() {
 	if m.beansWatcher != nil {
 		_ = m.beansWatcher.Stop()
 	}
-	// Kill all bridge sessions
+	// Kill all bridge sessions (headless/sequencer)
 	if m.bridgeClient != nil {
 		_ = m.bridgeClient.KillAll()
+	}
+	// Kill all PTY sessions (interactive)
+	if m.ptyManager != nil {
+		_ = m.ptyManager.KillAll()
 	}
 	// Note: m.proj.Beans is owned by the Project and closed by proj.Close()
 	// which is deferred in runTUI. Do not close it here to avoid double-close.
 }
 
-// waitForBridgeEvent returns a tea.Cmd that waits for the next event from a bridge session.
-func (m *planModel) waitForBridgeEvent(sessionID string) tea.Cmd {
-	session := m.bridgeClient.GetSession(sessionID)
-	if session == nil {
-		return nil
-	}
-	return func() tea.Msg {
-		evt, ok := <-session.Events()
-		if !ok {
-			return bridgeEventMsg{sessionID: sessionID, closed: true}
-		}
-		return bridgeEventMsg{sessionID: sessionID, event: evt}
-	}
-}
-
-// viewBridgeSession switches the session panel to display a specific bridge session.
-func (m *planModel) viewBridgeSession(sessionID string) {
+// viewPTYSession switches the session panel to display a specific PTY session.
+func (m *planModel) viewPTYSession(sessionID string) {
 	m.activeSessionID = sessionID
-	session := m.bridgeClient.GetSession(sessionID)
+	session := m.ptyManager.Get(sessionID)
 	if session == nil {
 		return
 	}
@@ -1824,30 +1766,54 @@ func (m *planModel) viewBridgeSession(sessionID string) {
 		sessionType = "agent"
 	} else if strings.Contains(sessionID, "plan") {
 		sessionType = "plan"
+	} else if strings.Contains(sessionID, "console") {
+		sessionType = "console"
 	}
 
-	m.sessionPanel.SetSession(sessionID, sessionType)
-	m.sessionPanel.SetStreaming(session.IsStreaming())
+	m.sessionPanel.SetSession(session, sessionType)
+
+	// Set up the output callback to wake the Bubbletea event loop.
+	// We capture the program reference via a closure.
+	session.SetOnOutput(func() {
+		// Send a ptyOutputMsg to trigger a re-render.
+		// This is safe to call from any goroutine.
+		if m.teaProgram != nil {
+			m.teaProgram.Send(ptyOutputMsg{sessionID: sessionID})
+		}
+	})
 }
 
-// openBridgeSessionPicker shows the bridge session picker for the focused work.
+// openBridgeSessionPicker shows the session picker for the focused work.
 func (m *planModel) openBridgeSessionPicker() {
-	sessions := m.bridgeClient.ListSessions()
-	if len(sessions) == 0 {
-		m.statusMessage = "No active bridge sessions"
+	ptySessions := m.ptyManager.List()
+	if len(ptySessions) == 0 {
+		m.statusMessage = "No active sessions"
 		m.statusIsError = false
 		return
 	}
-	if len(sessions) == 1 {
-		// Only one session - view it directly
-		for id := range sessions {
-			m.viewBridgeSession(id)
+	if len(ptySessions) == 1 {
+		// Only one session — view it directly
+		for id := range ptySessions {
+			m.viewPTYSession(id)
 			m.viewMode = ViewSessionViewer
 			m.activePanel = PanelSession
 		}
 		return
 	}
-	m.sessionPicker.SetSessions(sessions)
+	// Convert to the format the session picker expects
+	bridgeSessions := make(map[string]bridge.SessionState)
+	for id, state := range ptySessions {
+		// Map PTY states to bridge states for the picker UI
+		switch state {
+		case ptysession.SessionRunning:
+			bridgeSessions[id] = bridge.SessionReady
+		case ptysession.SessionDead:
+			bridgeSessions[id] = bridge.SessionDead
+		default:
+			bridgeSessions[id] = bridge.SessionStarting
+		}
+	}
+	m.sessionPicker.SetSessions(bridgeSessions)
 	m.sessionPicker.SetSize(m.width/2, m.height/2)
 	m.viewMode = ViewBridgeSessionPicker
 }
