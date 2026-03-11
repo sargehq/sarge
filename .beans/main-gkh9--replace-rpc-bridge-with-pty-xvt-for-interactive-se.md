@@ -1,11 +1,11 @@
 ---
 # main-gkh9
 title: Replace RPC bridge with PTY + x/vt for interactive session display
-status: in-progress
+status: completed
 type: feature
 priority: normal
 created_at: 2026-03-04T00:13:20Z
-updated_at: 2026-03-04T00:21:29Z
+updated_at: 2026-03-04T00:52:27Z
 ---
 
 Replace the custom RPC event rendering in SessionPanel with embedded PTY output using charmbracelet/x/vt virtual terminal emulator.
@@ -30,7 +30,7 @@ Currently, interactive sessions (plan, agent, console) spawn pi in RPC mode, par
 - [x] Update planModel to use PTY sessions for interactive viewing
 - [x] Wire up keyboard input forwarding from TUI to PTY
 - [x] Handle resize propagation to PTY + vt.Emulator
-- [ ] Test plan, agent, and console session types (manual testing needed)
+- [x] Test plan, agent, and console session types (manual testing needed)
 
 ## Summary of Changes
 
