@@ -68,27 +68,20 @@ func (m *planModel) renderFocusedWorkSplitView() string {
 	return lipgloss.JoinVertical(lipgloss.Left, workPanel, planSection)
 }
 
-// renderSessionFullscreen renders a PTY session panel taking up the full content area.
+// renderSessionFullscreen renders a PTY session taking up the full content area.
 // Used for the Main tab, Plan tabs, and maximized work tab sessions.
+// The PTY output is rendered WITHOUT borders/padding — the vt emulator manages
+// its own screen buffer and cursor positioning. Wrapping it in lipgloss panels
+// causes ANSI escape code conflicts and flickering.
 func (m *planModel) renderSessionFullscreen() string {
 	contentHeight := m.height - 1 // -1 for status bar
 
-	// panelStyle border takes 2 lines, title takes 1 line
-	// So the session gets: contentHeight - 2 (border) - 1 (title) inner lines
-	innerHeight := contentHeight - 2 // border top + bottom
-	sessionHeight := innerHeight - 1 // title line
-
-	// Update session panel size — give it the actual space it has
-	// Width: full width minus border (2) minus padding (2)
-	m.sessionPanel.SetSize(m.width-4, sessionHeight)
+	// Give the PTY the full width and height minus 1 line for the title bar
+	sessionHeight := contentHeight - 1
+	m.sessionPanel.SetSize(m.width, sessionHeight)
 	m.sessionPanel.SetFocus(true)
 
-	panelStyle := tuiPanelStyle.Width(m.width - 2).Height(innerHeight)
-	if m.activePanel == PanelSession {
-		panelStyle = panelStyle.BorderForeground(lipgloss.Color("214"))
-	}
-
-	// Show session type indicator
+	// Build a minimal title bar (no border, just a colored line)
 	activeTab := m.getActiveTab()
 	title := "Session"
 	if activeTab != nil {
@@ -110,8 +103,15 @@ func (m *planModel) renderSessionFullscreen() string {
 		}
 	}
 
+	titleStyle := lipgloss.NewStyle().
+		Background(lipgloss.Color("236")).
+		Foreground(lipgloss.Color("214")).
+		Bold(true).
+		Width(m.width)
+	titleBar := titleStyle.Render(" " + title)
+
 	sessionContent := m.sessionPanel.Render()
-	return panelStyle.Render(tuiTitleStyle.Render(title) + "\n" + sessionContent)
+	return titleBar + "\n" + sessionContent
 }
 
 // renderWorkTabContent renders a work tab with work details + session split.
@@ -133,19 +133,15 @@ func (m *planModel) renderWorkTabContent(tab *WorkTab) string {
 	m.workDetails.SetSize(m.width, workPanelHeight)
 	workPanel := m.workDetails.RenderWithPanel(workPanelHeight)
 
-	// Render session panel (bottom)
-	// Wire the session panel to the tab's active session
+	// Render session panel (bottom) — no border, raw PTY output
 	sessionID := tab.SessionID()
 	if s := m.ptyManager.Get(sessionID); s != nil && m.sessionPanel.Session() != s {
 		m.viewPTYSession(sessionID)
 	}
 
-	// sessionHeight is total height for session area
-	// border takes 2, title takes 1, so PTY gets sessionHeight - 3
-	innerSessionHeight := sessionHeight - 2 // border
-	ptyHeight := innerSessionHeight - 1     // title line
-
-	m.sessionPanel.SetSize(m.width-4, ptyHeight) // -4 for border + padding
+	// Session gets full width, height minus 1 for title bar
+	ptyHeight := sessionHeight - 1
+	m.sessionPanel.SetSize(m.width, ptyHeight)
 	m.sessionPanel.SetFocus(m.activePanel == PanelSession)
 
 	// Sub-session indicator
@@ -159,13 +155,16 @@ func (m *planModel) renderWorkTabContent(tab *WorkTab) string {
 		subLabel = "Plan"
 	}
 
-	sessionPanelStyle := tuiPanelStyle.Width(m.width - 2).Height(innerSessionHeight)
-	if m.activePanel == PanelSession {
-		sessionPanelStyle = sessionPanelStyle.BorderForeground(lipgloss.Color("214"))
-	}
+	// Minimal title bar (no border)
+	titleStyle := lipgloss.NewStyle().
+		Background(lipgloss.Color("236")).
+		Foreground(lipgloss.Color("214")).
+		Bold(true).
+		Width(m.width)
+	titleBar := titleStyle.Render(" " + subLabel + " " + tuiDimStyle.Render("[z] maximize  [ctrl+1/2/3] switch"))
+
 	sessionContent := m.sessionPanel.Render()
-	titleLine := tuiTitleStyle.Render(subLabel) + " " + tuiDimStyle.Render("[z] maximize  [ctrl+1/2/3] switch")
-	sessionPanel := sessionPanelStyle.Render(titleLine + "\n" + sessionContent)
+	sessionPanel := titleBar + "\n" + sessionContent
 
 	return lipgloss.JoinVertical(lipgloss.Left, workPanel, sessionPanel)
 }
