@@ -50,13 +50,26 @@ curl https://mise.run | sh
 
 ### Beans Skill
 
+Install beans:
+```
+brew install hmans/beans/beans
+beans init
+```
+
 Your coding agent needs a beans skill to interact with the issue tracker.
 
-**Claude Code**: Install the beans plugin. Open Claude Code and run:
-
+**Claude Code**: There's no beans skill yet. The temporary solution is to add this to your `.claude/settings.json`:
 ```
-/plugin marketplace add steveyegge/beans
-/plugin install beans
+{
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [{ "type": "command", "command": "beans prime" }] }
+    ],
+    "PreCompact": [
+      { "hooks": [{ "type": "command", "command": "beans prime" }] }
+    ]
+  }
+}
 ```
 
 **pi**: The beans skill is included in `.pi/skills/beans/` and is automatically available — no extra setup needed.
