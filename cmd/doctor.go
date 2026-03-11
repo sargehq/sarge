@@ -20,7 +20,7 @@ var doctorCmd = &cobra.Command{
 	Long: `Run project health checks and apply fixes.
 
 Checks include:
-  - Config update: ensures config.toml has all available sections
+  - Config update: ensures config2.toml has all available sections
   - Mise beans version: ensures the mise config has the correct beans version
   - Beans extension (pi): ensures the beans-prime extension is installed
   - Sarge extension (pi): ensures the sarge-complete extension is installed

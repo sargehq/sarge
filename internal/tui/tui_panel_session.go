@@ -40,7 +40,12 @@ func NewSessionPanel() *SessionPanel {
 
 // SetSize updates the panel dimensions and propagates to the PTY session.
 // The full width/height is given to the PTY — no borders or chrome.
+// Only resizes the PTY when dimensions actually change to avoid a
+// resize → redraw → output → render → resize feedback loop.
 func (p *SessionPanel) SetSize(width, height int) {
+	if p.width == width && p.height == height {
+		return
+	}
 	p.width = width
 	p.height = height
 

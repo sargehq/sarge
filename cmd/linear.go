@@ -42,7 +42,7 @@ Examples:
 Authentication:
   The Linear API key can be provided via (in order of precedence):
   1. --api-key flag
-  2. [linear] api_key in .co/config.toml
+  2. [linear] api_key in .co/config2.toml
 
 Environment Variables:
   BEANS_PATH         Beans directory (default: auto-detect)
@@ -68,7 +68,7 @@ func init() {
 	linearCmd.AddCommand(linearImportCmd)
 
 	// Import command flags
-	linearImportCmd.Flags().StringVar(&linearAPIKey, "api-key", "", "Linear API key (or set [linear] api_key in config.toml)")
+	linearImportCmd.Flags().StringVar(&linearAPIKey, "api-key", "", "Linear API key (or set [linear] api_key in config2.toml)")
 	linearImportCmd.Flags().StringVar(&linearBeansDir, "beans-dir", "", "Beans directory (default: auto-detect)")
 	linearImportCmd.Flags().BoolVar(&linearDryRun, "dry-run", false, "Preview import without creating beans")
 	linearImportCmd.Flags().BoolVar(&linearUpdateExist, "update", false, "Update existing beans if already imported")
@@ -91,7 +91,7 @@ func runLinearImport(cmd *cobra.Command, args []string) error {
 		}
 	}
 	if apiKey == "" {
-		return fmt.Errorf("linear API key is required (set via --api-key flag or [linear] api_key in config.toml)")
+		return fmt.Errorf("linear API key is required (set via --api-key flag or [linear] api_key in config2.toml)")
 	}
 
 	// Get beans directory

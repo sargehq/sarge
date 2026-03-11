@@ -16,7 +16,7 @@ import (
 //go:embed templates/config.tmpl
 var configTemplateText string
 
-// Config represents the project configuration stored in .co/config.toml.
+// Config represents the project configuration stored in .co/config2.toml.
 type Config struct {
 	Project     ProjectConfig     `toml:"project"`
 	Repo        RepoConfig        `toml:"repo"`

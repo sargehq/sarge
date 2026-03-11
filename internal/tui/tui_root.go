@@ -152,9 +152,15 @@ func (m rootModel) View() string {
 		return ""
 	}
 
-	// Render plan model content directly and wrap with zone.Scan
 	if m.planModel != nil {
-		return zone.Scan(m.planModel.View())
+		view := m.planModel.View()
+		// Skip zone.Scan when showing a PTY session — zone.Scan processes
+		// the string looking for bubblezone markers and corrupts raw ANSI
+		// terminal output from the vt emulator.
+		if m.planModel.IsShowingSession() {
+			return view
+		}
+		return zone.Scan(view)
 	}
 
 	return ""

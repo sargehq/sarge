@@ -407,7 +407,7 @@ func (m *planModel) importLinearIssue(issueIDsInput string) tea.Cmd {
 			apiKey = m.proj.Config.Linear.APIKey
 		}
 		if apiKey == "" {
-			return linearImportCompleteMsg{err: fmt.Errorf("linear API key not set (set [linear] api_key in config.toml)")}
+			return linearImportCompleteMsg{err: fmt.Errorf("linear API key not set (set [linear] api_key in config2.toml)")}
 		}
 
 		// Create fetcher
