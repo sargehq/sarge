@@ -89,6 +89,10 @@ type planModel struct {
 	workDetailsFocusLeft   bool            // Whether left panel has focus in work details (true=left, false=right)
 	addChildToWorkID       string          // Work ID to add newly created child bean to (for add-child-and-run flow)
 
+	// Tab model
+	tabs        []*WorkTab // All tabs: [Main, work1, work2, ..., plan1, plan2, ...]
+	activeTabID string     // ID of the currently active/focused tab
+
 	// Multi-select state
 	selectedBeans map[string]bool // beanID -> is selected
 
@@ -206,6 +210,11 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 	m.bridgeClient = bridge.NewBridge()
 	m.ptyManager = ptysession.NewManager()
 
+	// Initialize tab model with the default "Main" tab
+	defaultTab := NewDefaultTab()
+	m.tabs = []*WorkTab{defaultTab}
+	m.activeTabID = defaultTab.ID
+
 	// Wire PTY manager and bridge into the WorkService's OrchestratorManager.
 	// PTY sessions are used for interactive display (plan/agent/console).
 	// Bridge sessions are used by the sequencer for headless task execution.
@@ -268,6 +277,7 @@ func (m *planModel) Init() tea.Cmd {
 		m.workTabsBar.GetSpinner().Tick, // Tick the tabs bar spinner
 		m.refreshData(),
 		m.loadWorkTiles(), // Load work tiles for the tabs bar
+		m.spawnDefaultSession(), // Spawn the default "Main" pi session
 	}
 
 	// Subscribe to watcher events if watcher is available
@@ -325,6 +335,13 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case ptyOutputMsg:
 		// PTY session has new output — just trigger a re-render.
 		// The session panel will call session.Render() in its View().
+		return m, nil
+
+	case defaultSessionSpawnedMsg:
+		if msg.err != nil {
+			m.statusMessage = fmt.Sprintf("Default session failed: %v", msg.err)
+			m.statusIsError = true
+		}
 		return m, nil
 
 	case watcherEventMsg:
@@ -433,37 +450,9 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Set focus to work tabs panel when clicking on it
 				m.activePanel = PanelWorkTabs
 
-				clickedWorkID := m.workTabsBar.HandleClick(msg)
-				if clickedWorkID != "" {
-					// Focus the clicked work
-					if m.focusedWorkID == clickedWorkID {
-						// Already focused - unfocus
-						m.focusedWorkID = ""
-						m.filters.task = "" // Clear work selection filter
-						m.filters.children = ""
-						m.activePanel = PanelLeft
-						m.statusMessage = "Work deselected"
-						m.statusIsError = false
-						return m, m.refreshData()
-					}
-					// Focus the new work
-					m.focusedWorkID = clickedWorkID
-					m.viewMode = ViewNormal
-					// Focus the work details panel
-					m.activePanel = PanelWorkDetails
-					m.statusMessage = fmt.Sprintf("Focused on work %s", m.focusedWorkID)
-					m.statusIsError = false
-
-					// Clear unseen PR changes flag for this work
-					_ = m.proj.DB.MarkWorkPRSeen(m.ctx, clickedWorkID)
-
-					// Set up the work details panel
-					focusedWork := m.findWorkByID(m.focusedWorkID)
-					m.workDetails.SetFocusedWork(focusedWork)
-					m.workDetails.SetSelectedIndex(0)
-					m.workDetails.SetOrchestratorHealth(checkOrchestratorHealth(m.ctx, m.proj.DB, m.focusedWorkID))
-
-					return m, m.updateWorkSelectionFilter()
+				clickedTabID := m.workTabsBar.HandleClick(msg)
+				if clickedTabID != "" {
+					return m.activateTab(clickedTabID)
 				}
 				return m, nil
 			}
@@ -675,10 +664,16 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.statusMessage = fmt.Sprintf("Failed: %v", msg.err)
 			m.statusIsError = true
 		} else if msg.ptySessionID != "" {
-			// PTY session — open session viewer
+			// Plan session created — activate it as a tab
 			m.viewPTYSession(msg.ptySessionID)
-			m.viewMode = ViewSessionViewer
+			// Create/activate the plan tab
+			tabID := msg.ptySessionID // "plan-<beanID>"
+			m.activeTabID = tabID
+			m.focusedWorkID = ""
+			m.filters.task = ""
+			m.filters.children = ""
 			m.activePanel = PanelSession
+			m.viewMode = ViewNormal
 			if msg.resumed {
 				m.statusMessage = fmt.Sprintf("Resumed plan session for %s", msg.beanID)
 			} else {
@@ -701,10 +696,13 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.statusMessage = fmt.Sprintf("Open Agent failed: %v", msg.err)
 			m.statusIsError = true
 		} else if msg.ptySessionID != "" {
-			// PTY session — open session viewer
+			// Agent session opened — wire it into the work tab's session panel
 			m.viewPTYSession(msg.ptySessionID)
-			m.viewMode = ViewSessionViewer
-			m.activePanel = PanelSession
+			// If we're on the work tab for this work, just stay there
+			// The session will render in the embedded panel
+			if activeTab := m.getActiveTab(); activeTab != nil && activeTab.Type == WorkTabWork && activeTab.WorkID == msg.workID {
+				activeTab.ActiveSubSession = SubSessionAgent
+			}
 			m.statusMessage = fmt.Sprintf("Agent session opened for %s", msg.workID)
 			m.statusIsError = false
 			return m, m.refreshData()
@@ -757,6 +755,7 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// If work was destroyed, clear the focused work
 			if msg.action == "Destroy work" {
 				m.focusedWorkID = ""
+				m.activeTabID = "main"
 				m.filters.task = ""
 				m.filters.children = ""
 			}
@@ -1035,9 +1034,52 @@ func scheduleNewBeanExpire(beanID string) tea.Cmd {
 }
 
 func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// When the session panel is focused in normal mode (tab-based sessions),
+	// forward input to the PTY — but intercept escape and control keys.
+	if m.activePanel == PanelSession && m.viewMode == ViewNormal {
+		activeTab := m.getActiveTab()
+		if activeTab != nil {
+			// Escape: exit session focus
+			if msg.Type == tea.KeyEsc {
+				if activeTab.Type == WorkTabWork {
+					// Return to work details panel
+					if activeTab.SessionMaximized {
+						activeTab.SessionMaximized = false
+					}
+					m.activePanel = PanelWorkDetails
+				} else {
+					// Main or plan tab: switch to main tab
+					m.activeTabID = "main"
+					m.activePanel = PanelLeft
+					m.focusedWorkID = ""
+					m.filters.task = ""
+					m.filters.children = ""
+				}
+				return m, nil
+			}
+
+			// Forward all other keys to the PTY session
+			session := activeTab.ActiveSession(m.ptyManager)
+			if session != nil && session.State() != ptysession.SessionDead {
+				raw := keyMsgToBytes(msg)
+				if len(raw) > 0 {
+					_ = session.WriteInput(raw)
+				}
+				return m, nil
+			}
+
+			// Session is dead — esc to leave (handled above), otherwise ignore
+			if msg.Type == tea.KeyEsc {
+				m.activePanel = PanelLeft
+				return m, nil
+			}
+		}
+	}
+
 	// Handle escape key globally for deselecting focused work
 	if msg.Type == tea.KeyEsc && m.viewMode == ViewNormal && m.focusedWorkID != "" {
 		m.focusedWorkID = ""
+		m.activeTabID = "main"
 		m.filters.task = "" // Clear work selection filter
 		m.filters.children = ""
 		m.activePanel = PanelLeft // Reset focus to issues panel
@@ -1385,25 +1427,42 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Handle [1-9] keys to select work by index (works from issues panel and work details panel)
-	if key := msg.String(); len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
+	if key := msg.String(); len(key) == 1 && key[0] >= '0' && key[0] <= '9' {
 		digit := int(key[0] - '0')
+		if digit == 0 {
+			// '0' selects the Main tab
+			return m.activateTab("main")
+		}
 		return m.selectWorkByIndex(digit)
 	}
 
 	switch msg.String() {
 	case "tab":
-		// In focused work mode: cycle between work details (left panel only) and issues
-		// Tab does NOT navigate to work tabs bar or the right panel of work details
+		// In focused work mode: cycle between work details, session, and issues
 		if m.focusedWorkID != "" {
+			activeTab := m.getActiveTab()
+			hasSession := activeTab != nil && activeTab.Type == WorkTabWork && activeTab.HasActiveSession(m.ptyManager)
+
 			switch m.activePanel {
 			case PanelWorkDetails, PanelWorkTabs:
-				// Move from work details (or tabs) to issues panel
+				if hasSession && !activeTab.SessionMaximized {
+					// Move from work details to session panel
+					m.activePanel = PanelSession
+					sessionID := activeTab.SessionID()
+					if s := m.ptyManager.Get(sessionID); s != nil {
+						m.viewPTYSession(sessionID)
+					}
+				} else {
+					// No session — move to issues panel
+					m.activePanel = PanelLeft
+				}
+			case PanelSession:
+				// Move from session to issues panel
 				m.activePanel = PanelLeft
 			case PanelLeft:
 				// Move from issues to work details
 				m.activePanel = PanelWorkDetails
-				m.workDetailsFocusLeft = true // Always focus left panel
-				// Reset the cleared flag and restore work selection filter when entering work details
+				m.workDetailsFocusLeft = true
 				if m.workSelectionCleared {
 					m.workSelectionCleared = false
 					return m, m.updateWorkSelectionFilter()
@@ -1555,6 +1614,57 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.filters.sortBy = "default"
 		}
 		return m, m.refreshData()
+
+	case "ctrl+1":
+		// Switch to agent sub-session
+		if activeTab := m.getActiveTab(); activeTab != nil && activeTab.Type == WorkTabWork {
+			activeTab.SetSubSession(1)
+			sessionID := activeTab.SessionID()
+			if s := m.ptyManager.Get(sessionID); s != nil {
+				m.viewPTYSession(sessionID)
+			}
+		}
+		return m, nil
+
+	case "ctrl+2":
+		// Switch to console sub-session
+		if activeTab := m.getActiveTab(); activeTab != nil && activeTab.Type == WorkTabWork {
+			activeTab.SetSubSession(2)
+			sessionID := activeTab.SessionID()
+			if s := m.ptyManager.Get(sessionID); s != nil {
+				m.viewPTYSession(sessionID)
+			}
+		}
+		return m, nil
+
+	case "ctrl+3":
+		// Switch to plan sub-session
+		if activeTab := m.getActiveTab(); activeTab != nil && activeTab.Type == WorkTabWork {
+			activeTab.SetSubSession(3)
+			sessionID := activeTab.SessionID()
+			if s := m.ptyManager.Get(sessionID); s != nil {
+				m.viewPTYSession(sessionID)
+			}
+		}
+		return m, nil
+
+	case "z":
+		// Toggle session maximize for the active work tab
+		if activeTab := m.getActiveTab(); activeTab != nil && activeTab.Type == WorkTabWork {
+			activeTab.SessionMaximized = !activeTab.SessionMaximized
+			if activeTab.SessionMaximized {
+				m.activePanel = PanelSession
+				// Wire session panel to the tab's active session
+				sessionID := activeTab.SessionID()
+				if s := m.ptyManager.Get(sessionID); s != nil {
+					m.viewPTYSession(sessionID)
+				}
+			} else {
+				m.activePanel = PanelWorkDetails
+			}
+			return m, nil
+		}
+		return m, nil
 
 	case "V":
 		m.beansExpanded = !m.beansExpanded
@@ -1818,6 +1928,215 @@ func (m *planModel) openBridgeSessionPicker() {
 	m.viewMode = ViewBridgeSessionPicker
 }
 
+// syncTabs rebuilds the tabs list from current work tiles and plan sessions.
+// The order is: [Main] [work1] [work2] ... [plan1] [plan2] ...
+func (m *planModel) syncTabs() {
+	// Preserve existing tab state (sub-session selection, maximized, etc.)
+	oldTabs := make(map[string]*WorkTab)
+	for _, tab := range m.tabs {
+		oldTabs[tab.ID] = tab
+	}
+
+	var tabs []*WorkTab
+
+	// 1. Default "Main" tab (always first)
+	if old, ok := oldTabs["main"]; ok {
+		tabs = append(tabs, old)
+	} else {
+		tabs = append(tabs, NewDefaultTab())
+	}
+
+	// 2. Work tabs (from work tiles)
+	for _, wp := range m.workTiles {
+		if wp == nil {
+			continue
+		}
+		workID := wp.Work.ID
+		if old, ok := oldTabs[workID]; ok {
+			// Preserve state, update work progress
+			old.WorkProgress = wp
+			old.Label = wp.Work.Name
+			if old.Label == "" {
+				old.Label = workID
+			}
+			tabs = append(tabs, old)
+		} else {
+			tab := NewWorkTab(workID, wp.Work.Name)
+			tab.WorkProgress = wp
+			tabs = append(tabs, tab)
+		}
+	}
+
+	// 3. Plan tabs (from PTY manager — any "plan-*" sessions)
+	ptySessions := m.ptyManager.List()
+	for sessionID, state := range ptySessions {
+		if state == ptysession.SessionDead {
+			continue
+		}
+		if len(sessionID) > 5 && sessionID[:5] == "plan-" {
+			beanID := sessionID[5:]
+			tabID := sessionID // "plan-<beanID>"
+			// Skip if this plan session is within a work tab (has a corresponding work)
+			isWorkPlan := false
+			for _, wp := range m.workTiles {
+				if wp != nil && wp.Work.ID == beanID {
+					isWorkPlan = true
+					break
+				}
+			}
+			if isWorkPlan {
+				continue
+			}
+			if old, ok := oldTabs[tabID]; ok {
+				tabs = append(tabs, old)
+			} else {
+				tabs = append(tabs, NewPlanTab(beanID, ""))
+			}
+		}
+	}
+
+	m.tabs = tabs
+
+	// Ensure activeTabID is still valid
+	found := false
+	for _, tab := range m.tabs {
+		if tab.ID == m.activeTabID {
+			found = true
+			break
+		}
+	}
+	if !found && len(m.tabs) > 0 {
+		m.activeTabID = m.tabs[0].ID
+	}
+}
+
+// getActiveTab returns the currently active tab, or nil.
+func (m *planModel) getActiveTab() *WorkTab {
+	for _, tab := range m.tabs {
+		if tab.ID == m.activeTabID {
+			return tab
+		}
+	}
+	return nil
+}
+
+// getTabByID returns the tab with the given ID, or nil.
+func (m *planModel) getTabByID(id string) *WorkTab {
+	for _, tab := range m.tabs {
+		if tab.ID == id {
+			return tab
+		}
+	}
+	return nil
+}
+
+// activateTab switches to the tab with the given ID.
+func (m *planModel) activateTab(tabID string) (tea.Model, tea.Cmd) {
+	tab := m.getTabByID(tabID)
+	if tab == nil {
+		// Not in new tab model yet — try legacy work focus
+		return m.activateTabLegacy(tabID)
+	}
+
+	// If clicking the already-active tab, toggle it off (back to Main)
+	if m.activeTabID == tabID && tab.Type != WorkTabDefault {
+		m.activeTabID = "main"
+		m.focusedWorkID = ""
+		m.filters.task = ""
+		m.filters.children = ""
+		m.activePanel = PanelLeft
+		m.statusMessage = "Tab deselected"
+		m.statusIsError = false
+		return m, m.refreshData()
+	}
+
+	m.activeTabID = tabID
+	m.viewMode = ViewNormal
+
+	switch tab.Type {
+	case WorkTabDefault:
+		// Main tab: show session, clear work focus
+		m.focusedWorkID = ""
+		m.filters.task = ""
+		m.filters.children = ""
+		m.activePanel = PanelSession
+		// Wire session panel to the main session
+		m.viewPTYSession("main")
+		m.statusMessage = "Main session"
+		m.statusIsError = false
+		return m, nil
+
+	case WorkTabWork:
+		// Work tab: focus the work (same as before)
+		m.focusedWorkID = tab.WorkID
+		m.activePanel = PanelWorkDetails
+		m.statusMessage = fmt.Sprintf("Focused on work %s", m.focusedWorkID)
+		m.statusIsError = false
+
+		// Clear unseen PR changes flag
+		_ = m.proj.DB.MarkWorkPRSeen(m.ctx, tab.WorkID)
+
+		// Set up work details panel
+		focusedWork := m.findWorkByID(m.focusedWorkID)
+		m.workDetails.SetFocusedWork(focusedWork)
+		m.workDetails.SetSelectedIndex(0)
+		m.workDetails.SetOrchestratorHealth(checkOrchestratorHealth(m.ctx, m.proj.DB, m.focusedWorkID))
+
+		// Wire session panel to the active sub-session
+		sessionID := tab.SessionID()
+		if s := m.ptyManager.Get(sessionID); s != nil {
+			m.viewPTYSession(sessionID)
+		}
+
+		return m, m.updateWorkSelectionFilter()
+
+	case WorkTabPlan:
+		// Plan tab: show the plan session
+		m.focusedWorkID = ""
+		m.filters.task = ""
+		m.filters.children = ""
+		m.activePanel = PanelSession
+		m.viewPTYSession(tab.SessionID())
+		m.statusMessage = fmt.Sprintf("Plan session: %s", tab.BeanID)
+		m.statusIsError = false
+		return m, nil
+	}
+
+	return m, nil
+}
+
+// activateTabLegacy handles tab activation for IDs not in the new tab model (backward compat).
+func (m *planModel) activateTabLegacy(tabID string) (tea.Model, tea.Cmd) {
+	// Try to match as a work ID
+	if m.focusedWorkID == tabID {
+		// Already focused - unfocus
+		m.focusedWorkID = ""
+		m.activeTabID = "main"
+		m.filters.task = ""
+		m.filters.children = ""
+		m.activePanel = PanelLeft
+		m.statusMessage = "Work deselected"
+		m.statusIsError = false
+		return m, m.refreshData()
+	}
+
+	m.focusedWorkID = tabID
+	m.activeTabID = tabID
+	m.viewMode = ViewNormal
+	m.activePanel = PanelWorkDetails
+	m.statusMessage = fmt.Sprintf("Focused on work %s", m.focusedWorkID)
+	m.statusIsError = false
+
+	_ = m.proj.DB.MarkWorkPRSeen(m.ctx, tabID)
+
+	focusedWork := m.findWorkByID(m.focusedWorkID)
+	m.workDetails.SetFocusedWork(focusedWork)
+	m.workDetails.SetSelectedIndex(0)
+	m.workDetails.SetOrchestratorHealth(checkOrchestratorHealth(m.ctx, m.proj.DB, m.focusedWorkID))
+
+	return m, m.updateWorkSelectionFilter()
+}
+
 // syncPanels synchronizes data from planModel to the panel components
 func (m *planModel) syncPanels() {
 	// Calculate column widths
@@ -1873,10 +2192,14 @@ func (m *planModel) syncPanels() {
 	}
 	m.detailsPanel.SetData(focusedBean, hasActiveSession, childBeanMap)
 
-	// Sync work tabs bar
+	// Sync tabs and work tabs bar
+	m.syncTabs()
 	m.workTabsBar.SetSize(m.width)
 	m.workTabsBar.SetActivePanel(m.activePanel)
-	// Note: Work tiles are set asynchronously when work tiles are loaded
+	m.workTabsBar.SetTabs(m.tabs)
+	m.workTabsBar.SetPTYManager(m.ptyManager)
+	m.workTabsBar.SetActiveTabID(m.activeTabID)
+	// Legacy compatibility
 	m.workTabsBar.SetFocusedWorkID(m.focusedWorkID)
 	// Note: Orchestrator health is set asynchronously when work tiles are loaded
 
@@ -1964,7 +2287,37 @@ func (m *planModel) View() string {
 	originalHeight := m.height
 	m.height = m.height - tabsBarHeight
 	m.syncPanels() // Sync all panels including status bar before rendering
-	content := m.renderTwoColumnLayout()
+
+	// Determine content based on active tab
+	activeTab := m.getActiveTab()
+	var content string
+
+	if activeTab != nil && m.viewMode == ViewNormal {
+		switch activeTab.Type {
+		case WorkTabDefault:
+			// Main tab: full-screen session panel
+			content = m.renderSessionFullscreen()
+
+		case WorkTabPlan:
+			// Plan tab: full-screen session panel
+			content = m.renderSessionFullscreen()
+
+		case WorkTabWork:
+			if activeTab.SessionMaximized {
+				// Maximized session: full-screen session panel
+				content = m.renderSessionFullscreen()
+			} else {
+				// Normal work tab: work details + session split, with issues below
+				content = m.renderWorkTabContent(activeTab)
+			}
+
+		default:
+			content = m.renderTwoColumnLayout()
+		}
+	} else {
+		content = m.renderTwoColumnLayout()
+	}
+
 	m.height = originalHeight
 
 	// Render status bar AFTER syncPanels to ensure status message is set
@@ -2100,6 +2453,7 @@ func (m *planModel) doSelectWorkAtIndex(index int) (tea.Model, tea.Cmd) {
 
 	// Select the work
 	m.focusedWorkID = work.Work.ID
+	m.activeTabID = work.Work.ID // Sync tab selection
 	m.viewMode = ViewNormal
 	// If we're already on work tabs, stay there, otherwise go to work details
 	if m.activePanel != PanelWorkTabs {

@@ -68,6 +68,97 @@ func (m *planModel) renderFocusedWorkSplitView() string {
 	return lipgloss.JoinVertical(lipgloss.Left, workPanel, planSection)
 }
 
+// renderSessionFullscreen renders a PTY session panel taking up the full content area.
+// Used for the Main tab, Plan tabs, and maximized work tab sessions.
+func (m *planModel) renderSessionFullscreen() string {
+	contentHeight := m.height - 1 // -1 for status bar
+
+	// Update session panel size to full width/height
+	m.sessionPanel.SetSize(m.width, contentHeight)
+	m.sessionPanel.SetFocus(true)
+
+	// Render with a simple border
+	panelStyle := tuiPanelStyle.Width(m.width - 2).Height(contentHeight - 2)
+	if m.activePanel == PanelSession {
+		panelStyle = panelStyle.BorderForeground(lipgloss.Color("214"))
+	}
+
+	// Show session type indicator
+	activeTab := m.getActiveTab()
+	title := "Session"
+	if activeTab != nil {
+		switch activeTab.Type {
+		case WorkTabDefault:
+			title = "Main"
+		case WorkTabPlan:
+			title = "Plan: " + activeTab.BeanID
+		case WorkTabWork:
+			switch activeTab.ActiveSubSession {
+			case SubSessionAgent:
+				title = "Agent: " + activeTab.WorkID
+			case SubSessionConsole:
+				title = "Console: " + activeTab.WorkID
+			case SubSessionPlan:
+				title = "Plan: " + activeTab.WorkID
+			}
+			title += " [z] restore"
+		}
+	}
+
+	sessionContent := m.sessionPanel.Render()
+	return panelStyle.Render(tuiTitleStyle.Render(title) + "\n" + sessionContent)
+}
+
+// renderWorkTabContent renders a work tab with work details + session split.
+// The work details panel is shown on top, with a session panel below it.
+func (m *planModel) renderWorkTabContent(tab *WorkTab) string {
+	// Note: m.height has already been adjusted for tabs bar in View()
+	totalHeight := m.height - 1 // -1 for status bar
+
+	// Split: work details (top ~40%) + session (bottom ~60%)
+	workPanelHeight := m.calculateWorkPanelHeight() + 2 // +2 for border
+	sessionHeight := totalHeight - workPanelHeight
+
+	if sessionHeight < 4 {
+		// Not enough room for session — fall back to normal work split
+		return m.renderFocusedWorkSplitView()
+	}
+
+	// Render work details panel (top)
+	m.workDetails.SetSize(m.width, workPanelHeight)
+	workPanel := m.workDetails.RenderWithPanel(workPanelHeight)
+
+	// Render session panel (bottom)
+	// Wire the session panel to the tab's active session
+	sessionID := tab.SessionID()
+	if s := m.ptyManager.Get(sessionID); s != nil && m.sessionPanel.Session() != s {
+		m.viewPTYSession(sessionID)
+	}
+	m.sessionPanel.SetSize(m.width-2, sessionHeight)
+	m.sessionPanel.SetFocus(m.activePanel == PanelSession)
+
+	// Sub-session indicator
+	subLabel := ""
+	switch tab.ActiveSubSession {
+	case SubSessionAgent:
+		subLabel = "Agent"
+	case SubSessionConsole:
+		subLabel = "Console"
+	case SubSessionPlan:
+		subLabel = "Plan"
+	}
+
+	sessionPanelStyle := tuiPanelStyle.Width(m.width - 2).Height(sessionHeight - 2)
+	if m.activePanel == PanelSession {
+		sessionPanelStyle = sessionPanelStyle.BorderForeground(lipgloss.Color("214"))
+	}
+	sessionContent := m.sessionPanel.Render()
+	titleLine := tuiTitleStyle.Render(subLabel) + " " + tuiDimStyle.Render("[z] maximize  [ctrl+1/2/3] switch")
+	sessionPanel := sessionPanelStyle.Render(titleLine + "\n" + sessionContent)
+
+	return lipgloss.JoinVertical(lipgloss.Left, workPanel, sessionPanel)
+}
+
 // renderTwoColumnLayout renders the issues and details panels side-by-side
 func (m *planModel) renderTwoColumnLayout() string {
 	// Check if a work is focused - if so, render split view
@@ -321,14 +412,13 @@ func (m *planModel) renderHelp() string {
 			entry("*", "Show all (clear filters)"),
 		}, "") + "\n" +
 
-		renderSection("Session Viewer", [][]string{
-			entry("j/k ↑/↓", "Scroll output"),
-			entry("g/G", "Jump to top/bottom"),
-			entry("i/enter", "Type a prompt"),
-			entry("ctrl+c", "Abort current run"),
-			entry("ctrl+s", "Steer (interrupt)"),
-			entry("esc", "Exit session viewer"),
-		}, "Available when viewing a bridge session.") + "\n" +
+		renderSection("Sessions & Tabs", [][]string{
+			entry("z", "Maximize/restore session"),
+			entry("ctrl+1/2/3", "Switch agent/console/plan"),
+			entry("Tab", "Cycle panels (details→session→issues)"),
+			entry("esc", "Exit session / deselect work"),
+			entry("1-9", "Select work tab"),
+		}, "Main tab: always-present pi session.\nWork tabs: details + embedded session.\nPlan tabs: created with [p] on a bean.") + "\n" +
 
 		renderSection("Indicators", [][]string{
 			entry("●", "Multi-selected"),
