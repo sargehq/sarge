@@ -358,8 +358,10 @@ func (s *Sequencer) waitForCompletion(ctx context.Context, session *bridge.Sessi
 				return session.Err()
 			}
 			if evt.Type == bridge.EventAgentEnd {
-				// Agent finished - wait for process to exit
-				return session.Wait()
+				// Agent finished its turn. In RPC mode the pi process stays
+				// alive waiting for the next prompt, so we must not block on
+				// process exit here. The caller will KillSession to clean up.
+				return nil
 			}
 		}
 	}
