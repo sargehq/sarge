@@ -1887,6 +1887,18 @@ func (m *planModel) cleanup() {
 	// which is deferred in runTUI. Do not close it here to avoid double-close.
 }
 
+// findActiveTaskSession returns the session ID of a running task session for the given work,
+// or empty string if none found.
+func (m *planModel) findActiveTaskSession(workID string) string {
+	prefix := "task-" + workID + "."
+	for id, state := range m.ptyManager.List() {
+		if state != ptysession.SessionDead && len(id) > len(prefix) && id[:len(prefix)] == prefix {
+			return id
+		}
+	}
+	return ""
+}
+
 // viewPTYSession switches the session panel to display a specific PTY session.
 func (m *planModel) viewPTYSession(sessionID string) {
 	m.activeSessionID = sessionID
@@ -2123,10 +2135,13 @@ func (m *planModel) activateTab(tabID string) (*planModel, tea.Cmd) {
 		m.workDetails.SetSelectedIndex(0)
 		m.workDetails.SetOrchestratorHealth(checkOrchestratorHealth(m.ctx, m.proj.DB, m.focusedWorkID))
 
-		// Wire session panel to the active sub-session
+		// Wire session panel to the active sub-session.
+		// If the preferred session doesn't exist, look for an active task session.
 		sessionID := tab.SessionID()
-		if s := m.ptyManager.Get(sessionID); s != nil {
+		if s := m.ptyManager.Get(sessionID); s != nil && s.State() != ptysession.SessionDead {
 			m.viewPTYSession(sessionID)
+		} else if taskSessionID := m.findActiveTaskSession(tab.WorkID); taskSessionID != "" {
+			m.viewPTYSession(taskSessionID)
 		}
 
 		return m, m.updateWorkSelectionFilter()
