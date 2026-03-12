@@ -140,6 +140,19 @@ func (s *Sequencer) tryStartNextTask(ctx context.Context, w *db.Work) {
 	}
 
 	if len(readyTasks) == 0 {
+		// For auto works with no tasks yet, set up the automated workflow
+		// (create estimate task) once the worktree is ready.
+		if w.Auto && w.WorktreePath != "" {
+			allTasks, err := s.proj.DB.GetWorkTasks(ctx, w.ID)
+			if err == nil && len(allTasks) == 0 {
+				logging.Info("Setting up automated workflow for auto work", "work_id", w.ID)
+				workSvc := work.NewWorkService(s.proj)
+				if err := workSvc.CreateEstimateTaskFromWorkBeans(ctx, w.ID, os.Stdout); err != nil {
+					logging.Warn("failed to create estimate task for auto work", "error", err, "work_id", w.ID)
+				}
+				return // Let the next poll pick up the new estimate task
+			}
+		}
 		// Check if we should transition work to idle/failed
 		s.checkWorkStatus(ctx, w)
 		return
@@ -174,19 +187,6 @@ func (s *Sequencer) executeTask(ctx context.Context, w *db.Work, t *db.Task) {
 	// Update activity
 	if err := s.proj.DB.UpdateTaskActivity(ctx, t.ID, time.Now()); err != nil {
 		logging.Warn("failed to update task activity", "error", err, "task_id", t.ID)
-	}
-
-	// Set up automated workflow if needed (auto work with no tasks yet)
-	if w.Auto {
-		tasks, err := s.proj.DB.GetWorkTasks(ctx, w.ID)
-		if err == nil && len(tasks) == 0 {
-			logging.Info("Setting up automated workflow", "work_id", w.ID)
-			workSvc := work.NewWorkService(s.proj)
-			if err := workSvc.CreateEstimateTaskFromWorkBeans(ctx, w.ID, os.Stdout); err != nil {
-				logging.Warn("failed to create estimate task", "error", err, "work_id", w.ID)
-			}
-			return // Let the next poll pick up the new estimate task
-		}
 	}
 
 	// Build task input
