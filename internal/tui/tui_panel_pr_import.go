@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-	zone "github.com/lrstanley/bubblezone"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/sargehq/sarge/internal/github"
 )
 
@@ -54,7 +54,7 @@ func NewPRImportPanel() *PRImportPanel {
 	input := textinput.New()
 	input.Placeholder = "https://github.com/owner/repo/pull/123"
 	input.CharLimit = 500
-	input.Width = 60
+	input.SetWidth(60)
 
 	return &PRImportPanel{
 		width:  60,
@@ -80,15 +80,15 @@ func (p *PRImportPanel) Reset() {
 }
 
 // Update handles key events and returns an action
-func (p *PRImportPanel) Update(msg tea.KeyMsg) (tea.Cmd, PRImportAction) {
+func (p *PRImportPanel) Update(msg tea.KeyPressMsg) (tea.Cmd, PRImportAction) {
 	// Check escape/cancel keys
-	if msg.Type == tea.KeyEsc || msg.String() == "esc" {
+	if msg.Code == tea.KeyEscape || msg.String() == "esc" {
 		p.input.Blur()
 		return nil, PRImportActionCancel
 	}
 
 	// Tab cycles between elements: input(0) -> Import(1) -> Cancel(2)
-	if msg.Type == tea.KeyTab || msg.String() == "tab" {
+	if msg.Code == tea.KeyTab || msg.String() == "tab" {
 		// Leave text input focus before switching
 		if p.focusIdx == 0 {
 			p.input.Blur()
@@ -104,7 +104,7 @@ func (p *PRImportPanel) Update(msg tea.KeyMsg) (tea.Cmd, PRImportAction) {
 	}
 
 	// Shift+Tab goes backwards
-	if msg.Type == tea.KeyShiftTab {
+	if msg.Code == tea.KeyTab && msg.Mod == tea.ModShift {
 		// Leave text input focus before switching
 		if p.focusIdx == 0 {
 			p.input.Blur()
@@ -213,7 +213,7 @@ func (p *PRImportPanel) Render() string {
 	if inputWidth < 20 {
 		inputWidth = 20
 	}
-	p.input.Width = inputWidth
+	p.input.SetWidth(inputWidth)
 
 	// Show focus label with context-aware hint
 	prURLLabel := "PR URL:"

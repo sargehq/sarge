@@ -20,7 +20,7 @@ const (
 	// ConfigDir is the directory name for project configuration.
 	ConfigDir = ".co"
 	// ConfigFile is the name of the project config file.
-	ConfigFile = "config.toml"
+	ConfigFile = "config2.toml"
 	// TrackingDB is the name of the tracking database file.
 	TrackingDB = "tracking.db"
 	// MainDir is the directory name for the main repository.

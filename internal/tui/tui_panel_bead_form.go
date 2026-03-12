@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-	zone "github.com/lrstanley/bubblezone"
+	"charm.land/bubbles/v2/textarea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/sargehq/sarge/internal/beans"
 )
 
@@ -90,7 +90,7 @@ func NewBeanFormPanel() *BeanFormPanel {
 	titleInput := textinput.New()
 	titleInput.Placeholder = "Enter title..."
 	titleInput.CharLimit = 100
-	titleInput.Width = 40
+	titleInput.SetWidth(40)
 
 	descTextarea := textarea.New()
 	descTextarea.Placeholder = "Enter description (optional)..."
@@ -169,9 +169,9 @@ func (p *BeanFormPanel) SetAddChildMode(parentID string) {
 }
 
 // Update handles key events and returns an action
-func (p *BeanFormPanel) Update(msg tea.KeyMsg) (tea.Cmd, BeanFormAction) {
+func (p *BeanFormPanel) Update(msg tea.KeyPressMsg) (tea.Cmd, BeanFormAction) {
 	// Check escape/cancel keys
-	if msg.Type == tea.KeyEsc || msg.String() == "esc" {
+	if msg.Code == tea.KeyEscape || msg.String() == "esc" {
 		p.titleInput.Blur()
 		p.descTextarea.Blur()
 		return nil, BeanFormActionCancel
@@ -192,7 +192,7 @@ func (p *BeanFormPanel) Update(msg tea.KeyMsg) (tea.Cmd, BeanFormAction) {
 	}
 
 	// Tab cycles between elements
-	if msg.Type == tea.KeyTab || msg.String() == "tab" {
+	if msg.Code == tea.KeyTab || msg.String() == "tab" {
 		// Leave current focus
 		if p.focusIdx == 0 {
 			p.titleInput.Blur()
@@ -212,7 +212,7 @@ func (p *BeanFormPanel) Update(msg tea.KeyMsg) (tea.Cmd, BeanFormAction) {
 	}
 
 	// Shift+Tab goes backwards
-	if msg.Type == tea.KeyShiftTab {
+	if msg.Code == tea.KeyTab && msg.Mod == tea.ModShift {
 		// Leave current focus
 		if p.focusIdx == 0 {
 			p.titleInput.Blur()
@@ -429,7 +429,7 @@ func (p *BeanFormPanel) Render(visibleLines int) string {
 	if inputWidth < 20 {
 		inputWidth = 20
 	}
-	p.titleInput.Width = inputWidth
+	p.titleInput.SetWidth(inputWidth)
 	p.descTextarea.SetWidth(inputWidth)
 	// Calculate dynamic height for description textarea
 	descHeight := max(visibleLines-12, 4)

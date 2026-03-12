@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/sargehq/sarge/internal/beans"
 	"github.com/stretchr/testify/require"
 )
@@ -212,16 +212,16 @@ func TestUpdateCloseBeanConfirm(t *testing.T) {
 			}
 
 			// Create the key message
-			var keyMsg tea.KeyMsg
+			var keyMsg tea.KeyPressMsg
 			if tt.key == "esc" {
-				keyMsg = tea.KeyMsg{Type: tea.KeyEsc}
+				keyMsg = tea.KeyPressMsg{Code: tea.KeyEscape}
 			} else {
-				keyMsg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(tt.key)}
+				r := []rune(tt.key)
+				keyMsg = tea.KeyPressMsg{Code: r[0], Text: tt.key}
 			}
 
 			// Update the model
-			newModel, cmd := m.updateCloseBeanConfirm(keyMsg)
-			updatedModel := newModel.(*planModel)
+			updatedModel, cmd := m.updateCloseBeanConfirm(keyMsg)
 
 			// Check if view mode changed back to normal
 			if tt.shouldCancel || tt.shouldClose {
@@ -408,7 +408,7 @@ func TestCloseConfirmationEdgeCases(t *testing.T) {
 
 			// Test update function doesn't panic when confirming
 			require.NotPanics(t, func() {
-				keyMsg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("y")}
+				keyMsg := tea.KeyPressMsg{Code: 'y', Text: "y"}
 				_, _ = m.updateCloseBeanConfirm(keyMsg)
 			}, "%s: Panic on confirm", tt.name)
 		})

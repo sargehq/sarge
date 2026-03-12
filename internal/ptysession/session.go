@@ -77,6 +77,7 @@ type Session struct {
 	ptm *os.File // PTY master
 
 	emu   *vt.Emulator
+	emuMu sync.Mutex // Protects all emu access (Write, Render, Resize)
 	state atomic.Int32
 
 	mu       sync.Mutex
@@ -202,15 +203,19 @@ func (s *Session) Resize(width, height int) {
 			Cols: clampUint16(width),
 		})
 	}
+	s.emuMu.Lock()
 	if s.emu != nil {
 		s.emu.Resize(width, height)
 	}
+	s.emuMu.Unlock()
 }
 
 // Render returns the current terminal screen as a string with ANSI escape codes.
 // Clears the dirty flag.
 func (s *Session) Render() string {
 	s.dirty.Store(false)
+	s.emuMu.Lock()
+	defer s.emuMu.Unlock()
 	if s.emu == nil {
 		return ""
 	}
@@ -250,7 +255,9 @@ func (s *Session) readLoop() {
 		n, err := s.ptm.Read(buf)
 		if n > 0 {
 			// Feed output to the virtual terminal emulator.
+			s.emuMu.Lock()
 			_, _ = s.emu.Write(buf[:n])
+			s.emuMu.Unlock()
 			s.dirty.Store(true)
 
 			// Notify the TUI that new output is available.

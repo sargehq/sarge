@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/sargehq/sarge/internal/bridge"
 )
 
@@ -42,7 +42,7 @@ func NewSessionPickerPanel() *SessionPickerPanel {
 	ti := textinput.New()
 	ti.Placeholder = "Filter sessions..."
 	ti.CharLimit = 100
-	ti.Width = 40
+	ti.SetWidth(40)
 
 	return &SessionPickerPanel{
 		width:  60,
@@ -84,7 +84,7 @@ func (p *SessionPickerPanel) SetSize(width, height int) {
 	p.width = width
 	p.height = height
 	if width > 10 {
-		p.filter.Width = width - 10
+		p.filter.SetWidth(width - 10)
 	}
 }
 
@@ -97,7 +97,7 @@ func (p *SessionPickerPanel) SelectedSessionID() string {
 }
 
 // Update handles key events and returns an action.
-func (p *SessionPickerPanel) Update(msg tea.KeyMsg) (tea.Cmd, SessionPickerAction) {
+func (p *SessionPickerPanel) Update(msg tea.KeyPressMsg) (tea.Cmd, SessionPickerAction) {
 	switch msg.String() {
 	case "esc":
 		return nil, SessionPickerActionCancel

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/sargehq/sarge/internal/control"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/logging"
@@ -21,6 +21,68 @@ import (
 // sessionName returns the session name for this project.
 func (m *planModel) sessionName() string {
 	return fmt.Sprintf("sarge-%s", m.proj.Config.Project.Name)
+}
+
+// defaultSessionSpawnedMsg indicates the default pi session was spawned (or failed).
+type defaultSessionSpawnedMsg struct {
+	err error
+}
+
+// spawnDefaultSession spawns the always-present "Main" pi session in the main repo dir.
+func (m *planModel) spawnDefaultSession() tea.Cmd {
+	return func() tea.Msg {
+		sessionID := "main"
+
+		// Don't spawn if already alive
+		if existing := m.ptyManager.Get(sessionID); existing != nil && existing.State() != ptysession.SessionDead {
+			return defaultSessionSpawnedMsg{}
+		}
+
+		mainRepoPath := m.proj.MainRepoPath()
+
+		// Build env
+		env := []string{}
+		beansPath := m.proj.BeansPath()
+		if beansPath != "" {
+			env = append(env, "BEANS_PATH="+beansPath)
+		}
+
+		cfg := ptysession.SessionConfig{
+			Args:    []string{"--no-session"},
+			WorkDir: mainRepoPath,
+			Width:   80,
+			Height:  24,
+			Env:     env,
+		}
+
+		// Apply pi config (provider, model, thinking)
+		if m.proj.Config != nil {
+			if m.proj.Config.Pi.Provider != "" {
+				cfg.Args = append(cfg.Args, "--provider", m.proj.Config.Pi.Provider)
+			}
+			if m.proj.Config.Pi.Model != "" {
+				cfg.Args = append(cfg.Args, "--model", m.proj.Config.Pi.Model)
+			}
+			if m.proj.Config.Pi.Thinking != "" {
+				cfg.Args = append(cfg.Args, "--thinking", m.proj.Config.Pi.Thinking)
+			}
+		}
+
+		session, err := m.ptyManager.Spawn(sessionID, cfg)
+		if err != nil {
+			logging.Warn("failed to spawn default pi session", "error", err)
+			return defaultSessionSpawnedMsg{err: err}
+		}
+
+		// Wire up output callback
+		session.SetOnOutput(func() {
+			if m.teaProgram != nil {
+				m.teaProgram.Send(ptyOutputMsg{sessionID: sessionID})
+			}
+		})
+
+		return defaultSessionSpawnedMsg{}
+	}
 }
 
 // spawnPlanSession spawns or resumes a planning session for a specific bean.

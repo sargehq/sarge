@@ -1,11 +1,12 @@
 package tui
 
 import (
+	"strings"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-	zone "github.com/lrstanley/bubblezone"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	zone "github.com/lrstanley/bubblezone/v2"
 )
 
 // renderFocusedWorkSplitView renders the split view when a work is focused
@@ -66,6 +67,132 @@ func (m *planModel) renderFocusedWorkSplitView() string {
 
 	// Combine everything vertically (panel borders provide visual separation)
 	return lipgloss.JoinVertical(lipgloss.Left, workPanel, planSection)
+}
+
+// renderSessionFullscreen renders a PTY session taking up the full content area.
+// Used for the Main tab, Plan tabs, and maximized work tab sessions.
+// The PTY output is rendered WITHOUT borders/padding — the vt emulator manages
+// its own screen buffer and cursor positioning. Wrapping it in lipgloss panels
+// causes ANSI escape code conflicts and flickering.
+func (m *planModel) renderSessionFullscreen() string {
+	contentHeight := m.height - 1 // -1 for status bar
+
+	// Give the PTY the full width and height minus 1 line for the title bar
+	sessionHeight := contentHeight - 1
+	m.sessionPanel.SetSize(m.width, sessionHeight)
+	m.sessionPanel.SetFocus(true)
+
+	// Build a minimal title bar (no border, just a colored line)
+	activeTab := m.getActiveTab()
+	title := "Session"
+	if activeTab != nil {
+		switch activeTab.Type {
+		case WorkTabDefault:
+			title = "Main"
+		case WorkTabPlan:
+			title = "Plan: " + activeTab.BeanID
+		case WorkTabWork:
+			switch activeTab.ActiveSubSession {
+			case SubSessionAgent:
+				title = "Agent: " + activeTab.WorkID
+			case SubSessionConsole:
+				title = "Console: " + activeTab.WorkID
+			case SubSessionPlan:
+				title = "Plan: " + activeTab.WorkID
+			}
+			title += " [z] restore"
+		}
+	}
+
+	titleStyle := lipgloss.NewStyle().
+		Background(lipgloss.Color("236")).
+		Foreground(lipgloss.Color("214")).
+		Bold(true).
+		Width(m.width)
+	titleBar := titleStyle.Render(" " + title)
+
+	// Render session content RAW — do not pass through lipgloss.
+	// The vt emulator outputs precisely formatted ANSI escape codes;
+	// lipgloss.Render() would rewrite/corrupt them causing flicker.
+	sessionContent := m.sessionPanel.Render()
+
+	// Pad with blank lines if session output is shorter than allocated height.
+	lines := strings.Count(sessionContent, "\n") + 1
+	if sessionContent == "" {
+		lines = 0
+	}
+	for lines < sessionHeight {
+		sessionContent += "\n"
+		lines++
+	}
+
+	return titleBar + "\n" + sessionContent
+}
+
+// renderWorkTabContent renders a work tab with work details + session split.
+// The work details panel is shown on top, with a session panel below it.
+func (m *planModel) renderWorkTabContent(tab *WorkTab) string {
+	// Note: m.height has already been adjusted for tabs bar in View()
+	totalHeight := m.height - 1 // -1 for status bar
+
+	// Split: work details (top ~40%) + session (bottom ~60%)
+	workPanelHeight := m.calculateWorkPanelHeight() + 2 // +2 for border
+	sessionHeight := totalHeight - workPanelHeight
+
+	if sessionHeight < 4 {
+		// Not enough room for session — fall back to normal work split
+		return m.renderFocusedWorkSplitView()
+	}
+
+	// Render work details panel (top)
+	m.workDetails.SetSize(m.width, workPanelHeight)
+	workPanel := m.workDetails.RenderWithPanel(workPanelHeight)
+
+	// Render session panel (bottom) — no border, raw PTY output
+	sessionID := tab.SessionID()
+	if s := m.ptyManager.Get(sessionID); s != nil && m.sessionPanel.Session() != s {
+		m.viewPTYSession(sessionID)
+	}
+
+	// Session gets full width, height minus 1 for title bar
+	ptyHeight := sessionHeight - 1
+	m.sessionPanel.SetSize(m.width, ptyHeight)
+	m.sessionPanel.SetFocus(m.activePanel == PanelSession)
+
+	// Sub-session indicator
+	subLabel := ""
+	switch tab.ActiveSubSession {
+	case SubSessionAgent:
+		subLabel = "Agent"
+	case SubSessionConsole:
+		subLabel = "Console"
+	case SubSessionPlan:
+		subLabel = "Plan"
+	}
+
+	// Minimal title bar (no border)
+	titleStyle := lipgloss.NewStyle().
+		Background(lipgloss.Color("236")).
+		Foreground(lipgloss.Color("214")).
+		Bold(true).
+		Width(m.width)
+	titleBar := titleStyle.Render(" " + subLabel + " " + tuiDimStyle.Render("[z] maximize  [ctrl+1/2/3] switch"))
+
+	// Render session content RAW — do not pass through lipgloss.
+	sessionContent := m.sessionPanel.Render()
+	lines := strings.Count(sessionContent, "\n") + 1
+	if sessionContent == "" {
+		lines = 0
+	}
+	for lines < ptyHeight {
+		sessionContent += "\n"
+		lines++
+	}
+	sessionPanel := titleBar + "\n" + sessionContent
+
+	// Concatenate directly instead of lipgloss.JoinVertical to avoid
+	// corrupting the raw VT output with line-width padding.
+	return workPanel + "\n" + sessionPanel
 }
 
 // renderTwoColumnLayout renders the issues and details panels side-by-side
@@ -161,7 +288,8 @@ func (m *planModel) detectClickedPanel(msg tea.MouseMsg) string {
 		return ""
 	}
 
-	x, y := msg.X, msg.Y
+	mouse := msg.Mouse()
+	x, y := mouse.X, mouse.Y
 
 	// Calculate panel boundaries using calculateWorkPanelHeightForEvents (event handling context)
 	tabsBarHeight := m.workTabsBar.Height()
@@ -321,14 +449,13 @@ func (m *planModel) renderHelp() string {
 			entry("*", "Show all (clear filters)"),
 		}, "") + "\n" +
 
-		renderSection("Session Viewer", [][]string{
-			entry("j/k ↑/↓", "Scroll output"),
-			entry("g/G", "Jump to top/bottom"),
-			entry("i/enter", "Type a prompt"),
-			entry("ctrl+c", "Abort current run"),
-			entry("ctrl+s", "Steer (interrupt)"),
-			entry("esc", "Exit session viewer"),
-		}, "Available when viewing a bridge session.") + "\n" +
+		renderSection("Sessions & Tabs", [][]string{
+			entry("z", "Maximize/restore session"),
+			entry("ctrl+1/2/3", "Switch agent/console/plan"),
+			entry("Tab", "Cycle panels (details→session→issues)"),
+			entry("esc", "Exit session / deselect work"),
+			entry("1-9", "Select work tab"),
+		}, "Main tab: always-present pi session.\nWork tabs: details + embedded session.\nPlan tabs: created with [p] on a bean.") + "\n" +
 
 		renderSection("Indicators", [][]string{
 			entry("●", "Multi-selected"),
@@ -351,7 +478,7 @@ func (m *planModel) renderHelp() string {
 
 // handleMouseWheel handles mouse wheel events by routing them to the appropriate panel
 // based on the mouse position. Only the panel under the mouse cursor will scroll.
-func (m *planModel) handleMouseWheel(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
+func (m *planModel) handleMouseWheel(msg tea.MouseMsg) (*planModel, tea.Cmd) {
 	// Debounce rapid scroll events (terminals often send 3+ events per wheel click)
 	// 50ms debounce allows continuous scrolling while filtering burst events
 	now := time.Now()
@@ -363,8 +490,10 @@ func (m *planModel) handleMouseWheel(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	// Calculate panel boundaries
 	tabsBarHeight := m.workTabsBar.Height()
 
+	mouse := msg.Mouse()
+
 	// Determine scroll direction
-	scrollUp := msg.Button == tea.MouseButtonWheelUp
+	scrollUp := mouse.Button == tea.MouseWheelUp
 
 	// Calculate panel widths
 	totalContentWidth := m.width - 4
@@ -377,9 +506,9 @@ func (m *planModel) handleMouseWheel(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		workPanelEndY := tabsBarHeight + workPanelHeight
 
 		// Check if mouse is in work details area (top panel)
-		if msg.Y >= tabsBarHeight && msg.Y < workPanelEndY {
+		if mouse.Y >= tabsBarHeight && mouse.Y < workPanelEndY {
 			// Check if over the right panel (details)
-			if msg.X >= rightPanelStartX {
+			if mouse.X >= rightPanelStartX {
 				// Scroll the work details right panel (summary or task)
 				return m, m.workDetails.UpdateViewport(msg)
 			}
@@ -408,7 +537,7 @@ func (m *planModel) handleMouseWheel(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	// Normal mode (no focused work) - check which panel mouse is over
 
 	// Check if mouse is over the issues panel (left side)
-	if msg.X <= leftPanelWidth+2 {
+	if mouse.X <= leftPanelWidth+2 {
 		// Issues panel - move cursor
 		if scrollUp {
 			if m.beansCursor > 0 {

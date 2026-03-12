@@ -7,8 +7,8 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/charmbracelet/huh"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/huh/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/sargehq/sarge/internal/mise"
 	"github.com/sargehq/sarge/internal/project"
 	"github.com/sargehq/sarge/internal/worktree"
@@ -166,7 +166,7 @@ func promptToolSelections() mise.ToolSelections {
 				Affirmative("Yes").
 				Negative("No"),
 		),
-	).WithTheme(huh.ThemeCharm())
+	).WithTheme(huh.ThemeFunc(huh.ThemeCharm))
 
 	// Set defaults
 	includeAgentInMise = agentMiseDefault

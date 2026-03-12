@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-	zone "github.com/lrstanley/bubblezone"
+	"charm.land/bubbles/v2/spinner"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/sargehq/sarge/internal/control"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/logging"
@@ -39,6 +39,7 @@ type rootModel struct {
 	spinner    spinner.Model
 	lastUpdate time.Time
 	quitting   bool
+	enableMouse bool
 
 	// Mouse state
 	mouseX int
@@ -89,26 +90,27 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.MouseMsg:
-		m.mouseX = msg.X
-		m.mouseY = msg.Y
+		mouse := msg.Mouse()
+		m.mouseX = mouse.X
+		m.mouseY = mouse.Y
 
 		// Route mouse events directly to plan model
 		if m.planModel != nil {
 			var cmd tea.Cmd
-			var newModel tea.Model
-			newModel, cmd = m.planModel.Update(msg)
-			m.planModel = newModel.(*planModel)
+			
+			m.planModel, cmd = m.planModel.Update(msg)
+			
 			return m, cmd
 		}
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Check if plan model is in modal state - if so, route directly to it
 		if m.planModel != nil && m.planModel.InModal() {
 			var cmd tea.Cmd
-			var newModel tea.Model
-			newModel, cmd = m.planModel.Update(msg)
-			m.planModel = newModel.(*planModel)
+			
+			m.planModel, cmd = m.planModel.Update(msg)
+			
 			return m, cmd
 		}
 
@@ -126,9 +128,9 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Route to plan model
 		if m.planModel != nil {
 			var cmd tea.Cmd
-			var newModel tea.Model
-			newModel, cmd = m.planModel.Update(msg)
-			m.planModel = newModel.(*planModel)
+			
+			m.planModel, cmd = m.planModel.Update(msg)
+			
 			return m, cmd
 		}
 		return m, nil
@@ -137,9 +139,9 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Route other messages to plan model
 		if m.planModel != nil {
 			var cmd tea.Cmd
-			var newModel tea.Model
-			newModel, cmd = m.planModel.Update(msg)
-			m.planModel = newModel.(*planModel)
+			
+			m.planModel, cmd = m.planModel.Update(msg)
+			
 			return m, cmd
 		}
 		return m, nil
@@ -147,17 +149,31 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View implements tea.Model
-func (m rootModel) View() string {
+func (m rootModel) View() tea.View {
+	var v tea.View
+	v.AltScreen = true
+	if m.enableMouse {
+		v.MouseMode = tea.MouseModeAllMotion
+	}
+
 	if m.quitting {
-		return ""
+		return v
 	}
 
-	// Render plan model content directly and wrap with zone.Scan
 	if m.planModel != nil {
-		return zone.Scan(m.planModel.View())
+		view := m.planModel.View()
+		// Skip zone.Scan when showing a PTY session — zone.Scan processes
+		// the string looking for bubblezone markers and corrupts raw ANSI
+		// terminal output from the vt emulator.
+		if m.planModel.IsShowingSession() {
+			v.Content = view
+		} else {
+			v.Content = zone.Scan(view)
+		}
+		return v
 	}
 
-	return ""
+	return v
 }
 
 // RunRootTUI starts the TUI with the new root model.
@@ -242,11 +258,8 @@ func RunRootTUI(ctx context.Context, proj *project.Project, enableMouse bool) er
 		}
 	}()
 
-	opts := []tea.ProgramOption{tea.WithAltScreen()}
-	if enableMouse {
-		opts = append(opts, tea.WithMouseAllMotion())
-	}
-	p := tea.NewProgram(model, opts...)
+	model.enableMouse = enableMouse
+	p := tea.NewProgram(model)
 
 	// Give the plan model a reference to the program so PTY sessions can
 	// send async messages to wake the event loop.

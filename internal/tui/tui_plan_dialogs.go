@@ -3,14 +3,14 @@ package tui
 import (
 	"fmt"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 // Dialog update handlers
 
-func (m *planModel) updateBeanSearch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *planModel) updateBeanSearch(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 	// Esc or Ctrl+G cancels search and clears filter
-	if msg.Type == tea.KeyEsc || msg.String() == "esc" || msg.String() == "escape" || msg.String() == "ctrl+g" {
+	if msg.Code == tea.KeyEscape || msg.String() == "esc" || msg.String() == "escape" || msg.String() == "ctrl+g" {
 		m.viewMode = ViewNormal
 		m.textInput.Blur()
 		m.filters.searchText = ""
@@ -40,8 +40,8 @@ func (m *planModel) updateBeanSearch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 }
 
-func (m *planModel) updateLabelFilter(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if msg.Type == tea.KeyEsc || msg.String() == "esc" || msg.String() == "escape" {
+func (m *planModel) updateLabelFilter(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
+	if msg.Code == tea.KeyEscape || msg.String() == "esc" || msg.String() == "escape" {
 		m.viewMode = ViewNormal
 		m.textInput.Blur()
 		return m, nil
@@ -58,8 +58,8 @@ func (m *planModel) updateLabelFilter(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 }
 
-func (m *planModel) updateCloseBeanConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if msg.Type == tea.KeyEsc || msg.String() == "esc" || msg.String() == "escape" {
+func (m *planModel) updateCloseBeanConfirm(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
+	if msg.Code == tea.KeyEscape || msg.String() == "esc" || msg.String() == "escape" {
 		m.viewMode = ViewNormal
 		return m, nil
 	}
@@ -94,8 +94,8 @@ func (m *planModel) updateCloseBeanConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	return m, nil
 }
 
-func (m *planModel) updateDeleteBeanConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if msg.Type == tea.KeyEsc || msg.String() == "esc" || msg.String() == "escape" {
+func (m *planModel) updateDeleteBeanConfirm(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
+	if msg.Code == tea.KeyEscape || msg.String() == "esc" || msg.String() == "escape" {
 		m.viewMode = ViewNormal
 		return m, nil
 	}
