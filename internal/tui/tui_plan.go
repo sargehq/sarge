@@ -1416,13 +1416,11 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 			case WorkDetailActionResetTask:
 				return m, m.resetSelectedTask()
 			case WorkDetailActionAttachTerminal:
-				// Open bridge session picker
-				if m.bridgeClient != nil {
-					sessions := m.bridgeClient.ListSessions()
-					if len(sessions) > 0 {
-						m.openBridgeSessionPicker()
-						return m, nil
-					}
+				// Open session picker (checks PTY sessions)
+				ptySessions := m.ptyManager.List()
+				if len(ptySessions) > 0 {
+					m.openBridgeSessionPicker()
+					return m, nil
 				}
 				m.statusMessage = "No active sessions for this work"
 				m.statusIsError = false
