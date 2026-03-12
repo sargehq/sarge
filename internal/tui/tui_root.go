@@ -214,7 +214,7 @@ func RunRootTUI(ctx context.Context, proj *project.Project, enableMouse bool) er
 
 	// Start the task sequencer as an in-process goroutine.
 	model := newRootModel(ctx, proj)
-	sequencer := taskseq.New(proj, model.planModel.bridgeClient)
+	sequencer := taskseq.New(proj, model.planModel.ptyManager)
 
 	// Wire up DB watcher to notify the sequencer on changes.
 	trackingDBPath := filepath.Join(proj.Root, ".co", "tracking.db")

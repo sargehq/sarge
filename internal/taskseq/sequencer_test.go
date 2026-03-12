@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sargehq/sarge/internal/bridge"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/project"
+	"github.com/sargehq/sarge/internal/ptysession"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -38,13 +38,13 @@ func newTestProject(t *testing.T) *project.Project {
 	}
 }
 
-// newTestSequencer creates a sequencer with a test project and bridge.
+// newTestSequencer creates a sequencer with a test project and PTY manager.
 func newTestSequencer(t *testing.T) (*Sequencer, *project.Project) {
 	t.Helper()
 	proj := newTestProject(t)
-	b := bridge.NewBridge()
-	t.Cleanup(func() { b.KillAll() })
-	s := New(proj, b)
+	ptyMgr := ptysession.NewManager()
+	t.Cleanup(func() { ptyMgr.KillAll() })
+	s := New(proj, ptyMgr)
 	return s, proj
 }
 
