@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-	zone "github.com/lrstanley/bubblezone"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	zone "github.com/lrstanley/bubblezone/v2"
 )
 
 // CreateWorkAction represents an action result from the panel
@@ -60,7 +60,7 @@ func NewCreateWorkPanel() *CreateWorkPanel {
 	branchInput := textinput.New()
 	branchInput.Placeholder = "Branch name..."
 	branchInput.CharLimit = 100
-	branchInput.Width = 60
+	branchInput.SetWidth(60)
 
 	return &CreateWorkPanel{
 		width:              60,
@@ -121,21 +121,21 @@ func (p *CreateWorkPanel) applyBranchFilter() {
 }
 
 // Update handles key events and returns an action
-func (p *CreateWorkPanel) Update(msg tea.KeyMsg) (tea.Cmd, CreateWorkAction) {
-	if msg.Type == tea.KeyEsc {
+func (p *CreateWorkPanel) Update(msg tea.KeyPressMsg) (tea.Cmd, CreateWorkAction) {
+	if msg.Code == tea.KeyEscape {
 		p.branchInput.Blur()
 		return nil, CreateWorkActionCancel
 	}
 
 	// Tab cycles between mode(0), branch(1), buttons(2)
-	if msg.Type == tea.KeyTab {
+	if msg.Code == tea.KeyTab {
 		p.fieldIdx = (p.fieldIdx + 1) % 3
 		p.updateFocus()
 		return nil, CreateWorkActionNone
 	}
 
 	// Shift+Tab goes backwards
-	if msg.Type == tea.KeyShiftTab {
+	if msg.Code == tea.KeyTab && msg.Mod == tea.ModShift {
 		p.fieldIdx--
 		if p.fieldIdx < 0 {
 			p.fieldIdx = 2
@@ -200,7 +200,7 @@ func (p *CreateWorkPanel) updateFocus() {
 }
 
 // updateBranchSelector handles key events for the branch selector
-func (p *CreateWorkPanel) updateBranchSelector(msg tea.KeyMsg) {
+func (p *CreateWorkPanel) updateBranchSelector(msg tea.KeyPressMsg) {
 	switch msg.String() {
 	case "k", "up":
 		if p.selectedBranchIdx > 0 {

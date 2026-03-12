@@ -4,9 +4,9 @@ import (
 	"strings"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-	zone "github.com/lrstanley/bubblezone"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	zone "github.com/lrstanley/bubblezone/v2"
 )
 
 // renderFocusedWorkSplitView renders the split view when a work is focused
@@ -286,7 +286,8 @@ func (m *planModel) detectClickedPanel(msg tea.MouseMsg) string {
 		return ""
 	}
 
-	x, y := msg.X, msg.Y
+	mouse := msg.Mouse()
+	x, y := mouse.X, mouse.Y
 
 	// Calculate panel boundaries using calculateWorkPanelHeightForEvents (event handling context)
 	tabsBarHeight := m.workTabsBar.Height()
@@ -475,7 +476,7 @@ func (m *planModel) renderHelp() string {
 
 // handleMouseWheel handles mouse wheel events by routing them to the appropriate panel
 // based on the mouse position. Only the panel under the mouse cursor will scroll.
-func (m *planModel) handleMouseWheel(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
+func (m *planModel) handleMouseWheel(msg tea.MouseMsg) (*planModel, tea.Cmd) {
 	// Debounce rapid scroll events (terminals often send 3+ events per wheel click)
 	// 50ms debounce allows continuous scrolling while filtering burst events
 	now := time.Now()
@@ -487,8 +488,10 @@ func (m *planModel) handleMouseWheel(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	// Calculate panel boundaries
 	tabsBarHeight := m.workTabsBar.Height()
 
+	mouse := msg.Mouse()
+
 	// Determine scroll direction
-	scrollUp := msg.Button == tea.MouseButtonWheelUp
+	scrollUp := mouse.Button == tea.MouseWheelUp
 
 	// Calculate panel widths
 	totalContentWidth := m.width - 4
@@ -501,9 +504,9 @@ func (m *planModel) handleMouseWheel(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		workPanelEndY := tabsBarHeight + workPanelHeight
 
 		// Check if mouse is in work details area (top panel)
-		if msg.Y >= tabsBarHeight && msg.Y < workPanelEndY {
+		if mouse.Y >= tabsBarHeight && mouse.Y < workPanelEndY {
 			// Check if over the right panel (details)
-			if msg.X >= rightPanelStartX {
+			if mouse.X >= rightPanelStartX {
 				// Scroll the work details right panel (summary or task)
 				return m, m.workDetails.UpdateViewport(msg)
 			}
@@ -532,7 +535,7 @@ func (m *planModel) handleMouseWheel(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	// Normal mode (no focused work) - check which panel mouse is over
 
 	// Check if mouse is over the issues panel (left side)
-	if msg.X <= leftPanelWidth+2 {
+	if mouse.X <= leftPanelWidth+2 {
 		// Issues panel - move cursor
 		if scrollUp {
 			if m.beansCursor > 0 {

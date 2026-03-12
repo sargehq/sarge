@@ -3,7 +3,7 @@ package pubsub
 import (
 	"context"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 // ListenCmd creates a Bubble Tea command that listens for events on a channel.

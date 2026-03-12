@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textarea"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-	zone "github.com/lrstanley/bubblezone"
+	"charm.land/bubbles/v2/textarea"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	zone "github.com/lrstanley/bubblezone/v2"
 )
 
 // LinearImportAction represents an action result from the panel
@@ -84,15 +84,15 @@ func (p *LinearImportPanel) Reset() {
 }
 
 // Update handles key events and returns an action
-func (p *LinearImportPanel) Update(msg tea.KeyMsg) (tea.Cmd, LinearImportAction) {
+func (p *LinearImportPanel) Update(msg tea.KeyPressMsg) (tea.Cmd, LinearImportAction) {
 	// Check escape/cancel keys
-	if msg.Type == tea.KeyEsc || msg.String() == "esc" {
+	if msg.Code == tea.KeyEscape || msg.String() == "esc" {
 		p.input.Blur()
 		return nil, LinearImportActionCancel
 	}
 
 	// Tab cycles between elements: input(0) -> createDeps(1) -> update(2) -> dryRun(3) -> maxDepth(4) -> Ok(5) -> Cancel(6)
-	if msg.Type == tea.KeyTab || msg.String() == "tab" {
+	if msg.Code == tea.KeyTab || msg.String() == "tab" {
 		// Leave textarea focus before switching
 		if p.focusIdx == 0 {
 			p.input.Blur()
@@ -108,7 +108,7 @@ func (p *LinearImportPanel) Update(msg tea.KeyMsg) (tea.Cmd, LinearImportAction)
 	}
 
 	// Shift+Tab goes backwards
-	if msg.Type == tea.KeyShiftTab {
+	if msg.Code == tea.KeyTab && msg.Mod == tea.ModShift {
 		// Leave textarea focus before switching
 		if p.focusIdx == 0 {
 			p.input.Blur()

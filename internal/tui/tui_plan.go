@@ -9,10 +9,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/sargehq/sarge/internal/beans"
 	beanswatcher "github.com/sargehq/sarge/internal/beans/watcher"
@@ -137,7 +137,7 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 	ti := textinput.New()
 	ti.Placeholder = "Search..."
 	ti.CharLimit = 100
-	ti.Width = 40
+	ti.SetWidth(40)
 
 	// Initialize beans database watcher
 	beansDir := proj.BeansPath()
@@ -350,7 +350,7 @@ func (m *planModel) waitForTrackingWatcherEvent() tea.Cmd {
 }
 
 // Update implements tea.Model
-func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *planModel) Update(msg tea.Msg) (*planModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ptyOutputMsg:
 		// PTY session has new output — only meaningful if it's the active session.
@@ -399,75 +399,81 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		return m, nil
 
-	case tea.MouseMsg:
-		m.mouseX = msg.X
-		m.mouseY = msg.Y
+	case tea.MouseMotionMsg:
+		mouse := msg.Mouse()
+		m.mouseX = mouse.X
+		m.mouseY = mouse.Y
 
 		// Calculate status bar Y position (at bottom of view)
 		statusBarY := m.height - 1
 
 		// Handle hover detection for motion events
-		if msg.Action == tea.MouseActionMotion {
-			// Calculate tabs bar position (at top, if there are works)
-			tabsBarHeight := m.workTabsBar.Height()
+		// Calculate tabs bar position (at top, if there are works)
+		tabsBarHeight := m.workTabsBar.Height()
 
-			// Check if hovering over tabs bar
-			if tabsBarHeight > 0 && msg.Y < tabsBarHeight {
-				m.hoveredTabID = m.workTabsBar.DetectHoveredTab(msg)
-				m.workTabsBar.SetHoveredTabID(m.hoveredTabID)
-				m.hoveredButton = ""
-				m.hoveredIssue = -1
-				m.hoveredWorkItem = -1
-				m.hoveredDialogButton = ""
-				return m, nil
-			}
-
-			// Clear tab hover when not over tabs bar
-			m.hoveredTabID = ""
-			m.workTabsBar.SetHoveredTabID("")
-
-			if msg.Y == statusBarY {
-				m.hoveredButton = m.detectCommandsBarButton(msg)
-				m.hoveredIssue = -1
-				m.hoveredWorkItem = -1
-				m.hoveredDialogButton = ""
-			} else {
-				m.hoveredButton = ""
-				// Detect hover over dialog buttons if in form mode
-				m.hoveredDialogButton = m.detectDialogButton(msg)
-				if m.hoveredDialogButton != "" {
-					m.hoveredIssue = -1
-					m.hoveredWorkItem = -1
-				} else if m.focusedWorkID != "" {
-					// Focused work mode: work details panel at top, issues panel at bottom
-					// Mouse could be in work details or issues - detect with bubblezone
-					m.hoveredWorkItem = m.workDetails.DetectHoveredItem(msg)
-					if m.hoveredWorkItem >= 0 {
-						m.hoveredIssue = -1
-					} else {
-						// Check issues panel
-						m.hoveredIssue = m.detectHoveredIssueWithOffset(msg)
-					}
-				} else {
-					// Normal mode - detect hover over issue lines
-					m.hoveredWorkItem = -1
-					m.hoveredIssue = m.detectHoveredIssue(msg)
-				}
-			}
+		// Check if hovering over tabs bar
+		if tabsBarHeight > 0 && mouse.Y < tabsBarHeight {
+			m.hoveredTabID = m.workTabsBar.DetectHoveredTab(msg)
+			m.workTabsBar.SetHoveredTabID(m.hoveredTabID)
+			m.hoveredButton = ""
+			m.hoveredIssue = -1
+			m.hoveredWorkItem = -1
+			m.hoveredDialogButton = ""
 			return m, nil
 		}
 
-		// Handle mouse wheel events - route to appropriate panel based on mouse position
-		if msg.Action == tea.MouseActionPress &&
-			(msg.Button == tea.MouseButtonWheelUp || msg.Button == tea.MouseButtonWheelDown) {
-			return m.handleMouseWheel(msg)
-		}
+		// Clear tab hover when not over tabs bar
+		m.hoveredTabID = ""
+		m.workTabsBar.SetHoveredTabID("")
 
-		// Handle clicks on status bar buttons
-		if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft {
+		if mouse.Y == statusBarY {
+			m.hoveredButton = m.detectCommandsBarButton(msg)
+			m.hoveredIssue = -1
+			m.hoveredWorkItem = -1
+			m.hoveredDialogButton = ""
+		} else {
+			m.hoveredButton = ""
+			// Detect hover over dialog buttons if in form mode
+			m.hoveredDialogButton = m.detectDialogButton(msg)
+			if m.hoveredDialogButton != "" {
+				m.hoveredIssue = -1
+				m.hoveredWorkItem = -1
+			} else if m.focusedWorkID != "" {
+				// Focused work mode: work details panel at top, issues panel at bottom
+				// Mouse could be in work details or issues - detect with bubblezone
+				m.hoveredWorkItem = m.workDetails.DetectHoveredItem(msg)
+				if m.hoveredWorkItem >= 0 {
+					m.hoveredIssue = -1
+				} else {
+					// Check issues panel
+					m.hoveredIssue = m.detectHoveredIssueWithOffset(msg)
+				}
+			} else {
+				// Normal mode - detect hover over issue lines
+				m.hoveredWorkItem = -1
+				m.hoveredIssue = m.detectHoveredIssue(msg)
+			}
+		}
+		return m, nil
+
+	case tea.MouseWheelMsg:
+		mouse := msg.Mouse()
+		m.mouseX = mouse.X
+		m.mouseY = mouse.Y
+		return m.handleMouseWheel(msg)
+
+	case tea.MouseClickMsg:
+		mouse := msg.Mouse()
+		m.mouseX = mouse.X
+		m.mouseY = mouse.Y
+
+		// Calculate status bar Y position (at bottom of view)
+		statusBarY := m.height - 1
+
+		if mouse.Button == tea.MouseLeft {
 			// Check for clicks on tabs bar
 			tabsBarHeight := m.workTabsBar.Height()
-			if tabsBarHeight > 0 && msg.Y < tabsBarHeight {
+			if tabsBarHeight > 0 && mouse.Y < tabsBarHeight {
 				// Set focus to work tabs panel when clicking on it
 				m.activePanel = PanelWorkTabs
 
@@ -478,26 +484,26 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
-			if msg.Y == statusBarY {
+			if mouse.Y == statusBarY {
 				clickedButton := m.detectCommandsBarButton(msg)
 				// Trigger the corresponding action by simulating a key press
 				switch clickedButton {
 				case "n":
-					return m.handleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'n', Text: "n"})
 				case "e":
-					return m.handleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'e', Text: "e"})
 				case "a":
-					return m.handleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'a', Text: "a"})
 				case "x":
-					return m.handleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'x', Text: "x"})
 				case "d":
-					return m.handleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'd', Text: "d"})
 				case "w":
-					return m.handleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'w'}})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'w', Text: "w"})
 				case "p":
-					return m.handleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'p', Text: "p"})
 				case "?":
-					return m.handleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: '?', Text: "?"})
 				}
 			} else {
 				// Check if clicking on dialog buttons
@@ -607,7 +613,7 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if clickedIssue >= 0 && clickedIssue < len(m.beanItems) {
 						m.beansCursor = clickedIssue
 						m.activePanel = PanelLeft
-					} else if msg.X > m.width/2 {
+					} else if mouse.X > m.width/2 {
 						// Clicked on right side - switch to details panel
 						m.activePanel = PanelRight
 					}
@@ -921,7 +927,7 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		delete(m.newBeans, msg.beanID)
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		return m.handleKeyPress(msg)
 
 	case spinner.TickMsg:
@@ -934,28 +940,6 @@ func (m *planModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmd1, cmd2)
 
 	default:
-		// Handle Kitty keyboard protocol escape sequences
-		// Kitty/Ghostty send keys as CSI <keycode> ; <modifiers> u
-		typeName := fmt.Sprintf("%T", msg)
-		if typeName == "tea.unknownCSISequenceMsg" {
-			msgStr := fmt.Sprintf("%s", msg)
-			// Check for Kitty protocol escape key: "?CSI[50 55 117]?" = "27u"
-			if strings.Contains(msgStr, "50 55 117") {
-				return m.handleKeyPress(tea.KeyMsg{Type: tea.KeyEsc})
-			}
-			// Check for Ctrl+G: 103;5u = bytes "49 48 51 59 53 117"
-			if strings.Contains(msgStr, "49 48 51 59 53 117") {
-				return m.handleKeyPress(tea.KeyMsg{Type: tea.KeyCtrlG})
-			}
-			// Check for Ctrl+S: 115;5u = bytes "49 49 53 59 53 117"
-			if strings.Contains(msgStr, "49 49 53 59 53 117") {
-				return m.handleKeyPress(tea.KeyMsg{Type: tea.KeyCtrlS})
-			}
-			// Check for Ctrl+O: 111;5u = bytes "49 49 49 59 53 117"
-			if strings.Contains(msgStr, "49 49 49 59 53 117") {
-				return m.handleKeyPress(tea.KeyMsg{Type: tea.KeyCtrlO})
-			}
-		}
 		var cmd tea.Cmd
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
@@ -1054,14 +1038,14 @@ func scheduleNewBeanExpire(beanID string) tea.Cmd {
 	})
 }
 
-func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 	// When the session panel is focused in normal mode (tab-based sessions),
 	// forward input to the PTY — but intercept escape and control keys.
 	if m.activePanel == PanelSession && m.viewMode == ViewNormal {
 		activeTab := m.getActiveTab()
 		if activeTab != nil {
 			// Escape: exit session focus
-			if msg.Type == tea.KeyEsc {
+			if msg.Code == tea.KeyEscape {
 				if activeTab.Type == WorkTabWork {
 					// Return to work details panel
 					if activeTab.SessionMaximized {
@@ -1090,7 +1074,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 
 			// Session is dead — esc to leave (handled above), otherwise ignore
-			if msg.Type == tea.KeyEsc {
+			if msg.Code == tea.KeyEscape {
 				m.activePanel = PanelLeft
 				return m, nil
 			}
@@ -1098,7 +1082,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Handle escape key globally for deselecting focused work
-	if msg.Type == tea.KeyEsc && m.viewMode == ViewNormal && m.focusedWorkID != "" {
+	if msg.Code == tea.KeyEscape && m.viewMode == ViewNormal && m.focusedWorkID != "" {
 		m.focusedWorkID = ""
 		m.activeTabID = "main"
 		m.filters.task = "" // Clear work selection filter
@@ -2074,7 +2058,7 @@ func (m *planModel) getTabByID(id string) *WorkTab {
 }
 
 // activateTab switches to the tab with the given ID.
-func (m *planModel) activateTab(tabID string) (tea.Model, tea.Cmd) {
+func (m *planModel) activateTab(tabID string) (*planModel, tea.Cmd) {
 	tab := m.getTabByID(tabID)
 	if tab == nil {
 		// Not in new tab model yet — try legacy work focus
@@ -2149,7 +2133,7 @@ func (m *planModel) activateTab(tabID string) (tea.Model, tea.Cmd) {
 }
 
 // activateTabLegacy handles tab activation for IDs not in the new tab model (backward compat).
-func (m *planModel) activateTabLegacy(tabID string) (tea.Model, tea.Cmd) {
+func (m *planModel) activateTabLegacy(tabID string) (*planModel, tea.Cmd) {
 	// Try to match as a work ID
 	if m.focusedWorkID == tabID {
 		// Already focused - unfocus
@@ -2461,7 +2445,7 @@ func (m *planModel) updateWorkSelectionFilter() tea.Cmd {
 // selectWorkByIndex selects a work by its index in the work tiles array.
 // Key mapping: 1-9 map to indices 0-8.
 // Returns a command to load work tiles if they're not loaded yet.
-func (m *planModel) selectWorkByIndex(digit int) (tea.Model, tea.Cmd) {
+func (m *planModel) selectWorkByIndex(digit int) (*planModel, tea.Cmd) {
 	// Map digit to index: 1->0, 2->1, ..., 9->8
 	index := digit - 1
 
@@ -2479,7 +2463,7 @@ func (m *planModel) selectWorkByIndex(digit int) (tea.Model, tea.Cmd) {
 
 // doSelectWorkAtIndex performs the actual work selection at a given index.
 // This is called either directly from selectWorkByIndex or after work tiles are loaded.
-func (m *planModel) doSelectWorkAtIndex(index int) (tea.Model, tea.Cmd) {
+func (m *planModel) doSelectWorkAtIndex(index int) (*planModel, tea.Cmd) {
 	works := m.workTiles
 
 	// Check if index is valid

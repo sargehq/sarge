@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/viewport"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/viewport"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/progress"
@@ -31,7 +31,7 @@ type WorkSummaryPanel struct {
 
 // NewWorkSummaryPanel creates a new WorkSummaryPanel
 func NewWorkSummaryPanel() *WorkSummaryPanel {
-	vp := viewport.New(40, 20) // Initial size, will be updated
+	vp := viewport.New(viewport.WithWidth(40), viewport.WithHeight(20)) // Initial size, will be updated
 	// Mouse wheel events are handled at the top level (planModel.handleMouseWheel)
 	// to ensure only the panel under the cursor scrolls
 	vp.MouseWheelEnabled = false
@@ -53,8 +53,8 @@ func (p *WorkSummaryPanel) SetSize(width, height int) {
 	visibleLines := max(height-3, 1)
 
 	// Set viewport size accounting for padding (2 chars total)
-	p.viewport.Width = width - 2
-	p.viewport.Height = visibleLines
+	p.viewport.SetWidth(width - 2)
+	p.viewport.SetHeight(visibleLines)
 }
 
 // SetFocus updates the focus state

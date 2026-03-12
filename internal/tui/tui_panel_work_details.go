@@ -1,8 +1,8 @@
 package tui
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/sargehq/sarge/internal/progress"
 )
 
@@ -352,9 +352,10 @@ func (p *WorkDetailsPanel) renderRightPanel(_, panelWidth int) string {
 func (p *WorkDetailsPanel) UpdateViewport(msg tea.Msg) tea.Cmd {
 	// Handle mouse wheel events by manually scrolling (since MouseWheelEnabled is false)
 	if mouseMsg, ok := msg.(tea.MouseMsg); ok {
-		if mouseMsg.Button == tea.MouseButtonWheelUp {
+		mouse := mouseMsg.Mouse()
+		if mouse.Button == tea.MouseWheelUp {
 			p.ScrollUp()
-		} else if mouseMsg.Button == tea.MouseButtonWheelDown {
+		} else if mouse.Button == tea.MouseWheelDown {
 			p.ScrollDown()
 		}
 	}
@@ -362,7 +363,7 @@ func (p *WorkDetailsPanel) UpdateViewport(msg tea.Msg) tea.Cmd {
 }
 
 // Update handles key events and returns an action.
-func (p *WorkDetailsPanel) Update(msg tea.KeyMsg) (tea.Cmd, WorkDetailAction) {
+func (p *WorkDetailsPanel) Update(msg tea.KeyPressMsg) (tea.Cmd, WorkDetailAction) {
 	// When right panel is focused, let viewport handle scrolling keys
 	if p.rightPanelFocused {
 		var cmd tea.Cmd

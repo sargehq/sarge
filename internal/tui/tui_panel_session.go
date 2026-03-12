@@ -1,7 +1,7 @@
 package tui
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/sargehq/sarge/internal/ptysession"
 )
 
@@ -89,7 +89,7 @@ func (p *SessionPanel) Clear() {
 
 // Update handles key events. In PTY mode, we forward raw input directly to
 // the PTY. The only key we intercept is a double-Esc to exit the viewer.
-func (p *SessionPanel) Update(msg tea.KeyMsg) (tea.Cmd, SessionPanelAction) {
+func (p *SessionPanel) Update(msg tea.KeyPressMsg) (tea.Cmd, SessionPanelAction) {
 	if p.session == nil || p.session.State() == ptysession.SessionDead {
 		// Session is dead or missing — esc exits.
 		if msg.String() == "esc" {
@@ -122,11 +122,17 @@ func (p *SessionPanel) RenderWithPanel(contentHeight int) string {
 	return p.Render()
 }
 
-// keyMsgToBytes converts a bubbletea KeyMsg to raw bytes suitable for a PTY.
-func keyMsgToBytes(msg tea.KeyMsg) []byte {
-	switch msg.Type {
-	case tea.KeyRunes:
-		return []byte(string(msg.Runes))
+// keyMsgToBytes converts a bubbletea KeyPressMsg to raw bytes suitable for a PTY.
+func keyMsgToBytes(msg tea.KeyPressMsg) []byte {
+	// Handle Ctrl+key combinations first
+	if msg.Mod&tea.ModCtrl != 0 {
+		if msg.Code >= 'a' && msg.Code <= 'z' {
+			return []byte{byte(msg.Code - 'a' + 1)}
+		}
+	}
+
+	// Handle special keys by Code
+	switch msg.Code {
 	case tea.KeyEnter:
 		return []byte{'\r'}
 	case tea.KeyTab:
@@ -137,50 +143,6 @@ func keyMsgToBytes(msg tea.KeyMsg) []byte {
 		return []byte{27}
 	case tea.KeySpace:
 		return []byte{' '}
-	case tea.KeyCtrlA:
-		return []byte{1}
-	case tea.KeyCtrlB:
-		return []byte{2}
-	case tea.KeyCtrlC:
-		return []byte{3}
-	case tea.KeyCtrlD:
-		return []byte{4}
-	case tea.KeyCtrlE:
-		return []byte{5}
-	case tea.KeyCtrlF:
-		return []byte{6}
-	case tea.KeyCtrlG:
-		return []byte{7}
-	case tea.KeyCtrlH:
-		return []byte{8}
-	case tea.KeyCtrlK:
-		return []byte{11}
-	case tea.KeyCtrlL:
-		return []byte{12}
-	case tea.KeyCtrlN:
-		return []byte{14}
-	case tea.KeyCtrlO:
-		return []byte{15}
-	case tea.KeyCtrlP:
-		return []byte{16}
-	case tea.KeyCtrlR:
-		return []byte{18}
-	case tea.KeyCtrlS:
-		return []byte{19}
-	case tea.KeyCtrlT:
-		return []byte{20}
-	case tea.KeyCtrlU:
-		return []byte{21}
-	case tea.KeyCtrlV:
-		return []byte{22}
-	case tea.KeyCtrlW:
-		return []byte{23}
-	case tea.KeyCtrlX:
-		return []byte{24}
-	case tea.KeyCtrlY:
-		return []byte{25}
-	case tea.KeyCtrlZ:
-		return []byte{26}
 	case tea.KeyUp:
 		return []byte("\x1b[A")
 	case tea.KeyDown:
@@ -225,12 +187,17 @@ func keyMsgToBytes(msg tea.KeyMsg) []byte {
 		return []byte("\x1b[23~")
 	case tea.KeyF12:
 		return []byte("\x1b[24~")
-	default:
-		// For anything else, try the string representation.
-		s := msg.String()
-		if s != "" {
-			return []byte(s)
-		}
-		return nil
 	}
+
+	// For printable characters, use the Text field
+	if msg.Text != "" {
+		return []byte(msg.Text)
+	}
+
+	// Fallback: try string representation
+	s := msg.String()
+	if s != "" {
+		return []byte(s)
+	}
+	return nil
 }

@@ -2,12 +2,13 @@ package tui
 
 import (
 	"fmt"
+	"image/color"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/spinner"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
-	zone "github.com/lrstanley/bubblezone"
+	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/progress"
 	"github.com/sargehq/sarge/internal/ptysession"
@@ -259,7 +260,7 @@ func (b *WorkTabsBar) renderTabs() string {
 		isHovered := tab.ID == b.hoveredTabID
 
 		// Determine tab colors based on type and state
-		var tabBg, tabFg lipgloss.Color
+		var tabBg, tabFg color.Color
 		if isActive || isHovered {
 			tabBg = activeBg
 			tabFg = activeFg
@@ -401,7 +402,7 @@ func (b *WorkTabsBar) renderLegacy() string {
 		workState := b.getWorkState(work)
 
 		// Determine tab colors
-		var tabBg, tabFg lipgloss.Color
+		var tabBg, tabFg color.Color
 		if isActive || isHovered {
 			tabBg = activeBg
 			tabFg = activeFg
