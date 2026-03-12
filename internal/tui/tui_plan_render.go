@@ -204,8 +204,12 @@ func (m *planModel) renderWorkTabContent(tab *WorkTab) string {
 
 // renderTwoColumnLayout renders the issues and details panels side-by-side
 func (m *planModel) renderTwoColumnLayout() string {
-	// Check if a work is focused - if so, render split view
+	// Check if a work is focused - if so, render work tab content with session
 	if m.focusedWorkID != "" {
+		// Find or create a work tab to render
+		if tab := m.getTabByID(m.focusedWorkID); tab != nil && tab.Type == WorkTabWork {
+			return m.renderWorkTabContent(tab)
+		}
 		return m.renderFocusedWorkSplitView()
 	}
 
