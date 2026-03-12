@@ -279,7 +279,7 @@ func (s *Sequencer) executeTask(ctx context.Context, w *db.Work, t *db.Task) {
 		return
 	}
 
-	// Wait for pi process to exit or timeout
+	// Wait for pi process to exit, timeout, or task completion via DB
 	startTime := time.Now()
 	exited := make(chan struct{})
 	go func() {
@@ -287,9 +287,46 @@ func (s *Sequencer) executeTask(ctx context.Context, w *db.Work, t *db.Task) {
 		close(exited)
 	}()
 
+	// Monitor DB for task completion (e.g. when agent calls "sarge complete").
+	// Poll every 2s; when the task is marked completed/failed, signal to kill the session.
+	taskDone := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(2 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-exited:
+				return
+			case <-taskCtx.Done():
+				return
+			case <-ticker.C:
+				updated, err := s.proj.DB.GetTask(taskCtx, t.ID)
+				if err != nil {
+					continue
+				}
+				if updated != nil && (updated.Status == db.StatusCompleted || updated.Status == db.StatusFailed) {
+					close(taskDone)
+					return
+				}
+			}
+		}
+	}()
+
 	select {
 	case <-exited:
 		// Process exited normally
+	case <-taskDone:
+		// Task was marked completed/failed in DB (e.g. by "sarge complete")
+		// Give the agent a moment to clean up, then kill the session.
+		logging.Info("Task completed in DB, terminating PTY session", "task_id", t.ID)
+		select {
+		case <-exited:
+			// Agent exited on its own
+		case <-time.After(5 * time.Second):
+			logging.Info("Agent didn't exit after task completion, killing session", "task_id", t.ID)
+			_ = s.ptyManager.Kill(sessionID)
+			<-exited
+		}
 	case <-taskCtx.Done():
 		if taskCtx.Err() == context.DeadlineExceeded {
 			logging.Warn("Task timed out", "task_id", t.ID, "timeout", timeout)
