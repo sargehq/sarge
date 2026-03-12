@@ -53,8 +53,8 @@ func (p *WorkTaskPanel) SetSize(width, height int) {
 	// Calculate available lines for content (minus border and title)
 	visibleLines := max(height-3, 1)
 
-	// Set viewport size accounting for padding (2 chars total)
-	p.viewport.SetWidth(width - 2)
+	// Set viewport size accounting for border + padding (4 chars total)
+	p.viewport.SetWidth(width - 4)
 	p.viewport.SetHeight(visibleLines)
 }
 
@@ -141,8 +141,8 @@ func (p *WorkTaskPanel) renderTaskDetails(panelWidth int) string {
 	var content strings.Builder
 	task := p.selectedTask
 
-	// Account for padding (tuiPanelStyle has Padding(0, 1) = 2 chars total)
-	contentWidth := panelWidth - 2
+	// Account for border + padding (tuiPanelStyle has Border + Padding(0, 1) = 4 chars total)
+	contentWidth := panelWidth - 4
 
 	fmt.Fprintf(&content, "ID: %s\n", task.Task.ID)
 	fmt.Fprintf(&content, "Type: %s\n", task.Task.TaskType)
@@ -195,8 +195,8 @@ func (p *WorkTaskPanel) renderUnassignedBeanDetails(panelWidth int) string {
 	var content strings.Builder
 	bean := p.selectedBean
 
-	// Account for padding (tuiPanelStyle has Padding(0, 1) = 2 chars total)
-	contentWidth := panelWidth - 2
+	// Account for border + padding (tuiPanelStyle has Border + Padding(0, 1) = 4 chars total)
+	contentWidth := panelWidth - 4
 
 	// Header with warning style and action hint
 	warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("214"))

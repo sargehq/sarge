@@ -52,8 +52,8 @@ func (p *WorkSummaryPanel) SetSize(width, height int) {
 	// Calculate available lines for content (minus border and title)
 	visibleLines := max(height-3, 1)
 
-	// Set viewport size accounting for padding (2 chars total)
-	p.viewport.SetWidth(width - 2)
+	// Set viewport size accounting for border + padding (4 chars total)
+	p.viewport.SetWidth(width - 4)
 	p.viewport.SetHeight(visibleLines)
 }
 
@@ -115,8 +115,8 @@ func (p *WorkSummaryPanel) renderFullContent(panelWidth int) string {
 		return content.String()
 	}
 
-	// Account for padding (tuiPanelStyle has Padding(0, 1) = 2 chars total)
-	contentWidth := panelWidth - 2
+	// Account for border + padding (tuiPanelStyle has Border + Padding(0, 1) = 4 chars total)
+	contentWidth := panelWidth - 4
 
 	// == Work Overview Section ==
 	overviewStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("214"))

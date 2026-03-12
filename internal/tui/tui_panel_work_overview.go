@@ -245,8 +245,8 @@ func (p *WorkOverviewPanel) Render(panelHeight, panelWidth int) string {
 		return content.String()
 	}
 
-	// Account for padding (tuiPanelStyle has Padding(0, 1) = 2 chars total)
-	contentWidth := panelWidth - 2
+	// Account for border + padding (tuiPanelStyle has Border + Padding(0, 1) = 4 chars total)
+	contentWidth := panelWidth - 4
 
 	// Work header (1 line)
 	workHeader := fmt.Sprintf("%s %s", statusIcon(p.focusedWork.Work.Status), p.focusedWork.Work.ID)
