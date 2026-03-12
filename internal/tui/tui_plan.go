@@ -282,7 +282,10 @@ func (m *planModel) hasRawSessionContent() bool {
 		return false
 	}
 	switch activeTab.Type {
-	case WorkTabDefault, WorkTabPlan:
+	case WorkTabDefault:
+		// Only has raw content when session panel is focused (fullscreen mode)
+		return m.activePanel == PanelSession
+	case WorkTabPlan:
 		return true
 	case WorkTabWork:
 		// Both maximized and split views contain raw VT output
@@ -302,7 +305,10 @@ func (m *planModel) IsShowingSession() bool {
 		return false
 	}
 	switch activeTab.Type {
-	case WorkTabDefault, WorkTabPlan:
+	case WorkTabDefault:
+		// Only showing session when session panel is focused (fullscreen mode)
+		return m.activePanel == PanelSession
+	case WorkTabPlan:
 		return true
 	case WorkTabWork:
 		return activeTab.SessionMaximized
@@ -1072,8 +1078,11 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 						activeTab.SessionMaximized = false
 					}
 					m.activePanel = PanelWorkDetails
+				} else if activeTab.Type == WorkTabDefault {
+					// Main tab: exit session view and show issues list
+					m.activePanel = PanelLeft
 				} else {
-					// Main or plan tab: switch to main tab
+					// Plan tab: switch to main tab and show issues list
 					m.activeTabID = "main"
 					m.activePanel = PanelLeft
 					m.focusedWorkID = ""
@@ -2085,8 +2094,19 @@ func (m *planModel) activateTab(tabID string) (*planModel, tea.Cmd) {
 		return m.activateTabLegacy(tabID)
 	}
 
-	// If clicking the already-active tab, toggle it off (back to Main)
-	if m.activeTabID == tabID && tab.Type != WorkTabDefault {
+	// If clicking the already-active tab, toggle it
+	if m.activeTabID == tabID {
+		if tab.Type == WorkTabDefault {
+			// Main tab: toggle between session view and issues list
+			if m.activePanel == PanelSession {
+				m.activePanel = PanelLeft
+			} else {
+				m.activePanel = PanelSession
+				m.viewPTYSession("main")
+			}
+			return m, nil
+		}
+		// Other tabs: toggle off (back to Main)
 		m.activeTabID = "main"
 		m.focusedWorkID = ""
 		m.filters.task = ""
@@ -2102,16 +2122,14 @@ func (m *planModel) activateTab(tabID string) (*planModel, tea.Cmd) {
 
 	switch tab.Type {
 	case WorkTabDefault:
-		// Main tab: show session, clear work focus
+		// Main tab: show issues list, clear work focus
 		m.focusedWorkID = ""
 		m.filters.task = ""
 		m.filters.children = ""
-		m.activePanel = PanelSession
-		// Wire session panel to the main session
-		m.viewPTYSession("main")
-		m.statusMessage = "Main session"
+		m.activePanel = PanelLeft
+		m.statusMessage = ""
 		m.statusIsError = false
-		return m, nil
+		return m, m.refreshData()
 
 	case WorkTabWork:
 		// Work tab: focus the work (same as before)
@@ -2347,8 +2365,13 @@ func (m *planModel) View() string {
 	if activeTab != nil && m.viewMode == ViewNormal {
 		switch activeTab.Type {
 		case WorkTabDefault:
-			// Main tab: full-screen session panel
-			content = m.renderSessionFullscreen()
+			// Main tab: full-screen session when session panel is focused,
+			// otherwise show normal two-column issues layout
+			if m.activePanel == PanelSession {
+				content = m.renderSessionFullscreen()
+			} else {
+				content = m.renderTwoColumnLayout()
+			}
 
 		case WorkTabPlan:
 			// Plan tab: full-screen session panel
