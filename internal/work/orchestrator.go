@@ -8,7 +8,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sargehq/sarge/internal/bridge"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/logging"
 	"github.com/sargehq/sarge/internal/project"
@@ -58,8 +57,7 @@ type OrchestratorManager interface {
 // It holds the database reference needed for orchestrator heartbeat checking.
 type DefaultOrchestratorManager struct {
 	database   *db.DB
-	bridge     *bridge.Bridge           // Optional: headless RPC sessions (sequencer)
-	ptyManager *ptysession.Manager      // PTY sessions for interactive use (plan/agent/console)
+	ptyManager *ptysession.Manager // PTY sessions for interactive use (plan/agent/console/task)
 	projCfg    *project.Config
 	beansPath  string // Path to beans directory (needed for plan prompts)
 }
@@ -72,13 +70,10 @@ func NewOrchestratorManager(database *db.DB, cfg *project.Config) OrchestratorMa
 	}
 }
 
-// NewOrchestratorManagerWithBridge creates a DefaultOrchestratorManager that routes
-// plan and agent sessions through the given bridge (pi RPC) for headless use,
-// and uses PTY sessions for interactive use.
-func NewOrchestratorManagerWithBridge(database *db.DB, cfg *project.Config, b *bridge.Bridge, ptyMgr *ptysession.Manager, beansPath string) OrchestratorManager {
+// NewOrchestratorManagerWithPTY creates a DefaultOrchestratorManager with PTY session support.
+func NewOrchestratorManagerWithPTY(database *db.DB, cfg *project.Config, ptyMgr *ptysession.Manager, beansPath string) OrchestratorManager {
 	return &DefaultOrchestratorManager{
 		database:   database,
-		bridge:     b,
 		ptyManager: ptyMgr,
 		projCfg:    cfg,
 		beansPath:  beansPath,
@@ -113,18 +108,6 @@ func (m *DefaultOrchestratorManager) TerminateWorkTabs(ctx context.Context, work
 			if strings.Contains(id, workID) {
 				if err := m.ptyManager.Kill(id); err == nil {
 					fmt.Fprintf(w, "  Killed PTY session: %s\n", id)
-				}
-			}
-		}
-	}
-
-	// Kill bridge sessions belonging to this work
-	if m.bridge != nil {
-		sessions := m.bridge.ListSessions()
-		for id := range sessions {
-			if strings.Contains(id, workID) {
-				if err := m.bridge.KillSession(id); err == nil {
-					fmt.Fprintf(w, "  Killed bridge session: %s\n", id)
 				}
 			}
 		}
@@ -224,22 +207,6 @@ func (m *DefaultOrchestratorManager) ListWorkSessions(ctx context.Context, workI
 				TabName:     id,
 				Type:        sessionType,
 				DisplayName: fmt.Sprintf("%s (%s) [%s]", sessionType, id, state),
-			})
-		}
-	}
-
-	// Include bridge sessions (headless tasks from sequencer)
-	if m.bridge != nil {
-		bridgeSessions := m.bridge.ListSessions()
-		for id, state := range bridgeSessions {
-			if !strings.Contains(id, workID) {
-				continue
-			}
-			result = append(result, WorkSession{
-				Name:        id,
-				TabName:     id,
-				Type:        "task",
-				DisplayName: fmt.Sprintf("task (%s) [%s]", id, state),
 			})
 		}
 	}

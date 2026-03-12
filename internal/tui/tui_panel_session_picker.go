@@ -7,7 +7,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/sargehq/sarge/internal/bridge"
+	"github.com/sargehq/sarge/internal/ptysession"
 )
 
 // SessionPickerAction represents an action from the session picker.
@@ -19,14 +19,14 @@ const (
 	SessionPickerActionSelect                     // User pressed Enter
 )
 
-// sessionPickerEntry represents a bridge session in the picker list.
+// sessionPickerEntry represents a session in the picker list.
 type sessionPickerEntry struct {
 	ID    string
-	Type  string // "orch", "agent", "plan"
-	State bridge.SessionState
+	Type  string // "task", "agent", "plan", "console", "main"
+	State ptysession.SessionState
 }
 
-// SessionPickerPanel shows a filterable list of bridge sessions for a work.
+// SessionPickerPanel shows a filterable list of sessions for a work.
 type SessionPickerPanel struct {
 	width  int
 	height int
@@ -56,16 +56,20 @@ func (p *SessionPickerPanel) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-// SetSessions populates the picker from a bridge.
-func (p *SessionPickerPanel) SetSessions(sessions map[string]bridge.SessionState) {
+// SetSessions populates the picker from PTY session states.
+func (p *SessionPickerPanel) SetSessions(sessions map[string]ptysession.SessionState) {
 	p.sessions = nil
 	for id, state := range sessions {
 		// Infer type from ID naming convention
-		sessionType := "orch"
-		if strings.Contains(id, "agent") {
+		sessionType := "main"
+		if strings.Contains(id, "task") {
+			sessionType = "task"
+		} else if strings.Contains(id, "agent") {
 			sessionType = "agent"
 		} else if strings.Contains(id, "plan") {
 			sessionType = "plan"
+		} else if strings.Contains(id, "console") {
+			sessionType = "console"
 		}
 		p.sessions = append(p.sessions, sessionPickerEntry{
 			ID:    id,
@@ -160,14 +164,14 @@ func (p *SessionPickerPanel) View() string {
 
 	var b strings.Builder
 
-	b.WriteString(titleStyle.Render("Select bridge session"))
+	b.WriteString(titleStyle.Render("Select session"))
 	b.WriteString("\n\n")
 	b.WriteString(p.filter.View())
 	b.WriteString("\n\n")
 
 	if len(p.filtered) == 0 {
 		if len(p.sessions) == 0 {
-			b.WriteString(dimStyle.Render("No active bridge sessions"))
+			b.WriteString(dimStyle.Render("No active sessions"))
 		} else {
 			b.WriteString(dimStyle.Render("No matching sessions"))
 		}
@@ -190,11 +194,9 @@ func (p *SessionPickerPanel) View() string {
 			s := p.filtered[i]
 			stateIcon := "○"
 			switch s.State {
-			case bridge.SessionReady:
+			case ptysession.SessionRunning:
 				stateIcon = "●"
-			case bridge.SessionStreaming:
-				stateIcon = "◉"
-			case bridge.SessionDead:
+			case ptysession.SessionDead:
 				stateIcon = "✗"
 			}
 			label := fmt.Sprintf("%s [%s] %s", stateIcon, s.Type, s.ID)

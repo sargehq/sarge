@@ -16,7 +16,6 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/sargehq/sarge/internal/beans"
 	beanswatcher "github.com/sargehq/sarge/internal/beans/watcher"
-	"github.com/sargehq/sarge/internal/bridge"
 	"github.com/sargehq/sarge/internal/git"
 	"github.com/sargehq/sarge/internal/progress"
 	"github.com/sargehq/sarge/internal/project"
@@ -58,8 +57,7 @@ type planModel struct {
 
 
 	// Session support
-	bridgeClient        *bridge.Bridge          // For headless sequencer sessions only
-	ptyManager          *ptysession.Manager     // For interactive PTY sessions (plan/agent/console)
+	ptyManager          *ptysession.Manager     // For PTY sessions (plan/agent/console/task)
 	sessionPanel        *SessionPanel
 	sessionPicker       *SessionPickerPanel
 	activeSessionID     string // Currently viewed PTY session ID
@@ -208,7 +206,6 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 
 	m.sessionPanel = NewSessionPanel()
 	m.sessionPicker = NewSessionPickerPanel()
-	m.bridgeClient = bridge.NewBridge()
 	m.ptyManager = ptysession.NewManager()
 
 	// Initialize tab model with the default "Main" tab
@@ -216,11 +213,9 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 	m.tabs = []*WorkTab{defaultTab}
 	m.activeTabID = defaultTab.ID
 
-	// Wire PTY manager and bridge into the WorkService's OrchestratorManager.
-	// PTY sessions are used for interactive display (plan/agent/console).
-	// Bridge sessions are used by the sequencer for headless task execution.
-	m.workService.OrchestratorManager = work.NewOrchestratorManagerWithBridge(
-		proj.DB, proj.Config, m.bridgeClient, m.ptyManager, proj.BeansPath(),
+	// Wire PTY manager into the WorkService's OrchestratorManager.
+	m.workService.OrchestratorManager = work.NewOrchestratorManagerWithPTY(
+		proj.DB, proj.Config, m.ptyManager, proj.BeansPath(),
 	)
 
 	// Set up status bar data providers
@@ -1884,11 +1879,7 @@ func (m *planModel) cleanup() {
 	if m.beansWatcher != nil {
 		_ = m.beansWatcher.Stop()
 	}
-	// Kill all bridge sessions (headless/sequencer)
-	if m.bridgeClient != nil {
-		_ = m.bridgeClient.KillAll()
-	}
-	// Kill all PTY sessions (interactive)
+	// Kill all PTY sessions
 	if m.ptyManager != nil {
 		_ = m.ptyManager.KillAll()
 	}
@@ -1964,20 +1955,7 @@ func (m *planModel) openBridgeSessionPicker() {
 		}
 		return
 	}
-	// Convert to the format the session picker expects
-	bridgeSessions := make(map[string]bridge.SessionState)
-	for id, state := range ptySessions {
-		// Map PTY states to bridge states for the picker UI
-		switch state {
-		case ptysession.SessionRunning:
-			bridgeSessions[id] = bridge.SessionReady
-		case ptysession.SessionDead:
-			bridgeSessions[id] = bridge.SessionDead
-		default:
-			bridgeSessions[id] = bridge.SessionStarting
-		}
-	}
-	m.sessionPicker.SetSessions(bridgeSessions)
+	m.sessionPicker.SetSessions(ptySessions)
 	m.sessionPicker.SetSize(m.width/2, m.height/2)
 	m.viewMode = ViewBridgeSessionPicker
 }
