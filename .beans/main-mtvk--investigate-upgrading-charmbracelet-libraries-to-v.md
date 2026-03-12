@@ -5,7 +5,7 @@ status: completed
 type: feature
 priority: normal
 created_at: 2026-03-12T01:07:04Z
-updated_at: 2026-03-12T01:28:05Z
+updated_at: 2026-03-12T03:41:42Z
 ---
 
 ## Problem
@@ -115,3 +115,11 @@ v2 libraries have moved to `charm.land/` import paths:
 
 ### Estimate
 Medium-large effort (~2-3 days). Recommend creating a feature branch and migrating file-by-file. The session panel + VT rendering code would benefit immediately.
+
+## Follow-up Fix
+
+Fixed two VT rendering issues discovered after initial upgrade:
+
+1. **lipgloss.JoinVertical corruption** — The v2 JoinVertical measures line widths and pads with spaces, which corrupted raw ANSI output from the VT emulator (wrong width). Fixed by using direct string concatenation for views containing session content.
+
+2. **Double-resize flicker** — `syncPanels()` was resizing the session panel to narrow `detailsWidth` on every frame, then the render function would correct it to full width. This caused the child process to redraw twice per frame (flickering). Fixed by skipping session panel resize in syncPanels when in session mode.
