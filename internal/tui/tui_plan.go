@@ -271,6 +271,26 @@ func (m *planModel) InModal() bool {
 	return m.viewMode != ViewNormal
 }
 
+// hasRawSessionContent returns true if the current view contains raw VT/PTY output
+// that must not be processed by lipgloss.JoinVertical (which pads lines with spaces).
+func (m *planModel) hasRawSessionContent() bool {
+	if m.viewMode != ViewNormal {
+		return false
+	}
+	activeTab := m.getActiveTab()
+	if activeTab == nil {
+		return false
+	}
+	switch activeTab.Type {
+	case WorkTabDefault, WorkTabPlan:
+		return true
+	case WorkTabWork:
+		// Both maximized and split views contain raw VT output
+		return activeTab.HasActiveSession(m.ptyManager)
+	}
+	return false
+}
+
 // IsShowingSession returns true if the view is currently dominated by a PTY session.
 // Used by the root model to skip zone.Scan which corrupts raw terminal output.
 func (m *planModel) IsShowingSession() bool {
@@ -2265,8 +2285,13 @@ func (m *planModel) syncPanels() {
 	m.createWorkPanel.SetFocus(m.activePanel == PanelRight && m.viewMode == ViewCreateWork)
 	m.createWorkPanel.SetHoveredButton(m.hoveredDialogButton)
 
-	// Sync session panel
-	m.sessionPanel.SetSize(detailsWidth, m.height)
+	// Sync session panel — skip resizing when in fullscreen or split-session mode
+	// because the render functions set the correct size. Resizing here with the
+	// narrow detailsWidth causes a double-resize (wrong then correct) on every
+	// frame, making the child process redraw twice and causing flicker.
+	if !m.hasRawSessionContent() {
+		m.sessionPanel.SetSize(detailsWidth, m.height)
+	}
 	m.sessionPanel.SetFocus(m.activePanel == PanelSession || m.viewMode == ViewSessionViewer)
 }
 
@@ -2350,7 +2375,14 @@ func (m *planModel) View() string {
 	// Render status bar AFTER syncPanels to ensure status message is set
 	statusBar := m.statusBar.Render()
 
-	// Always include tab bar at top
+	// When displaying raw VT/PTY output, bypass lipgloss.JoinVertical which
+	// measures line widths and pads with spaces — this corrupts precisely
+	// formatted ANSI terminal output from the VT emulator.
+	if m.hasRawSessionContent() {
+		return workTabsBar + "\n" + content + "\n" + statusBar
+	}
+
+	// Normal mode: use JoinVertical for proper alignment
 	return lipgloss.JoinVertical(lipgloss.Left, workTabsBar, content, statusBar)
 }
 

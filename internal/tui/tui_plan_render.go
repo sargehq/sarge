@@ -190,7 +190,9 @@ func (m *planModel) renderWorkTabContent(tab *WorkTab) string {
 	}
 	sessionPanel := titleBar + "\n" + sessionContent
 
-	return lipgloss.JoinVertical(lipgloss.Left, workPanel, sessionPanel)
+	// Concatenate directly instead of lipgloss.JoinVertical to avoid
+	// corrupting the raw VT output with line-width padding.
+	return workPanel + "\n" + sessionPanel
 }
 
 // renderTwoColumnLayout renders the issues and details panels side-by-side
