@@ -749,7 +749,7 @@ func (m *planModel) Update(msg tea.Msg) (*planModel, tea.Cmd) {
 			// If we're on the work tab for this work, just stay there
 			// The session will render in the embedded panel
 			if activeTab := m.getActiveTab(); activeTab != nil && activeTab.Type == WorkTabWork && activeTab.WorkID == msg.workID {
-				activeTab.ActiveSubSession = SubSessionAgent
+				activeTab.ActiveSessionID = msg.ptySessionID
 			}
 			m.statusMessage = fmt.Sprintf("Agent session opened for %s", msg.workID)
 			m.statusIsError = false
@@ -1477,8 +1477,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 				if hasSession && !activeTab.SessionMaximized {
 					// Move from work details to session panel
 					m.activePanel = PanelSession
-					sessionID := activeTab.SessionID()
-					if s := m.ptyManager.Get(sessionID); s != nil {
+					if sessionID := activeTab.ResolveSessionID(m.ptyManager); sessionID != "" {
 						m.viewPTYSession(sessionID)
 					}
 				} else {
@@ -1644,34 +1643,13 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 		}
 		return m, m.refreshData()
 
-	case "ctrl+1":
-		// Switch to agent sub-session
+	case "ctrl+1", "ctrl+2", "ctrl+3", "ctrl+4", "ctrl+5", "ctrl+6", "ctrl+7", "ctrl+8", "ctrl+9":
+		// Switch to sub-session by index
 		if activeTab := m.getActiveTab(); activeTab != nil && activeTab.Type == WorkTabWork {
-			activeTab.SetSubSession(1)
-			sessionID := activeTab.SessionID()
-			if s := m.ptyManager.Get(sessionID); s != nil {
-				m.viewPTYSession(sessionID)
-			}
-		}
-		return m, nil
-
-	case "ctrl+2":
-		// Switch to console sub-session
-		if activeTab := m.getActiveTab(); activeTab != nil && activeTab.Type == WorkTabWork {
-			activeTab.SetSubSession(2)
-			sessionID := activeTab.SessionID()
-			if s := m.ptyManager.Get(sessionID); s != nil {
-				m.viewPTYSession(sessionID)
-			}
-		}
-		return m, nil
-
-	case "ctrl+3":
-		// Switch to plan sub-session
-		if activeTab := m.getActiveTab(); activeTab != nil && activeTab.Type == WorkTabWork {
-			activeTab.SetSubSession(3)
-			sessionID := activeTab.SessionID()
-			if s := m.ptyManager.Get(sessionID); s != nil {
+			idx := int(msg.String()[len(msg.String())-1] - '0')
+			activeTab.SetSubSessionByIndex(m.ptyManager, idx)
+			sessionID := activeTab.ResolveSessionID(m.ptyManager)
+			if sessionID != "" {
 				m.viewPTYSession(sessionID)
 			}
 		}
@@ -1684,8 +1662,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 			if activeTab.SessionMaximized {
 				m.activePanel = PanelSession
 				// Wire session panel to the tab's active session
-				sessionID := activeTab.SessionID()
-				if s := m.ptyManager.Get(sessionID); s != nil {
+				if sessionID := activeTab.ResolveSessionID(m.ptyManager); sessionID != "" {
 					m.viewPTYSession(sessionID)
 				}
 			} else {
@@ -1885,18 +1862,6 @@ func (m *planModel) cleanup() {
 	}
 	// Note: m.proj.Beans is owned by the Project and closed by proj.Close()
 	// which is deferred in runTUI. Do not close it here to avoid double-close.
-}
-
-// findActiveTaskSession returns the session ID of a running task session for the given work,
-// or empty string if none found.
-func (m *planModel) findActiveTaskSession(workID string) string {
-	prefix := "task-" + workID + "."
-	for id, state := range m.ptyManager.List() {
-		if state != ptysession.SessionDead && len(id) > len(prefix) && id[:len(prefix)] == prefix {
-			return id
-		}
-	}
-	return ""
 }
 
 // viewPTYSession switches the session panel to display a specific PTY session.
@@ -2135,13 +2100,9 @@ func (m *planModel) activateTab(tabID string) (*planModel, tea.Cmd) {
 		m.workDetails.SetSelectedIndex(0)
 		m.workDetails.SetOrchestratorHealth(checkOrchestratorHealth(m.ctx, m.proj.DB, m.focusedWorkID))
 
-		// Wire session panel to the active sub-session.
-		// If the preferred session doesn't exist, look for an active task session.
-		sessionID := tab.SessionID()
-		if s := m.ptyManager.Get(sessionID); s != nil && s.State() != ptysession.SessionDead {
+		// Wire session panel to the best available session
+		if sessionID := tab.ResolveSessionID(m.ptyManager); sessionID != "" {
 			m.viewPTYSession(sessionID)
-		} else if taskSessionID := m.findActiveTaskSession(tab.WorkID); taskSessionID != "" {
-			m.viewPTYSession(taskSessionID)
 		}
 
 		return m, m.updateWorkSelectionFilter()

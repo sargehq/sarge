@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"image/color"
+	"strings"
 
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
@@ -296,13 +297,14 @@ func (b *WorkTabsBar) renderTabs() string {
 
 		// Sub-session indicator for work tabs
 		subIndicator := ""
-		if tab.Type == WorkTabWork {
-			switch tab.ActiveSubSession {
-			case SubSessionAgent:
-				// No indicator — agent is default
-			case SubSessionConsole:
+		if tab.Type == WorkTabWork && tab.ActiveSessionID != "" {
+			// Show short label if not the default
+			if strings.Contains(tab.ActiveSessionID, "task-") {
+				suffix := tab.ActiveSessionID[strings.LastIndex(tab.ActiveSessionID, "."):]
+				subIndicator = " [t" + suffix + "]"
+			} else if strings.Contains(tab.ActiveSessionID, "console-") {
 				subIndicator = " [sh]"
-			case SubSessionPlan:
+			} else if strings.Contains(tab.ActiveSessionID, "plan-") {
 				subIndicator = " [pl]"
 			}
 		}
