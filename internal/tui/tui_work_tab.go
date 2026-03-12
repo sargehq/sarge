@@ -1,6 +1,9 @@
 package tui
 
 import (
+	"sort"
+	"strings"
+
 	"github.com/sargehq/sarge/internal/progress"
 	"github.com/sargehq/sarge/internal/ptysession"
 )
@@ -17,17 +20,12 @@ const (
 	WorkTabPlan
 )
 
-// WorkTabSubSession identifies which sub-session is active within a work tab.
-type WorkTabSubSession int
-
-const (
-	// SubSessionAgent is the agent/chat pi session.
-	SubSessionAgent WorkTabSubSession = iota
-	// SubSessionConsole is the terminal/console pi session.
-	SubSessionConsole
-	// SubSessionPlan is a planning pi session within a work.
-	SubSessionPlan
-)
+// SubTab represents one sub-tab within a work tab.
+type SubTab struct {
+	ID    string // PTY session ID (e.g. "task-w-5d0.2", "agent-w-5d0", "console-w-5d0")
+	Label string // Display label (e.g. "task .2", "agent", "console")
+	Type  string // "task", "agent", "console", "plan"
+}
 
 // WorkTab represents a single tab in the work tabs bar.
 // It can be a default session, a work unit, or a standalone plan session.
@@ -52,8 +50,9 @@ type WorkTab struct {
 	// WorkProgress holds cached work data (tasks, beans, etc.) for work tabs.
 	WorkProgress *progress.WorkProgress
 
-	// ActiveSubSession is which sub-session is currently shown (work tabs only).
-	ActiveSubSession WorkTabSubSession
+	// ActiveSessionID is the PTY session ID currently displayed.
+	// Empty means "auto" — pick the first available task or agent session.
+	ActiveSessionID string
 
 	// SessionMaximized is true when the session panel is zoomed to fill the content area.
 	SessionMaximized bool
@@ -62,34 +61,97 @@ type WorkTab struct {
 
 	// BeanID is set for WorkTabPlan tabs (the bean being planned).
 	BeanID string
-
-	// --- Session references ---
-	// These are looked up from the PTY manager by convention:
-	//   default:  session ID "main"
-	//   agent:    session ID "agent-<workID>"
-	//   console:  session ID "console-<workID>"
-	//   plan:     session ID "plan-<beanID>"
 }
 
-// SessionID returns the PTY session ID for the currently active session in this tab.
+// AvailableSessions returns all sub-tabs for this work, discovered from the PTY manager.
+// Returns them in a stable order: task sessions (sorted by ID), then agent, console, plan.
+func (t *WorkTab) AvailableSessions(mgr *ptysession.Manager) []SubTab {
+	if mgr == nil || t.Type != WorkTabWork {
+		return nil
+	}
+
+	var tasks []SubTab
+	var others []SubTab
+
+	prefix := t.WorkID
+	for id, state := range mgr.List() {
+		if state == ptysession.SessionDead {
+			continue
+		}
+
+		if strings.HasPrefix(id, "task-"+prefix+".") {
+			// Extract task number suffix for label (e.g., "task-w-5d0.2" -> ".2")
+			suffix := id[len("task-"+prefix):]
+			tasks = append(tasks, SubTab{
+				ID:    id,
+				Label: "task" + suffix,
+				Type:  "task",
+			})
+		} else if id == "agent-"+prefix {
+			others = append(others, SubTab{
+				ID:    id,
+				Label: "agent",
+				Type:  "agent",
+			})
+		} else if id == "console-"+prefix {
+			others = append(others, SubTab{
+				ID:    id,
+				Label: "console",
+				Type:  "console",
+			})
+		} else if id == "plan-"+prefix {
+			others = append(others, SubTab{
+				ID:    id,
+				Label: "plan",
+				Type:  "plan",
+			})
+		}
+	}
+
+	// Sort task sessions by ID for stable ordering
+	sort.Slice(tasks, func(i, j int) bool { return tasks[i].ID < tasks[j].ID })
+
+	return append(tasks, others...)
+}
+
+// SessionID returns the PTY session ID to display for this tab.
 func (t *WorkTab) SessionID() string {
 	switch t.Type {
 	case WorkTabDefault:
 		return "main"
 	case WorkTabWork:
-		switch t.ActiveSubSession {
-		case SubSessionAgent:
-			return "agent-" + t.WorkID
-		case SubSessionConsole:
-			return "console-" + t.WorkID
-		case SubSessionPlan:
-			// Plan within a work — uses the root bean ID
-			return "plan-" + t.WorkID
+		if t.ActiveSessionID != "" {
+			return t.ActiveSessionID
 		}
+		// Default: return agent session ID (may not exist)
 		return "agent-" + t.WorkID
 	case WorkTabPlan:
 		return "plan-" + t.BeanID
 	}
+	return ""
+}
+
+// ResolveSessionID picks the best available session to display.
+// If ActiveSessionID is set and alive, keeps it. Otherwise picks the first available.
+func (t *WorkTab) ResolveSessionID(mgr *ptysession.Manager) string {
+	if t.Type != WorkTabWork {
+		return t.SessionID()
+	}
+
+	// If explicitly set and still alive, use it
+	if t.ActiveSessionID != "" {
+		if s := mgr.Get(t.ActiveSessionID); s != nil && s.State() != ptysession.SessionDead {
+			return t.ActiveSessionID
+		}
+	}
+
+	// Auto-pick: first available from AvailableSessions
+	subs := t.AvailableSessions(mgr)
+	if len(subs) > 0 {
+		t.ActiveSessionID = subs[0].ID
+		return subs[0].ID
+	}
+
 	return ""
 }
 
@@ -99,7 +161,11 @@ func (t *WorkTab) ActiveSession(mgr *ptysession.Manager) *ptysession.Session {
 	if mgr == nil {
 		return nil
 	}
-	return mgr.Get(t.SessionID())
+	id := t.ResolveSessionID(mgr)
+	if id == "" {
+		return nil
+	}
+	return mgr.Get(id)
 }
 
 // HasActiveSession returns true if the tab has a running PTY session.
@@ -108,34 +174,51 @@ func (t *WorkTab) HasActiveSession(mgr *ptysession.Manager) bool {
 	return s != nil && s.State() != ptysession.SessionDead
 }
 
-// CycleSubSession cycles to the next sub-session within a work tab.
-func (t *WorkTab) CycleSubSession() {
-	if t.Type != WorkTabWork {
+// CycleSubSession cycles to the next available sub-session within a work tab.
+func (t *WorkTab) CycleSubSession(mgr *ptysession.Manager) {
+	if t.Type != WorkTabWork || mgr == nil {
 		return
 	}
-	switch t.ActiveSubSession {
-	case SubSessionAgent:
-		t.ActiveSubSession = SubSessionConsole
-	case SubSessionConsole:
-		t.ActiveSubSession = SubSessionPlan
-	case SubSessionPlan:
-		t.ActiveSubSession = SubSessionAgent
+	subs := t.AvailableSessions(mgr)
+	if len(subs) <= 1 {
+		return
 	}
+	current := t.ResolveSessionID(mgr)
+	for i, sub := range subs {
+		if sub.ID == current {
+			t.ActiveSessionID = subs[(i+1)%len(subs)].ID
+			return
+		}
+	}
+	t.ActiveSessionID = subs[0].ID
 }
 
-// SetSubSession sets the active sub-session by index (1=agent, 2=console, 3=plan).
-func (t *WorkTab) SetSubSession(index int) {
-	if t.Type != WorkTabWork {
+// SetSubSessionByIndex sets the active sub-session by 1-based index into AvailableSessions.
+func (t *WorkTab) SetSubSessionByIndex(mgr *ptysession.Manager, index int) {
+	if t.Type != WorkTabWork || mgr == nil {
 		return
 	}
-	switch index {
-	case 1:
-		t.ActiveSubSession = SubSessionAgent
-	case 2:
-		t.ActiveSubSession = SubSessionConsole
-	case 3:
-		t.ActiveSubSession = SubSessionPlan
+	subs := t.AvailableSessions(mgr)
+	if index < 1 || index > len(subs) {
+		return
 	}
+	t.ActiveSessionID = subs[index-1].ID
+}
+
+// ActiveSubTabIndex returns the 0-based index of the active session in AvailableSessions.
+// Returns -1 if not found.
+func (t *WorkTab) ActiveSubTabIndex(mgr *ptysession.Manager) int {
+	if mgr == nil {
+		return -1
+	}
+	subs := t.AvailableSessions(mgr)
+	current := t.ResolveSessionID(mgr)
+	for i, sub := range subs {
+		if sub.ID == current {
+			return i
+		}
+	}
+	return -1
 }
 
 // NewDefaultTab creates the always-present "Main" tab.
@@ -153,11 +236,10 @@ func NewWorkTab(workID string, label string) *WorkTab {
 		label = workID
 	}
 	return &WorkTab{
-		ID:               workID,
-		Type:             WorkTabWork,
-		Label:            label,
-		WorkID:           workID,
-		ActiveSubSession: SubSessionAgent,
+		ID:     workID,
+		Type:   WorkTabWork,
+		Label:  label,
+		WorkID: workID,
 	}
 }
 

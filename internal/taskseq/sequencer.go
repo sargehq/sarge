@@ -1,12 +1,11 @@
 // Package taskseq provides an in-process task sequencer that replaces the
 // orchestrate command. It watches all works for ready tasks and executes them
-// via bridge sessions, handling post-task logic (post-estimation, review loops)
+// via PTY sessions, handling post-task logic (post-estimation, review loops)
 // inline.
 package taskseq
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -15,21 +14,21 @@ import (
 	"github.com/sargehq/sarge/internal/agents"
 	agenttypes "github.com/sargehq/sarge/internal/agents/types"
 	"github.com/sargehq/sarge/internal/beans"
-	"github.com/sargehq/sarge/internal/bridge"
 	"github.com/sargehq/sarge/internal/db"
 	"github.com/sargehq/sarge/internal/feedback"
 	"github.com/sargehq/sarge/internal/logging"
 	"github.com/sargehq/sarge/internal/orchestration"
 	"github.com/sargehq/sarge/internal/project"
+	"github.com/sargehq/sarge/internal/ptysession"
 	"github.com/sargehq/sarge/internal/task"
 	"github.com/sargehq/sarge/internal/work"
 )
 
-// Sequencer watches all works for ready tasks and executes them via bridge sessions.
+// Sequencer watches all works for ready tasks and executes them via PTY sessions.
 // It replaces the per-work orchestrator process with a single in-process goroutine.
 type Sequencer struct {
-	proj   *project.Project
-	bridge *bridge.Bridge
+	proj       *project.Project
+	ptyManager *ptysession.Manager
 
 	mu          sync.Mutex
 	activeTasks map[string]string // workID → taskID currently executing
@@ -41,11 +40,11 @@ type Sequencer struct {
 	notify chan struct{}
 }
 
-// New creates a new Sequencer. The bridge is shared with the TUI for session viewing.
-func New(proj *project.Project, b *bridge.Bridge) *Sequencer {
+// New creates a new Sequencer. The PTY manager is shared with the TUI for session viewing.
+func New(proj *project.Project, ptyMgr *ptysession.Manager) *Sequencer {
 	return &Sequencer{
 		proj:        proj,
-		bridge:      b,
+		ptyManager:  ptyMgr,
 		activeTasks: make(map[string]string),
 		done:        make(chan struct{}),
 		notify:      make(chan struct{}, 1),
@@ -140,6 +139,19 @@ func (s *Sequencer) tryStartNextTask(ctx context.Context, w *db.Work) {
 	}
 
 	if len(readyTasks) == 0 {
+		// For auto works with no tasks yet, set up the automated workflow
+		// (create estimate task) once the worktree is ready.
+		if w.Auto && w.WorktreePath != "" {
+			allTasks, err := s.proj.DB.GetWorkTasks(ctx, w.ID)
+			if err == nil && len(allTasks) == 0 {
+				logging.Info("Setting up automated workflow for auto work", "work_id", w.ID)
+				workSvc := work.NewWorkService(s.proj)
+				if err := workSvc.CreateEstimateTaskFromWorkBeans(ctx, w.ID, os.Stdout); err != nil {
+					logging.Warn("failed to create estimate task for auto work", "error", err, "work_id", w.ID)
+				}
+				return // Let the next poll pick up the new estimate task
+			}
+		}
 		// Check if we should transition work to idle/failed
 		s.checkWorkStatus(ctx, w)
 		return
@@ -156,7 +168,7 @@ func (s *Sequencer) tryStartNextTask(ctx context.Context, w *db.Work) {
 	go s.executeTask(ctx, w, t)
 }
 
-// executeTask runs a single task via bridge session and handles post-task logic.
+// executeTask runs a single task via PTY session and handles post-task logic.
 func (s *Sequencer) executeTask(ctx context.Context, w *db.Work, t *db.Task) {
 	defer func() {
 		s.mu.Lock()
@@ -166,7 +178,7 @@ func (s *Sequencer) executeTask(ctx context.Context, w *db.Work, t *db.Task) {
 		s.Notify()
 	}()
 
-	logging.Info("Executing task via bridge",
+	logging.Info("Executing task",
 		"task_id", t.ID,
 		"task_type", t.TaskType,
 		"work_id", w.ID)
@@ -174,19 +186,6 @@ func (s *Sequencer) executeTask(ctx context.Context, w *db.Work, t *db.Task) {
 	// Update activity
 	if err := s.proj.DB.UpdateTaskActivity(ctx, t.ID, time.Now()); err != nil {
 		logging.Warn("failed to update task activity", "error", err, "task_id", t.ID)
-	}
-
-	// Set up automated workflow if needed (auto work with no tasks yet)
-	if w.Auto {
-		tasks, err := s.proj.DB.GetWorkTasks(ctx, w.ID)
-		if err == nil && len(tasks) == 0 {
-			logging.Info("Setting up automated workflow", "work_id", w.ID)
-			workSvc := work.NewWorkService(s.proj)
-			if err := workSvc.CreateEstimateTaskFromWorkBeans(ctx, w.ID, os.Stdout); err != nil {
-				logging.Warn("failed to create estimate task", "error", err, "work_id", w.ID)
-			}
-			return // Let the next poll pick up the new estimate task
-		}
 	}
 
 	// Build task input
@@ -234,69 +233,88 @@ func (s *Sequencer) executeTask(ctx context.Context, w *db.Work, t *db.Task) {
 	taskCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	// Spawn bridge session
+	// Spawn PTY session
 	sessionID := fmt.Sprintf("task-%s", t.ID)
-	sessionCfg := bridge.SessionConfigFromProject(w.WorktreePath, s.proj.Config)
-	sessionCfg.Env = append(sessionCfg.Env, fmt.Sprintf("SARGE_TASK_ID=%s", t.ID))
-	sessionCfg.Env = append(sessionCfg.Env, fmt.Sprintf("BEANS_PATH=%s", s.proj.BeansPath()))
+	ptyCfg := ptysession.SessionConfig{
+		Args:          []string{"--no-session"},
+		WorkDir:       w.WorktreePath,
+		Width:         120,
+		Height:        40,
+		InitialPrompt: prompt,
+	}
 
-	// Apply hooks.env
-	for _, e := range s.proj.Config.Hooks.Env {
-		expandedValue := os.ExpandEnv(e)
-		sessionCfg.Env = append(sessionCfg.Env, expandedValue)
+	if s.proj.Config != nil {
+		if s.proj.Config.Pi.Provider != "" {
+			ptyCfg.Args = append(ptyCfg.Args, "--provider", s.proj.Config.Pi.Provider)
+		}
+		if s.proj.Config.Pi.Model != "" {
+			ptyCfg.Args = append(ptyCfg.Args, "--model", s.proj.Config.Pi.Model)
+		}
+		if s.proj.Config.Pi.Thinking != "" {
+			ptyCfg.Args = append(ptyCfg.Args, "--thinking", s.proj.Config.Pi.Thinking)
+		}
 	}
 
 	// Use task-specific args (e.g. model override for log_analysis)
 	if t.TaskType == "log_analysis" && s.proj.Config.LogParser.GetModel() != "" {
-		sessionCfg.Model = s.proj.Config.LogParser.GetModel()
+		ptyCfg.Args = append(ptyCfg.Args, "--model", s.proj.Config.LogParser.GetModel())
 	}
 
-	session, err := s.bridge.SpawnSession(sessionID, sessionCfg)
+	ptyCfg.Env = append(os.Environ(),
+		fmt.Sprintf("SARGE_TASK_ID=%s", t.ID),
+		fmt.Sprintf("BEANS_PATH=%s", s.proj.BeansPath()),
+	)
+
+	// Apply hooks.env
+	for _, e := range s.proj.Config.Hooks.Env {
+		ptyCfg.Env = append(ptyCfg.Env, os.ExpandEnv(e))
+	}
+
+	session, err := s.ptyManager.Spawn(sessionID, ptyCfg)
 	if err != nil {
-		logging.Error("Failed to spawn bridge session", "error", err, "task_id", t.ID)
-		if dbErr := s.proj.DB.FailTask(ctx, t.ID, fmt.Sprintf("failed to spawn bridge session: %v", err)); dbErr != nil {
+		logging.Error("Failed to spawn PTY session", "error", err, "task_id", t.ID)
+		if dbErr := s.proj.DB.FailTask(ctx, t.ID, fmt.Sprintf("failed to spawn PTY session: %v", err)); dbErr != nil {
 			logging.Warn("failed to mark task as failed", "error", dbErr)
 		}
 		return
 	}
 
-	// Send prompt
-	if err := session.Prompt(prompt); err != nil {
-		logging.Error("Failed to send prompt", "error", err, "task_id", t.ID)
-		_ = s.bridge.KillSession(sessionID)
-		if dbErr := s.proj.DB.FailTask(ctx, t.ID, fmt.Sprintf("failed to send prompt: %v", err)); dbErr != nil {
-			logging.Warn("failed to mark task as failed", "error", dbErr)
-		}
-		return
-	}
-
-	// Wait for agent to complete
+	// Wait for pi process to exit or timeout
 	startTime := time.Now()
-	err = s.waitForCompletion(taskCtx, session, t.ID)
+	exited := make(chan struct{})
+	go func() {
+		session.Wait()
+		close(exited)
+	}()
 
-	// Clean up session
-	_ = s.bridge.KillSession(sessionID)
-
-	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
+	select {
+	case <-exited:
+		// Process exited normally
+	case <-taskCtx.Done():
+		if taskCtx.Err() == context.DeadlineExceeded {
 			logging.Warn("Task timed out", "task_id", t.ID, "timeout", timeout)
+			_ = s.ptyManager.Kill(sessionID)
 			if dbErr := s.proj.DB.FailTask(context.Background(), t.ID, fmt.Sprintf("task timed out after %v", timeout)); dbErr != nil {
 				logging.Warn("failed to mark timed out task as failed", "error", dbErr)
 			}
 			return
 		}
-		if errors.Is(err, context.Canceled) {
-			logging.Info("Task cancelled", "task_id", t.ID)
-			return
-		}
+		logging.Info("Task cancelled", "task_id", t.ID)
+		_ = s.ptyManager.Kill(sessionID)
+		return
+	}
+
+	elapsed := time.Since(startTime)
+
+	// Check if agent exited with error
+	if sessionErr := session.Err(); sessionErr != nil {
 		// Agent exited with error - check if task was already marked complete/failed
 		updatedTask, dbErr := s.proj.DB.GetTask(ctx, t.ID)
 		if dbErr == nil && updatedTask != nil && (updatedTask.Status == db.StatusCompleted || updatedTask.Status == db.StatusFailed) {
-			elapsed := time.Since(startTime)
 			logging.Info("Task finished", "task_id", t.ID, "status", updatedTask.Status, "elapsed", elapsed.Round(time.Second))
 		} else {
-			logging.Error("Agent exited with error", "error", err, "task_id", t.ID)
-			if dbErr := s.proj.DB.FailTask(ctx, t.ID, fmt.Sprintf("agent exited with error: %v", err)); dbErr != nil {
+			logging.Error("Agent exited with error", "error", sessionErr, "task_id", t.ID)
+			if dbErr := s.proj.DB.FailTask(ctx, t.ID, fmt.Sprintf("agent exited with error: %v", sessionErr)); dbErr != nil {
 				logging.Warn("failed to mark task as failed", "error", dbErr)
 			}
 			return
@@ -338,32 +356,13 @@ func (s *Sequencer) executeTask(ctx context.Context, w *db.Work, t *db.Task) {
 		}
 	}
 
-	elapsed := time.Since(startTime)
 	logging.Info("Task execution complete",
 		"task_id", t.ID,
 		"task_type", t.TaskType,
-		"elapsed", elapsed.Round(time.Second))
+		"elapsed", time.Since(startTime).Round(time.Second))
 }
 
-// waitForCompletion blocks until the bridge session ends or context is cancelled.
-func (s *Sequencer) waitForCompletion(ctx context.Context, session *bridge.Session, _ string) error {
-	for {
-		select {
-		case <-ctx.Done():
-			_ = session.Abort()
-			return ctx.Err()
-		case evt, ok := <-session.Events():
-			if !ok {
-				// Session events channel closed = process exited
-				return session.Err()
-			}
-			if evt.Type == bridge.EventAgentEnd {
-				// Agent finished - wait for process to exit
-				return session.Wait()
-			}
-		}
-	}
-}
+
 
 // checkWorkStatus transitions work to idle/failed based on task statuses.
 func (s *Sequencer) checkWorkStatus(ctx context.Context, w *db.Work) {
@@ -431,7 +430,7 @@ func (s *Sequencer) resetAllStuckTasks(ctx context.Context) {
 	}
 }
 
-// killAllActiveSessions kills bridge sessions for all active tasks.
+// killAllActiveSessions kills PTY sessions for all active tasks.
 func (s *Sequencer) killAllActiveSessions() {
 	s.mu.Lock()
 	tasks := make(map[string]string, len(s.activeTasks))
@@ -442,7 +441,7 @@ func (s *Sequencer) killAllActiveSessions() {
 
 	for _, taskID := range tasks {
 		sessionID := fmt.Sprintf("task-%s", taskID)
-		_ = s.bridge.KillSession(sessionID)
+		_ = s.ptyManager.Kill(sessionID)
 	}
 }
 

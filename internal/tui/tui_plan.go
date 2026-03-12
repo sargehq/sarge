@@ -16,7 +16,6 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/sargehq/sarge/internal/beans"
 	beanswatcher "github.com/sargehq/sarge/internal/beans/watcher"
-	"github.com/sargehq/sarge/internal/bridge"
 	"github.com/sargehq/sarge/internal/git"
 	"github.com/sargehq/sarge/internal/progress"
 	"github.com/sargehq/sarge/internal/project"
@@ -58,8 +57,7 @@ type planModel struct {
 
 
 	// Session support
-	bridgeClient        *bridge.Bridge          // For headless sequencer sessions only
-	ptyManager          *ptysession.Manager     // For interactive PTY sessions (plan/agent/console)
+	ptyManager          *ptysession.Manager     // For PTY sessions (plan/agent/console/task)
 	sessionPanel        *SessionPanel
 	sessionPicker       *SessionPickerPanel
 	activeSessionID     string // Currently viewed PTY session ID
@@ -208,7 +206,6 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 
 	m.sessionPanel = NewSessionPanel()
 	m.sessionPicker = NewSessionPickerPanel()
-	m.bridgeClient = bridge.NewBridge()
 	m.ptyManager = ptysession.NewManager()
 
 	// Initialize tab model with the default "Main" tab
@@ -216,11 +213,9 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 	m.tabs = []*WorkTab{defaultTab}
 	m.activeTabID = defaultTab.ID
 
-	// Wire PTY manager and bridge into the WorkService's OrchestratorManager.
-	// PTY sessions are used for interactive display (plan/agent/console).
-	// Bridge sessions are used by the sequencer for headless task execution.
-	m.workService.OrchestratorManager = work.NewOrchestratorManagerWithBridge(
-		proj.DB, proj.Config, m.bridgeClient, m.ptyManager, proj.BeansPath(),
+	// Wire PTY manager into the WorkService's OrchestratorManager.
+	m.workService.OrchestratorManager = work.NewOrchestratorManagerWithPTY(
+		proj.DB, proj.Config, m.ptyManager, proj.BeansPath(),
 	)
 
 	// Set up status bar data providers
@@ -754,7 +749,7 @@ func (m *planModel) Update(msg tea.Msg) (*planModel, tea.Cmd) {
 			// If we're on the work tab for this work, just stay there
 			// The session will render in the embedded panel
 			if activeTab := m.getActiveTab(); activeTab != nil && activeTab.Type == WorkTabWork && activeTab.WorkID == msg.workID {
-				activeTab.ActiveSubSession = SubSessionAgent
+				activeTab.ActiveSessionID = msg.ptySessionID
 			}
 			m.statusMessage = fmt.Sprintf("Agent session opened for %s", msg.workID)
 			m.statusIsError = false
@@ -1416,13 +1411,11 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 			case WorkDetailActionResetTask:
 				return m, m.resetSelectedTask()
 			case WorkDetailActionAttachTerminal:
-				// Open bridge session picker
-				if m.bridgeClient != nil {
-					sessions := m.bridgeClient.ListSessions()
-					if len(sessions) > 0 {
-						m.openBridgeSessionPicker()
-						return m, nil
-					}
+				// Open session picker (checks PTY sessions)
+				ptySessions := m.ptyManager.List()
+				if len(ptySessions) > 0 {
+					m.openBridgeSessionPicker()
+					return m, nil
 				}
 				m.statusMessage = "No active sessions for this work"
 				m.statusIsError = false
@@ -1484,8 +1477,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 				if hasSession && !activeTab.SessionMaximized {
 					// Move from work details to session panel
 					m.activePanel = PanelSession
-					sessionID := activeTab.SessionID()
-					if s := m.ptyManager.Get(sessionID); s != nil {
+					if sessionID := activeTab.ResolveSessionID(m.ptyManager); sessionID != "" {
 						m.viewPTYSession(sessionID)
 					}
 				} else {
@@ -1651,34 +1643,13 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 		}
 		return m, m.refreshData()
 
-	case "ctrl+1":
-		// Switch to agent sub-session
+	case "ctrl+1", "ctrl+2", "ctrl+3", "ctrl+4", "ctrl+5", "ctrl+6", "ctrl+7", "ctrl+8", "ctrl+9":
+		// Switch to sub-session by index
 		if activeTab := m.getActiveTab(); activeTab != nil && activeTab.Type == WorkTabWork {
-			activeTab.SetSubSession(1)
-			sessionID := activeTab.SessionID()
-			if s := m.ptyManager.Get(sessionID); s != nil {
-				m.viewPTYSession(sessionID)
-			}
-		}
-		return m, nil
-
-	case "ctrl+2":
-		// Switch to console sub-session
-		if activeTab := m.getActiveTab(); activeTab != nil && activeTab.Type == WorkTabWork {
-			activeTab.SetSubSession(2)
-			sessionID := activeTab.SessionID()
-			if s := m.ptyManager.Get(sessionID); s != nil {
-				m.viewPTYSession(sessionID)
-			}
-		}
-		return m, nil
-
-	case "ctrl+3":
-		// Switch to plan sub-session
-		if activeTab := m.getActiveTab(); activeTab != nil && activeTab.Type == WorkTabWork {
-			activeTab.SetSubSession(3)
-			sessionID := activeTab.SessionID()
-			if s := m.ptyManager.Get(sessionID); s != nil {
+			idx := int(msg.String()[len(msg.String())-1] - '0')
+			activeTab.SetSubSessionByIndex(m.ptyManager, idx)
+			sessionID := activeTab.ResolveSessionID(m.ptyManager)
+			if sessionID != "" {
 				m.viewPTYSession(sessionID)
 			}
 		}
@@ -1691,8 +1662,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 			if activeTab.SessionMaximized {
 				m.activePanel = PanelSession
 				// Wire session panel to the tab's active session
-				sessionID := activeTab.SessionID()
-				if s := m.ptyManager.Get(sessionID); s != nil {
+				if sessionID := activeTab.ResolveSessionID(m.ptyManager); sessionID != "" {
 					m.viewPTYSession(sessionID)
 				}
 			} else {
@@ -1886,11 +1856,7 @@ func (m *planModel) cleanup() {
 	if m.beansWatcher != nil {
 		_ = m.beansWatcher.Stop()
 	}
-	// Kill all bridge sessions (headless/sequencer)
-	if m.bridgeClient != nil {
-		_ = m.bridgeClient.KillAll()
-	}
-	// Kill all PTY sessions (interactive)
+	// Kill all PTY sessions
 	if m.ptyManager != nil {
 		_ = m.ptyManager.KillAll()
 	}
@@ -1966,20 +1932,7 @@ func (m *planModel) openBridgeSessionPicker() {
 		}
 		return
 	}
-	// Convert to the format the session picker expects
-	bridgeSessions := make(map[string]bridge.SessionState)
-	for id, state := range ptySessions {
-		// Map PTY states to bridge states for the picker UI
-		switch state {
-		case ptysession.SessionRunning:
-			bridgeSessions[id] = bridge.SessionReady
-		case ptysession.SessionDead:
-			bridgeSessions[id] = bridge.SessionDead
-		default:
-			bridgeSessions[id] = bridge.SessionStarting
-		}
-	}
-	m.sessionPicker.SetSessions(bridgeSessions)
+	m.sessionPicker.SetSessions(ptySessions)
 	m.sessionPicker.SetSize(m.width/2, m.height/2)
 	m.viewMode = ViewBridgeSessionPicker
 }
@@ -2147,9 +2100,8 @@ func (m *planModel) activateTab(tabID string) (*planModel, tea.Cmd) {
 		m.workDetails.SetSelectedIndex(0)
 		m.workDetails.SetOrchestratorHealth(checkOrchestratorHealth(m.ctx, m.proj.DB, m.focusedWorkID))
 
-		// Wire session panel to the active sub-session
-		sessionID := tab.SessionID()
-		if s := m.ptyManager.Get(sessionID); s != nil {
+		// Wire session panel to the best available session
+		if sessionID := tab.ResolveSessionID(m.ptyManager); sessionID != "" {
 			m.viewPTYSession(sessionID)
 		}
 

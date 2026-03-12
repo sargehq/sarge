@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -92,13 +93,11 @@ func (m *planModel) renderSessionFullscreen() string {
 		case WorkTabPlan:
 			title = "Plan: " + activeTab.BeanID
 		case WorkTabWork:
-			switch activeTab.ActiveSubSession {
-			case SubSessionAgent:
-				title = "Agent: " + activeTab.WorkID
-			case SubSessionConsole:
-				title = "Console: " + activeTab.WorkID
-			case SubSessionPlan:
-				title = "Plan: " + activeTab.WorkID
+			sid := activeTab.ResolveSessionID(m.ptyManager)
+			if sid != "" {
+				title = sid
+			} else {
+				title = activeTab.WorkID
 			}
 			title += " [z] restore"
 		}
@@ -149,9 +148,11 @@ func (m *planModel) renderWorkTabContent(tab *WorkTab) string {
 	workPanel := m.workDetails.RenderWithPanel(workPanelHeight)
 
 	// Render session panel (bottom) — no border, raw PTY output
-	sessionID := tab.SessionID()
-	if s := m.ptyManager.Get(sessionID); s != nil && m.sessionPanel.Session() != s {
-		m.viewPTYSession(sessionID)
+	sessionID := tab.ResolveSessionID(m.ptyManager)
+	if sessionID != "" {
+		if s := m.ptyManager.Get(sessionID); s != nil && m.sessionPanel.Session() != s {
+			m.viewPTYSession(sessionID)
+		}
 	}
 
 	// Session gets full width, height minus 1 for title bar
@@ -159,24 +160,30 @@ func (m *planModel) renderWorkTabContent(tab *WorkTab) string {
 	m.sessionPanel.SetSize(m.width, ptyHeight)
 	m.sessionPanel.SetFocus(m.activePanel == PanelSession)
 
-	// Sub-session indicator
-	subLabel := ""
-	switch tab.ActiveSubSession {
-	case SubSessionAgent:
-		subLabel = "Agent"
-	case SubSessionConsole:
-		subLabel = "Console"
-	case SubSessionPlan:
-		subLabel = "Plan"
-	}
+	// Build sub-tab bar
+	subs := tab.AvailableSessions(m.ptyManager)
+	activeIdx := tab.ActiveSubTabIndex(m.ptyManager)
 
-	// Minimal title bar (no border)
+	titleBg := lipgloss.Color("236")
 	titleStyle := lipgloss.NewStyle().
-		Background(lipgloss.Color("236")).
-		Foreground(lipgloss.Color("214")).
-		Bold(true).
+		Background(titleBg).
 		Width(m.width)
-	titleBar := titleStyle.Render(" " + subLabel + " " + tuiDimStyle.Render("[z] maximize  [ctrl+1/2/3] switch"))
+
+	var subTabStr string
+	if len(subs) == 0 {
+		subTabStr = lipgloss.NewStyle().Background(titleBg).Foreground(lipgloss.Color("244")).Render(" No sessions")
+	} else {
+		for i, sub := range subs {
+			label := fmt.Sprintf(" %d:%s ", i+1, sub.Label)
+			if i == activeIdx {
+				subTabStr += lipgloss.NewStyle().Background(lipgloss.Color("214")).Foreground(lipgloss.Color("232")).Bold(true).Render(label)
+			} else {
+				subTabStr += lipgloss.NewStyle().Background(titleBg).Foreground(lipgloss.Color("250")).Render(label)
+			}
+		}
+		subTabStr += lipgloss.NewStyle().Background(titleBg).Foreground(lipgloss.Color("240")).Render("  [z] maximize")
+	}
+	titleBar := titleStyle.Render(subTabStr)
 
 	// Render session content RAW — do not pass through lipgloss.
 	sessionContent := m.sessionPanel.Render()
@@ -197,8 +204,12 @@ func (m *planModel) renderWorkTabContent(tab *WorkTab) string {
 
 // renderTwoColumnLayout renders the issues and details panels side-by-side
 func (m *planModel) renderTwoColumnLayout() string {
-	// Check if a work is focused - if so, render split view
+	// Check if a work is focused - if so, render work tab content with session
 	if m.focusedWorkID != "" {
+		// Find or create a work tab to render
+		if tab := m.getTabByID(m.focusedWorkID); tab != nil && tab.Type == WorkTabWork {
+			return m.renderWorkTabContent(tab)
+		}
 		return m.renderFocusedWorkSplitView()
 	}
 
