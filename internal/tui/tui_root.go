@@ -115,8 +115,7 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Global keys (only when not in modal)
-		switch msg.String() {
-		case "q":
+		if ctrlKey(msg) == 'q' {
 			m.quitting = true
 			// Clean up resources in plan model
 			if m.planModel != nil {

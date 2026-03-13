@@ -375,47 +375,11 @@ func (p *WorkDetailsPanel) Update(msg tea.KeyPressMsg) (tea.Cmd, WorkDetailActio
 			*vp, cmd = vp.Update(msg)
 		}
 
-		// Still handle action keys even when right panel is focused
-		switch msg.String() {
-		case "t":
-			return cmd, WorkDetailActionOpenTerminal
-		case "c":
-			return cmd, WorkDetailActionOpenAgent
-		case "i":
-			return cmd, WorkDetailActionOpenIDE
-		case "r":
-			return cmd, WorkDetailActionRun
-		case "v":
-			return cmd, WorkDetailActionReview
-		case "p":
-			// 'p' = plan when unassigned bean selected, PR otherwise
-			if p.IsUnassignedBeanSelected() {
-				return cmd, WorkDetailActionPlan
-			}
-			return cmd, WorkDetailActionPR
-		case "o":
-			return cmd, WorkDetailActionRestartOrchestrator
-		case "f":
-			return cmd, WorkDetailActionCheckFeedback
-		case "d":
-			return cmd, WorkDetailActionDestroy
-		case "g":
-			return cmd, WorkDetailActionAttachTerminal
-		case "a":
-			// Add child issue - only when there's a focused work with root issue
-			if p.focusedWork != nil && p.focusedWork.Work.RootIssueID != "" {
-				return cmd, WorkDetailActionAddChildIssue
-			}
-			return cmd, WorkDetailActionNone
-		case "x":
-			// Reset failed task - only when a failed task is selected
-			if p.IsTaskSelected() && p.IsSelectedTaskFailed() {
-				return cmd, WorkDetailActionResetTask
-			}
-			return cmd, WorkDetailActionNone
-		default:
-			return cmd, WorkDetailActionNone
+		// Still handle ctrl+key action keys even when right panel is focused
+		if action := p.handleCtrlAction(msg); action != WorkDetailActionNone {
+			return cmd, action
 		}
+		return cmd, WorkDetailActionNone
 	}
 
 	// When left panel is focused, handle navigation and actions
@@ -428,43 +392,57 @@ func (p *WorkDetailsPanel) Update(msg tea.KeyPressMsg) (tea.Cmd, WorkDetailActio
 		// When left panel is focused, navigate selection
 		p.NavigateUp()
 		return nil, WorkDetailActionNavigateUp
-	case "t":
-		return nil, WorkDetailActionOpenTerminal
-	case "c":
-		return nil, WorkDetailActionOpenAgent
-	case "i":
-		return nil, WorkDetailActionOpenIDE
-	case "r":
-		return nil, WorkDetailActionRun
-	case "v":
-		return nil, WorkDetailActionReview
-	case "p":
-		// 'p' = plan when unassigned bean selected, PR otherwise
-		if p.IsUnassignedBeanSelected() {
-			return nil, WorkDetailActionPlan
-		}
-		return nil, WorkDetailActionPR
-	case "o":
-		return nil, WorkDetailActionRestartOrchestrator
-	case "f":
-		return nil, WorkDetailActionCheckFeedback
-	case "d":
-		return nil, WorkDetailActionDestroy
-	case "g":
-		return nil, WorkDetailActionAttachTerminal
-	case "a":
-		// Add child issue - only when there's a focused work with root issue
-		if p.focusedWork != nil && p.focusedWork.Work.RootIssueID != "" {
-			return nil, WorkDetailActionAddChildIssue
-		}
-	case "x":
-		// Reset failed task - only when a failed task is selected
-		if p.IsTaskSelected() && p.IsSelectedTaskFailed() {
-			return nil, WorkDetailActionResetTask
-		}
+	}
+
+	// Handle ctrl+key actions from left panel
+	if action := p.handleCtrlAction(msg); action != WorkDetailActionNone {
+		return nil, action
 	}
 
 	return nil, WorkDetailActionNone
+}
+
+// handleCtrlAction maps ctrl+key combos to work detail actions.
+// Uses msg.Mod and msg.Code directly for reliable modifier detection.
+func (p *WorkDetailsPanel) handleCtrlAction(msg tea.KeyPressMsg) WorkDetailAction {
+	k := ctrlKey(msg)
+	switch k {
+	case 't':
+		return WorkDetailActionOpenTerminal
+	case 'c':
+		return WorkDetailActionOpenAgent
+	case 'i':
+		return WorkDetailActionOpenIDE
+	case 'r':
+		return WorkDetailActionRun
+	case 'v':
+		return WorkDetailActionReview
+	case 'p':
+		// ctrl+p = plan when unassigned bean selected, PR otherwise
+		if p.IsUnassignedBeanSelected() {
+			return WorkDetailActionPlan
+		}
+		return WorkDetailActionPR
+	case 'o':
+		return WorkDetailActionRestartOrchestrator
+	case 'f':
+		return WorkDetailActionCheckFeedback
+	case 'd':
+		return WorkDetailActionDestroy
+	case 'g':
+		return WorkDetailActionAttachTerminal
+	case 'a':
+		// Add child issue - only when there's a focused work with root issue
+		if p.focusedWork != nil && p.focusedWork.Work.RootIssueID != "" {
+			return WorkDetailActionAddChildIssue
+		}
+	case 'x':
+		// Reset failed task - only when a failed task is selected
+		if p.IsTaskSelected() && p.IsSelectedTaskFailed() {
+			return WorkDetailActionResetTask
+		}
+	}
+	return WorkDetailActionNone
 }
 
 // DetectClickedItem determines which item was clicked and returns its index
