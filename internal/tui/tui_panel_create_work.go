@@ -469,7 +469,7 @@ func (p *CreateWorkPanel) Render() string {
 func (p *CreateWorkPanel) RenderWithPanel(contentHeight int) string {
 	panelContent := p.Render()
 
-	panelStyle := tuiPanelStyle.Width(p.width).Height(contentHeight - 2)
+	panelStyle := tuiPanelStyle.Width(p.width).Height(contentHeight)
 	if p.focused {
 		panelStyle = panelStyle.BorderForeground(lipgloss.Color("214"))
 	}

@@ -8,7 +8,6 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/muesli/reflow/wordwrap"
-	"github.com/sargehq/sarge/internal/logging"
 )
 
 // Panel padding: tuiPanelStyle has Padding(0, 1) = 2 chars horizontal padding total
@@ -55,11 +54,12 @@ func (p *IssueDetailsPanel) SetSize(width, height int) {
 	// Calculate available lines for content:
 	// - 2 for border (top + bottom)
 	// - 1 for title line
-	// - 1 for the status bar.
-	visibleLines := max(height-4, 1)
+	visibleLines := max(height-3, 1)
 
-	// Set viewport size accounting for padding (2 chars total)
-	p.viewport.SetWidth(width - 2)
+	// Set viewport width to match the lipgloss inner wrap width:
+	// panel width - 2 (border) - 2 (horizontal padding from Padding(0,1))
+	// This prevents lipgloss from re-wrapping viewport output lines.
+	p.viewport.SetWidth(width - 4)
 	p.viewport.SetHeight(visibleLines)
 }
 
@@ -128,78 +128,12 @@ func (p *IssueDetailsPanel) Render() string {
 func (p *IssueDetailsPanel) RenderWithPanel(contentHeight int) string {
 	detailsContent := p.Render()
 
-	// Truncate content to fit exactly within the panel.
-	// The viewport constrains line count, but lipgloss may wrap long lines
-	// inside the bordered panel, pushing the rendered height beyond the target.
-	// Inner space: contentHeight - 2 (border) - 1 (title) = contentHeight - 3
-	targetContentLines := contentHeight - 3
-	linesBeforeTrunc := strings.Count(detailsContent, "\n") + 1
-	detailsContent = padOrTruncateLines(detailsContent, targetContentLines)
-	linesAfterTrunc := strings.Count(detailsContent, "\n") + 1
-
-	panelStyle := tuiPanelStyle.Width(p.width).Height(contentHeight - 2)
+	panelStyle := tuiPanelStyle.Width(p.width).Height(contentHeight)
 	if p.focused {
 		panelStyle = panelStyle.BorderForeground(lipgloss.Color("214"))
 	}
 
-	innerContent := tuiTitleStyle.Render("Details") + "\n" + detailsContent
-	innerLines := strings.Count(innerContent, "\n") + 1
-
-	result := panelStyle.Render(innerContent)
-	resultHeight := lipgloss.Height(result)
-	resultLineCount := strings.Count(result, "\n") + 1
-
-	// Log every line width in the result to find wrapping
-	if resultHeight != contentHeight {
-		resultLines := strings.Split(result, "\n")
-		for i, line := range resultLines {
-			w := lipgloss.Width(line)
-			if w > p.width+2 { // +2 for border chars
-				logging.Debug("DetailsPanel WIDE LINE",
-					"lineIndex", i,
-					"lineWidth", w,
-					"panelWidth", p.width,
-					"line", line,
-				)
-			}
-		}
-	}
-
-	logging.Debug("DetailsPanel.RenderWithPanel",
-		"contentHeight", contentHeight,
-		"targetContentLines", targetContentLines,
-		"viewportHeight", p.viewport.Height(),
-		"viewportWidth", p.viewport.Width(),
-		"linesBeforeTrunc", linesBeforeTrunc,
-		"linesAfterTrunc", linesAfterTrunc,
-		"innerLines", innerLines,
-		"panelStyleHeight", contentHeight-2,
-		"panelWidth", p.width,
-		"resultHeight(lipgloss)", resultHeight,
-		"resultLineCount", resultLineCount,
-		"overflow", resultHeight > contentHeight,
-	)
-
-	return result
-}
-
-// padOrTruncateLines ensures content has exactly targetLines lines.
-func padOrTruncateLines(content string, targetLines int) string {
-	if targetLines < 1 {
-		targetLines = 1
-	}
-	lines := strings.Split(content, "\n")
-	if len(lines) > 0 && lines[len(lines)-1] == "" {
-		lines = lines[:len(lines)-1]
-	}
-	if len(lines) > targetLines {
-		lines = lines[:targetLines]
-	} else {
-		for len(lines) < targetLines {
-			lines = append(lines, "")
-		}
-	}
-	return strings.Join(lines, "\n")
+	return panelStyle.Render(tuiTitleStyle.Render("Details") + "\n" + detailsContent)
 }
 
 // renderFullIssueContent renders all content without line limits
@@ -211,8 +145,8 @@ func (p *IssueDetailsPanel) renderFullIssueContent() string {
 	var content strings.Builder
 	bean := p.focusedBean
 
-	// Calculate inner width (panel has Padding(0, 1) = 2 chars total horizontal padding)
-	innerWidth := p.width - 2
+	// Calculate inner width: panel width - 2 (border) - 2 (horizontal padding)
+	innerWidth := p.width - 4
 
 	// Build header line - may need truncation to fit
 	var header strings.Builder

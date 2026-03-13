@@ -560,7 +560,7 @@ func (p *BeanFormPanel) Render(visibleLines int) string {
 func (p *BeanFormPanel) RenderWithPanel(contentHeight int) string {
 	panelContent := p.Render(contentHeight - 3)
 
-	panelStyle := tuiPanelStyle.Width(p.width).Height(contentHeight - 2)
+	panelStyle := tuiPanelStyle.Width(p.width).Height(contentHeight)
 	if p.focused {
 		panelStyle = panelStyle.BorderForeground(lipgloss.Color("214"))
 	}

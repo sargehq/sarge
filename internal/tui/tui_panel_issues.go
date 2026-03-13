@@ -163,7 +163,7 @@ func (p *IssuesPanel) RenderWithPanel(contentHeight int) string {
 	// Ensure content is exactly the right number of lines to prevent layout overflow
 	issuesContent = padOrTruncateLinesIssues(issuesContent, issuesContentLines)
 
-	panelStyle := tuiPanelStyle.Width(p.width).Height(contentHeight - 2)
+	panelStyle := tuiPanelStyle.Width(p.width).Height(contentHeight)
 	if p.focused {
 		panelStyle = panelStyle.BorderForeground(lipgloss.Color("214"))
 	}
