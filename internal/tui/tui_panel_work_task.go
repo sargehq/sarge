@@ -202,7 +202,7 @@ func (p *WorkTaskPanel) renderUnassignedBeanDetails(panelWidth int) string {
 	warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
 	content.WriteString(warningStyle.Render("Unassigned Issue"))
 	content.WriteString(" ")
-	content.WriteString(tuiDimStyle.Render("[p] plan [r] run"))
+	content.WriteString(tuiDimStyle.Render("[ctrl+p] plan [ctrl+r] run"))
 	content.WriteString("\n\n")
 
 	fmt.Fprintf(&content, "ID: %s\n", bean.ID)

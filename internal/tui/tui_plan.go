@@ -510,19 +510,33 @@ func (m *planModel) Update(msg tea.Msg) (*planModel, tea.Cmd) {
 				// Trigger the corresponding action by simulating a key press
 				switch clickedButton {
 				case "n":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'n', Text: "n"})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'n', Mod: tea.ModCtrl})
 				case "e":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'e', Text: "e"})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'e', Mod: tea.ModCtrl})
 				case "a":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'a', Text: "a"})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'a', Mod: tea.ModCtrl})
 				case "x":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'x', Text: "x"})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'x', Mod: tea.ModCtrl})
 				case "d":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'd', Text: "d"})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'd', Mod: tea.ModCtrl})
 				case "w":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'w', Text: "w"})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'w', Mod: tea.ModCtrl})
 				case "p":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'p', Text: "p"})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'p', Mod: tea.ModCtrl})
+				case "t":
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 't', Mod: tea.ModCtrl})
+				case "c":
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
+				case "i":
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'i', Mod: tea.ModCtrl})
+				case "r":
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'r', Mod: tea.ModCtrl})
+				case "o":
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'o', Mod: tea.ModCtrl})
+				case "v":
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'v', Mod: tea.ModCtrl})
+				case "f":
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'f', Mod: tea.ModCtrl})
 				case "?":
 					return m.handleKeyPress(tea.KeyPressMsg{Code: '?', Text: "?"})
 				}
@@ -1087,6 +1101,22 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 				return m, nil
 			}
 
+			// Intercept ctrl+key TUI hotkeys before forwarding to PTY.
+			// This allows TUI control without leaving the session.
+			if msg.Mod&tea.ModCtrl != 0 {
+				switch msg.String() {
+				case "ctrl+n", "ctrl+e", "ctrl+a", "ctrl+x", "ctrl+d", "ctrl+w", "ctrl+p",
+					"ctrl+t", "ctrl+r", "ctrl+o", "ctrl+f", "ctrl+g", "ctrl+v",
+					"ctrl+s", "ctrl+q", "ctrl+z",
+					"ctrl+m", "ctrl+i", "ctrl+c",
+					"ctrl+shift+e", "ctrl+shift+m", "ctrl+shift+a",
+					"ctrl+shift+1", "ctrl+shift+2", "ctrl+shift+3", "ctrl+shift+4",
+					"ctrl+shift+5", "ctrl+shift+6", "ctrl+shift+7", "ctrl+shift+8", "ctrl+shift+9":
+					// Fall through to normal key handling below
+					goto handleNormalKeys
+				}
+			}
+
 			// Forward all other keys to the PTY session
 			session := activeTab.ActiveSession(m.ptyManager)
 			if session != nil && session.State() != ptysession.SessionDead {
@@ -1104,6 +1134,8 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 			}
 		}
 	}
+
+handleNormalKeys:
 
 	// Handle escape key globally for deselecting focused work
 	if msg.Code == tea.KeyEscape && m.viewMode == ViewNormal && m.focusedWorkID != "" {
@@ -1339,10 +1371,10 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 	if m.focusedWorkID != "" {
 		isWorkActionKey := false
 		switch msg.String() {
-		case "t", "c", "i", "r", "o", "f", "g", "v", "p", "x", "a":
+		case "ctrl+t", "ctrl+c", "ctrl+i", "ctrl+r", "ctrl+o", "ctrl+f", "ctrl+g", "ctrl+v", "ctrl+p", "ctrl+x", "ctrl+a":
 			isWorkActionKey = true
-		case "d":
-			// 'd' is panel-aware: destroy work when work panel is focused,
+		case "ctrl+d":
+			// ctrl+d is panel-aware: destroy work when work panel is focused,
 			// delete bean when issues panel is focused
 			if m.activePanel == PanelWorkDetails || m.activePanel == PanelWorkTabs {
 				isWorkActionKey = true
@@ -1553,13 +1585,13 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 		}
 		return m, nil
 
-	case "n":
+	case "ctrl+n":
 		// Create new bean inline
 		m.viewMode = ViewCreateBeanInline
 		m.beanFormPanel.Reset()
 		return m, m.beanFormPanel.Init()
 
-	case "x":
+	case "ctrl+x":
 		// Close selected bean(s)
 		if len(m.beanItems) > 0 {
 			// Check if we have any selected beans
@@ -1577,7 +1609,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 		}
 		return m, nil
 
-	case "d":
+	case "ctrl+d":
 		// Delete selected bean(s) permanently
 		if len(m.beanItems) > 0 {
 			// Check if we have any selected beans
@@ -1631,7 +1663,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 		m.filters.status = "ready"
 		return m, m.refreshData()
 
-	case "s":
+	case "ctrl+s":
 		// Cycle sort mode
 		switch m.filters.sortBy {
 		case "default":
@@ -1643,7 +1675,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 		}
 		return m, m.refreshData()
 
-	case "ctrl+1", "ctrl+2", "ctrl+3", "ctrl+4", "ctrl+5", "ctrl+6", "ctrl+7", "ctrl+8", "ctrl+9":
+	case "ctrl+shift+1", "ctrl+shift+2", "ctrl+shift+3", "ctrl+shift+4", "ctrl+shift+5", "ctrl+shift+6", "ctrl+shift+7", "ctrl+shift+8", "ctrl+shift+9":
 		// Switch to sub-session by index
 		if activeTab := m.getActiveTab(); activeTab != nil && activeTab.Type == WorkTabWork {
 			idx := int(msg.String()[len(msg.String())-1] - '0')
@@ -1655,7 +1687,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 		}
 		return m, nil
 
-	case "z":
+	case "ctrl+z":
 		// Toggle session maximize for the active work tab
 		if activeTab := m.getActiveTab(); activeTab != nil && activeTab.Type == WorkTabWork {
 			activeTab.SessionMaximized = !activeTab.SessionMaximized
@@ -1710,15 +1742,15 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 		}
 		return m, nil
 
-	case "p":
-		// Spawn/resume planning session for selected bean (work details panel handles 'p' for Plan)
+	case "ctrl+p":
+		// Spawn/resume planning session for selected bean (work details panel handles ctrl+p for Plan)
 		if len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
 			beanID := m.beanItems[m.beansCursor].ID
 			return m, m.spawnPlanSession(beanID)
 		}
 		return m, nil
 
-	case "w":
+	case "ctrl+w":
 		// Create work from cursor bean - show dialog
 		if len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
 			bean := m.beanItems[m.beansCursor]
@@ -1740,7 +1772,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 		}
 		return m, nil
 
-	case "a":
+	case "ctrl+a":
 		// Add child issue to selected issue
 		if len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
 			parent := m.beanItems[m.beansCursor]
@@ -1755,7 +1787,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 		}
 		return m, nil
 
-	case "e":
+	case "ctrl+e":
 		// Edit selected issue using the unified bean form
 		if len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
 			bean := m.beanItems[m.beansCursor]
@@ -1765,7 +1797,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 		}
 		return m, nil
 
-	case "E":
+	case "ctrl+shift+e":
 		// Edit selected issue in external editor
 		if len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
 			bean := m.beanItems[m.beansCursor]
@@ -1773,7 +1805,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 		}
 		return m, nil
 
-	case "m":
+	case "ctrl+m":
 		// Import Linear issue inline - check for API key first
 		var apiKey string
 		if m.proj.Config != nil {
@@ -1788,13 +1820,13 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 		m.linearImportPanel.Reset()
 		return m, m.linearImportPanel.Init()
 
-	case "M":
+	case "ctrl+shift+m":
 		// Import GitHub PR inline
 		m.viewMode = ViewPRImportInline
 		m.prImportPanel.Reset()
 		return m, m.prImportPanel.Init()
 
-	case "A":
+	case "ctrl+shift+a":
 		// Add selected issue(s) to the focused work
 		if m.focusedWorkID == "" {
 			m.statusMessage = "Select a work first (press 1-9 to select a work)"
@@ -1841,7 +1873,7 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 		m.viewMode = ViewHelp
 		return m, nil
 
-	case "q":
+	case "ctrl+q":
 		// Clean up resources before quitting
 		m.cleanup()
 		return m, tea.Quit

@@ -222,41 +222,39 @@ func (s *StatusBar) Render() string {
 // renderIssuesCommands returns commands for the issues panel (no work focused)
 func (s *StatusBar) renderIssuesCommands() (string, string) {
 	// Commands on the left with hover effects - wrap each with zone.Mark
-	nButton := zone.Mark(s.zonePrefix+"n", styleButtonWithHover("[n]ew", s.hoveredButton == "n"))
-	eButton := zone.Mark(s.zonePrefix+"e", styleButtonWithHover("[e]dit", s.hoveredButton == "e"))
-	aButton := zone.Mark(s.zonePrefix+"a", styleButtonWithHover("[a]child", s.hoveredButton == "a"))
-	xButton := zone.Mark(s.zonePrefix+"x", styleButtonWithHover("[x]close", s.hoveredButton == "x"))
-	dButton := zone.Mark(s.zonePrefix+"d", styleButtonWithHover("[d]el", s.hoveredButton == "d"))
-	wButton := zone.Mark(s.zonePrefix+"w", styleButtonWithHover("[w]ork", s.hoveredButton == "w"))
-	OButton := zone.Mark(s.zonePrefix+"O", styleButtonWithHover("[O]pen", s.hoveredButton == "O"))
-	CButton := zone.Mark(s.zonePrefix+"C", styleButtonWithHover("[C]losed", s.hoveredButton == "C"))
-	RButton := zone.Mark(s.zonePrefix+"R", styleButtonWithHover("[R]eady", s.hoveredButton == "R"))
+	// All action keys use ctrl+ prefix so pi sessions get complete keyboard control
+	nButton := zone.Mark(s.zonePrefix+"n", styleButtonWithHover("^[n]ew", s.hoveredButton == "n"))
+	eButton := zone.Mark(s.zonePrefix+"e", styleButtonWithHover("^[e]dit", s.hoveredButton == "e"))
+	aButton := zone.Mark(s.zonePrefix+"a", styleButtonWithHover("^[a]child", s.hoveredButton == "a"))
+	xButton := zone.Mark(s.zonePrefix+"x", styleButtonWithHover("^[x]close", s.hoveredButton == "x"))
+	dButton := zone.Mark(s.zonePrefix+"d", styleButtonWithHover("^[d]el", s.hoveredButton == "d"))
+	wButton := zone.Mark(s.zonePrefix+"w", styleButtonWithHover("^[w]ork", s.hoveredButton == "w"))
 	helpButton := zone.Mark(s.zonePrefix+"?", styleButtonWithHover("[?]help", s.hoveredButton == "?"))
 
-	commands := nButton + " " + eButton + " " + aButton + " " + xButton + " " + dButton + " " + wButton + " " + OButton + " " + CButton + " " + RButton + " " + helpButton
-	commandsPlain := "[n]ew [e]dit [a]child [x]close [d]el [w]ork [O]pen [C]losed [R]eady [?]help"
+	commands := nButton + " " + eButton + " " + aButton + " " + xButton + " " + dButton + " " + wButton + " " + helpButton
+	commandsPlain := "^[n]ew ^[e]dit ^[a]child ^[x]close ^[d]el ^[w]ork [?]help"
 
 	return commands, commandsPlain
 }
 
 // renderWorkFocusedCommands returns merged commands: work actions + non-conflicting issue actions
 func (s *StatusBar) renderWorkFocusedCommands() (string, string) {
-	// Work action keys
-	tButton := zone.Mark(s.zonePrefix+"t", styleButtonWithHover("[t]erm", s.hoveredButton == "t"))
-	cButton := zone.Mark(s.zonePrefix+"c", styleButtonWithHover("[c]hat", s.hoveredButton == "c"))
-	iButton := zone.Mark(s.zonePrefix+"i", styleButtonWithHover("[i]DE", s.hoveredButton == "i"))
-	rButton := zone.Mark(s.zonePrefix+"r", styleButtonWithHover("[r]un", s.hoveredButton == "r"))
-	oButton := zone.Mark(s.zonePrefix+"o", styleButtonWithHover("[o]rch", s.hoveredButton == "o"))
-	vButton := zone.Mark(s.zonePrefix+"v", styleButtonWithHover("[v]review", s.hoveredButton == "v"))
-	pButton := zone.Mark(s.zonePrefix+"p", styleButtonWithHover("[p]r", s.hoveredButton == "p"))
-	fButton := zone.Mark(s.zonePrefix+"f", styleButtonWithHover("[f]eedback", s.hoveredButton == "f"))
+	// Work action keys - all use ctrl+ prefix
+	tButton := zone.Mark(s.zonePrefix+"t", styleButtonWithHover("^[t]erm", s.hoveredButton == "t"))
+	cButton := zone.Mark(s.zonePrefix+"c", styleButtonWithHover("^[c]hat", s.hoveredButton == "c"))
+	iButton := zone.Mark(s.zonePrefix+"i", styleButtonWithHover("^[i]DE", s.hoveredButton == "i"))
+	rButton := zone.Mark(s.zonePrefix+"r", styleButtonWithHover("^[r]un", s.hoveredButton == "r"))
+	oButton := zone.Mark(s.zonePrefix+"o", styleButtonWithHover("^[o]rch", s.hoveredButton == "o"))
+	vButton := zone.Mark(s.zonePrefix+"v", styleButtonWithHover("^[v]review", s.hoveredButton == "v"))
+	pButton := zone.Mark(s.zonePrefix+"p", styleButtonWithHover("^[p]r", s.hoveredButton == "p"))
+	fButton := zone.Mark(s.zonePrefix+"f", styleButtonWithHover("^[f]eedback", s.hoveredButton == "f"))
 
-	// 'd' is panel-aware: shows [d]estroy when work panel is focused, [d]el when issues panel is focused
-	dLabel := "[d]estroy"
-	dLabelPlain := "[d]estroy"
+	// ctrl+d is panel-aware: shows ^[d]estroy when work panel is focused, ^[d]el when issues panel is focused
+	dLabel := "^[d]estroy"
+	dLabelPlain := "^[d]estroy"
 	if s.getActivePanel != nil && s.getActivePanel() == PanelLeft {
-		dLabel = "[d]el"
-		dLabelPlain = "[d]el"
+		dLabel = "^[d]el"
+		dLabelPlain = "^[d]el"
 	}
 	dButton := zone.Mark(s.zonePrefix+"d", styleButtonWithHover(dLabel, s.hoveredButton == "d"))
 
@@ -264,15 +262,15 @@ func (s *StatusBar) renderWorkFocusedCommands() (string, string) {
 	sep := tuiDimStyle.Render("|")
 
 	// Non-conflicting issue actions
-	nButton := zone.Mark(s.zonePrefix+"n", styleButtonWithHover("[n]ew", s.hoveredButton == "n"))
-	eButton := zone.Mark(s.zonePrefix+"e", styleButtonWithHover("[e]dit", s.hoveredButton == "e"))
-	aButton := zone.Mark(s.zonePrefix+"a", styleButtonWithHover("[a]child", s.hoveredButton == "a"))
-	xButton := zone.Mark(s.zonePrefix+"x", styleButtonWithHover("[x]close", s.hoveredButton == "x"))
-	wButton := zone.Mark(s.zonePrefix+"w", styleButtonWithHover("[w]ork", s.hoveredButton == "w"))
+	nButton := zone.Mark(s.zonePrefix+"n", styleButtonWithHover("^[n]ew", s.hoveredButton == "n"))
+	eButton := zone.Mark(s.zonePrefix+"e", styleButtonWithHover("^[e]dit", s.hoveredButton == "e"))
+	aButton := zone.Mark(s.zonePrefix+"a", styleButtonWithHover("^[a]child", s.hoveredButton == "a"))
+	xButton := zone.Mark(s.zonePrefix+"x", styleButtonWithHover("^[x]close", s.hoveredButton == "x"))
+	wButton := zone.Mark(s.zonePrefix+"w", styleButtonWithHover("^[w]ork", s.hoveredButton == "w"))
 	helpButton := zone.Mark(s.zonePrefix+"?", styleButtonWithHover("[?]help", s.hoveredButton == "?"))
 
 	commands := tButton + " " + cButton + " " + iButton + " " + rButton + " " + oButton + " " + vButton + " " + pButton + " " + fButton + " " + dButton + " " + sep + " " + nButton + " " + eButton + " " + aButton + " " + xButton + " " + wButton + " " + helpButton
-	commandsPlain := "[t]erm [c]hat [i]DE [r]un [o]rch [v]review [p]r [f]eedback " + dLabelPlain + " | [n]ew [e]dit [a]child [x]close [w]ork [?]help"
+	commandsPlain := "^[t]erm ^[c]hat ^[i]DE ^[r]un ^[o]rch ^[v]review ^[p]r ^[f]eedback " + dLabelPlain + " | ^[n]ew ^[e]dit ^[a]child ^[x]close ^[w]ork [?]help"
 
 	return commands, commandsPlain
 }

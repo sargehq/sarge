@@ -377,37 +377,37 @@ func (p *WorkDetailsPanel) Update(msg tea.KeyPressMsg) (tea.Cmd, WorkDetailActio
 
 		// Still handle action keys even when right panel is focused
 		switch msg.String() {
-		case "t":
+		case "ctrl+t":
 			return cmd, WorkDetailActionOpenTerminal
-		case "c":
+		case "ctrl+c":
 			return cmd, WorkDetailActionOpenAgent
-		case "i":
+		case "ctrl+i":
 			return cmd, WorkDetailActionOpenIDE
-		case "r":
+		case "ctrl+r":
 			return cmd, WorkDetailActionRun
-		case "v":
+		case "ctrl+v":
 			return cmd, WorkDetailActionReview
-		case "p":
-			// 'p' = plan when unassigned bean selected, PR otherwise
+		case "ctrl+p":
+			// ctrl+p = plan when unassigned bean selected, PR otherwise
 			if p.IsUnassignedBeanSelected() {
 				return cmd, WorkDetailActionPlan
 			}
 			return cmd, WorkDetailActionPR
-		case "o":
+		case "ctrl+o":
 			return cmd, WorkDetailActionRestartOrchestrator
-		case "f":
+		case "ctrl+f":
 			return cmd, WorkDetailActionCheckFeedback
-		case "d":
+		case "ctrl+d":
 			return cmd, WorkDetailActionDestroy
-		case "g":
+		case "ctrl+g":
 			return cmd, WorkDetailActionAttachTerminal
-		case "a":
+		case "ctrl+a":
 			// Add child issue - only when there's a focused work with root issue
 			if p.focusedWork != nil && p.focusedWork.Work.RootIssueID != "" {
 				return cmd, WorkDetailActionAddChildIssue
 			}
 			return cmd, WorkDetailActionNone
-		case "x":
+		case "ctrl+x":
 			// Reset failed task - only when a failed task is selected
 			if p.IsTaskSelected() && p.IsSelectedTaskFailed() {
 				return cmd, WorkDetailActionResetTask
@@ -428,36 +428,36 @@ func (p *WorkDetailsPanel) Update(msg tea.KeyPressMsg) (tea.Cmd, WorkDetailActio
 		// When left panel is focused, navigate selection
 		p.NavigateUp()
 		return nil, WorkDetailActionNavigateUp
-	case "t":
+	case "ctrl+t":
 		return nil, WorkDetailActionOpenTerminal
-	case "c":
+	case "ctrl+c":
 		return nil, WorkDetailActionOpenAgent
-	case "i":
+	case "ctrl+i":
 		return nil, WorkDetailActionOpenIDE
-	case "r":
+	case "ctrl+r":
 		return nil, WorkDetailActionRun
-	case "v":
+	case "ctrl+v":
 		return nil, WorkDetailActionReview
-	case "p":
-		// 'p' = plan when unassigned bean selected, PR otherwise
+	case "ctrl+p":
+		// ctrl+p = plan when unassigned bean selected, PR otherwise
 		if p.IsUnassignedBeanSelected() {
 			return nil, WorkDetailActionPlan
 		}
 		return nil, WorkDetailActionPR
-	case "o":
+	case "ctrl+o":
 		return nil, WorkDetailActionRestartOrchestrator
-	case "f":
+	case "ctrl+f":
 		return nil, WorkDetailActionCheckFeedback
-	case "d":
+	case "ctrl+d":
 		return nil, WorkDetailActionDestroy
-	case "g":
+	case "ctrl+g":
 		return nil, WorkDetailActionAttachTerminal
-	case "a":
+	case "ctrl+a":
 		// Add child issue - only when there's a focused work with root issue
 		if p.focusedWork != nil && p.focusedWork.Work.RootIssueID != "" {
 			return nil, WorkDetailActionAddChildIssue
 		}
-	case "x":
+	case "ctrl+x":
 		// Reset failed task - only when a failed task is selected
 		if p.IsTaskSelected() && p.IsSelectedTaskFailed() {
 			return nil, WorkDetailActionResetTask
