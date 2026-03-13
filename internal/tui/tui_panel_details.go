@@ -8,7 +8,6 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/muesli/reflow/wordwrap"
-	"github.com/sargehq/sarge/internal/logging"
 )
 
 // Panel padding: tuiPanelStyle has Padding(0, 1) = 2 chars horizontal padding total
@@ -128,33 +127,12 @@ func (p *IssueDetailsPanel) Render() string {
 func (p *IssueDetailsPanel) RenderWithPanel(contentHeight int) string {
 	detailsContent := p.Render()
 
-	detailsContentLines := strings.Count(detailsContent, "\n") + 1
-
-	panelStyle := tuiPanelStyle.Width(p.width).Height(contentHeight - 2)
+	panelStyle := tuiPanelStyle.Width(p.width).Height(contentHeight - 2).MaxHeight(contentHeight)
 	if p.focused {
 		panelStyle = panelStyle.BorderForeground(lipgloss.Color("214"))
 	}
 
-	innerContent := tuiTitleStyle.Render("Details") + "\n" + detailsContent
-	innerLines := strings.Count(innerContent, "\n") + 1
-
-	result := panelStyle.Render(innerContent)
-
-	resultHeight := lipgloss.Height(result)
-
-	logging.Debug("DetailsPanel.RenderWithPanel",
-		"contentHeight", contentHeight,
-		"panelStyleHeight", contentHeight-2,
-		"viewportHeight", p.viewport.Height(),
-		"detailsContentLines", detailsContentLines,
-		"innerLines", innerLines,
-		"resultHeight", resultHeight,
-		"overflow", resultHeight > contentHeight,
-		"panelWidth", p.width,
-		"setSizeHeight", p.height,
-	)
-
-	return result
+	return panelStyle.Render(tuiTitleStyle.Render("Details") + "\n" + detailsContent)
 }
 
 // renderFullIssueContent renders all content without line limits
