@@ -51,14 +51,17 @@ func (p *IssueDetailsPanel) SetSize(width, height int) {
 	p.height = height
 
 	// Update viewport dimensions
-	// Calculate available lines for content:
-	// - 2 for border (top + bottom)
-	// - 1 for title line
-	// - 1 for the status bar.
+	// Calculate available lines for viewport content:
+	// height here is m.height (includes status bar line).
+	// RenderWithPanel receives contentHeight = height - 1 (status bar).
+	// lipgloss Height(contentHeight) internally subtracts 2 for border → contentHeight - 2 inner lines.
+	// Inner lines = 1 (title) + viewport, so viewport = contentHeight - 2 - 1 = height - 4.
 	visibleLines := max(height-4, 1)
 
-	// Set viewport size accounting for padding (2 chars total)
-	p.viewport.SetWidth(width - 2)
+	// Set viewport width to match the lipgloss inner wrap width:
+	// panel width - 2 (border) - 2 (horizontal padding from Padding(0,1))
+	// This prevents lipgloss from re-wrapping viewport output lines.
+	p.viewport.SetWidth(width - 4)
 	p.viewport.SetHeight(visibleLines)
 }
 
@@ -127,7 +130,7 @@ func (p *IssueDetailsPanel) Render() string {
 func (p *IssueDetailsPanel) RenderWithPanel(contentHeight int) string {
 	detailsContent := p.Render()
 
-	panelStyle := tuiPanelStyle.Width(p.width).Height(contentHeight - 2)
+	panelStyle := tuiPanelStyle.Width(p.width).Height(contentHeight)
 	if p.focused {
 		panelStyle = panelStyle.BorderForeground(lipgloss.Color("214"))
 	}
@@ -144,8 +147,8 @@ func (p *IssueDetailsPanel) renderFullIssueContent() string {
 	var content strings.Builder
 	bean := p.focusedBean
 
-	// Calculate inner width (panel has Padding(0, 1) = 2 chars total horizontal padding)
-	innerWidth := p.width - 2
+	// Calculate inner width: panel width - 2 (border) - 2 (horizontal padding)
+	innerWidth := p.width - 4
 
 	// Build header line - may need truncation to fit
 	var header strings.Builder
