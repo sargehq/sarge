@@ -9,6 +9,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	zone "github.com/lrstanley/bubblezone/v2"
+	"github.com/sargehq/sarge/internal/logging"
 )
 
 // IssuesPanel renders the issues list with filtering, tree structure, and selection.
@@ -160,21 +161,49 @@ func (p *IssuesPanel) RenderWithPanel(contentHeight int) string {
 	issuesContentLines := contentHeight - 3 // -3 for border (2) + title (1)
 	issuesContent := p.Render(issuesContentLines)
 
+	contentBeforePad := strings.Count(issuesContent, "\n") + 1
+
 	// Ensure content is exactly the right number of lines to prevent layout overflow
 	issuesContent = padOrTruncateLinesIssues(issuesContent, issuesContentLines)
+
+	contentAfterPad := strings.Count(issuesContent, "\n") + 1
 
 	panelStyle := tuiPanelStyle.Width(p.width).Height(contentHeight - 2)
 	if p.focused {
 		panelStyle = panelStyle.BorderForeground(lipgloss.Color("214"))
 	}
 
-	result := panelStyle.Render(tuiTitleStyle.Render("Issues") + "\n" + issuesContent)
+	innerContent := tuiTitleStyle.Render("Issues") + "\n" + issuesContent
+	innerLines := strings.Count(innerContent, "\n") + 1
+
+	result := panelStyle.Render(innerContent)
+
+	resultHeight := lipgloss.Height(result)
+
+	logging.Debug("IssuesPanel.RenderWithPanel",
+		"contentHeight", contentHeight,
+		"panelStyleHeight", contentHeight-2,
+		"issuesContentLines", issuesContentLines,
+		"contentBeforePad", contentBeforePad,
+		"contentAfterPad", contentAfterPad,
+		"innerLines", innerLines,
+		"resultHeight", resultHeight,
+		"overflow", resultHeight > contentHeight,
+		"panelWidth", p.width,
+	)
 
 	// If the result is taller than expected (due to lipgloss wrapping), fix it
 	// by removing extra lines from the INNER content while preserving borders and title
 	if lipgloss.Height(result) > contentHeight {
 		lines := strings.Split(result, "\n")
 		extraLines := len(lines) - contentHeight
+
+		logging.Debug("IssuesPanel.RenderWithPanel OVERFLOW detected",
+			"resultLines", len(lines),
+			"contentHeight", contentHeight,
+			"extraLines", extraLines,
+		)
+
 		// Need at least 4 lines: top border, title, 1+ content, bottom border
 		if extraLines > 0 && len(lines) > 3 {
 			// Keep first line (top border), second line (title), and last line (bottom border)
@@ -197,6 +226,10 @@ func (p *IssuesPanel) RenderWithPanel(contentHeight int) string {
 			lines = append(lines, contentLines...)
 			lines = append(lines, bottomBorder)
 			result = strings.Join(lines, "\n")
+
+			logging.Debug("IssuesPanel.RenderWithPanel OVERFLOW fixed",
+				"finalHeight", lipgloss.Height(result),
+			)
 		}
 	}
 

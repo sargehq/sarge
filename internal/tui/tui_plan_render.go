@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/sargehq/sarge/internal/logging"
 	zone "github.com/lrstanley/bubblezone/v2"
 )
 
@@ -217,6 +218,15 @@ func (m *planModel) renderTwoColumnLayout() string {
 	// Note: m.height has already been adjusted for tabs bar in View()
 	contentHeight := m.height - 1 // -1 for status bar
 
+	logging.Debug("renderTwoColumnLayout",
+		"m.height", m.height,
+		"contentHeight", contentHeight,
+		"issuesPanel.width", m.issuesPanel.width,
+		"issuesPanel.height", m.issuesPanel.height,
+		"detailsPanel.width", m.detailsPanel.width,
+		"detailsPanel.height", m.detailsPanel.height,
+	)
+
 	// Use panels for rendering (they're already synced with correct sizes and data)
 	issuesPanel := m.issuesPanel.RenderWithPanel(contentHeight)
 
@@ -236,6 +246,15 @@ func (m *planModel) renderTwoColumnLayout() string {
 	default:
 		rightPanel = m.detailsPanel.RenderWithPanel(contentHeight)
 	}
+
+	issuesHeight := lipgloss.Height(issuesPanel)
+	rightHeight := lipgloss.Height(rightPanel)
+	logging.Debug("renderTwoColumnLayout panels rendered",
+		"contentHeight", contentHeight,
+		"issuesPanel.renderedHeight", issuesHeight,
+		"rightPanel.renderedHeight", rightHeight,
+		"heightMismatch", issuesHeight != rightHeight,
+	)
 
 	// Combine columns horizontally (panels have their own borders)
 	return lipgloss.JoinHorizontal(lipgloss.Top, issuesPanel, rightPanel)
