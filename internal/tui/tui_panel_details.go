@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/muesli/reflow/wordwrap"
+	"github.com/sargehq/sarge/internal/logging"
 )
 
 // Panel padding: tuiPanelStyle has Padding(0, 1) = 2 chars horizontal padding total
@@ -132,14 +133,54 @@ func (p *IssueDetailsPanel) RenderWithPanel(contentHeight int) string {
 	// inside the bordered panel, pushing the rendered height beyond the target.
 	// Inner space: contentHeight - 2 (border) - 1 (title) = contentHeight - 3
 	targetContentLines := contentHeight - 3
+	linesBeforeTrunc := strings.Count(detailsContent, "\n") + 1
 	detailsContent = padOrTruncateLines(detailsContent, targetContentLines)
+	linesAfterTrunc := strings.Count(detailsContent, "\n") + 1
 
 	panelStyle := tuiPanelStyle.Width(p.width).Height(contentHeight - 2)
 	if p.focused {
 		panelStyle = panelStyle.BorderForeground(lipgloss.Color("214"))
 	}
 
-	return panelStyle.Render(tuiTitleStyle.Render("Details") + "\n" + detailsContent)
+	innerContent := tuiTitleStyle.Render("Details") + "\n" + detailsContent
+	innerLines := strings.Count(innerContent, "\n") + 1
+
+	result := panelStyle.Render(innerContent)
+	resultHeight := lipgloss.Height(result)
+	resultLineCount := strings.Count(result, "\n") + 1
+
+	// Log every line width in the result to find wrapping
+	if resultHeight != contentHeight {
+		resultLines := strings.Split(result, "\n")
+		for i, line := range resultLines {
+			w := lipgloss.Width(line)
+			if w > p.width+2 { // +2 for border chars
+				logging.Debug("DetailsPanel WIDE LINE",
+					"lineIndex", i,
+					"lineWidth", w,
+					"panelWidth", p.width,
+					"line", line,
+				)
+			}
+		}
+	}
+
+	logging.Debug("DetailsPanel.RenderWithPanel",
+		"contentHeight", contentHeight,
+		"targetContentLines", targetContentLines,
+		"viewportHeight", p.viewport.Height(),
+		"viewportWidth", p.viewport.Width(),
+		"linesBeforeTrunc", linesBeforeTrunc,
+		"linesAfterTrunc", linesAfterTrunc,
+		"innerLines", innerLines,
+		"panelStyleHeight", contentHeight-2,
+		"panelWidth", p.width,
+		"resultHeight(lipgloss)", resultHeight,
+		"resultLineCount", resultLineCount,
+		"overflow", resultHeight > contentHeight,
+	)
+
+	return result
 }
 
 // padOrTruncateLines ensures content has exactly targetLines lines.
