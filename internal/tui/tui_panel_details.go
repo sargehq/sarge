@@ -51,10 +51,12 @@ func (p *IssueDetailsPanel) SetSize(width, height int) {
 	p.height = height
 
 	// Update viewport dimensions
-	// Calculate available lines for content:
-	// - 2 for border (top + bottom)
-	// - 1 for title line
-	visibleLines := max(height-3, 1)
+	// Calculate available lines for viewport content:
+	// height here is m.height (includes status bar line).
+	// RenderWithPanel receives contentHeight = height - 1 (status bar).
+	// lipgloss Height(contentHeight) internally subtracts 2 for border → contentHeight - 2 inner lines.
+	// Inner lines = 1 (title) + viewport, so viewport = contentHeight - 2 - 1 = height - 4.
+	visibleLines := max(height-4, 1)
 
 	// Set viewport width to match the lipgloss inner wrap width:
 	// panel width - 2 (border) - 2 (horizontal padding from Padding(0,1))
