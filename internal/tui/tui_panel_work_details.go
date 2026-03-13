@@ -375,47 +375,11 @@ func (p *WorkDetailsPanel) Update(msg tea.KeyPressMsg) (tea.Cmd, WorkDetailActio
 			*vp, cmd = vp.Update(msg)
 		}
 
-		// Still handle action keys even when right panel is focused
-		switch msg.String() {
-		case "alt+t":
-			return cmd, WorkDetailActionOpenTerminal
-		case "alt+c":
-			return cmd, WorkDetailActionOpenAgent
-		case "alt+i":
-			return cmd, WorkDetailActionOpenIDE
-		case "alt+r":
-			return cmd, WorkDetailActionRun
-		case "alt+v":
-			return cmd, WorkDetailActionReview
-		case "alt+p":
-			// alt+p = plan when unassigned bean selected, PR otherwise
-			if p.IsUnassignedBeanSelected() {
-				return cmd, WorkDetailActionPlan
-			}
-			return cmd, WorkDetailActionPR
-		case "alt+o":
-			return cmd, WorkDetailActionRestartOrchestrator
-		case "alt+f":
-			return cmd, WorkDetailActionCheckFeedback
-		case "alt+d":
-			return cmd, WorkDetailActionDestroy
-		case "alt+g":
-			return cmd, WorkDetailActionAttachTerminal
-		case "alt+a":
-			// Add child issue - only when there's a focused work with root issue
-			if p.focusedWork != nil && p.focusedWork.Work.RootIssueID != "" {
-				return cmd, WorkDetailActionAddChildIssue
-			}
-			return cmd, WorkDetailActionNone
-		case "alt+x":
-			// Reset failed task - only when a failed task is selected
-			if p.IsTaskSelected() && p.IsSelectedTaskFailed() {
-				return cmd, WorkDetailActionResetTask
-			}
-			return cmd, WorkDetailActionNone
-		default:
-			return cmd, WorkDetailActionNone
+		// Still handle alt+key action keys even when right panel is focused
+		if action := p.handleAltAction(msg); action != WorkDetailActionNone {
+			return cmd, action
 		}
+		return cmd, WorkDetailActionNone
 	}
 
 	// When left panel is focused, handle navigation and actions
@@ -428,43 +392,58 @@ func (p *WorkDetailsPanel) Update(msg tea.KeyPressMsg) (tea.Cmd, WorkDetailActio
 		// When left panel is focused, navigate selection
 		p.NavigateUp()
 		return nil, WorkDetailActionNavigateUp
-	case "alt+t":
-		return nil, WorkDetailActionOpenTerminal
-	case "alt+c":
-		return nil, WorkDetailActionOpenAgent
-	case "alt+i":
-		return nil, WorkDetailActionOpenIDE
-	case "alt+r":
-		return nil, WorkDetailActionRun
-	case "alt+v":
-		return nil, WorkDetailActionReview
-	case "alt+p":
-		// alt+p = plan when unassigned bean selected, PR otherwise
-		if p.IsUnassignedBeanSelected() {
-			return nil, WorkDetailActionPlan
-		}
-		return nil, WorkDetailActionPR
-	case "alt+o":
-		return nil, WorkDetailActionRestartOrchestrator
-	case "alt+f":
-		return nil, WorkDetailActionCheckFeedback
-	case "alt+d":
-		return nil, WorkDetailActionDestroy
-	case "alt+g":
-		return nil, WorkDetailActionAttachTerminal
-	case "alt+a":
-		// Add child issue - only when there's a focused work with root issue
-		if p.focusedWork != nil && p.focusedWork.Work.RootIssueID != "" {
-			return nil, WorkDetailActionAddChildIssue
-		}
-	case "alt+x":
-		// Reset failed task - only when a failed task is selected
-		if p.IsTaskSelected() && p.IsSelectedTaskFailed() {
-			return nil, WorkDetailActionResetTask
-		}
+	}
+
+	// Handle alt+key actions from left panel
+	if action := p.handleAltAction(msg); action != WorkDetailActionNone {
+		return nil, action
 	}
 
 	return nil, WorkDetailActionNone
+}
+
+// handleAltAction maps alt+key combos to work detail actions.
+// Uses msg.Mod and msg.Code directly since msg.String() doesn't reliably
+// include the alt modifier (it returns the Text field instead).
+func (p *WorkDetailsPanel) handleAltAction(msg tea.KeyPressMsg) WorkDetailAction {
+	k := altKey(msg)
+	switch k {
+	case 't':
+		return WorkDetailActionOpenTerminal
+	case 'c':
+		return WorkDetailActionOpenAgent
+	case 'i':
+		return WorkDetailActionOpenIDE
+	case 'r':
+		return WorkDetailActionRun
+	case 'v':
+		return WorkDetailActionReview
+	case 'p':
+		// alt+p = plan when unassigned bean selected, PR otherwise
+		if p.IsUnassignedBeanSelected() {
+			return WorkDetailActionPlan
+		}
+		return WorkDetailActionPR
+	case 'o':
+		return WorkDetailActionRestartOrchestrator
+	case 'f':
+		return WorkDetailActionCheckFeedback
+	case 'd':
+		return WorkDetailActionDestroy
+	case 'g':
+		return WorkDetailActionAttachTerminal
+	case 'a':
+		// Add child issue - only when there's a focused work with root issue
+		if p.focusedWork != nil && p.focusedWork.Work.RootIssueID != "" {
+			return WorkDetailActionAddChildIssue
+		}
+	case 'x':
+		// Reset failed task - only when a failed task is selected
+		if p.IsTaskSelected() && p.IsSelectedTaskFailed() {
+			return WorkDetailActionResetTask
+		}
+	}
+	return WorkDetailActionNone
 }
 
 // DetectClickedItem determines which item was clicked and returns its index

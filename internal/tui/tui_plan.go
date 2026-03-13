@@ -1105,22 +1105,15 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 			// This allows TUI control without leaving the session.
 			// We use alt+ (not ctrl+) because pi sessions use ctrl+c, ctrl+d,
 			// ctrl+z, ctrl+p, ctrl+t, ctrl+o, ctrl+g, ctrl+v, ctrl+l, ctrl+k.
-			if msg.Mod&tea.ModAlt != 0 {
-				switch msg.String() {
-				case "alt+n", "alt+e", "alt+a", "alt+x", "alt+d", "alt+w", "alt+p",
-					"alt+t", "alt+r", "alt+o", "alt+f", "alt+g", "alt+v",
-					"alt+s", "alt+q", "alt+z",
-					"alt+m", "alt+i", "alt+c",
-					"alt+shift+e", "alt+shift+m", "alt+shift+a":
-					// Fall through to normal key handling below
-					goto handleNormalKeys
-				}
+			if k := altKey(msg); k != 0 {
+				goto handleNormalKeys
+			}
+			if k := altShiftKey(msg); k != 0 {
+				goto handleNormalKeys
 			}
 			// Also intercept ctrl+shift+1-9 for sub-session switching (no pi conflict)
 			if msg.Mod&tea.ModCtrl != 0 && msg.Mod&tea.ModShift != 0 {
-				switch msg.String() {
-				case "ctrl+shift+1", "ctrl+shift+2", "ctrl+shift+3", "ctrl+shift+4",
-					"ctrl+shift+5", "ctrl+shift+6", "ctrl+shift+7", "ctrl+shift+8", "ctrl+shift+9":
+				if msg.Code >= '1' && msg.Code <= '9' {
 					goto handleNormalKeys
 				}
 			}
@@ -1378,14 +1371,16 @@ handleNormalKeys:
 	// and [d]elete bean when issues panel is focused.
 	if m.focusedWorkID != "" {
 		isWorkActionKey := false
-		switch msg.String() {
-		case "alt+t", "alt+c", "alt+i", "alt+r", "alt+o", "alt+f", "alt+g", "alt+v", "alt+p", "alt+x", "alt+a":
-			isWorkActionKey = true
-		case "alt+d":
-			// alt+d is panel-aware: destroy work when work panel is focused,
-			// delete bean when issues panel is focused
-			if m.activePanel == PanelWorkDetails || m.activePanel == PanelWorkTabs {
+		if k := altKey(msg); k != 0 {
+			switch k {
+			case 't', 'c', 'i', 'r', 'o', 'f', 'g', 'v', 'p', 'x', 'a':
 				isWorkActionKey = true
+			case 'd':
+				// alt+d is panel-aware: destroy work when work panel is focused,
+				// delete bean when issues panel is focused
+				if m.activePanel == PanelWorkDetails || m.activePanel == PanelWorkTabs {
+					isWorkActionKey = true
+				}
 			}
 		}
 
@@ -1505,6 +1500,32 @@ handleNormalKeys:
 		return m.selectWorkByIndex(digit)
 	}
 
+	// Handle alt+key action hotkeys.
+	// We use alt+ (not ctrl+) to avoid conflicting with pi session hotkeys
+	// (ctrl+c, ctrl+d, ctrl+z, ctrl+p, ctrl+t, ctrl+o, ctrl+g, ctrl+v, ctrl+l, ctrl+k).
+	// We check msg.Mod and msg.Code directly because msg.String() returns the
+	// Text field which doesn't include modifier info for alt+key on most terminals.
+	if k := altKey(msg); k != 0 {
+		return m.handleAltKey(k)
+	}
+	if k := altShiftKey(msg); k != 0 {
+		return m.handleAltShiftKey(k)
+	}
+	// ctrl+shift+1-9 for sub-session switching (no pi conflict)
+	if msg.Mod&tea.ModCtrl != 0 && msg.Mod&tea.ModShift != 0 {
+		if msg.Code >= '1' && msg.Code <= '9' {
+			if activeTab := m.getActiveTab(); activeTab != nil && activeTab.Type == WorkTabWork {
+				idx := int(msg.Code - '0')
+				activeTab.SetSubSessionByIndex(m.ptyManager, idx)
+				sessionID := activeTab.ResolveSessionID(m.ptyManager)
+				if sessionID != "" {
+					m.viewPTYSession(sessionID)
+				}
+			}
+			return m, nil
+		}
+	}
+
 	switch msg.String() {
 	case "tab":
 		// In focused work mode: cycle between work details, session, and issues
@@ -1593,48 +1614,6 @@ handleNormalKeys:
 		}
 		return m, nil
 
-	case "alt+n":
-		// Create new bean inline
-		m.viewMode = ViewCreateBeanInline
-		m.beanFormPanel.Reset()
-		return m, m.beanFormPanel.Init()
-
-	case "alt+x":
-		// Close selected bean(s)
-		if len(m.beanItems) > 0 {
-			// Check if we have any selected beans
-			hasSelection := false
-			for _, item := range m.beanItems {
-				if m.selectedBeans[item.ID] {
-					hasSelection = true
-					break
-				}
-			}
-			// If we have selected beans or a cursor bean, show confirmation
-			if hasSelection || m.beansCursor < len(m.beanItems) {
-				m.viewMode = ViewCloseBeanConfirm
-			}
-		}
-		return m, nil
-
-	case "alt+d":
-		// Delete selected bean(s) permanently
-		if len(m.beanItems) > 0 {
-			// Check if we have any selected beans
-			hasSelection := false
-			for _, item := range m.beanItems {
-				if m.selectedBeans[item.ID] {
-					hasSelection = true
-					break
-				}
-			}
-			// If we have selected beans or a cursor bean, show confirmation
-			if hasSelection || m.beansCursor < len(m.beanItems) {
-				m.viewMode = ViewDeleteBeanConfirm
-			}
-		}
-		return m, nil
-
 	case "/":
 		// Search
 		m.viewMode = ViewBeanSearch
@@ -1670,47 +1649,6 @@ handleNormalKeys:
 	case "R":
 		m.filters.status = "ready"
 		return m, m.refreshData()
-
-	case "alt+s":
-		// Cycle sort mode
-		switch m.filters.sortBy {
-		case "default":
-			m.filters.sortBy = "priority"
-		case "priority":
-			m.filters.sortBy = "title"
-		default:
-			m.filters.sortBy = "default"
-		}
-		return m, m.refreshData()
-
-	case "ctrl+shift+1", "ctrl+shift+2", "ctrl+shift+3", "ctrl+shift+4", "ctrl+shift+5", "ctrl+shift+6", "ctrl+shift+7", "ctrl+shift+8", "ctrl+shift+9":
-		// Switch to sub-session by index
-		if activeTab := m.getActiveTab(); activeTab != nil && activeTab.Type == WorkTabWork {
-			idx := int(msg.String()[len(msg.String())-1] - '0')
-			activeTab.SetSubSessionByIndex(m.ptyManager, idx)
-			sessionID := activeTab.ResolveSessionID(m.ptyManager)
-			if sessionID != "" {
-				m.viewPTYSession(sessionID)
-			}
-		}
-		return m, nil
-
-	case "alt+z":
-		// Toggle session maximize for the active work tab
-		if activeTab := m.getActiveTab(); activeTab != nil && activeTab.Type == WorkTabWork {
-			activeTab.SessionMaximized = !activeTab.SessionMaximized
-			if activeTab.SessionMaximized {
-				m.activePanel = PanelSession
-				// Wire session panel to the tab's active session
-				if sessionID := activeTab.ResolveSessionID(m.ptyManager); sessionID != "" {
-					m.viewPTYSession(sessionID)
-				}
-			} else {
-				m.activePanel = PanelWorkDetails
-			}
-			return m, nil
-		}
-		return m, nil
 
 	case "V":
 		m.beansExpanded = !m.beansExpanded
@@ -1750,15 +1688,94 @@ handleNormalKeys:
 		}
 		return m, nil
 
-	case "alt+p":
-		// Spawn/resume planning session for selected bean (work details panel handles alt+p for Plan)
+	case "?":
+		m.viewMode = ViewHelp
+		return m, nil
+	}
+
+	return m, nil
+}
+
+// handleAltKey handles alt+letter hotkeys for TUI actions.
+// Uses the letter code directly (e.g., 'n' for alt+n) since msg.String()
+// doesn't reliably include the alt modifier.
+func (m *planModel) handleAltKey(k rune) (*planModel, tea.Cmd) {
+	switch k {
+	case 'n':
+		// Create new bean inline
+		m.viewMode = ViewCreateBeanInline
+		m.beanFormPanel.Reset()
+		return m, m.beanFormPanel.Init()
+
+	case 'x':
+		// Close selected bean(s)
+		if len(m.beanItems) > 0 {
+			hasSelection := false
+			for _, item := range m.beanItems {
+				if m.selectedBeans[item.ID] {
+					hasSelection = true
+					break
+				}
+			}
+			if hasSelection || m.beansCursor < len(m.beanItems) {
+				m.viewMode = ViewCloseBeanConfirm
+			}
+		}
+		return m, nil
+
+	case 'd':
+		// Delete selected bean(s) permanently
+		if len(m.beanItems) > 0 {
+			hasSelection := false
+			for _, item := range m.beanItems {
+				if m.selectedBeans[item.ID] {
+					hasSelection = true
+					break
+				}
+			}
+			if hasSelection || m.beansCursor < len(m.beanItems) {
+				m.viewMode = ViewDeleteBeanConfirm
+			}
+		}
+		return m, nil
+
+	case 's':
+		// Cycle sort mode
+		switch m.filters.sortBy {
+		case "default":
+			m.filters.sortBy = "priority"
+		case "priority":
+			m.filters.sortBy = "title"
+		default:
+			m.filters.sortBy = "default"
+		}
+		return m, m.refreshData()
+
+	case 'z':
+		// Toggle session maximize for the active work tab
+		if activeTab := m.getActiveTab(); activeTab != nil && activeTab.Type == WorkTabWork {
+			activeTab.SessionMaximized = !activeTab.SessionMaximized
+			if activeTab.SessionMaximized {
+				m.activePanel = PanelSession
+				if sessionID := activeTab.ResolveSessionID(m.ptyManager); sessionID != "" {
+					m.viewPTYSession(sessionID)
+				}
+			} else {
+				m.activePanel = PanelWorkDetails
+			}
+			return m, nil
+		}
+		return m, nil
+
+	case 'p':
+		// Spawn/resume planning session for selected bean
 		if len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
 			beanID := m.beanItems[m.beansCursor].ID
 			return m, m.spawnPlanSession(beanID)
 		}
 		return m, nil
 
-	case "alt+w":
+	case 'w':
 		// Create work from cursor bean - show dialog
 		if len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
 			bean := m.beanItems[m.beansCursor]
@@ -1767,11 +1784,9 @@ handleNormalKeys:
 				m.statusIsError = true
 				return m, nil
 			}
-			// Generate proposed branch name from cursor bean
 			branchBeans := []*beansForBranch{{ID: bean.ID, Title: bean.Title}}
 			branchName := generateBranchNameFromBeansForBranch(branchBeans)
 			m.createWorkPanel.Reset(bean.ID, branchName)
-			// Load available branches for the "existing branch" mode
 			if branches, err := git.NewOperations().ListBranches(m.ctx, m.proj.MainRepoPath()); err == nil {
 				m.createWorkPanel.SetBranches(branches)
 			}
@@ -1780,7 +1795,7 @@ handleNormalKeys:
 		}
 		return m, nil
 
-	case "alt+a":
+	case 'a':
 		// Add child issue to selected issue
 		if len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
 			parent := m.beanItems[m.beansCursor]
@@ -1795,7 +1810,7 @@ handleNormalKeys:
 		}
 		return m, nil
 
-	case "alt+e":
+	case 'e':
 		// Edit selected issue using the unified bean form
 		if len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
 			bean := m.beanItems[m.beansCursor]
@@ -1805,16 +1820,8 @@ handleNormalKeys:
 		}
 		return m, nil
 
-	case "alt+shift+e":
-		// Edit selected issue in external editor
-		if len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
-			bean := m.beanItems[m.beansCursor]
-			return m, m.openInEditor(bean.ID)
-		}
-		return m, nil
-
-	case "alt+m":
-		// Import Linear issue inline - check for API key first
+	case 'm':
+		// Import Linear issue inline
 		var apiKey string
 		if m.proj.Config != nil {
 			apiKey = m.proj.Config.Linear.APIKey
@@ -1828,13 +1835,33 @@ handleNormalKeys:
 		m.linearImportPanel.Reset()
 		return m, m.linearImportPanel.Init()
 
-	case "alt+shift+m":
+	case 'q':
+		// Clean up resources before quitting
+		m.cleanup()
+		return m, tea.Quit
+	}
+
+	return m, nil
+}
+
+// handleAltShiftKey handles alt+shift+letter hotkeys for TUI actions.
+func (m *planModel) handleAltShiftKey(k rune) (*planModel, tea.Cmd) {
+	switch k {
+	case 'e':
+		// Edit selected issue in external editor
+		if len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
+			bean := m.beanItems[m.beansCursor]
+			return m, m.openInEditor(bean.ID)
+		}
+		return m, nil
+
+	case 'm':
 		// Import GitHub PR inline
 		m.viewMode = ViewPRImportInline
 		m.prImportPanel.Reset()
 		return m, m.prImportPanel.Init()
 
-	case "alt+shift+a":
+	case 'a':
 		// Add selected issue(s) to the focused work
 		if m.focusedWorkID == "" {
 			m.statusMessage = "Select a work first (press 1-9 to select a work)"
@@ -1842,13 +1869,11 @@ handleNormalKeys:
 			return m, nil
 		}
 		if len(m.beanItems) > 0 {
-			// Collect selected beans or use cursor bean
 			var beansToAdd []string
 			hasSelection := false
 			for _, item := range m.beanItems {
 				if m.selectedBeans[item.ID] {
 					hasSelection = true
-					// Check if already assigned
 					if item.assignedWorkID != "" {
 						m.statusMessage = fmt.Sprintf("Issue %s already assigned to %s", item.ID, item.assignedWorkID)
 						m.statusIsError = true
@@ -1857,8 +1882,6 @@ handleNormalKeys:
 					beansToAdd = append(beansToAdd, item.ID)
 				}
 			}
-
-			// If no selection, use cursor bean
 			if !hasSelection && m.beansCursor < len(m.beanItems) {
 				bean := m.beanItems[m.beansCursor]
 				if bean.assignedWorkID != "" {
@@ -1868,23 +1891,12 @@ handleNormalKeys:
 				}
 				beansToAdd = append(beansToAdd, bean.ID)
 			}
-
 			if len(beansToAdd) > 0 {
-				// Add issues directly to the focused work
-				m.selectedBeans = make(map[string]bool) // Clear selection after adding
+				m.selectedBeans = make(map[string]bool)
 				return m, m.addBeansToWork(beansToAdd, m.focusedWorkID)
 			}
 		}
 		return m, nil
-
-	case "?":
-		m.viewMode = ViewHelp
-		return m, nil
-
-	case "alt+q":
-		// Clean up resources before quitting
-		m.cleanup()
-		return m, tea.Quit
 	}
 
 	return m, nil

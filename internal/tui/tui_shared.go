@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/sargehq/sarge/internal/beans"
 	"github.com/sargehq/sarge/internal/db"
@@ -242,6 +243,35 @@ func styleHotkeys(text string) string {
 		i++
 	}
 	return result.String()
+}
+
+// altKey extracts the alt+key letter from a KeyPressMsg.
+// Returns the lowercase letter (e.g., 'n' for alt+n) if alt is held
+// without ctrl, or 0 if not an alt+letter combo.
+// Use altShiftKey for alt+shift combos.
+func altKey(msg tea.KeyPressMsg) rune {
+	if msg.Mod&tea.ModAlt == 0 || msg.Mod&tea.ModCtrl != 0 {
+		return 0
+	}
+	if msg.Mod&tea.ModShift != 0 {
+		return 0 // alt+shift handled separately
+	}
+	if msg.Code >= 'a' && msg.Code <= 'z' {
+		return msg.Code
+	}
+	return 0
+}
+
+// altShiftKey extracts the alt+shift+key letter from a KeyPressMsg.
+// Returns the lowercase letter (e.g., 'e' for alt+shift+e) if alt+shift is held, or 0.
+func altShiftKey(msg tea.KeyPressMsg) rune {
+	if msg.Mod&tea.ModAlt == 0 || msg.Mod&tea.ModShift == 0 || msg.Mod&tea.ModCtrl != 0 {
+		return 0
+	}
+	if msg.Code >= 'a' && msg.Code <= 'z' {
+		return msg.Code
+	}
+	return 0
 }
 
 // styleButtonWithHover styles a button with hover effect if hovered is true
