@@ -375,8 +375,8 @@ func (p *WorkDetailsPanel) Update(msg tea.KeyPressMsg) (tea.Cmd, WorkDetailActio
 			*vp, cmd = vp.Update(msg)
 		}
 
-		// Still handle alt+key action keys even when right panel is focused
-		if action := p.handleAltAction(msg); action != WorkDetailActionNone {
+		// Still handle ctrl+key action keys even when right panel is focused
+		if action := p.handleCtrlAction(msg); action != WorkDetailActionNone {
 			return cmd, action
 		}
 		return cmd, WorkDetailActionNone
@@ -394,19 +394,18 @@ func (p *WorkDetailsPanel) Update(msg tea.KeyPressMsg) (tea.Cmd, WorkDetailActio
 		return nil, WorkDetailActionNavigateUp
 	}
 
-	// Handle alt+key actions from left panel
-	if action := p.handleAltAction(msg); action != WorkDetailActionNone {
+	// Handle ctrl+key actions from left panel
+	if action := p.handleCtrlAction(msg); action != WorkDetailActionNone {
 		return nil, action
 	}
 
 	return nil, WorkDetailActionNone
 }
 
-// handleAltAction maps alt+key combos to work detail actions.
-// Uses msg.Mod and msg.Code directly since msg.String() doesn't reliably
-// include the alt modifier (it returns the Text field instead).
-func (p *WorkDetailsPanel) handleAltAction(msg tea.KeyPressMsg) WorkDetailAction {
-	k := altKey(msg)
+// handleCtrlAction maps ctrl+key combos to work detail actions.
+// Uses msg.Mod and msg.Code directly for reliable modifier detection.
+func (p *WorkDetailsPanel) handleCtrlAction(msg tea.KeyPressMsg) WorkDetailAction {
+	k := ctrlKey(msg)
 	switch k {
 	case 't':
 		return WorkDetailActionOpenTerminal
@@ -419,7 +418,7 @@ func (p *WorkDetailsPanel) handleAltAction(msg tea.KeyPressMsg) WorkDetailAction
 	case 'v':
 		return WorkDetailActionReview
 	case 'p':
-		// alt+p = plan when unassigned bean selected, PR otherwise
+		// ctrl+p = plan when unassigned bean selected, PR otherwise
 		if p.IsUnassignedBeanSelected() {
 			return WorkDetailActionPlan
 		}

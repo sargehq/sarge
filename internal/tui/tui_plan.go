@@ -510,33 +510,33 @@ func (m *planModel) Update(msg tea.Msg) (*planModel, tea.Cmd) {
 				// Trigger the corresponding action by simulating a key press
 				switch clickedButton {
 				case "n":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'n', Mod: tea.ModAlt})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'n', Mod: tea.ModCtrl})
 				case "e":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'e', Mod: tea.ModAlt})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'e', Mod: tea.ModCtrl})
 				case "a":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'a', Mod: tea.ModAlt})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'a', Mod: tea.ModCtrl})
 				case "x":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'x', Mod: tea.ModAlt})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'x', Mod: tea.ModCtrl})
 				case "d":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'd', Mod: tea.ModAlt})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'd', Mod: tea.ModCtrl})
 				case "w":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'w', Mod: tea.ModAlt})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'w', Mod: tea.ModCtrl})
 				case "p":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'p', Mod: tea.ModAlt})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'p', Mod: tea.ModCtrl})
 				case "t":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 't', Mod: tea.ModAlt})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 't', Mod: tea.ModCtrl})
 				case "c":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'c', Mod: tea.ModAlt})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 				case "i":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'i', Mod: tea.ModAlt})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'i', Mod: tea.ModCtrl})
 				case "r":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'r', Mod: tea.ModAlt})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'r', Mod: tea.ModCtrl})
 				case "o":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'o', Mod: tea.ModAlt})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'o', Mod: tea.ModCtrl})
 				case "v":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'v', Mod: tea.ModAlt})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'v', Mod: tea.ModCtrl})
 				case "f":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'f', Mod: tea.ModAlt})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'f', Mod: tea.ModCtrl})
 				case "?":
 					return m.handleKeyPress(tea.KeyPressMsg{Code: '?', Text: "?"})
 				}
@@ -1101,24 +1101,8 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 				return m, nil
 			}
 
-			// Intercept alt+key TUI hotkeys before forwarding to PTY.
-			// This allows TUI control without leaving the session.
-			// We use alt+ (not ctrl+) because pi sessions use ctrl+c, ctrl+d,
-			// ctrl+z, ctrl+p, ctrl+t, ctrl+o, ctrl+g, ctrl+v, ctrl+l, ctrl+k.
-			if k := altKey(msg); k != 0 {
-				goto handleNormalKeys
-			}
-			if k := altShiftKey(msg); k != 0 {
-				goto handleNormalKeys
-			}
-			// Also intercept ctrl+shift+1-9 for sub-session switching (no pi conflict)
-			if msg.Mod&tea.ModCtrl != 0 && msg.Mod&tea.ModShift != 0 {
-				if msg.Code >= '1' && msg.Code <= '9' {
-					goto handleNormalKeys
-				}
-			}
-
-			// Forward all other keys to the PTY session
+			// Forward all keys to the PTY session.
+			// Pi sessions get complete keyboard control — only ESC exits.
 			session := activeTab.ActiveSession(m.ptyManager)
 			if session != nil && session.State() != ptysession.SessionDead {
 				raw := keyMsgToBytes(msg)
@@ -1135,8 +1119,6 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 			}
 		}
 	}
-
-handleNormalKeys:
 
 	// Handle escape key globally for deselecting focused work
 	if msg.Code == tea.KeyEscape && m.viewMode == ViewNormal && m.focusedWorkID != "" {
@@ -1371,12 +1353,12 @@ handleNormalKeys:
 	// and [d]elete bean when issues panel is focused.
 	if m.focusedWorkID != "" {
 		isWorkActionKey := false
-		if k := altKey(msg); k != 0 {
+		if k := ctrlKey(msg); k != 0 {
 			switch k {
 			case 't', 'c', 'i', 'r', 'o', 'f', 'g', 'v', 'p', 'x', 'a':
 				isWorkActionKey = true
 			case 'd':
-				// alt+d is panel-aware: destroy work when work panel is focused,
+				// ctrl+d is panel-aware: destroy work when work panel is focused,
 				// delete bean when issues panel is focused
 				if m.activePanel == PanelWorkDetails || m.activePanel == PanelWorkTabs {
 					isWorkActionKey = true
@@ -1500,30 +1482,18 @@ handleNormalKeys:
 		return m.selectWorkByIndex(digit)
 	}
 
-	// Handle alt+key action hotkeys.
-	// We use alt+ (not ctrl+) to avoid conflicting with pi session hotkeys
-	// (ctrl+c, ctrl+d, ctrl+z, ctrl+p, ctrl+t, ctrl+o, ctrl+g, ctrl+v, ctrl+l, ctrl+k).
-	// We check msg.Mod and msg.Code directly because msg.String() returns the
-	// Text field which doesn't include modifier info for alt+key on most terminals.
-	if k := altKey(msg); k != 0 {
-		return m.handleAltKey(k)
+	// Handle ctrl+key action hotkeys.
+	// When a pi session is focused, only ESC exits — all keys go to the PTY.
+	// When any other panel is focused, ctrl+key triggers TUI actions.
+	if k := ctrlKey(msg); k != 0 {
+		return m.handleCtrlKey(k)
 	}
-	if k := altShiftKey(msg); k != 0 {
-		return m.handleAltShiftKey(k)
+	if k := ctrlShiftKey(msg); k != 0 {
+		return m.handleCtrlShiftKey(k, msg)
 	}
-	// ctrl+shift+1-9 for sub-session switching (no pi conflict)
-	if msg.Mod&tea.ModCtrl != 0 && msg.Mod&tea.ModShift != 0 {
-		if msg.Code >= '1' && msg.Code <= '9' {
-			if activeTab := m.getActiveTab(); activeTab != nil && activeTab.Type == WorkTabWork {
-				idx := int(msg.Code - '0')
-				activeTab.SetSubSessionByIndex(m.ptyManager, idx)
-				sessionID := activeTab.ResolveSessionID(m.ptyManager)
-				if sessionID != "" {
-					m.viewPTYSession(sessionID)
-				}
-			}
-			return m, nil
-		}
+	// ctrl+shift+digit for sub-session switching
+	if msg.Mod&tea.ModCtrl != 0 && msg.Mod&tea.ModShift != 0 && msg.Code >= '1' && msg.Code <= '9' {
+		return m.handleCtrlShiftKey(0, msg)
 	}
 
 	switch msg.String() {
@@ -1696,10 +1666,9 @@ handleNormalKeys:
 	return m, nil
 }
 
-// handleAltKey handles alt+letter hotkeys for TUI actions.
-// Uses the letter code directly (e.g., 'n' for alt+n) since msg.String()
-// doesn't reliably include the alt modifier.
-func (m *planModel) handleAltKey(k rune) (*planModel, tea.Cmd) {
+// handleCtrlKey handles ctrl+letter hotkeys for TUI actions.
+// Uses msg.Mod and msg.Code directly for reliable modifier detection.
+func (m *planModel) handleCtrlKey(k rune) (*planModel, tea.Cmd) {
 	switch k {
 	case 'n':
 		// Create new bean inline
@@ -1844,8 +1813,22 @@ func (m *planModel) handleAltKey(k rune) (*planModel, tea.Cmd) {
 	return m, nil
 }
 
-// handleAltShiftKey handles alt+shift+letter hotkeys for TUI actions.
-func (m *planModel) handleAltShiftKey(k rune) (*planModel, tea.Cmd) {
+// handleCtrlShiftKey handles ctrl+shift+letter hotkeys for TUI actions.
+func (m *planModel) handleCtrlShiftKey(k rune, msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
+	// Handle ctrl+shift+1-9 for sub-session switching
+	// (ctrlShiftKey only returns letters, so check digits via msg.Code)
+	if k == 0 && msg.Code >= '1' && msg.Code <= '9' {
+		if activeTab := m.getActiveTab(); activeTab != nil && activeTab.Type == WorkTabWork {
+			idx := int(msg.Code - '0')
+			activeTab.SetSubSessionByIndex(m.ptyManager, idx)
+			sessionID := activeTab.ResolveSessionID(m.ptyManager)
+			if sessionID != "" {
+				m.viewPTYSession(sessionID)
+			}
+		}
+		return m, nil
+	}
+
 	switch k {
 	case 'e':
 		// Edit selected issue in external editor

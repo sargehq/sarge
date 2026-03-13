@@ -1,11 +1,11 @@
 ---
 # main-sc3w
 title: 'Fix alt+key matching: use msg.Mod/Code instead of msg.String()'
-status: completed
+status: scrapped
 type: bug
 priority: normal
 created_at: 2026-03-13T12:24:29Z
-updated_at: 2026-03-13T12:28:11Z
+updated_at: 2026-03-13T13:19:07Z
 ---
 
 msg.String() returns the Text field which doesn't include modifier info for alt+key. Need to check msg.Mod&ModAlt and msg.Code directly.
@@ -20,3 +20,6 @@ msg.String() returns the Text field which doesn't include modifier info for alt+
 
 ## Summary of Changes
 msg.String() returns the Text field which doesn't include modifier info. For alt+n on macOS, String() might return 'ñ' or just 'n' — never 'alt+n'. Fixed by checking msg.Mod & msg.Code directly via helper functions.
+
+## Reasons for Scrapping
+alt+key approach was fundamentally broken on macOS. Switched to ctrl+key with session-blocks-all-except-ESC approach instead.

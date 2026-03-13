@@ -245,16 +245,16 @@ func styleHotkeys(text string) string {
 	return result.String()
 }
 
-// altKey extracts the alt+key letter from a KeyPressMsg.
-// Returns the lowercase letter (e.g., 'n' for alt+n) if alt is held
-// without ctrl, or 0 if not an alt+letter combo.
-// Use altShiftKey for alt+shift combos.
-func altKey(msg tea.KeyPressMsg) rune {
-	if msg.Mod&tea.ModAlt == 0 || msg.Mod&tea.ModCtrl != 0 {
+// ctrlKey extracts the ctrl+key letter from a KeyPressMsg.
+// Returns the lowercase letter (e.g., 'n' for ctrl+n) if ctrl is held
+// without alt, or 0 if not a ctrl+letter combo.
+// Use ctrlShiftKey for ctrl+shift combos.
+func ctrlKey(msg tea.KeyPressMsg) rune {
+	if msg.Mod&tea.ModCtrl == 0 || msg.Mod&tea.ModAlt != 0 {
 		return 0
 	}
 	if msg.Mod&tea.ModShift != 0 {
-		return 0 // alt+shift handled separately
+		return 0 // ctrl+shift handled separately
 	}
 	if msg.Code >= 'a' && msg.Code <= 'z' {
 		return msg.Code
@@ -262,10 +262,10 @@ func altKey(msg tea.KeyPressMsg) rune {
 	return 0
 }
 
-// altShiftKey extracts the alt+shift+key letter from a KeyPressMsg.
-// Returns the lowercase letter (e.g., 'e' for alt+shift+e) if alt+shift is held, or 0.
-func altShiftKey(msg tea.KeyPressMsg) rune {
-	if msg.Mod&tea.ModAlt == 0 || msg.Mod&tea.ModShift == 0 || msg.Mod&tea.ModCtrl != 0 {
+// ctrlShiftKey extracts the ctrl+shift+key letter from a KeyPressMsg.
+// Returns the lowercase letter (e.g., 'e' for ctrl+shift+e) if ctrl+shift is held, or 0.
+func ctrlShiftKey(msg tea.KeyPressMsg) rune {
+	if msg.Mod&tea.ModCtrl == 0 || msg.Mod&tea.ModShift == 0 || msg.Mod&tea.ModAlt != 0 {
 		return 0
 	}
 	if msg.Code >= 'a' && msg.Code <= 'z' {

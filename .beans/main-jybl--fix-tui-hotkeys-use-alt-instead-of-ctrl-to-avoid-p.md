@@ -1,11 +1,11 @@
 ---
 # main-jybl
 title: 'Fix TUI hotkeys: use alt+ instead of ctrl+ to avoid pi hotkey conflicts'
-status: completed
+status: scrapped
 type: bug
 priority: normal
 created_at: 2026-03-13T12:16:15Z
-updated_at: 2026-03-13T12:19:30Z
+updated_at: 2026-03-13T13:19:03Z
 ---
 
 The ctrl+ hotkeys conflict with pi session hotkeys (ctrl+c, ctrl+d, ctrl+z, ctrl+p, ctrl+t, ctrl+o, ctrl+g, ctrl+v, ctrl+l, ctrl+k). Need to use alt+letter instead since pi only uses alt+enter and alt+up.
@@ -24,3 +24,6 @@ The ctrl+ hotkeys conflict with pi session hotkeys (ctrl+c, ctrl+d, ctrl+z, ctrl
 
 ## Summary of Changes
 Changed all TUI hotkeys from ctrl+ to alt+ to avoid conflicts with pi session hotkeys (ctrl+c, ctrl+d, ctrl+z, ctrl+p, ctrl+t, ctrl+o, ctrl+g, ctrl+v, ctrl+l, ctrl+k). Pi only uses alt+enter and alt+up, so all alt+letter combos are free for TUI use.
+
+## Reasons for Scrapping
+alt/option key on macOS is treated as a compose/dead key, not as Alt modifier. ModAlt is never set. alt+key is completely unusable.
