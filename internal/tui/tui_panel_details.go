@@ -127,12 +127,38 @@ func (p *IssueDetailsPanel) Render() string {
 func (p *IssueDetailsPanel) RenderWithPanel(contentHeight int) string {
 	detailsContent := p.Render()
 
-	panelStyle := tuiPanelStyle.Width(p.width).Height(contentHeight - 2).MaxHeight(contentHeight)
+	// Truncate content to fit exactly within the panel.
+	// The viewport constrains line count, but lipgloss may wrap long lines
+	// inside the bordered panel, pushing the rendered height beyond the target.
+	// Inner space: contentHeight - 2 (border) - 1 (title) = contentHeight - 3
+	targetContentLines := contentHeight - 3
+	detailsContent = padOrTruncateLines(detailsContent, targetContentLines)
+
+	panelStyle := tuiPanelStyle.Width(p.width).Height(contentHeight - 2)
 	if p.focused {
 		panelStyle = panelStyle.BorderForeground(lipgloss.Color("214"))
 	}
 
 	return panelStyle.Render(tuiTitleStyle.Render("Details") + "\n" + detailsContent)
+}
+
+// padOrTruncateLines ensures content has exactly targetLines lines.
+func padOrTruncateLines(content string, targetLines int) string {
+	if targetLines < 1 {
+		targetLines = 1
+	}
+	lines := strings.Split(content, "\n")
+	if len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	if len(lines) > targetLines {
+		lines = lines[:targetLines]
+	} else {
+		for len(lines) < targetLines {
+			lines = append(lines, "")
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 // renderFullIssueContent renders all content without line limits
