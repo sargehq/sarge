@@ -419,35 +419,35 @@ func (m *planModel) renderHelp() string {
 		}, "") + "\n" +
 
 		renderSection("Issue Management", [][]string{
-			entry("ctrl+n", "Create new issue"),
-			entry("ctrl+e", "Edit issue inline"),
-			entry("ctrl+shift+e", "Edit issue in $EDITOR"),
-			entry("ctrl+a", "Add child issue"),
-			entry("ctrl+x", "Close selected issue"),
-			entry("ctrl+d", "Delete issue (permanent)"),
+			entry("alt+n", "Create new issue"),
+			entry("alt+e", "Edit issue inline"),
+			entry("alt+shift+e", "Edit issue in $EDITOR"),
+			entry("alt+a", "Add child issue"),
+			entry("alt+x", "Close selected issue"),
+			entry("alt+d", "Delete issue (permanent)"),
 			entry("Space", "Toggle multi-select"),
-			entry("ctrl+w", "Create work from issue(s)"),
-			entry("ctrl+shift+a", "Add issue to focused work"),
-			entry("ctrl+m", "Import from Linear"),
-			entry("ctrl+shift+m", "Import from GitHub PR"),
-			entry("ctrl+p", "Start/Resume planning"),
-		}, "All action keys use ctrl+ prefix.\nctrl+key combos work from any panel,\nincluding active pi sessions.")
+			entry("alt+w", "Create work from issue(s)"),
+			entry("alt+shift+a", "Add issue to focused work"),
+			entry("alt+m", "Import from Linear"),
+			entry("alt+shift+m", "Import from GitHub PR"),
+			entry("alt+p", "Start/Resume planning"),
+		}, "All action keys use alt/⌥ prefix to avoid\nconflicting with pi session hotkeys.\nalt+key combos work from any panel,\nincluding active pi sessions.")
 
 	rightCol := "\n\n" +
 		renderSection("Work Actions", [][]string{
-			entry("ctrl+t", "Open terminal/console"),
-			entry("ctrl+c", "Open agent chat"),
-			entry("ctrl+i", "Open IDE"),
-			entry("ctrl+r", "Run work"),
-			entry("ctrl+o", "Restart orchestrator"),
-			entry("ctrl+v", "Create review task"),
-			entry("ctrl+p", "Create PR / plan session"),
-			entry("ctrl+f", "Check PR feedback"),
-			entry("ctrl+d", "Destroy work / Delete issue"),
-			entry("ctrl+x", "Reset failed task"),
-			entry("ctrl+a", "Add child issue to work"),
-			entry("ctrl+g", "Pick session to view"),
-		}, "Panel-aware: ctrl+d changes behavior based on\nfocused panel. Work actions are available\nwhen a work is selected.") + "\n" +
+			entry("alt+t", "Open terminal/console"),
+			entry("alt+c", "Open agent chat"),
+			entry("alt+i", "Open IDE"),
+			entry("alt+r", "Run work"),
+			entry("alt+o", "Restart orchestrator"),
+			entry("alt+v", "Create review task"),
+			entry("alt+p", "Create PR / plan session"),
+			entry("alt+f", "Check PR feedback"),
+			entry("alt+d", "Destroy work / Delete issue"),
+			entry("alt+x", "Reset failed task"),
+			entry("alt+a", "Add child issue to work"),
+			entry("alt+g", "Pick session to view"),
+		}, "Panel-aware: alt+d changes behavior based on\nfocused panel. Work actions are available\nwhen a work is selected.") + "\n" +
 
 		renderSection("Filters", [][]string{
 			entry("O", "Show open issues"),
@@ -456,17 +456,17 @@ func (m *planModel) renderHelp() string {
 			entry("V", "Toggle expanded view"),
 			entry("/", "Fuzzy search"),
 			entry("L", "Filter by label"),
-			entry("ctrl+s", "Cycle sort mode"),
+			entry("alt+s", "Cycle sort mode"),
 			entry("*", "Show all (clear filters)"),
 		}, "") + "\n" +
 
 		renderSection("Sessions & Tabs", [][]string{
-			entry("ctrl+z", "Maximize/restore session"),
+			entry("alt+z", "Maximize/restore session"),
 			entry("ctrl+shift+1-9", "Switch sub-session"),
 			entry("Tab", "Cycle panels (details→session→issues)"),
 			entry("esc", "Exit session / deselect work"),
 			entry("1-9", "Select work tab"),
-		}, "Main tab: always-present pi session.\nWork tabs: details + embedded session.\nPlan tabs: created with ctrl+p on a bean.") + "\n" +
+		}, "Main tab: always-present pi session.\nWork tabs: details + embedded session.\nPlan tabs: created with alt+p on a bean.") + "\n" +
 
 		renderSection("Indicators", [][]string{
 			entry("●", "Multi-selected"),

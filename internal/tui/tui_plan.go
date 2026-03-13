@@ -510,33 +510,33 @@ func (m *planModel) Update(msg tea.Msg) (*planModel, tea.Cmd) {
 				// Trigger the corresponding action by simulating a key press
 				switch clickedButton {
 				case "n":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'n', Mod: tea.ModCtrl})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'n', Mod: tea.ModAlt})
 				case "e":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'e', Mod: tea.ModCtrl})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'e', Mod: tea.ModAlt})
 				case "a":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'a', Mod: tea.ModCtrl})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'a', Mod: tea.ModAlt})
 				case "x":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'x', Mod: tea.ModCtrl})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'x', Mod: tea.ModAlt})
 				case "d":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'd', Mod: tea.ModCtrl})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'd', Mod: tea.ModAlt})
 				case "w":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'w', Mod: tea.ModCtrl})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'w', Mod: tea.ModAlt})
 				case "p":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'p', Mod: tea.ModCtrl})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'p', Mod: tea.ModAlt})
 				case "t":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 't', Mod: tea.ModCtrl})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 't', Mod: tea.ModAlt})
 				case "c":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'c', Mod: tea.ModAlt})
 				case "i":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'i', Mod: tea.ModCtrl})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'i', Mod: tea.ModAlt})
 				case "r":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'r', Mod: tea.ModCtrl})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'r', Mod: tea.ModAlt})
 				case "o":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'o', Mod: tea.ModCtrl})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'o', Mod: tea.ModAlt})
 				case "v":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'v', Mod: tea.ModCtrl})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'v', Mod: tea.ModAlt})
 				case "f":
-					return m.handleKeyPress(tea.KeyPressMsg{Code: 'f', Mod: tea.ModCtrl})
+					return m.handleKeyPress(tea.KeyPressMsg{Code: 'f', Mod: tea.ModAlt})
 				case "?":
 					return m.handleKeyPress(tea.KeyPressMsg{Code: '?', Text: "?"})
 				}
@@ -1101,18 +1101,26 @@ func (m *planModel) handleKeyPress(msg tea.KeyPressMsg) (*planModel, tea.Cmd) {
 				return m, nil
 			}
 
-			// Intercept ctrl+key TUI hotkeys before forwarding to PTY.
+			// Intercept alt+key TUI hotkeys before forwarding to PTY.
 			// This allows TUI control without leaving the session.
-			if msg.Mod&tea.ModCtrl != 0 {
+			// We use alt+ (not ctrl+) because pi sessions use ctrl+c, ctrl+d,
+			// ctrl+z, ctrl+p, ctrl+t, ctrl+o, ctrl+g, ctrl+v, ctrl+l, ctrl+k.
+			if msg.Mod&tea.ModAlt != 0 {
 				switch msg.String() {
-				case "ctrl+n", "ctrl+e", "ctrl+a", "ctrl+x", "ctrl+d", "ctrl+w", "ctrl+p",
-					"ctrl+t", "ctrl+r", "ctrl+o", "ctrl+f", "ctrl+g", "ctrl+v",
-					"ctrl+s", "ctrl+q", "ctrl+z",
-					"ctrl+m", "ctrl+i", "ctrl+c",
-					"ctrl+shift+e", "ctrl+shift+m", "ctrl+shift+a",
-					"ctrl+shift+1", "ctrl+shift+2", "ctrl+shift+3", "ctrl+shift+4",
-					"ctrl+shift+5", "ctrl+shift+6", "ctrl+shift+7", "ctrl+shift+8", "ctrl+shift+9":
+				case "alt+n", "alt+e", "alt+a", "alt+x", "alt+d", "alt+w", "alt+p",
+					"alt+t", "alt+r", "alt+o", "alt+f", "alt+g", "alt+v",
+					"alt+s", "alt+q", "alt+z",
+					"alt+m", "alt+i", "alt+c",
+					"alt+shift+e", "alt+shift+m", "alt+shift+a":
 					// Fall through to normal key handling below
+					goto handleNormalKeys
+				}
+			}
+			// Also intercept ctrl+shift+1-9 for sub-session switching (no pi conflict)
+			if msg.Mod&tea.ModCtrl != 0 && msg.Mod&tea.ModShift != 0 {
+				switch msg.String() {
+				case "ctrl+shift+1", "ctrl+shift+2", "ctrl+shift+3", "ctrl+shift+4",
+					"ctrl+shift+5", "ctrl+shift+6", "ctrl+shift+7", "ctrl+shift+8", "ctrl+shift+9":
 					goto handleNormalKeys
 				}
 			}
@@ -1371,10 +1379,10 @@ handleNormalKeys:
 	if m.focusedWorkID != "" {
 		isWorkActionKey := false
 		switch msg.String() {
-		case "ctrl+t", "ctrl+c", "ctrl+i", "ctrl+r", "ctrl+o", "ctrl+f", "ctrl+g", "ctrl+v", "ctrl+p", "ctrl+x", "ctrl+a":
+		case "alt+t", "alt+c", "alt+i", "alt+r", "alt+o", "alt+f", "alt+g", "alt+v", "alt+p", "alt+x", "alt+a":
 			isWorkActionKey = true
-		case "ctrl+d":
-			// ctrl+d is panel-aware: destroy work when work panel is focused,
+		case "alt+d":
+			// alt+d is panel-aware: destroy work when work panel is focused,
 			// delete bean when issues panel is focused
 			if m.activePanel == PanelWorkDetails || m.activePanel == PanelWorkTabs {
 				isWorkActionKey = true
@@ -1585,13 +1593,13 @@ handleNormalKeys:
 		}
 		return m, nil
 
-	case "ctrl+n":
+	case "alt+n":
 		// Create new bean inline
 		m.viewMode = ViewCreateBeanInline
 		m.beanFormPanel.Reset()
 		return m, m.beanFormPanel.Init()
 
-	case "ctrl+x":
+	case "alt+x":
 		// Close selected bean(s)
 		if len(m.beanItems) > 0 {
 			// Check if we have any selected beans
@@ -1609,7 +1617,7 @@ handleNormalKeys:
 		}
 		return m, nil
 
-	case "ctrl+d":
+	case "alt+d":
 		// Delete selected bean(s) permanently
 		if len(m.beanItems) > 0 {
 			// Check if we have any selected beans
@@ -1663,7 +1671,7 @@ handleNormalKeys:
 		m.filters.status = "ready"
 		return m, m.refreshData()
 
-	case "ctrl+s":
+	case "alt+s":
 		// Cycle sort mode
 		switch m.filters.sortBy {
 		case "default":
@@ -1687,7 +1695,7 @@ handleNormalKeys:
 		}
 		return m, nil
 
-	case "ctrl+z":
+	case "alt+z":
 		// Toggle session maximize for the active work tab
 		if activeTab := m.getActiveTab(); activeTab != nil && activeTab.Type == WorkTabWork {
 			activeTab.SessionMaximized = !activeTab.SessionMaximized
@@ -1742,15 +1750,15 @@ handleNormalKeys:
 		}
 		return m, nil
 
-	case "ctrl+p":
-		// Spawn/resume planning session for selected bean (work details panel handles ctrl+p for Plan)
+	case "alt+p":
+		// Spawn/resume planning session for selected bean (work details panel handles alt+p for Plan)
 		if len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
 			beanID := m.beanItems[m.beansCursor].ID
 			return m, m.spawnPlanSession(beanID)
 		}
 		return m, nil
 
-	case "ctrl+w":
+	case "alt+w":
 		// Create work from cursor bean - show dialog
 		if len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
 			bean := m.beanItems[m.beansCursor]
@@ -1772,7 +1780,7 @@ handleNormalKeys:
 		}
 		return m, nil
 
-	case "ctrl+a":
+	case "alt+a":
 		// Add child issue to selected issue
 		if len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
 			parent := m.beanItems[m.beansCursor]
@@ -1787,7 +1795,7 @@ handleNormalKeys:
 		}
 		return m, nil
 
-	case "ctrl+e":
+	case "alt+e":
 		// Edit selected issue using the unified bean form
 		if len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
 			bean := m.beanItems[m.beansCursor]
@@ -1797,7 +1805,7 @@ handleNormalKeys:
 		}
 		return m, nil
 
-	case "ctrl+shift+e":
+	case "alt+shift+e":
 		// Edit selected issue in external editor
 		if len(m.beanItems) > 0 && m.beansCursor < len(m.beanItems) {
 			bean := m.beanItems[m.beansCursor]
@@ -1805,7 +1813,7 @@ handleNormalKeys:
 		}
 		return m, nil
 
-	case "ctrl+m":
+	case "alt+m":
 		// Import Linear issue inline - check for API key first
 		var apiKey string
 		if m.proj.Config != nil {
@@ -1820,13 +1828,13 @@ handleNormalKeys:
 		m.linearImportPanel.Reset()
 		return m, m.linearImportPanel.Init()
 
-	case "ctrl+shift+m":
+	case "alt+shift+m":
 		// Import GitHub PR inline
 		m.viewMode = ViewPRImportInline
 		m.prImportPanel.Reset()
 		return m, m.prImportPanel.Init()
 
-	case "ctrl+shift+a":
+	case "alt+shift+a":
 		// Add selected issue(s) to the focused work
 		if m.focusedWorkID == "" {
 			m.statusMessage = "Select a work first (press 1-9 to select a work)"
@@ -1873,7 +1881,7 @@ handleNormalKeys:
 		m.viewMode = ViewHelp
 		return m, nil
 
-	case "ctrl+q":
+	case "alt+q":
 		// Clean up resources before quitting
 		m.cleanup()
 		return m, tea.Quit
