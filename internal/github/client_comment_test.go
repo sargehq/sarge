@@ -26,7 +26,7 @@ func TestPostPRComment(t *testing.T) {
 	ctx := context.Background()
 
 	// Test posting a simple comment
-	err := client.PostPRComment(ctx, prURL, "Test comment from co integration test")
+	err := client.PostPRComment(ctx, prURL, "Test comment from sarge integration test")
 	require.NoError(t, err, "Failed to post PR comment")
 
 	t.Log("Successfully posted PR comment")
@@ -51,7 +51,7 @@ func TestPostReplyToComment(t *testing.T) {
 	ctx := context.Background()
 
 	// Test posting a reply to a comment
-	err := client.PostReplyToComment(ctx, prURL, commentID, "Test reply from co integration test")
+	err := client.PostReplyToComment(ctx, prURL, commentID, "Test reply from sarge integration test")
 	require.NoError(t, err, "Failed to post reply to comment")
 
 	t.Log("Successfully posted reply to comment")

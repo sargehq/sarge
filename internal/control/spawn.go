@@ -18,7 +18,7 @@ const ControlPlaneTabName = "control"
 type InitResult struct {
 	// SessionCreated is true if a new zellij session was created
 	SessionCreated bool
-	// SessionName is the name of the zellij session (e.g., "co-myproject")
+	// SessionName is the name of the zellij session (e.g., "sarge-myproject")
 	SessionName string
 }
 
