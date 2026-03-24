@@ -324,7 +324,7 @@ func setupMise(projectRoot, mainPath string, toolSelections mise.ToolSelections)
 	if err := mise.GenerateConfigWithSelections(projectRoot, toolSelections); err != nil {
 		fmt.Printf("Warning: failed to generate mise config: %v\n", err)
 	} else {
-		fmt.Printf("Mise: generated .mise.toml with co requirements\n")
+		fmt.Printf("Mise: generated .mise.toml with sarge requirements\n")
 	}
 
 	// Initialize mise in project root (optional - warn on error)

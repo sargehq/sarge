@@ -76,7 +76,7 @@ func TestWorkLifecycleFlow_SingleTask(t *testing.T) {
 	require.NoError(t, err)
 
 	// Start the work
-	err = h.DB.StartWork(ctx, workID, "co-test-session", "tab-1")
+	err = h.DB.StartWork(ctx, workID, "sarge-test-session", "tab-1")
 	require.NoError(t, err)
 
 	workRecord, err = h.DB.GetWork(ctx, workID)
@@ -175,7 +175,7 @@ func TestWorkLifecycleFlow_MultipleTasksWithDependencies(t *testing.T) {
 	// Phase 4: Execute tasks in sequence
 	err = h.DB.UpdateWorkWorktreePath(ctx, workID, "/test/project/"+workID+"/tree")
 	require.NoError(t, err)
-	err = h.DB.StartWork(ctx, workID, "co-test-session", "tab-1")
+	err = h.DB.StartWork(ctx, workID, "sarge-test-session", "tab-1")
 	require.NoError(t, err)
 
 	workRecord, err := h.DB.GetWork(ctx, workID)
@@ -250,7 +250,7 @@ func TestWorkLifecycleFlow_EpicExpansion(t *testing.T) {
 	// Phase 4: Execute and complete
 	err = h.DB.UpdateWorkWorktreePath(ctx, workID, "/test/project/"+workID+"/tree")
 	require.NoError(t, err)
-	err = h.DB.StartWork(ctx, workID, "co-test-session", "tab-1")
+	err = h.DB.StartWork(ctx, workID, "sarge-test-session", "tab-1")
 	require.NoError(t, err)
 
 	workRecord, err := h.DB.GetWork(ctx, workID)
@@ -300,7 +300,7 @@ func TestPRFeedbackFlow_FeedbackBeansAddedToWork(t *testing.T) {
 	// Set up work for execution
 	err = h.DB.UpdateWorkWorktreePath(ctx, workID, "/test/project/"+workID+"/tree")
 	require.NoError(t, err)
-	err = h.DB.StartWork(ctx, workID, "co-test-session", "tab-1")
+	err = h.DB.StartWork(ctx, workID, "sarge-test-session", "tab-1")
 	require.NoError(t, err)
 
 	// Create and complete initial task
@@ -452,7 +452,7 @@ func TestReviewIterationFlow_FullCycle(t *testing.T) {
 	// Set up work for execution
 	err = h.DB.UpdateWorkWorktreePath(ctx, workID, "/test/project/"+workID+"/tree")
 	require.NoError(t, err)
-	err = h.DB.StartWork(ctx, workID, "co-test-session", "tab-1")
+	err = h.DB.StartWork(ctx, workID, "sarge-test-session", "tab-1")
 	require.NoError(t, err)
 
 	workRecord, err := h.DB.GetWork(ctx, workID)
@@ -578,7 +578,7 @@ func TestReviewIterationFlow_MaxIterationsForcesPR(t *testing.T) {
 
 	err = h.DB.UpdateWorkWorktreePath(ctx, workID, "/test/project/"+workID+"/tree")
 	require.NoError(t, err)
-	err = h.DB.StartWork(ctx, workID, "co-test-session", "tab-1")
+	err = h.DB.StartWork(ctx, workID, "sarge-test-session", "tab-1")
 	require.NoError(t, err)
 
 	workRecord, err := h.DB.GetWork(ctx, workID)
@@ -800,7 +800,7 @@ func TestWorkLifecycleFlow_TaskFailureAndRecovery(t *testing.T) {
 
 	err = h.DB.UpdateWorkWorktreePath(ctx, workID, "/test/project/"+workID+"/tree")
 	require.NoError(t, err)
-	err = h.DB.StartWork(ctx, workID, "co-test-session", "tab-1")
+	err = h.DB.StartWork(ctx, workID, "sarge-test-session", "tab-1")
 	require.NoError(t, err)
 
 	workRecord, err := h.DB.GetWork(ctx, workID)

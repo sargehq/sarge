@@ -945,7 +945,7 @@ type planSessionSpawnedMsg struct {
 	resumed        bool
 	err            error
 	sessionCreated bool   // true if a new zellij session was created
-	sessionName    string // e.g., 'co-myproject'
+	sessionName    string // e.g., 'sarge-myproject'
 }
 
 // planWorkCreatedMsg indicates work was created from a bean
@@ -954,7 +954,7 @@ type planWorkCreatedMsg struct {
 	workID         string
 	err            error
 	sessionCreated bool   // true if a new zellij session was created
-	sessionName    string // e.g., 'co-myproject'
+	sessionName    string // e.g., 'sarge-myproject'
 }
 
 // beanAddedToWorkMsg indicates a bean was added to a work
