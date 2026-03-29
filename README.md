@@ -115,6 +115,54 @@ This downloads the latest release for your platform. Alternatively:
 go install github.com/sargehq/sarge@latest
 ```
 
+### Nix
+
+Sarge ships a `flake.nix`. Run it directly without installing:
+
+```bash
+nix run github:sargehq/sarge
+```
+
+Install into your profile:
+
+```bash
+nix profile install github:sargehq/sarge
+```
+
+Use it in your own flake by adding sarge as an input:
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    sarge.url = "github:sargehq/sarge";
+  };
+
+  outputs = { self, nixpkgs, sarge, ... }:
+    let
+      system = "x86_64-linux"; # or "aarch64-linux", "x86_64-darwin", "aarch64-darwin"
+      pkgs = nixpkgs.legacyPackages.${system};
+    in {
+      # Add sarge to a NixOS system
+      nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
+        inherit system;
+        modules = [
+          ({ pkgs, ... }: {
+            environment.systemPackages = [
+              sarge.packages.${system}.default
+            ];
+          })
+        ];
+      };
+
+      # Or use in a devShell
+      devShells.${system}.default = pkgs.mkShell {
+        packages = [ sarge.packages.${system}.default ];
+      };
+    };
+}
+```
+
 For more information, visit [sargehq.dev](https://sargehq.dev).
 
 ## Quick Start
