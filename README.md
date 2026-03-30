@@ -169,7 +169,7 @@ These commands must be used via CLI (not available in TUI):
 
 ```
 <project-dir>/
-├── .co/
+├── .sarge/
 │   ├── config.toml      # Project configuration
 │   └── tracking.db      # SQLite coordination database
 ├── main/                # Symlink to local repo OR clone from GitHub

@@ -16,7 +16,7 @@ import (
 //go:embed templates/config.tmpl
 var configTemplateText string
 
-// Config represents the project configuration stored in .co/config.toml.
+// Config represents the project configuration stored in .sarge/config.toml.
 type Config struct {
 	Project     ProjectConfig     `toml:"project"`
 	Repo        RepoConfig        `toml:"repo"`
@@ -326,7 +326,7 @@ func (m *MultiplexerConfig) GetTerminalCommand() string {
 type BeansConfig struct {
 	// Path to beans directory (relative to project root)
 	// "main/.beans" = beans in repository (synced with git)
-	// ".co/.beans" = project-local beans (standalone, not synced)
+	// ".sarge/.beans" = project-local beans (standalone, not synced)
 	Path string `toml:"path"`
 }
 
@@ -348,11 +348,19 @@ func LoadConfig(path string) (*Config, error) {
 	}
 
 	if undecoded := meta.Undecoded(); len(undecoded) > 0 {
-		keys := make([]string, len(undecoded))
-		for i, k := range undecoded {
-			keys[i] = k.String()
+		var nonLegacy []string
+		for _, k := range undecoded {
+			key := k.String()
+			// Skip legacy [beads] keys silently — the caller (load) will
+			// detect the empty Beans.Path and auto-configure beans.
+			if key == "beads" || strings.HasPrefix(key, "beads.") {
+				continue
+			}
+			nonLegacy = append(nonLegacy, key)
 		}
-		return nil, fmt.Errorf("unrecognized keys in config file %s: %s (possible commented-out section header with uncommented keys)", path, strings.Join(keys, ", "))
+		if len(nonLegacy) > 0 {
+			return nil, fmt.Errorf("unrecognized keys in config file %s: %s (possible commented-out section header with uncommented keys)", path, strings.Join(nonLegacy, ", "))
+		}
 	}
 
 	return &cfg, nil

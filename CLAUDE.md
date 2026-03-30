@@ -104,9 +104,9 @@ if exitErr, ok := err.(*exec.ExitError); ok {  // Don't do this
 
 The project uses Go's `slog` for structured debug logging via `internal/logging`.
 
-- Logs are written to `.co/debug.log` in JSON format (append mode)
+- Logs are written to `.sarge/debug.log` in JSON format (append mode)
 - Logging is automatically initialized when a project is loaded
-- Log file location: `<project-root>/.co/debug.log`
+- Log file location: `<project-root>/.sarge/debug.log`
 
 ### Usage
 
@@ -128,10 +128,10 @@ logger.With("component", "beans").Debug("message")
 
 ```bash
 # View recent logs
-tail -f .co/debug.log
+tail -f .sarge/debug.log
 
 # Pretty-print JSON logs
-cat .co/debug.log | jq .
+cat .sarge/debug.log | jq .
 ```
 
 ## Mock Generation
@@ -394,7 +394,7 @@ When enabled, Claude analyzes CI logs directly and creates beans for each failur
 - Creates beans with appropriate priorities (P0-P3)
 - Works with complex, multi-line error messages
 
-Enable in `.co/config.toml`:
+Enable in `.sarge/config.toml`:
 
 ```toml
 [log_parser]
@@ -452,7 +452,7 @@ All commands require a project context. Projects are created with `sarge proj cr
 
 ```
 <project-dir>/
-├── .co/
+├── .sarge/
 │   ├── config.toml      # Project configuration
 │   ├── tracking.db      # SQLite coordination database
 │   └── .beans/          # beans (if project-local)
@@ -464,7 +464,7 @@ All commands require a project context. Projects are created with `sarge proj cr
 
 beans location is determined at project creation:
 - **Repo beans** (`main/.beans/`): Used when the repository already has beans initialized. Git hooks are installed for sync.
-- **Project-local beans** (`.co/.beans/`): Used when the repository doesn't have beans. No hooks or sync (standalone).
+- **Project-local beans** (`.sarge/.beans/`): Used when the repository doesn't have beans. No hooks or sync (standalone).
 
 ## Work Concept (3-Tier Hierarchy)
 

@@ -922,6 +922,30 @@ bogus_key = "oops"
 	require.Contains(t, err.Error(), "bogus_key")
 }
 
+func TestLoadConfig_LegacyBeadsSection(t *testing.T) {
+	// A config with the retired [beads] section should be accepted
+	// with an empty Beans.Path, allowing the caller to auto-configure beans.
+	configContent := `
+[project]
+name = "test"
+
+[repo]
+type = "local"
+source = "/path/to/repo"
+path = "main"
+
+[beads]
+path = "main/.beads"
+`
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.toml")
+	require.NoError(t, os.WriteFile(configPath, []byte(configContent), 0600))
+
+	cfg, err := LoadConfig(configPath)
+	require.NoError(t, err)
+	require.Equal(t, "", cfg.Beans.Path, "Beans.Path should be empty when [beads] is present")
+}
+
 func TestGetAttachMode_DefaultsToWindow(t *testing.T) {
 	m := &MultiplexerConfig{}
 	require.Equal(t, "window", m.GetAttachMode())

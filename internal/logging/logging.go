@@ -1,5 +1,5 @@
 // Package logging provides structured logging using slog.
-// Logs are written to .co/debug.log in append mode.
+// Logs are written to .sarge/debug.log in append mode.
 package logging
 
 import (
@@ -14,8 +14,6 @@ import (
 const (
 	// LogFileName is the name of the debug log file.
 	LogFileName = "debug.log"
-	// ConfigDir is the directory name for project configuration.
-	ConfigDir = ".co"
 )
 
 var (
@@ -27,10 +25,10 @@ var (
 	mu sync.RWMutex
 )
 
-// Init initializes the logger with the project root path.
-// Logs are written to <projectRoot>/.co/debug.log in append mode.
+// Init initializes the logger with the project root path and config directory name.
+// Logs are written to <projectRoot>/<configDir>/debug.log in append mode.
 // If projectRoot is empty, logging is disabled (writes to io.Discard).
-func Init(projectRoot string) error {
+func Init(projectRoot, configDir string) error {
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -45,11 +43,11 @@ func Init(projectRoot string) error {
 		// No project root - disable logging.
 		w = io.Discard
 	} else {
-		logPath := filepath.Join(projectRoot, ConfigDir, LogFileName)
+		logPath := filepath.Join(projectRoot, configDir, LogFileName)
 
-		// Ensure the .co directory exists.
-		coDir := filepath.Join(projectRoot, ConfigDir)
-		if err := os.MkdirAll(coDir, 0755); err != nil {
+		// Ensure the config directory exists.
+		dir := filepath.Join(projectRoot, configDir)
+		if err := os.MkdirAll(dir, 0755); err != nil {
 			// Fall back to discard if we can't create the directory.
 			w = io.Discard
 		} else {

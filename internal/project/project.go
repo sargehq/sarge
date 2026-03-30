@@ -19,7 +19,9 @@ import (
 
 const (
 	// ConfigDir is the directory name for project configuration.
-	ConfigDir = ".co"
+	ConfigDir = ".sarge"
+	// LegacyConfigDir is the old directory name, still recognized for existing projects.
+	LegacyConfigDir = ".co"
 	// ConfigFile is the name of the project config file.
 	ConfigFile = "config.toml"
 	// TrackingDB is the name of the tracking database file.
@@ -90,8 +92,8 @@ func Find(ctx context.Context, flagValue string) (*Project, error) {
 	return find(ctx, cwd)
 }
 
-// find walks up from startDir looking for a .co/ directory.
-// Returns the project if found, or an error if not found.
+// find walks up from startDir looking for a .sarge/ directory.
+// If a legacy .co/ directory is found instead, it is renamed to .sarge/ before loading.
 func find(ctx context.Context, startDir string) (*Project, error) {
 	dir, err := filepath.Abs(startDir)
 	if err != nil {
@@ -104,16 +106,50 @@ func find(ctx context.Context, startDir string) (*Project, error) {
 			return load(ctx, dir)
 		}
 
+		// Migrate legacy .co/ to .sarge/
+		legacyConfig := filepath.Join(dir, LegacyConfigDir, ConfigFile)
+		if _, err := os.Stat(legacyConfig); err == nil {
+			if err := migrateLegacyConfigDir(dir); err != nil {
+				return nil, err
+			}
+			return load(ctx, dir)
+		}
+
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			// Reached filesystem root
 			return nil, fmt.Errorf("no project found (no %s directory)", ConfigDir)
 		}
 		dir = parent
 	}
 }
 
+// migrateLegacyConfigDir renames .co/ to .sarge/ and rewrites any .co/ paths
+// in the config file to .sarge/.
+func migrateLegacyConfigDir(projectRoot string) error {
+	oldDir := filepath.Join(projectRoot, LegacyConfigDir)
+	newDir := filepath.Join(projectRoot, ConfigDir)
+	if err := os.Rename(oldDir, newDir); err != nil {
+		return fmt.Errorf("failed to migrate %s to %s: %w", LegacyConfigDir, ConfigDir, err)
+	}
+	fmt.Printf("Migrated project config: %s/ -> %s/\n", LegacyConfigDir, ConfigDir)
+
+	// Rewrite .co/ references in config.toml (e.g. beans path = ".co/.beans")
+	configPath := filepath.Join(newDir, ConfigFile)
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil // directory renamed successfully, config read failure is non-fatal
+	}
+	updated := strings.ReplaceAll(string(data), "\""+LegacyConfigDir+"/", "\""+ConfigDir+"/")
+	if updated != string(data) {
+		if err := os.WriteFile(configPath, []byte(updated), 0o600); err != nil {
+			fmt.Printf("Warning: could not update config paths: %v\n", err)
+		}
+	}
+	return nil
+}
+
 // load loads a project from the given root directory.
+// The config directory is always .sarge/ (legacy .co/ is migrated before load is called).
 func load(ctx context.Context, root string) (*Project, error) {
 	configPath := filepath.Join(root, ConfigDir, ConfigFile)
 	cfg, err := LoadConfig(configPath)
@@ -135,18 +171,37 @@ func load(ctx context.Context, root string) (*Project, error) {
 	proj.DB = database
 
 	// Open the beans client automatically
-	// Use the configured beans path (relative to project root)
-	beansDir := filepath.Join(root, cfg.Beans.Path)
+	beansPath := cfg.Beans.Path
+
+	// If beans path is empty (e.g., legacy [beads] config), auto-configure beans
+	// the same way a new project would — check for repo beans, otherwise init project-local.
+	if beansPath == "" {
+		mainPath := filepath.Join(root, MainDir)
+		var err error
+		beansPath, err = setupBeans(ctx, root, mainPath)
+		if err != nil {
+			database.Close()
+			return nil, fmt.Errorf("failed to auto-configure beans: %w", err)
+		}
+		cfg.Beans.Path = beansPath
+		// Persist the updated config so this migration only happens once
+		if err := commentOutBeadsAndSaveBeans(configPath, beansPath); err != nil {
+			fmt.Printf("Warning: could not update config file: %v\n", err)
+		} else {
+			fmt.Printf("Migrated config: commented out [beads], added [beans] path = %q\n", beansPath)
+		}
+	}
+
+	beansDir := filepath.Join(root, beansPath)
 	beansClient, err := beans.NewClient(ctx, beans.ClientConfig{BeansDir: beansDir})
 	if err != nil {
 		database.Close() // Clean up the already-opened DB
-		return nil, fmt.Errorf("failed to open beans client: %w", err)
+		return nil, fmt.Errorf("failed to open beans client at %s: %w", beansDir, err)
 	}
 	proj.Beans = beansClient
 
-	// Initialize logging to .co/debug.log
-	if err := logging.Init(root); err != nil {
-		// Log initialization failure is non-fatal, but log it if we can
+	// Initialize logging
+	if err := logging.Init(root, ConfigDir); err != nil {
 		logging.Warn("failed to initialize logging", "error", err)
 	}
 
@@ -169,11 +224,13 @@ func CreateWithSelections(ctx context.Context, dir, repoSource string, agentType
 		return nil, fmt.Errorf("failed to resolve path: %w", err)
 	}
 
-	// Check if project already exists
-	configDir := filepath.Join(absDir, ConfigDir)
-	if _, err := os.Stat(configDir); err == nil {
-		return nil, fmt.Errorf("project already exists at %s", absDir)
+	// Check if project already exists (check both .sarge and legacy .co)
+	for _, dir := range []string{ConfigDir, LegacyConfigDir} {
+		if _, err := os.Stat(filepath.Join(absDir, dir)); err == nil {
+			return nil, fmt.Errorf("project already exists at %s (found %s)", absDir, dir)
+		}
 	}
+	configDir := filepath.Join(absDir, ConfigDir)
 
 	// 1. Create project directory structure
 	if err := os.MkdirAll(configDir, 0755); err != nil {
@@ -220,7 +277,7 @@ func CreateWithSelections(ctx context.Context, dir, repoSource string, agentType
 	}
 
 	// 5. Initialize beans (after mise, so beans CLI is available)
-	beansPath, err := setupBeans(ctx, repoSource, absDir, mainPath)
+	beansPath, err := setupBeans(ctx, absDir, mainPath)
 	if err != nil {
 		os.RemoveAll(absDir)
 		return nil, err
@@ -254,7 +311,7 @@ func CreateWithSelections(ctx context.Context, dir, repoSource string, agentType
 const BeansPathRepo = "main/.beans"
 
 // BeansPathProject is the path for project-local beans (standalone, not synced).
-const BeansPathProject = ".co/.beans"
+const BeansPathProject = ".sarge/.beans"
 
 // cloneRepo sets up the main/ directory based on the repo source.
 // It only handles cloning/symlinking the repository.
@@ -292,7 +349,7 @@ func cloneRepo(ctx context.Context, source, mainPath string) (repoType string, e
 
 // setupBeans initializes or connects to beans for the project.
 // Returns the beans path (relative to project root).
-func setupBeans(ctx context.Context, source, projectRoot, mainPath string) (beansPath string, err error) {
+func setupBeans(ctx context.Context, projectRoot, mainPath string) (beansPath string, err error) {
 	// Check if repo already has beans
 	repoBeansPath := filepath.Join(mainPath, ".beans")
 	if _, err := os.Stat(repoBeansPath); err == nil {
@@ -300,17 +357,17 @@ func setupBeans(ctx context.Context, source, projectRoot, mainPath string) (bean
 		fmt.Printf("Using existing beans in %s\n", repoBeansPath)
 		beansPath = BeansPathRepo
 	} else {
-		// No beans in repo - create project-local beans
 		projectBeansPath := filepath.Join(projectRoot, ConfigDir, ".beans")
-		fmt.Printf("Initializing project-local beans in %s\n", projectBeansPath)
 		beansPath = BeansPathProject
 
-		// Derive prefix from repo name
-		prefix := repoNameFromSource(source)
-
-		// Initialize beans in project directory
-		if err := beans.Init(ctx, projectBeansPath, prefix); err != nil {
-			return "", fmt.Errorf("failed to initialize beans: %w", err)
+		// Skip init if beans already exist (e.g. migrated from .co/.beans/)
+		if _, err := os.Stat(filepath.Join(projectBeansPath, ".beans.yml")); err == nil {
+			fmt.Printf("Using existing project-local beans in %s\n", projectBeansPath)
+		} else {
+			fmt.Printf("Initializing project-local beans in %s\n", projectBeansPath)
+			if err := beans.Init(ctx, projectBeansPath, projectRoot); err != nil {
+				return "", fmt.Errorf("failed to initialize beans: %w", err)
+			}
 		}
 	}
 
@@ -349,31 +406,47 @@ func isGitHubURL(source string) bool {
 		strings.HasPrefix(source, "http://github.com/")
 }
 
-// repoNameFromSource extracts the first letter of the repository name from a source URL or path.
-// For GitHub URLs: https://github.com/org/services -> "s"
-// For local paths: /path/to/myrepo -> "m"
-func repoNameFromSource(source string) string {
-	// Remove trailing slashes and .git suffix
-	source = strings.TrimSuffix(source, "/")
-	source = strings.TrimSuffix(source, ".git")
 
-	var name string
-	// For GitHub URLs, extract the repo name (last path component)
-	if isGitHubURL(source) {
-		parts := strings.Split(source, "/")
-		if len(parts) > 0 {
-			name = parts[len(parts)-1]
+// commentOutBeadsAndSaveBeans reads the config file, comments out any [beads]
+// section, and appends a [beans] section with the given path.
+func commentOutBeadsAndSaveBeans(configPath, beansPath string) error {
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return err
+	}
+
+	lines := strings.Split(string(data), "\n")
+	var out []string
+	inBeads := false
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "[beads]" {
+			inBeads = true
+			out = append(out, "# "+line+" # migrated to [beans]")
+			continue
 		}
-	} else {
-		// For local paths, use the directory name
-		name = filepath.Base(source)
+		// Stop commenting when we hit the next section or end of file
+		if inBeads && strings.HasPrefix(trimmed, "[") && trimmed != "[beads]" {
+			inBeads = false
+		}
+		if inBeads {
+			out = append(out, "# "+line)
+		} else {
+			out = append(out, line)
+		}
 	}
 
-	// Return just the first letter (lowercase)
-	if len(name) > 0 {
-		return strings.ToLower(string(name[0]))
-	}
-	return "b" // fallback prefix
+	// Append the new [beans] section
+	out = append(out,
+		"",
+		"# =============================================================================",
+		"# Beans Configuration",
+		"# =============================================================================",
+		"[beans]",
+		fmt.Sprintf("path = %q", beansPath),
+	)
+
+	return os.WriteFile(configPath, []byte(strings.Join(out, "\n")), 0o600)
 }
 
 // MainRepoPath returns the path to the main repository.
