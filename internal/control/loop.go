@@ -50,7 +50,7 @@ func RunControlPlaneLoopWithControlPlane(ctx context.Context, proj *project.Proj
 	}
 
 	// Initialize tracking database watcher
-	trackingDBPath := filepath.Join(proj.Root, ".co", "tracking.db")
+	trackingDBPath := filepath.Join(proj.Root, project.ConfigDir, "tracking.db")
 	watcher, err := trackingwatcher.New(trackingwatcher.DefaultConfig(trackingDBPath))
 	if err != nil {
 		return fmt.Errorf("failed to create tracking watcher: %w", err)

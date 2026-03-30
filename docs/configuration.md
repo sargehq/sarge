@@ -1,6 +1,6 @@
 # Configuration Reference
 
-Project configuration is stored in `.co/config.toml`.
+Project configuration is stored in `.sarge/config.toml`.
 
 ## Full Example
 

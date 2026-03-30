@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/sargehq/sarge/internal/agentsetup"
 	"github.com/sargehq/sarge/internal/mise"
@@ -24,6 +26,7 @@ Checks include:
   - Mise beans version: ensures the mise config has the correct beans version
   - Beans integration: ensures the coding agent has beans support configured
   - Sarge extension (pi): ensures the sarge-complete extension is installed
+  - Beads hooks: detects and removes legacy beads (bd) git hooks
 
 Use --dry-run to preview changes without applying them.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -76,6 +79,13 @@ func runDoctor(proj *project.Project) error {
 		return fmt.Errorf("pi extension check failed: %w", err)
 	}
 	issues += extIssues
+
+	// Check 5: Legacy beads git hooks
+	hookIssues, err := checkBeadsHooks(proj)
+	if err != nil {
+		return fmt.Errorf("beads hooks check failed: %w", err)
+	}
+	issues += hookIssues
 
 	// Summary
 	fmt.Println()
@@ -253,6 +263,75 @@ func checkPiExtension(proj *project.Project) (int, error) {
 	}
 	fmt.Println("🧩 Sarge extension (pi): installed .pi/extensions/sarge-complete.ts in main repo")
 	return 1, nil
+}
+
+// beadsShimMarker is the sentinel string present in all beads hook shims.
+const beadsShimMarker = "# bd-shim v1"
+
+// beadsHookNames lists git hook files that beads (bd) may have installed.
+var beadsHookNames = []string{
+	"post-checkout",
+	"post-merge",
+	"pre-commit",
+	"prepare-commit-msg",
+	"pre-push",
+}
+
+func checkBeadsHooks(proj *project.Project) (int, error) {
+	hooksDir := filepath.Join(proj.MainRepoPath(), ".git", "hooks")
+	return checkBeadsHooksInDir(hooksDir)
+}
+
+// checkBeadsHooksInDir scans hooksDir for legacy beads hook shims and
+// removes them (or reports them in dry-run mode).
+func checkBeadsHooksInDir(hooksDir string) (int, error) {
+	if _, err := os.Stat(hooksDir); os.IsNotExist(err) {
+		fmt.Println("🪝 Beads hooks: no hooks directory")
+		return 0, nil
+	}
+
+	var found []string
+	for _, name := range beadsHookNames {
+		hookPath := filepath.Join(hooksDir, name)
+		if isBeadsHook(hookPath) {
+			found = append(found, name)
+		}
+	}
+
+	if len(found) == 0 {
+		fmt.Println("🪝 Beads hooks: none found")
+		return 0, nil
+	}
+
+	if doctorDryRun {
+		fmt.Println("🪝 Beads hooks: legacy beads hooks detected")
+		for _, name := range found {
+			fmt.Printf("   %s (would be removed)\n", name)
+		}
+		return 1, nil
+	}
+
+	// Remove the beads hook files
+	for _, name := range found {
+		hookPath := filepath.Join(hooksDir, name)
+		if err := os.Remove(hookPath); err != nil {
+			return 0, fmt.Errorf("failed to remove beads hook %s: %w", name, err)
+		}
+	}
+	fmt.Println("🪝 Beads hooks: removed legacy hooks")
+	for _, name := range found {
+		fmt.Printf("   - %s\n", name)
+	}
+	return 1, nil
+}
+
+// isBeadsHook returns true if the file at path contains the beads shim marker.
+func isBeadsHook(path string) bool {
+	data, err := os.ReadFile(filepath.Clean(path))
+	if err != nil {
+		return false
+	}
+	return strings.Contains(string(data), beadsShimMarker)
 }
 
 func checkConfigApply(configPath string, cfg *project.Config) (int, error) {

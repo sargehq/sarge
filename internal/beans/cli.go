@@ -247,10 +247,15 @@ func (c *cliImpl) AddDependency(ctx context.Context, beanID, dependsOnID string)
 }
 
 // Init initializes beans in the specified directory.
-func Init(ctx context.Context, beansDir, prefix string) error {
-	cmd := beansCommand(ctx, "", "init", "--prefix", prefix)
-	// beans init creates .beans/ in the current working directory
+// projectRoot is the directory containing .mise.toml so that mise can locate the
+// beans binary it just installed (which may not yet be on the global PATH).
+func Init(ctx context.Context, beansDir, projectRoot string) error {
+	if err := os.MkdirAll(beansDir, 0o750); err != nil {
+		return fmt.Errorf("beans init failed: could not create directory: %w", err)
+	}
+	cmd := exec.CommandContext(ctx, "mise", "exec", "--", "beans", "init")
 	cmd.Dir = beansDir
+	cmd.Env = append(os.Environ(), "MISE_PROJECT_DIR="+projectRoot)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("beans init failed: %w\n%s", err, output)
 	}

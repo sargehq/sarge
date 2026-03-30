@@ -12,6 +12,7 @@ import (
 
 	"github.com/sargehq/sarge/internal/beans/pubsub"
 	"github.com/sargehq/sarge/internal/db"
+	"github.com/sargehq/sarge/internal/project"
 	trackingwatcher "github.com/sargehq/sarge/internal/tracking/watcher"
 )
 
@@ -36,7 +37,7 @@ func MonitorAgent(ctx context.Context, database *db.DB, taskID string, agentCmd 
 	var watcherSub <-chan pubsub.Event[trackingwatcher.WatcherEvent]
 	var ticker *time.Ticker
 
-	trackingDBPath := filepath.Join(projectRoot, ".co", "tracking.db")
+	trackingDBPath := filepath.Join(projectRoot, project.ConfigDir, "tracking.db")
 	watcher, err := trackingwatcher.New(trackingwatcher.DefaultConfig(trackingDBPath))
 	if err == nil {
 		if err := watcher.Start(); err == nil {

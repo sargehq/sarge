@@ -42,7 +42,7 @@ Examples:
 Authentication:
   The Linear API key can be provided via (in order of precedence):
   1. --api-key flag
-  2. [linear] api_key in .co/config.toml
+  2. [linear] api_key in .sarge/config.toml
 
 Environment Variables:
   BEANS_PATH         Beans directory (default: auto-detect)

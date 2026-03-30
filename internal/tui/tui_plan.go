@@ -139,7 +139,7 @@ func newPlanModel(ctx context.Context, proj *project.Project) *planModel {
 	}
 
 	// Initialize tracking database watcher
-	trackingDBPath := filepath.Join(proj.Root, ".co", "tracking.db")
+	trackingDBPath := filepath.Join(proj.Root, project.ConfigDir, "tracking.db")
 	trackingWatcher, err := trackingwatcher.New(trackingwatcher.DefaultConfig(trackingDBPath))
 	if err != nil {
 		// Log error but continue without watcher
