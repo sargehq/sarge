@@ -139,7 +139,7 @@ func migrateLegacyConfigDir(projectRoot string) error {
 	if err != nil {
 		return nil // directory renamed successfully, config read failure is non-fatal
 	}
-	updated := strings.ReplaceAll(string(data), LegacyConfigDir+"/", ConfigDir+"/")
+	updated := strings.ReplaceAll(string(data), "\""+LegacyConfigDir+"/", "\""+ConfigDir+"/")
 	if updated != string(data) {
 		if err := os.WriteFile(configPath, []byte(updated), 0o600); err != nil {
 			fmt.Printf("Warning: could not update config paths: %v\n", err)
@@ -357,14 +357,17 @@ func setupBeans(ctx context.Context, projectRoot, mainPath string) (beansPath st
 		fmt.Printf("Using existing beans in %s\n", repoBeansPath)
 		beansPath = BeansPathRepo
 	} else {
-		// No beans in repo - create project-local beans
 		projectBeansPath := filepath.Join(projectRoot, ConfigDir, ".beans")
-		fmt.Printf("Initializing project-local beans in %s\n", projectBeansPath)
 		beansPath = BeansPathProject
 
-		// Initialize beans in project directory
-		if err := beans.Init(ctx, projectBeansPath, projectRoot); err != nil {
-			return "", fmt.Errorf("failed to initialize beans: %w", err)
+		// Skip init if beans already exist (e.g. migrated from .co/.beans/)
+		if _, err := os.Stat(filepath.Join(projectBeansPath, ".beans.yml")); err == nil {
+			fmt.Printf("Using existing project-local beans in %s\n", projectBeansPath)
+		} else {
+			fmt.Printf("Initializing project-local beans in %s\n", projectBeansPath)
+			if err := beans.Init(ctx, projectBeansPath, projectRoot); err != nil {
+				return "", fmt.Errorf("failed to initialize beans: %w", err)
+			}
 		}
 	}
 
